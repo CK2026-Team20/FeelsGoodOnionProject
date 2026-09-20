@@ -104,7 +104,7 @@ namespace FeelsGoodOnion.TechSYM.Features
 
         /// <summary>
         /// 현재 플랫폼을 밟은 플레이어의 HeavyState를 확인한다.
-        /// 컴포넌트가 있으면 붕괴를 시작한다.
+        /// 컴포넌트가 활성화되어 있으면 붕괴를 시작한다.
         /// </summary>
         private void TryCollapseFromContact(Collision collision)
         {
@@ -113,7 +113,7 @@ namespace FeelsGoodOnion.TechSYM.Features
             Collider other = collision.collider;
             if (other == null || !other.enabled || other.isTrigger) return;
             GameObject actor = other.attachedRigidbody != null ? other.attachedRigidbody.gameObject : other.gameObject;
-            if (actor == null || !actor.TryGetComponent<HeavyState>(out var heavy) || heavy == null) return;
+            if (actor == null || !actor.TryGetComponent<HeavyState>(out var heavy) || heavy == null || !heavy.isActiveAndEnabled) return;
             for (int i = 0; i < collision.contactCount; i++)
             {
                 ContactPoint contact = collision.GetContact(i);
