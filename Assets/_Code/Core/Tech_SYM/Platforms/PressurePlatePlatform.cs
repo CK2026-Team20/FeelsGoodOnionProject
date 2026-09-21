@@ -26,6 +26,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private Tween transition;
         public float Progress { get; private set; }
         public bool IsPressed { get; private set; }
+        /// <summary>버튼의 전체 이동 시간(초).</summary>
+        public float TravelSeconds => float.IsFinite(travelSeconds) ? Mathf.Max(0.02f, travelSeconds) : 0.02f;
 
         private void Awake()
         {
