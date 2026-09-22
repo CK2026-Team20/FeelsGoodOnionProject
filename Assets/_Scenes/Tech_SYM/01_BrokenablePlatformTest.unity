@@ -314,7 +314,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 112
@@ -383,7 +383,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -407,52 +407,6 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -1, y: 3.6, z: 1.54}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &571785842
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 571785844}
-  - component: {fileID: 571785843}
-  m_Layer: 0
-  m_Name: PlatformManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &571785843
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 571785842}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a039ffdaaa75e494d89aedbd9dee2e73, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Managers.PlatformManager
-  trackedCharacters:
-  - {fileID: 34191082}
---- !u!4 &571785844
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 571785842}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -817,7 +771,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 112
@@ -886,7 +840,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -925,7 +879,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1163242404}
   - component: {fileID: 1163242403}
-  - component: {fileID: 1163242402}
   - component: {fileID: 1163242401}
   m_Layer: 0
   m_Name: ShatteredPlatform (1)
@@ -946,37 +899,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14c29a7d6cc5f634d870cf1972edebca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.ShatteredPlatform
-  stateSource: {fileID: 571785843}
   visual: {fileID: 1079896580}
   supportCollider: {fileID: 1163242403}
-  detectionTrigger: {fileID: 1163242402}
-  wiggleDuration: 1
-  wiggleAngle: 4
-  wiggleFrequency: 8
-  regenerationDuration: 3
-  blinkInterval: 0.15
-  collisionPolicy: 1
---- !u!65 &1163242402
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1163242400}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 5.9, y: 0.3, z: 5.9}
-  m_Center: {x: 0, y: 0.15, z: 0}
+  warningEndSeconds: 1
+  collapseEndSeconds: 1.25
+  shakeAngleDegrees: 4
+  shakeFrequency: 8
+  canRegenerate: 0
+  collapsedHoldSeconds: 0.5
+  regenerationSeconds: 3
+  blinkIntervalSeconds: 0.15
 --- !u!65 &1163242403
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1263,7 +1195,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1894111893}
   - component: {fileID: 1894111892}
-  - component: {fileID: 1894111891}
   - component: {fileID: 1894111890}
   m_Layer: 0
   m_Name: ShatteredPlatform
@@ -1284,37 +1215,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14c29a7d6cc5f634d870cf1972edebca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.ShatteredPlatform
-  stateSource: {fileID: 571785843}
   visual: {fileID: 1033840209}
   supportCollider: {fileID: 1894111892}
-  detectionTrigger: {fileID: 1894111891}
-  wiggleDuration: 1
-  wiggleAngle: 4
-  wiggleFrequency: 8
-  regenerationDuration: 3
-  blinkInterval: 0.15
-  collisionPolicy: 1
---- !u!65 &1894111891
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1894111889}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 5.9, y: 0.3, z: 5.9}
-  m_Center: {x: 0, y: 0.15, z: 0}
+  warningEndSeconds: 1
+  collapseEndSeconds: 1.25
+  shakeAngleDegrees: 10
+  shakeFrequency: 8
+  canRegenerate: 1
+  collapsedHoldSeconds: 0.5
+  regenerationSeconds: 3
+  blinkIntervalSeconds: 0.2
 --- !u!65 &1894111892
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1470,7 +1380,6 @@ SceneRoots:
   m_Roots:
   - {fileID: 698435803}
   - {fileID: 1559520311}
-  - {fileID: 571785844}
   - {fileID: 1894111893}
   - {fileID: 1163242404}
   - {fileID: 34191087}
