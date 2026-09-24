@@ -276,16 +276,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14c29a7d6cc5f634d870cf1972edebca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.ShatteredPlatform
-  stateSource: {fileID: 612682281}
   visual: {fileID: 122936343}
   supportCollider: {fileID: 92574471}
-  detectionTrigger: {fileID: 92574470}
-  wiggleDuration: 1
-  wiggleAngle: 4
-  wiggleFrequency: 8
-  regenerationDuration: 3
-  blinkInterval: 0.15
-  collisionPolicy: 1
+  warningEndSeconds: 1
+  collapseEndSeconds: 1.25
+  shakeAngleDegrees: 4
+  shakeFrequency: 8
+  canRegenerate: 1
+  collapsedHoldSeconds: 0.5
+  regenerationSeconds: 3
+  blinkIntervalSeconds: 0.15
 --- !u!65 &92574470
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -463,8 +463,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a039ffdaaa75e494d89aedbd9dee2e73, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Managers.PlatformManager
-  trackedCharacters:
-  - {fileID: 2108342181}
 --- !u!4 &612682282
 Transform:
   m_ObjectHideFlags: 0
@@ -1348,12 +1346,14 @@ GameObject:
   - component: {fileID: 2108342180}
   - component: {fileID: 2108342177}
   - component: {fileID: 2108342182}
+  - component: {fileID: 2108342188}
   - component: {fileID: 2108342181}
   - component: {fileID: 2108342185}
   - component: {fileID: 2108342184}
   - component: {fileID: 2108342183}
   - component: {fileID: 2108342186}
   - component: {fileID: 2108342187}
+  - component: {fileID: 2108342189}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1514,6 +1514,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb9b0185e676caa419523794b16ce4c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlatformPassenger
+--- !u!114 &2108342188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2108342176}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50300de8796b58c4eb5b7c11b292338d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerFacade
+  maxHP: 3
+  currentHP: 3
+  invincible: 0
+  currentSkillFragment: 0
+  skillChargePerSkillFragment: 3
+  skillCooldown: 1
+  formChangeCooldown: 1
+--- !u!114 &2108342189
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2108342176}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfe4097035ff4f04dbb72477ecd78557, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TestPlayerDamage
 --- !u!1 &2134562202
 GameObject:
   m_ObjectHideFlags: 0

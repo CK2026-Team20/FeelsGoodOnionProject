@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -14,6 +14,10 @@ public sealed class CharacterMovement : MonoBehaviour
     [FormerlySerializedAs("_groundDeceleration")] [SerializeField, Min(0f)] private float groundDeceleration = 50f;
     [FormerlySerializedAs("_airAcceleration")] [SerializeField, Min(0f)] private float airAcceleration = 30f;
     [FormerlySerializedAs("_airDeceleration")] [SerializeField, Min(0f)] private float airDeceleration = 20f;
+    /// <summary>
+    /// Z축 이동 허용 여부.<br/>
+    /// 해당 값에 따라 FreezePositionZ가 제어되어, Z축으로의 이동을 막거나 허용함.
+    /// </summary>
     [FormerlySerializedAs("_allowDepthMovement")] [SerializeField] private bool allowDepthMovement;
 
     [FormerlySerializedAs("_jumpHeight")]
@@ -44,6 +48,8 @@ public sealed class CharacterMovement : MonoBehaviour
     private Vector3 selfVelocity;
     private Vector3 externalHorizontalVelocity;
     private Vector3 pendingImpulse;
+    private Vector3 pendingKnockbackVelocity;
+    private bool hasPendingKnockback;
 
     private float accelerationMultiplier = 1f;
     private float decelerationMultiplier = 1f;
@@ -61,7 +67,7 @@ public sealed class CharacterMovement : MonoBehaviour
     public bool IsMovementLocked => movementLockRemaining > 0f;
     public bool AllowDepthMovement => allowDepthMovement;
 
-    public Vector3 Velocity => body.linearVelocity;
+    public Vector3 Velocity => body != null ? body.linearVelocity : Vector3.zero;
     public Vector3 SelfVelocity => selfVelocity;
     public Vector3 ExternalHorizontalVelocity => externalHorizontalVelocity;
 
@@ -109,6 +115,8 @@ public sealed class CharacterMovement : MonoBehaviour
 
         jumpRequested = false;
         movementLockRemaining = 0f;
+        hasPendingKnockback = false;
+        pendingKnockbackVelocity = Vector3.zero;
 
         contacts.Clear();
         IsGrounded = false;
@@ -133,6 +141,12 @@ public sealed class CharacterMovement : MonoBehaviour
     private void FixedUpdate()
     {
         float deltaTime = Time.fixedDeltaTime;
+
+        if (hasPendingKnockback)
+        {
+            ApplyPendingKnockback(deltaTime);
+            return;
+        }
 
         RefreshGround();
 
@@ -201,7 +215,7 @@ public sealed class CharacterMovement : MonoBehaviour
         velocity.z += platformVelocity.z;
         velocity.y = verticalVelocity;
 
-        // 실제 이동 속도는 이곳에서만 적용한다.
+        // 일반 이동 스텝의 최종 속도를 적용한다. 넉백 예약 스텝은 별도 처리한다.
         body.linearVelocity = ConstrainDepth(velocity);
 
         externalHorizontalVelocity = Vector3.MoveTowards(
@@ -376,6 +390,58 @@ public sealed class CharacterMovement : MonoBehaviour
     }
 
     /// <summary>
+    /// PC의 기존 운동을 교체할 넉백을 다음 물리 스텝에 예약합니다. 같은 스텝의 여러 요청은 마지막 속도를 사용합니다.
+    /// 자체 이동과 점프를 즉시 제한하며 남은 제한 시간은 짧아지지 않습니다.
+    /// 예약 적용 스텝에서는 다른 AddImpulse 요청보다 넉백 교체가 우선합니다.
+    /// </summary>
+    /// <param name="knockbackVelocity">월드 기준 초기 속도(m/s). 금지된 Z축은 제거됩니다.</param>
+    /// <param name="controlLockSeconds">내부 이동 API의 초 단위 제한 시간. Facade가 공용 인터페이스의 ms를 변환합니다.</param>
+    public void ApplyKnockback(Vector3 knockbackVelocity, float controlLockSeconds)
+    {
+        if (!isActiveAndEnabled || !float.IsFinite(knockbackVelocity.x) || !float.IsFinite(knockbackVelocity.y) ||
+            !float.IsFinite(knockbackVelocity.z) || !float.IsFinite(controlLockSeconds))
+        {
+            return;
+        }
+        pendingKnockbackVelocity = ConstrainDepth(knockbackVelocity);
+        hasPendingKnockback = true;
+        selfVelocity = Vector3.zero;
+        externalHorizontalVelocity = Vector3.zero;
+        pendingImpulse = Vector3.zero;
+        jumpRequested = false;
+        LockMovement(controlLockSeconds, true);
+        if (body != null)
+        {
+            body.WakeUp();
+        }
+    }
+
+    /// <summary>
+    /// 기존 운동과 접촉 기록을 지우고 넉백 속도를 적용합니다. 첫 스텝은 자체 가속과 플랫폼 속도를 더하지 않습니다.
+    /// 중력과 낙하 속도 제한은 즉시 적용하고, 다음 스텝부터 새로운 접촉으로 플랫폼 운반을 다시 판단합니다.
+    /// </summary>
+    /// <param name="deltaTime">물리 스텝 시간(초).</param>
+    private void ApplyPendingKnockback(float deltaTime)
+    {
+        Vector3 velocity = ConstrainDepth(pendingKnockbackVelocity);
+        hasPendingKnockback = false;
+        pendingKnockbackVelocity = Vector3.zero;
+        selfVelocity = Vector3.zero;
+        pendingImpulse = Vector3.zero;
+        jumpRequested = false;
+        contacts.Clear();
+        IsGrounded = false;
+        GroundCollider = null;
+        GroundNormal = Vector3.up;
+        externalHorizontalVelocity = new Vector3(velocity.x, 0f, velocity.z);
+        float multiplier = velocity.y < 0f ? fallGravityMultiplier : 1f;
+        velocity.y = Mathf.Max(velocity.y - gravity * multiplier * deltaTime, -maximumFallSpeed);
+        body.linearVelocity = velocity;
+        externalHorizontalVelocity = Vector3.MoveTowards(externalHorizontalVelocity, Vector3.zero, externalDeceleration * deltaTime);
+        movementLockRemaining = Mathf.Max(0f, movementLockRemaining - deltaTime);
+    }
+
+    /// <summary>
     /// 지정 시간 동안 자체 이동 입력과 점프를 제한한다. 중력, 플랫폼 운반과 외부 충격은 계속 적용된다.
     /// </summary>
     /// <param name="duration">잠금 시간(초). 남은 시간보다 짧은 요청은 기존 잠금을 단축하지 않는다.</param>
@@ -432,6 +498,7 @@ public sealed class CharacterMovement : MonoBehaviour
         selfVelocity = ConstrainDepth(selfVelocity);
         externalHorizontalVelocity = ConstrainDepth(externalHorizontalVelocity);
         pendingImpulse = ConstrainDepth(pendingImpulse);
+        pendingKnockbackVelocity = ConstrainDepth(pendingKnockbackVelocity);
 
         body.linearVelocity = ConstrainDepth(body.linearVelocity);
 
