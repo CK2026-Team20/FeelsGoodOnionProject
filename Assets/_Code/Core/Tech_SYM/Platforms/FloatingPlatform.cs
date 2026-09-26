@@ -67,7 +67,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             motion.SetEffectOffset(this, Vector3.up * landingOffset);
         }
 
-        /// <summary>플레이어가 윗면에 새로 착지했을 때만 실행한다.</summary>
+        /// <summary>PlayerFacade를 가진 객체가 윗면에 새로 착지했을 때만 실행한다.</summary>
         private void OnCollisionEnter(Collision collision)
         {
             if (!isActiveAndEnabled || motion == null || !motion.isActiveAndEnabled
@@ -75,7 +75,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             Rigidbody actor = collision.rigidbody;
             Collider other = collision.collider;
             if (actor == null || other == null || other.isTrigger
-                || !actor.TryGetComponent<PlayerController>(out var player) || player == null
+                || !actor.TryGetComponent<PlayerFacade>(out var player) || player == null
                 || landed.ContainsKey(actor)) return;
             for (int i = 0; i < collision.contactCount; i++)
             {
