@@ -103,8 +103,8 @@ namespace FeelsGoodOnion.TechSYM.Features
         private void OnCollisionStay(Collision collision) => TryCollapseFromContact(collision);
 
         /// <summary>
-        /// 현재 플랫폼을 밟은 플레이어의 HeavyState를 확인한다.
-        /// 컴포넌트가 활성화되어 있으면 붕괴를 시작한다.
+        /// 현재 플랫폼을 밟은 활성 PlayerFacade와 그 객체가 소유한 활성 HeavyState를 확인한다.
+        /// 두 컴포넌트의 조건과 윗면 접촉 조건이 모두 충족되면 붕괴를 시작한다.
         /// </summary>
         private void TryCollapseFromContact(Collision collision)
         {
@@ -112,8 +112,7 @@ namespace FeelsGoodOnion.TechSYM.Features
                 || collision == null || supportCollider == null || !supportCollider.enabled) return;
             Collider other = collision.collider;
             if (other == null || !other.enabled || other.isTrigger) return;
-            GameObject actor = other.attachedRigidbody != null ? other.attachedRigidbody.gameObject : other.gameObject;
-            if (actor == null || !actor.TryGetComponent<HeavyState>(out var heavy) || heavy == null || !heavy.isActiveAndEnabled) return;
+            if (!IsActiveHeavyPlayer(other)) return;
             for (int i = 0; i < collision.contactCount; i++)
             {
                 ContactPoint contact = collision.GetContact(i);
@@ -125,6 +124,20 @@ namespace FeelsGoodOnion.TechSYM.Features
                     return;
                 }
             }
+        }
+
+        /// <summary>
+        /// 복합 콜라이더는 Rigidbody 객체를 소유자로 판단한다.
+        /// 부모/자식이나 다른 객체의 속성을 빌려 쓰지 않고 Facade 자체가 보유한 속성만 인정한다.
+        /// </summary>
+        private static bool IsActiveHeavyPlayer(Collider other)
+        {
+            if (other == null || !other.enabled || other.isTrigger || !other.gameObject.activeInHierarchy) return false;
+            GameObject owner = other.attachedRigidbody != null ? other.attachedRigidbody.gameObject : other.gameObject;
+            return owner.TryGetComponent<PlayerFacade>(out var player)
+                && player.isActiveAndEnabled
+                && player.TryGetComponent<HeavyState>(out var heavy)
+                && heavy.isActiveAndEnabled;
         }
 
         /// <summary>

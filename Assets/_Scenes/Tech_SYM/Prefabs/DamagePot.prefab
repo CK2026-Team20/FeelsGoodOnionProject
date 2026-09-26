@@ -462,7 +462,6 @@ GameObject:
   - component: {fileID: 1587427777290536013}
   - component: {fileID: 3883345223285594129}
   - component: {fileID: 8493850915389834618}
-  - component: {fileID: 7555294456206768265}
   m_Layer: 0
   m_Name: DamageFloor
   m_TagString: Untagged
@@ -588,19 +587,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamageFloorPlatform
   damageInterval: 1
---- !u!114 &7555294456206768265
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7146634088951379113}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2da4ca576ef57a4459c842934ee60acc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamagePlatformKnockback
   knockbackSpeed: 3
+  controlLockMilliseconds: 0
 --- !u!1 &7847143903114940442
 GameObject:
   m_ObjectHideFlags: 0
