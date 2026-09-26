@@ -131,6 +131,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: MultiFuncPlatforms
       objectReference: {fileID: 0}
+    - target: {fileID: 5324374226036364096, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -5
+      objectReference: {fileID: 0}
     - target: {fileID: 5500414475690877281, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
