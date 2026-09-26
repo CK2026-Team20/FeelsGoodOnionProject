@@ -2501,14 +2501,14 @@ GameObject:
   - component: {fileID: 2036792854}
   - component: {fileID: 2036792863}
   - component: {fileID: 2036792862}
-  - component: {fileID: 2036792861}
   - component: {fileID: 2036792860}
   - component: {fileID: 2036792859}
-  - component: {fileID: 2036792858}
-  - component: {fileID: 2036792857}
-  - component: {fileID: 2036792856}
-  - component: {fileID: 2036792855}
+  - component: {fileID: 2036792866}
+  - component: {fileID: 2036792865}
   - component: {fileID: 2036792864}
+  - component: {fileID: 2036792869}
+  - component: {fileID: 2036792868}
+  - component: {fileID: 2036792867}
   m_Layer: 0
   m_Name: Player_HMS
   m_TagString: Player
@@ -2531,67 +2531,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1475950852}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2036792855
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2036792853}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 580cbf643525d29469ef20a2637bc2f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.HeavyState
---- !u!114 &2036792856
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2036792853}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7530312256ebc5846a7f81b12578fc36, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
---- !u!114 &2036792857
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2036792853}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66bae9877abbb7844ae6648b61f3db93, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CharacterMovement
-  moveSpeed: 5
-  groundAcceleration: 40
-  groundDeceleration: 50
-  airAcceleration: 30
-  airDeceleration: 20
-  allowDepthMovement: 0
-  jumpHeight: 2
-  gravity: 25
-  fallGravityMultiplier: 1.5
-  maximumFallSpeed: 35
-  maximumGroundAngle: 50
-  groundStickSpeed: 1
-  externalDeceleration: 8
---- !u!114 &2036792858
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2036792853}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cb9b0185e676caa419523794b16ce4c4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlatformPassenger
 --- !u!136 &2036792859
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -2642,18 +2581,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &2036792861
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2036792853}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 58ea903c9c1b36a47a3c46615d2afdc6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
 --- !u!23 &2036792862
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -2720,12 +2647,89 @@ MonoBehaviour:
   m_GameObject: {fileID: 2036792853}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0b75e81241a9c1445a0f2e17227f717c, type: 3}
+  m_Script: {fileID: 11500000, guid: 50300de8796b58c4eb5b7c11b292338d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Testing.PlatformTestHealth
-  startingHealth: 20
-  invincibilitySeconds: 0.5
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerFacade
+  maxHP: 3
+  currentHP: 3
   invincible: 0
+  currentSkillFragment: 0
+  skillChargePerSkillFragment: 3
+  skillCooldown: 1
+  formChangeCooldown: 1
+--- !u!114 &2036792865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2036792853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66bae9877abbb7844ae6648b61f3db93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterMovement
+  moveSpeed: 15
+  groundAcceleration: 40
+  groundDeceleration: 50
+  airAcceleration: 30
+  airDeceleration: 20
+  allowDepthMovement: 0
+  jumpHeight: 2
+  gravity: 25
+  fallGravityMultiplier: 1.5
+  maximumFallSpeed: 35
+  maximumGroundAngle: 50
+  groundStickSpeed: 1
+  externalDeceleration: 8
+--- !u!114 &2036792866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2036792853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb9b0185e676caa419523794b16ce4c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlatformPassenger
+--- !u!114 &2036792867
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2036792853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 580cbf643525d29469ef20a2637bc2f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.HeavyState
+--- !u!114 &2036792868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2036792853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58ea903c9c1b36a47a3c46615d2afdc6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
+--- !u!114 &2036792869
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2036792853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7530312256ebc5846a7f81b12578fc36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
 --- !u!1001 &503284610271832041
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2945,6 +2949,10 @@ PrefabInstance:
     - target: {fileID: 8273010607619109265, guid: afd67ac8a63ad6f488cc98fd5aa33243, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8493850915389834618, guid: afd67ac8a63ad6f488cc98fd5aa33243, type: 3}
+      propertyPath: knockbackSpeed
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
