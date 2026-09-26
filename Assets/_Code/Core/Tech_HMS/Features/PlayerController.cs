@@ -1,20 +1,20 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(PlayerInputReader))]
-[RequireComponent(typeof(CharacterMovement))]
+[RequireComponent(typeof(PlayerFacade))]
 public sealed class PlayerController : MonoBehaviour
 {
     private PlayerInputReader inputReader;
-    private CharacterMovement movement;
+    private PlayerFacade player;
 
     /// <summary>
-    /// 같은 오브젝트의 입력 판독기와 이동 컴포넌트를 캐싱한다.
+    /// 같은 오브젝트의 입력 판독기와 플레이어 Facade를 캐싱한다.
     /// </summary>
     private void Awake()
     {
         inputReader = GetComponent<PlayerInputReader>();
-        movement = GetComponent<CharacterMovement>();
+        player = GetComponent<PlayerFacade>();
     }
 
     /// <summary>
@@ -39,7 +39,7 @@ public sealed class PlayerController : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        if (!inputReader.CanReadInput || !movement.isActiveAndEnabled)
+        if (!inputReader.CanReadInput || !player.CanReceiveInput)
         {
             ResetInput();
             return;
@@ -62,12 +62,12 @@ public sealed class PlayerController : MonoBehaviour
 
         // 정규화 전에 허용하지 않는 축을 제거한다.
         // 사이드뷰에서 W+D를 눌러도 좌우 속도가 줄지 않게 한다.
-        if (!movement.AllowDepthMovement)
+        if (!player.AllowDepthMovement)
         {
             worldDirection.z = 0f;
         }
 
-        movement.SetMoveInput(worldDirection);
+        player.SetMoveInput(worldDirection);
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public sealed class PlayerController : MonoBehaviour
     {
         if (inputReader.JumpPressedThisFrame)
         {
-            movement.RequestJump();
+            player.RequestJump();
         }
     }
 
@@ -86,12 +86,11 @@ public sealed class PlayerController : MonoBehaviour
     /// </summary>
     private void ResetInput()
     {
-        if (movement == null)
+        if (player == null)
         {
             return;
         }
 
-        movement.SetMoveInput(Vector3.zero);
-        movement.CancelJumpRequest();
+        player.ClearInput();
     }
 }
