@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Platforms
@@ -13,7 +15,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private readonly List<Collider> occupants = new List<Collider>();
         private Vector3 target;
         private bool hasTarget;
-        private enum MotionPath { None, Travel, Effect }
+        private enum MotionPath { None, Travel, Effect, Tween }
         private MotionPath path;
         private Vector3 effectOrigin;
         private readonly Dictionary<Component, Vector3> effects = new Dictionary<Component, Vector3>();
@@ -22,6 +24,13 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private readonly HashSet<Rigidbody> carried = new HashSet<Rigidbody>();
         private PhysicsMaterial originalMaterial;
         private PhysicsMaterial motionMaterial;
+        private Tweener travelTween;
+        private Vector3 tweenStart, tweenDestination;
+        private float tweenDuration, tweenElapsed;
+        private bool completionPending;
+        private Action tweenCompleted;
+        public bool IsTweening => travelTween != null;
+        public float RemainingTweenSeconds => Mathf.Max(0f, tweenDuration - tweenElapsed);
         public Vector3 Velocity { get; private set; }
         public Vector3 PreviousVelocity { get; private set; }
         public Vector3 Direction => Velocity.sqrMagnitude > 0.000001f ? Velocity.normalized : Vector3.zero;
@@ -61,19 +70,50 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         public void MoveTo(Vector3 position)
         {
             if (!isActiveAndEnabled || !Finite(position)) return;
-            if (path == MotionPath.Effect) { ReportConflict(); return; }
+            if (path == MotionPath.Effect || path == MotionPath.Tween) { ReportConflict(); return; }
             path = MotionPath.Travel;
             target = position;
             hasTarget = true;
         }
 
+        /// <summary>트윈 위치 적용과 탑승 속도 전달을 같은 물리 스텝에서 처리한다.</summary>
+        public bool TryTweenTo(Vector3 worldDestination, float duration, Action onCompleted)
+        {
+            if (!isActiveAndEnabled || body == null || IsTweening || !Finite(worldDestination)
+                || !float.IsFinite(duration) || duration <= 0f) return false;
+            if (path == MotionPath.Effect || path == MotionPath.Travel || HasTravelDriver())
+            { ReportConflict(); return false; }
+            path = MotionPath.Tween;
+            tweenStart = body.position;
+            tweenDestination = worldDestination;
+            tweenDuration = duration;
+            tweenElapsed = 0f;
+            completionPending = false;
+            tweenCompleted = onCompleted;
+            travelTween = body.DOMove(worldDestination, duration).SetEase(Ease.OutSine)
+                .SetUpdate(UpdateType.Manual).SetAutoKill(false).Pause();
+            travelTween.ForceInit();
+            return true;
+        }
+
+        /// <summary>자신의 트윈과 완료 통지만 취소한다. 남은 시간은 재개를 위해 보존한다.</summary>
+        public void CancelTween()
+        {
+            travelTween?.Kill(false);
+            travelTween = null;
+            tweenCompleted = null;
+            completionPending = false;
+        }
+
+        private bool HasTravelDriver() => GetComponent<LinearShuttlePlatform>() != null
+            || GetComponent<PressurePlatePlatform>() != null || GetComponent<PressureLinkedPlatform>() != null
+            || GetComponent<MovingPlatform>() != null;
+
         /// <summary>속도를 상속하지 않는 연출 경로에 등록한다. 일반 이동과 혼용하지 않는다.</summary>
         public bool RegisterEffect(Component owner)
         {
             if (owner == null) return false;
-            if (path == MotionPath.Travel || GetComponent<LinearShuttlePlatform>() != null
-                || GetComponent<PressurePlatePlatform>() != null || GetComponent<PressureLinkedPlatform>() != null
-                || GetComponent<MovingPlatform>() != null)
+            if (path == MotionPath.Travel || path == MotionPath.Tween || HasTravelDriver())
             { ReportConflict(); return false; }
             if (path == MotionPath.None) { effectOrigin = Position; path = MotionPath.Effect; }
             effects[owner] = Vector3.zero;
@@ -98,7 +138,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             if (conflictReported) return;
             conflictReported = true;
-            Debug.LogError("일반 이동 발판과 부유·착지 연출은 같은 객체에서 함께 사용할 수 없습니다.", this);
+            Debug.LogError("일반 이동, 트윈 이동, 부유·착지 연출은 같은 플랫폼에서 혼용할 수 없습니다.", this);
         }
 
         private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
@@ -106,9 +146,23 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private void FixedUpdate()
         {
             if (body == null || contacts == null || Time.fixedDeltaTime <= 0f) return;
+            // 마지막 MovePosition이 물리에 반영된 다음 스텝에만 완료를 통지한다.
+            Action completed = null;
+            if (completionPending)
+            {
+                completed = tweenCompleted;
+                CancelTween();
+            }
             PreviousVelocity = Velocity;
             bool carryWithoutInertia = path == MotionPath.Effect;
             Vector3 next = hasTarget ? target : body.position;
+            bool tweenStep = travelTween != null;
+            if (tweenStep)
+            {
+                tweenElapsed = Mathf.Min(tweenDuration, tweenElapsed + Time.fixedDeltaTime);
+                float fraction = DOVirtual.EasedValue(0f, 1f, tweenElapsed / tweenDuration, Ease.OutSine);
+                next = Vector3.LerpUnclamped(tweenStart, tweenDestination, fraction);
+            }
             if (carryWithoutInertia)
             {
                 next = effectOrigin;
@@ -137,12 +191,20 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             }
             hasTarget = false;
             // 부유 연출은 위치만 옮겨 키네마틱 속도가 플레이어를 밀어내지 않게 한다.
-            if (carryWithoutInertia) body.position = next;
+            if (tweenStep)
+            {
+                // DOMove가 이 스텝의 유일한 위치 적용자다. 전역 ManualUpdate는 호출하지 않는다.
+                travelTween.Goto(tweenElapsed, false);
+                completionPending = tweenElapsed >= tweenDuration;
+            }
+            else if (carryWithoutInertia) body.position = next;
             else body.MovePosition(next);
+            completed?.Invoke();
         }
 
         private void OnDisable()
         {
+            CancelTween();
             hasTarget = false;
             Velocity = PreviousVelocity = Vector3.zero;
             occupants.Clear();
@@ -151,6 +213,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         private void OnDestroy()
         {
+            CancelTween();
             var collider = GetComponent<BoxCollider>();
             if (collider != null && collider.sharedMaterial == motionMaterial) collider.sharedMaterial = originalMaterial;
             if (motionMaterial != null) Destroy(motionMaterial);

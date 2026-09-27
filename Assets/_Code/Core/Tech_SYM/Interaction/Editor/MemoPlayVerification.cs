@@ -24,6 +24,7 @@ namespace FeelsGoodOnion.TechSYM.EditorTools
         private static Keyboard previousKeyboard;
         private static Key[] keys = Array.Empty<Key>();
         private static InputSettings.BackgroundBehavior previousBackground;
+        private static InputSettings.EditorInputBehaviorInPlayMode previousEditorInput;
         private static bool previousRunInBackground;
         private static CheckInteract check;
         private static MemoUIController controller;
@@ -45,15 +46,18 @@ namespace FeelsGoodOnion.TechSYM.EditorTools
             player = UnityEngine.Object.FindFirstObjectByType<PlayerFacade>();
             var memos = UnityEngine.Object.FindObjectsByType<MemoObject>(FindObjectsSortMode.None).OrderBy(x=>x.Data.MemoID).ToArray();
             first=memos[0]; second=memos[1];
-            world=GameObject.Find("MemoInteraction/InteractionPromptCanvas").transform;
+            world=UnityEngine.Object.FindFirstObjectByType<InteractionPromptView>().transform;
             bubble=world.GetChild(0).gameObject;
             playerPosition=player.transform.position;
             playerRotation=player.transform.rotation;
             firstPosition=first.transform.position;
             secondPosition=second.transform.position;
+            Align(first);
             previousKeyboard=Keyboard.current;
             previousBackground=InputSystem.settings.backgroundBehavior;
             previousRunInBackground=Application.runInBackground;
+            previousEditorInput=InputSystem.settings.editorInputBehaviorInPlayMode;
+            InputSystem.settings.editorInputBehaviorInPlayMode=InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             InputSystem.settings.backgroundBehavior=InputSettings.BackgroundBehavior.IgnoreFocus;
             Application.runInBackground=true;
             keyboard=InputSystem.AddDevice<Keyboard>("MemoVerificationKeyboard");
@@ -73,11 +77,11 @@ namespace FeelsGoodOnion.TechSYM.EditorTools
                 Expect(controller.IsOpen && Views()==1,"held key is single-shot");
                 Expect(player.CanReceiveInput,"player input remains enabled");
                 Keys();
-                player.transform.position += Vector3.left*5;
+                player.transform.position += Vector3.right*4;
                 Physics.SyncTransforms();
             });
             Add("close without current ray target",()=>Keys(Key.E));
-            Add("close destroys view",()=> {Expect(!controller.IsOpen && Views()==0,"view destroyed"); Keys(); Align(first);});
+            Add("close destroys view",()=> {Expect(!controller.IsOpen && Views()==0,"view destroyed"); Keys(); player.transform.position=playerPosition; Align(first);});
             Add("repeat interaction",()=>Keys(Key.E));
             Add("repeat open creates fresh view",()=> {Expect(controller.IsOpen && Views()==1,"repeat open"); Keys();});
             Add("close second open",()=>Keys(Key.E));
@@ -153,7 +157,7 @@ namespace FeelsGoodOnion.TechSYM.EditorTools
             Add("re-enabled input opens once",()=> {Expect(controller.IsOpen && Views()==1,"rebind one command"); Keys();});
             Add("request final close",()=>Keys(Key.E));
             Add("final destroyed view",()=> {Expect(!controller.IsOpen && Views()==0,"final closed"); Keys();});
-            nextTime=EditorApplication.timeSinceStartup+.5;
+            nextTime=Time.timeAsDouble+.5;
             Status="Running";
             EditorApplication.update+=Tick;
             return "Started "+steps.Count+" Play steps";
@@ -210,13 +214,13 @@ namespace FeelsGoodOnion.TechSYM.EditorTools
         private static void Tick()
         {
             if(!Application.isPlaying) {Finish("FAIL: Play stopped during verification");return;}
-            if(EditorApplication.timeSinceStartup<nextTime) return;
+            if(Time.timeAsDouble<nextTime) return;
             try
             {
                 var step=steps[index];
                 step.Run();
                 results.Add("PASS "+step.Name);
-                nextTime=EditorApplication.timeSinceStartup+step.Wait;
+                nextTime=Time.timeAsDouble+step.Wait;
                 index++;
                 if(index==steps.Count) Finish("PASS");
             }
@@ -229,6 +233,7 @@ namespace FeelsGoodOnion.TechSYM.EditorTools
             if(keyboard!=null) InputSystem.RemoveDevice(keyboard);
             keyboard=null;
             if(previousKeyboard!=null && previousKeyboard.added) previousKeyboard.MakeCurrent();
+            InputSystem.settings.editorInputBehaviorInPlayMode=previousEditorInput;
             InputSystem.settings.backgroundBehavior=previousBackground;
             Application.runInBackground=previousRunInBackground;
             if(controller!=null) {controller.enabled=false;controller.enabled=true;}

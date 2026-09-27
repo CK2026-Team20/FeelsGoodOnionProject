@@ -1,15 +1,17 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace FeelsGoodOnion.TechSYM.Interaction
 {
-    /// <summary>플레이어 전방의 가장 가까운 대상을 찾고 E 입력을 한 번 전달한다.</summary>
+    /// <summary>플레이어 전방의 가까운 조작부를 선택하고 E 입력을 한 번 전달한다.</summary>
     [DisallowMultipleComponent]
     public sealed class CheckInteract : MonoBehaviour
     {
         [SerializeField] private PlayerFacade player;
         [SerializeField, Min(0.01f)] private float distance = 2.5f;
+        [SerializeField, Range(1f, 360f)] private float horizontalAngle = 120f;
         [Tooltip("상호작용 대상과 차폐할 벽을 포함합니다. 플레이어 Collider는 코드에서 제외합니다.")]
         [SerializeField] private LayerMask detectionLayers = Physics.DefaultRaycastLayers;
         [SerializeField] private InteractionPromptView promptView;
@@ -18,6 +20,8 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         [SerializeField] private MonoBehaviour overlaySource;
         private readonly InteractionPromptViewModel prompt = new InteractionPromptViewModel();
         private RaycastHit[] hits = new RaycastHit[16];
+        private Collider[] candidates = new Collider[16];
+        private readonly HashSet<InteractionPromptAnchor> visited = new HashSet<InteractionPromptAnchor>();
         private IInteractionOverlay overlay;
         public InteractionPromptAnchor CurrentTarget { get; private set; }
 
@@ -51,28 +55,57 @@ namespace FeelsGoodOnion.TechSYM.Interaction
             if (!pressed || CurrentTarget == null) return;
             CurrentTarget.Interactable.Interact();
             if (overlaySource != null && overlay != null && overlay.IsOpen) SetTarget(null);
+            else if (CurrentTarget != null && !CurrentTarget.CanInteract) SetTarget(null);
         }
 
         private InteractionPromptAnchor FindTarget()
         {
             int count;
-            // 포화된 버퍼는 확장하여 가까운 벽/대상을 누락하지 않는다.
-            while ((count = Physics.RaycastNonAlloc(player.transform.position, player.transform.forward,
-                hits, distance, detectionLayers, QueryTriggerInteraction.Ignore)) == hits.Length)
-                Array.Resize(ref hits, hits.Length * 2);
-            Collider nearest = null;
+            Vector3 origin = player.transform.position;
+            while ((count = Physics.OverlapSphereNonAlloc(origin, distance, candidates,
+                detectionLayers, QueryTriggerInteraction.Ignore)) == candidates.Length)
+                Array.Resize(ref candidates, candidates.Length * 2);
+            visited.Clear();
+            InteractionPromptAnchor nearest = null;
             float nearestDistance = float.PositiveInfinity;
+            Vector3 forward = Vector3.ProjectOnPlane(player.transform.forward, Vector3.up).normalized;
+            float minimumDot = Mathf.Cos(horizontalAngle * 0.5f * Mathf.Deg2Rad);
             for (int i = 0; i < count; i++)
             {
-                Collider candidate = hits[i].collider;
-                if (candidate.transform.IsChildOf(player.transform)) continue;
-                if (hits[i].distance >= nearestDistance) continue;
+                if (candidates[i].transform.IsChildOf(player.transform)) continue;
+                var candidate = candidates[i].GetComponentInParent<InteractionPromptAnchor>();
+                if (candidate == null || !visited.Add(candidate) || !candidate.CanInteract) continue;
+                Vector3 delta = candidate.InteractionPosition - origin;
+                float squaredDistance = delta.sqrMagnitude;
+                if (squaredDistance > distance * distance) continue;
+                Vector3 horizontal = Vector3.ProjectOnPlane(delta, Vector3.up);
+                if (horizontal.sqrMagnitude > 0.000001f && Vector3.Dot(forward, horizontal.normalized) < minimumDot) continue;
+                bool tied = Mathf.Approximately(squaredDistance, nearestDistance);
+                if (squaredDistance > nearestDistance && !tied) continue;
+                if (tied && nearest != null && candidate != CurrentTarget) continue;
+                if (!HasLineOfSight(origin, candidate, delta)) continue;
                 nearest = candidate;
-                nearestDistance = hits[i].distance;
+                nearestDistance = squaredDistance;
             }
-            if (nearest == null) return null;
-            var anchor = nearest.GetComponentInParent<InteractionPromptAnchor>();
-            return anchor != null && anchor.CanInteract ? anchor : null;
+            return nearest;
+        }
+
+        private bool HasLineOfSight(Vector3 origin, InteractionPromptAnchor candidate, Vector3 delta)
+        {
+            float length = delta.magnitude;
+            if (length < 0.0001f) return true;
+            int count;
+            while ((count = Physics.RaycastNonAlloc(origin, delta / length, hits, length,
+                detectionLayers, QueryTriggerInteraction.Ignore)) == hits.Length)
+                Array.Resize(ref hits, hits.Length * 2);
+            for (int i = 0; i < count; i++)
+            {
+                Transform hit = hits[i].collider.transform;
+                if (hit.IsChildOf(player.transform)) continue;
+                if (hit.GetComponentInParent<InteractionPromptAnchor>() == candidate) continue;
+                return false;
+            }
+            return true;
         }
 
         private void SetTarget(InteractionPromptAnchor target)
@@ -94,6 +127,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
             if (player == null) return;
             Gizmos.color = Color.cyan;
             Gizmos.DrawRay(player.transform.position, player.transform.forward * distance);
+            Gizmos.DrawWireSphere(player.transform.position, distance);
         }
     }
 }
