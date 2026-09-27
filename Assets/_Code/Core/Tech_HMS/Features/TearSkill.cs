@@ -10,6 +10,8 @@ public class TearSkill : PlayerSkill
     private readonly Transform owner;
 
     private float remainingPreparationTime;
+    
+    public int RequiredFragments => definition.RequiredFragments;
 
     /// <param name="definition">눈물 스킬 설정</param>
     /// <param name="model">사용자의 플레이어 모델</param>

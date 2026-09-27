@@ -80,6 +80,14 @@ public class PlayerSkillController : MonoBehaviour
     {
         GetSlot(slotIndex).Unequip();
     }
+    
+    /// <summary>
+    /// 지정한 슬롯에 마지막으로 적용한 전체 쿨다운입니다.
+    /// </summary>
+    public float GetTotalCooldown(int slotIndex)
+    {
+        return GetSlot(slotIndex).TotalCooldown;
+    }
 
     /// <summary>
     /// 지정한 슬롯에 장착된 스킬을 반환합니다.

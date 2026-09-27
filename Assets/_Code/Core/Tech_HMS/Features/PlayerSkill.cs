@@ -35,6 +35,8 @@ public abstract class PlayerSkill
     /// 사용 요청 수락만으로는 발생하지 않습니다.
     /// </remarks>
     public event Action<PlayerSkill> Activated;
+    
+    public UnityEngine.Sprite Icon => Definition.Icon;
 
     protected PlayerSkill(SkillDefinition definition)
     {

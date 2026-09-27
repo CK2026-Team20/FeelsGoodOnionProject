@@ -7,6 +7,11 @@ using UnityEngine;
 /// </remarks>
 public abstract class SkillDefinition : ScriptableObject
 {
+    [SerializeField]
+    [Tooltip("슬롯 UI에 표시할 스킬 이미지입니다.")]
+    private Sprite icon;
+    /// <summary>슬롯 UI에 표시할 이미지</summary>
+    public Sprite Icon => icon;
     [SerializeField, Min(0f)]
     [Tooltip("스킬이 실제로 발동한 뒤 적용할 쿨다운입니다.\n(단위: 초)")]
     private float cooldown;

@@ -21,6 +21,13 @@ public class SkillSlot
     public float RemainingCooldown => remainingCooldown;
     /// <summary>슬롯이 쿨다운 중인지 확인합니다.</summary>
     public bool IsOnCooldown => remainingCooldown > 0f;
+    
+    private float totalCooldown;
+    /// <summary>
+    /// 현재 쿨다운이 시작될 때 적용한 전체 시간<br/>
+    /// 초기 쿨다운과 사용 후 쿨다운을 모두 포함합니다.
+    /// </summary>
+    public float TotalCooldown => totalCooldown;
 
     /// <summary>
     /// 스킬을 장착하고 초기 쿨다운을 적용합니다.
@@ -52,7 +59,8 @@ public class SkillSlot
 
         equippedSkill = skill;
         equippedSkill.Activated += HandleSkillActivated;
-        remainingCooldown = skill.InitCooldown;
+        totalCooldown = skill.InitCooldown;
+        remainingCooldown = totalCooldown;
     }
 
     /// <summary>
@@ -71,6 +79,7 @@ public class SkillSlot
         previousSkill.Activated -= HandleSkillActivated;
         equippedSkill = null;
         remainingCooldown = 0f;
+        totalCooldown = 0f;
 
         previousSkill.Cancel();
     }
@@ -125,7 +134,6 @@ public class SkillSlot
         }
 
         remainingCooldown = Math.Max(0f, remainingCooldown - deltaTime);
-
         equippedSkill?.Tick(deltaTime);
     }
 
@@ -136,11 +144,9 @@ public class SkillSlot
 
     private void HandleSkillActivated(PlayerSkill skill)
     {
-        if (!ReferenceEquals(equippedSkill, skill))
-        {
-            return;
-        }
+        if (!ReferenceEquals(equippedSkill, skill)) return;
 
-        remainingCooldown = skill.Cooldown;
+        totalCooldown = skill.Cooldown;
+        remainingCooldown = totalCooldown;
     }
 }
