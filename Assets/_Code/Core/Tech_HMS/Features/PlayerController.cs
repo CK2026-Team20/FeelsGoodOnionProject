@@ -48,6 +48,8 @@ public sealed class PlayerController : MonoBehaviour
         UpdateMovementInput();
         UpdateJumpInput();
         UpdateSkillInput();
+        UpdateDebrisRecoveryInput();
+        UpdateFormChangeInput();
     }
 
     /// <summary>
@@ -90,6 +92,16 @@ public sealed class PlayerController : MonoBehaviour
             #endif
         }
         
+    }
+    
+    private void UpdateDebrisRecoveryInput()
+    {
+        if (inputReader.RecoverDebrisPressedThisFrame) player.TryRecoverDebris();
+    }
+    
+    private void UpdateFormChangeInput()
+    {
+        if (inputReader.FormChangePressedThisFrame) player.TryUseFormChangeSkill(out _);
     }
 
     /// <summary>

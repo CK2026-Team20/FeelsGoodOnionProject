@@ -7,6 +7,8 @@ public sealed class PlayerInputReader : MonoBehaviour
 {
     private InputAction moveAction;
     private InputAction jumpAction;
+    private InputAction recoverDebrisAction;
+    private InputAction formChangeAction;
 
     public event Action InputDisabled;
     public bool CanReadInput => isActiveAndEnabled && moveAction != null && jumpAction != null && moveAction.enabled && jumpAction.enabled;
@@ -15,6 +17,10 @@ public sealed class PlayerInputReader : MonoBehaviour
     private InputAction tearSkillAction;
     /// <summary>눈물 스킬 버튼을 이번 프레임에 새로 눌렀는지 확인</summary>
     public bool TearSkillPressedThisFrame => CanReadInput && tearSkillAction != null && tearSkillAction.enabled && tearSkillAction.WasPressedThisFrame();
+    /// <summary>껍질 회수 버튼을 이번 프레임에 새로 눌렀는지 확인</summary>
+    public bool RecoverDebrisPressedThisFrame => CanReadInput && recoverDebrisAction != null && recoverDebrisAction.enabled && recoverDebrisAction.WasPressedThisFrame();
+    /// <summary>형태 전환 버튼을 이번 프레임에 새로 눌렀는지 확인</summary>
+    public bool FormChangePressedThisFrame => CanReadInput && formChangeAction != null && formChangeAction.enabled && formChangeAction.WasPressedThisFrame();
 
     /// <summary>
     /// 이동과 점프 InputAction을 생성하고 키보드 바인딩을 구성
@@ -24,6 +30,8 @@ public sealed class PlayerInputReader : MonoBehaviour
         CreateMoveAction();
         CreateJumpAction();
         CreateTearSkillAction();
+        CreateRecoverDebrisAction();
+        CreateFormChangeAction();
     }
 
     /// <summary>
@@ -34,6 +42,8 @@ public sealed class PlayerInputReader : MonoBehaviour
         moveAction.Enable();
         jumpAction.Enable();
         tearSkillAction.Enable();
+        recoverDebrisAction.Enable();
+        formChangeAction.Enable();
     }
 
     /// <summary>
@@ -44,6 +54,8 @@ public sealed class PlayerInputReader : MonoBehaviour
         moveAction?.Disable();
         jumpAction?.Disable();
         tearSkillAction.Disable();
+        recoverDebrisAction.Disable();
+        formChangeAction.Disable();
         
         // 입력이 꺼졌음을 전달해 남아 있는 입력을 해제
         InputDisabled?.Invoke();
@@ -57,6 +69,8 @@ public sealed class PlayerInputReader : MonoBehaviour
         moveAction?.Dispose();
         jumpAction?.Dispose();
         tearSkillAction?.Dispose();
+        recoverDebrisAction?.Dispose();
+        formChangeAction?.Dispose();
     }
 
     /// <summary>
@@ -78,26 +92,28 @@ public sealed class PlayerInputReader : MonoBehaviour
             .With("Left", "<Keyboard>/leftArrow")
             .With("Right", "<Keyboard>/rightArrow");
     }
-
-    /// <summary>
-    /// 스페이스바를 점프 버튼으로 등록하고, 유지 시간이 아닌 누른 프레임을 Controller에서 확인
-    /// </summary>
+    
     private void CreateJumpAction()
     {
         jumpAction = new InputAction("Jump", InputActionType.Button);
-
         jumpAction.AddBinding("<Keyboard>/space");
     }
     
-    /// <summary>
-    /// E키를 눈물 스킬 버튼으로 등록
-    /// </summary>
     private void CreateTearSkillAction()
     {
-        tearSkillAction = new InputAction(
-            "TearSkill",
-            InputActionType.Button);
-
+        tearSkillAction = new InputAction( "TearSkill", InputActionType.Button);
         tearSkillAction.AddBinding("<Keyboard>/e");
+    }
+    
+    private void CreateRecoverDebrisAction()
+    {
+        recoverDebrisAction = new InputAction( "RecoverDebris", InputActionType.Button);
+        recoverDebrisAction.AddBinding("<Keyboard>/q");
+    }
+    
+    private void CreateFormChangeAction()
+    {
+        formChangeAction = new InputAction( "FormChange", InputActionType.Button);
+        formChangeAction.AddBinding("<Keyboard>/r");
     }
 }

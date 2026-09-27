@@ -5,6 +5,7 @@ using System.Collections.Generic;
 [DisallowMultipleComponent]
 [RequireComponent(typeof(CharacterMovement))]
 [RequireComponent(typeof(PlayerSkillController))]
+[RequireComponent(typeof(PlayerFormController))]
 public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
 {
     [Header("Initial Health")]
@@ -17,15 +18,22 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     
     [Header("Skill Settings"), Tooltip("사전 생성된 ScriptableObject를 할당")]
     [SerializeField] private TearSkillDefinition tearSkillDefinition;
+    [SerializeField] private ShrinkSkillDefinition shrinkSkillDefinition;
+    [SerializeField] private RestoreFormSkillDefinition restoreFormSkillDefinition;
 
+    private ShrinkSkill shrinkSkill;
+    private RestoreFormSkill restoreFormSkill;
+    
     private PlayerSkillController skillController;
 
     private const int SkillSlotCount = 2;
-    // 0번은 형태 전환 스킬
+    private const int FormSlotIndex = 0;
     private const int TearSlotIndex = 1;
+    private bool formSkillRefreshPending;
 
     private PlayerModel model;
     private CharacterMovement movement;
+    private PlayerFormController formController;
     
     public bool IsDead => Model.IsDead;
 
@@ -80,25 +88,41 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         
         OnValidate();
         movement = GetComponent<CharacterMovement>();
+        formController = GetComponent<PlayerFormController>();
         int maxSkillFragment = tearSkillDefinition != null ? tearSkillDefinition.RequiredFragments : 0;
         model = new PlayerModel(initialHP, maxHP, initialSkillFragment, maxSkillFragment);
         InitializeSkills();
     }
     
-    /// <summary>스킬 슬롯을 초기화하고 눈물 스킬을 장착합니다.</summary>
+    /// <summary>스킬 슬롯을 초기화하고 시작 스킬을 생성 및 장착</summary>
     private void InitializeSkills()
     {
         skillController = GetComponent<PlayerSkillController>();
+
         skillController.Initialize(SkillSlotCount, CheckCommonSkillCondition);
 
-        if (tearSkillDefinition == null)
+        if (tearSkillDefinition != null)
         {
-            Debug.LogWarning("눈물 스킬 설정이 지정되지 않아 해당 슬롯을 비워둡니다.", this);
+            TearSkill tearSkill = new TearSkill(tearSkillDefinition, model, transform);
+            skillController.Equip(TearSlotIndex, tearSkill);
+        }
+        else
+        {
+            Debug.LogWarning("눈물 스킬 설정이 없어 해당 슬롯을 비워둡니다.", this);
+        }
+
+        if (shrinkSkillDefinition == null || restoreFormSkillDefinition == null)
+        {
+            Debug.LogWarning("축소 또는 복귀 스킬 설정이 없어 형태 전환 슬롯을 비워둡니다.", this);
             return;
         }
 
-        TearSkill tearSkill = new TearSkill(tearSkillDefinition, model, transform);
-        skillController.Equip(TearSlotIndex, tearSkill);
+        shrinkSkill = new ShrinkSkill(shrinkSkillDefinition, formController);
+        restoreFormSkill = new RestoreFormSkill(restoreFormSkillDefinition, formController);
+        formController.FormChanged += HandleFormChanged;
+
+        formSkillRefreshPending = true;
+        RefreshFormSkill();
     }
     
     /// <summary>플레이어 상태에 따른 공통 스킬 사용 조건을 검사하는 함수<br/>
@@ -110,6 +134,48 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         if (movement.IsMovementLocked) return PlayerSkillBlockReason.ControlLocked;
 
         return PlayerSkillBlockReason.None;
+    }
+    
+    /// <summary>
+    /// 형태 변경 시 슬롯 교체를 예약<br/>
+    /// 실행 중인 스킬을 이벤트 안에서 즉시 해제하지 않습니다.
+    /// </summary>
+    private void HandleFormChanged(PlayerForm form)
+    {
+        formSkillRefreshPending = true;
+    }
+
+    /// <summary>
+    /// 기존 스킬의 실행이 끝났다면 현재 형태에 맞는 스킬을 장착합니다.
+    /// </summary>
+    private void RefreshFormSkill()
+    {
+        if (!formSkillRefreshPending ||
+            skillController == null ||
+            !skillController.IsInitialized ||
+            shrinkSkill == null ||
+            restoreFormSkill == null)
+        {
+            return;
+        }
+
+        PlayerSkill currentSkill = skillController.GetEquippedSkill(FormSlotIndex);
+
+        if (currentSkill != null && currentSkill.IsInUse) return;
+
+        PlayerSkill nextSkill = formController.IsSmall ? (PlayerSkill)restoreFormSkill : shrinkSkill;
+
+        if (!ReferenceEquals(currentSkill, nextSkill))
+        {
+            skillController.Equip(FormSlotIndex, nextSkill);
+        }
+
+        formSkillRefreshPending = false;
+    }
+
+    private void LateUpdate()
+    {
+        RefreshFormSkill();
     }
 
     /// <summary>활성화 및 생존 상태를 검사하고 Model에 피해를 적용합니다. 피격 무적 시간은 자동 생성하지 않습니다.</summary>
@@ -128,6 +194,19 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         }
         
         return applied;
+    }
+    
+    /// <summary>플레이어 공통 조건과 거리 조건을 확인하고 껍질을 회수</summary>
+    public bool TryRecoverDebris()
+    {
+        EnsureInitialized();
+
+        if (CheckCommonSkillCondition() != PlayerSkillBlockReason.None)
+        {
+            return false;
+        }
+
+        return formController.TryRecoverNearbyDebris();
     }
 
     /// <summary>명시적으로 설정한 무적 여부를 반환</summary>
@@ -196,6 +275,15 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     {
         EnsureInitialized();
         model.SetMaxHP(value);
+    }
+    
+    /// <summary>현재 형태에 대응하는 축소 또는 복귀 스킬 사용을 요청합니다.</summary>
+    public bool TryUseFormChangeSkill(out PlayerSkillBlockReason blockReason)
+    {
+        EnsureInitialized();
+        // 이전 전환의 교체 예약이 남아 있다면 먼저 반영
+        RefreshFormSkill();
+        return skillController.TryUse(FormSlotIndex, out blockReason);
     }
 
     /// <summary>스킬 조각을 지정된 개수만큼 추가합니다.</summary>
@@ -325,5 +413,13 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, tearSkillDefinition.EffectRadius);
         Gizmos.color = previousColor;
+    }
+    
+    private void OnDestroy()
+    {
+        if (formController != null)
+        {
+            formController.FormChanged -= HandleFormChanged;
+        }
     }
 }
