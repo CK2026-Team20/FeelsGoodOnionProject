@@ -1,39 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider), typeof(PlatformPassenger))]
 public sealed class CharacterMovement : MonoBehaviour
 {
-    [FormerlySerializedAs("_moveSpeed")]
     [Header("Movement")]
     [SerializeField, Min(0f)] private float moveSpeed = 5f;
-    [FormerlySerializedAs("_groundAcceleration")] [SerializeField, Min(0f)] private float groundAcceleration = 40f;
-    [FormerlySerializedAs("_groundDeceleration")] [SerializeField, Min(0f)] private float groundDeceleration = 50f;
-    [FormerlySerializedAs("_airAcceleration")] [SerializeField, Min(0f)] private float airAcceleration = 30f;
-    [FormerlySerializedAs("_airDeceleration")] [SerializeField, Min(0f)] private float airDeceleration = 20f;
+    [SerializeField, Min(0f)] private float groundAcceleration = 40f;
+    [SerializeField, Min(0f)] private float groundDeceleration = 50f;
+    [SerializeField, Min(0f)] private float airAcceleration = 30f;
+    [SerializeField, Min(0f)] private float airDeceleration = 20f;
     /// <summary>
     /// Z축 이동 허용 여부.<br/>
     /// 해당 값에 따라 FreezePositionZ가 제어되어, Z축으로의 이동을 막거나 허용함.
     /// </summary>
-    [FormerlySerializedAs("_allowDepthMovement")] [SerializeField] private bool allowDepthMovement;
-
-    [FormerlySerializedAs("_jumpHeight")]
+    [SerializeField] private bool allowDepthMovement;
+    
     [Header("Jump")]
     [SerializeField, Min(0f)] private float jumpHeight = 2f;
-    [FormerlySerializedAs("_gravity")] [SerializeField, Min(0.01f)] private float gravity = 25f;
-    [FormerlySerializedAs("_fallGravityMultiplier")] [SerializeField, Min(1f)] private float fallGravityMultiplier = 1.5f;
-    [FormerlySerializedAs("_maximumFallSpeed")] [SerializeField, Min(0.01f)] private float maximumFallSpeed = 35f;
-
-    [FormerlySerializedAs("_maximumGroundAngle")]
+    [SerializeField, Min(0.01f)] private float gravity = 25f;
+    [SerializeField, Min(1f)] private float fallGravityMultiplier = 1.5f;
+    [SerializeField, Min(0.01f)] private float maximumFallSpeed = 35f;
+    
     [Header("Ground")]
     [SerializeField, Range(0f, 85f)]
     private float maximumGroundAngle = 50f;
-    [FormerlySerializedAs("_groundStickSpeed")] [SerializeField, Min(0f)] private float groundStickSpeed = 1f;
-
-    [FormerlySerializedAs("_externalDeceleration")]
+    [SerializeField, Min(0f)] private float groundStickSpeed = 1f;
+    
     [Header("External Movement")]
     [SerializeField, Min(0f)]
     private float externalDeceleration = 8f;
@@ -68,9 +63,6 @@ public sealed class CharacterMovement : MonoBehaviour
     public bool AllowDepthMovement => allowDepthMovement;
 
     public Vector3 Velocity => body != null ? body.linearVelocity : Vector3.zero;
-    public Vector3 SelfVelocity => selfVelocity;
-    public Vector3 ExternalHorizontalVelocity => externalHorizontalVelocity;
-
     public event Action Jumped;
 
     /// <summary>
@@ -232,15 +224,10 @@ public sealed class CharacterMovement : MonoBehaviour
     private void UpdateSelfVelocity(float deltaTime, bool movementLocked)
     {
         Vector3 input = movementLocked ? Vector3.zero : ConstrainDepth(moveInput);
-
         bool hasInput = input.sqrMagnitude > 0.0001f;
-
         float acceleration = IsGrounded ? groundAcceleration : airAcceleration;
-
         float deceleration = IsGrounded ? groundDeceleration : airDeceleration;
-
         float rate = hasInput ? acceleration * accelerationMultiplier : deceleration * decelerationMultiplier;
-
         selfVelocity = Vector3.MoveTowards(selfVelocity, input * moveSpeed, rate * deltaTime);
 
         if (hasInput)

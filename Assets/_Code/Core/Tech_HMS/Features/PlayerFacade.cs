@@ -11,7 +11,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
 
     [Header("Future Feature Settings")]
     [SerializeField, Min(0)] private int currentSkillFragment;
-    [Tooltip("스킬 1회에 필요한 조각 수. 현재는 설정값만 저장합니다.")]
+    [Tooltip("스킬 1회에 필요한 조각 수. 동시에, 최대 보유량을 의미합니다.")]
     [SerializeField, Min(1)] private int skillChargePerSkillFragment = 3;
     [Tooltip("남은 시간이 아닌 스킬 쿨다운 설정값(초)입니다.")]
     [SerializeField, Min(0f)] private float skillCooldown = 1f;
@@ -95,10 +95,12 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     public void ApplyKnockback(Vector3 knockbackVelocity, float controlLockDuration)
     {
         EnsureInitialized();
-        if (!CanReceiveInput)
+
+        if (!isActiveAndEnabled || model.IsDead || !movement.isActiveAndEnabled)
         {
             return;
         }
+
         movement.ApplyKnockback(knockbackVelocity, controlLockDuration / 1000f);
     }
 
@@ -148,8 +150,12 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         model.SetMaxHP(value);
     }
 
-    /// <summary>스킬 조각 데이터를 추가합니다. 스킬 충전·발동은 하지 않습니다.</summary>
-    /// <param name="amount">추가량.</param>
+    /// <summary>스킬 조각을 지정된 개수만큼 추가합니다.</summary>
+    /// <remarks>
+    /// 반환값은 실제로 추가된 개수를 의미하기 때문에, 이미 최대 상한만큼 보유한 경우 반환값은 항상 0입니다.
+    /// </remarks>
+    /// <param name="amount">추가할 조각 수. 0 이하는 무시합니다.</param>
+    /// <returns>실제로 추가한 조각 수.</returns>
     public int AddSkillFragments(int amount)
     {
         EnsureInitialized();
@@ -164,9 +170,10 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         return model.TryConsumeSkillFragments(amount);
     }
 
-    /// <summary>스킬 필요 조각 수와 쿨다운 설정값을 변경합니다.</summary>
+    /// <summary>스킬 필요 조각 수와 쿨다운 설정값을 변경합니다.<br/>
+    /// 필요 조각 수가 감소했을 때 보유 조각 수가 그를 초과한다면 보유 조각 수 또한 변경된 상한으로 제한됩니다.</summary>
     /// <param name="fragmentsPerCharge">스킬 1회에 필요한 조각 수.</param>
-    /// <param name="cooldownSeconds">스킬 쿨다운 설정값(초).</param>
+    /// <param name="cooldownSeconds">스킬 쿨다운 설정값(단위: s).</param>
     public void ConfigureSkill(int fragmentsPerCharge, float cooldownSeconds)
     {
         EnsureInitialized();
@@ -174,7 +181,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     }
 
     /// <summary>향후 형태 전환 담당이 읽을 쿨다운 설정값을 변경합니다.</summary>
-    /// <param name="seconds">설정값(초).</param>
+    /// <param name="seconds">설정값(단위: s).</param>
     public void SetFormChangeCooldown(float seconds)
     {
         EnsureInitialized();
@@ -186,9 +193,21 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     {
         maxHP = Mathf.Max(1, maxHP);
         currentHP = Mathf.Clamp(currentHP, 0, maxHP);
-        currentSkillFragment = Mathf.Max(0, currentSkillFragment);
         skillChargePerSkillFragment = Mathf.Max(1, skillChargePerSkillFragment);
+        currentSkillFragment = Mathf.Clamp(currentSkillFragment, 0, skillChargePerSkillFragment);
         skillCooldown = float.IsFinite(skillCooldown) ? Mathf.Max(0f, skillCooldown) : 0f;
         formChangeCooldown = float.IsFinite(formChangeCooldown) ? Mathf.Max(0f, formChangeCooldown) : 0f;
+    }
+    
+    /// <summary>
+    /// Facade 비활성화 시 남은 이동 입력과 미실행 점프 요청을 해제합니다.<br/>
+    /// 기존 속도와 외력은 직접 제거하지 않습니다.
+    /// </summary>
+    /// <remarks>
+    /// Facade 자체를 비활성화하는 직접적인 상황은 없도록 할 예정이며, 혹시 모를 상황을 대비하기 위한 용도입니다.
+    /// </remarks>
+    private void OnDisable()
+    {
+        ClearInput();
     }
 }
