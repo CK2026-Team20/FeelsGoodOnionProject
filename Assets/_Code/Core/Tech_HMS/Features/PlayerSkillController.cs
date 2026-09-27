@@ -149,7 +149,8 @@ public class PlayerSkillController : MonoBehaviour
     private void Update()
     {
         if (!IsInitialized) return;
-
+        if (commonConditionChecker() != PlayerSkillBlockReason.None) CancelAll();
+        
         float deltaTime = Time.deltaTime;
 
         foreach (SkillSlot slot in slots)

@@ -18,15 +18,7 @@ public interface IReadOnlyPlayerModel
     /// <remarks>
     /// 실제 사용 처리는 추후 스킬 담당이 수행해야 함.
     /// </remarks>
-    int SkillChargePerSkillFragment { get; }
-    /// <summary>스킬 사용 시 적용될 쿨다운<br/>
-    /// 남은 쿨다운은 스킬 사용을 제어하는 곳에서 관리해야 함.<br/>
-    /// (단위: s)</summary>
-    float SkillCooldown { get; }
-    /// <summary>형태 전환 시 적용될 쿨다운<br/>
-    /// 남은 쿨다운은 형태 전환을 제어하는 곳에서 관리해야 함.<br/>
-    /// (단위: s)</summary>
-    float FormChangeCooldown { get; }
+    int MaxSkillFragment { get; }
     /// <summary>
     /// 캐릭터의 '현재 체력'이 0인 상태를 의미함.<br/>
     /// 추후 FSM 도입 시 수정되거나 제거될 수 있음.
@@ -36,10 +28,6 @@ public interface IReadOnlyPlayerModel
     event Action<int, int> HealthChanged;
     /// <summary>보유 조각 수 변경 시 변경 후 총보유량을 전달합니다.</summary>
     event Action<int> SkillFragmentChanged;
-    /// <summary>스킬 설정 변경 시 1회 필요 조각 수와 쿨다운 설정값(단위: s)을 순서대로 전달합니다.</summary>
-    event Action<int, float> SkillSettingsChanged;
-    /// <summary>형태 전환 쿨다운 설정 변경 시 변경 후 설정값(단위: s)을 전달합니다.</summary>
-    event Action<float> FormChangeCooldownChanged;
 }
 
 /// <summary>
@@ -51,7 +39,7 @@ public sealed class PlayerModel : IReadOnlyPlayerModel
     public int CurrentHP { get; private set; }
     public int MaxHP { get; private set; }
     public int CurrentSkillFragment { get; private set; }
-    public int SkillChargePerSkillFragment { get; private set; }
+    public int MaxSkillFragment { get; private set; }
     public float SkillCooldown { get; private set; }
     public float FormChangeCooldown { get; private set; }
 
@@ -63,12 +51,6 @@ public sealed class PlayerModel : IReadOnlyPlayerModel
     /// <summary>보유 조각 수 변경 시 변경 후 총보유량을 전달합니다.</summary>
     public event Action<int> SkillFragmentChanged;
 
-    /// <summary>스킬 설정 변경 시 1회 필요 조각 수와 쿨다운 설정값(단위: s)을 순서대로 전달합니다.</summary>
-    public event Action<int, float> SkillSettingsChanged;
-
-    /// <summary>형태 전환 쿨다운 설정 변경 시 변경 후 설정값(단위: s)을 전달합니다.</summary>
-    public event Action<float> FormChangeCooldownChanged;
-
     /// <summary>초기값을 검증해 저장. 생성 시 변경 이벤트는 발생하지 않습니다.</summary>
     /// <param name="currentHP">0 이상 최대 HP 이하인 초기 체력.</param>
     /// <param name="maxHP">1 이상의 최대 체력.</param>
@@ -76,22 +58,17 @@ public sealed class PlayerModel : IReadOnlyPlayerModel
     /// <param name="skillChargePerSkillFragment">스킬 1회에 필요한 조각 수. 1 이상.</param>
     /// <param name="skillCooldown">스킬 쿨다운 설정값(단위 :s). 유한한 0 이상 값.</param>
     /// <param name="formChangeCooldown">형태 전환 쿨다운 설정값(단위: s). 유한한 0 이상 값.</param>
-    public PlayerModel(int currentHP, int maxHP, int currentSkillFragment, int skillChargePerSkillFragment, float skillCooldown, float formChangeCooldown)
+    public PlayerModel(int currentHP, int maxHP, int currentSkillFragment, int maxSkillFragment)
     {
         if (maxHP < 1) throw new ArgumentOutOfRangeException(nameof(maxHP), maxHP, "최대 체력은 1 이상이어야 합니다.");
         if (currentHP < 0 || currentHP > maxHP) throw new ArgumentOutOfRangeException(nameof(currentHP), currentHP, "현재 체력은 0부터 최대 체력 사이여야 합니다.");
         if (currentSkillFragment < 0) throw new ArgumentOutOfRangeException(nameof(currentSkillFragment), currentSkillFragment, "보유 조각 수는 0 이상이어야 합니다.");
-        if (skillChargePerSkillFragment < 1) throw new ArgumentOutOfRangeException(nameof(skillChargePerSkillFragment), skillChargePerSkillFragment, "필요 조각 수는 1 이상이어야 합니다.");
-        
-        ValidateCooldown(skillCooldown, nameof(skillCooldown));
-        ValidateCooldown(formChangeCooldown, nameof(formChangeCooldown));
+        if (maxSkillFragment < 0) throw new ArgumentOutOfRangeException(nameof(maxSkillFragment), "최대 보유 조각 수는 0 이상이어야 합니다.");
         
         CurrentHP = currentHP;
         MaxHP = maxHP;
-        SkillChargePerSkillFragment = skillChargePerSkillFragment;
-        CurrentSkillFragment = currentSkillFragment < SkillChargePerSkillFragment ? currentSkillFragment : SkillChargePerSkillFragment;
-        SkillCooldown = skillCooldown;
-        FormChangeCooldown = formChangeCooldown;
+        MaxSkillFragment = maxSkillFragment;
+        CurrentSkillFragment = currentSkillFragment < MaxSkillFragment ? currentSkillFragment : MaxSkillFragment;
     }
     /// <summary>
     /// 현재 체력을 요청량만큼 감소시키고, 실제 변경된 경우 HealthChanged 이벤트를 발생시킵니다.
@@ -164,7 +141,7 @@ public sealed class PlayerModel : IReadOnlyPlayerModel
     /// </remarks>
     public int AddSkillFragments(int amount)
     {
-        int added = Math.Min(Math.Max(0, amount), SkillChargePerSkillFragment - CurrentSkillFragment);
+        int added = Math.Min(Math.Max(0, amount), MaxSkillFragment - CurrentSkillFragment);
         if (added == 0)
         {
             return 0;
@@ -189,61 +166,5 @@ public sealed class PlayerModel : IReadOnlyPlayerModel
         CurrentSkillFragment -= amount;
         SkillFragmentChanged?.Invoke(CurrentSkillFragment);
         return true;
-    }
-    /// <summary>
-    /// 스킬 1회에 필요한 조각 수와 쿨다운 설정값을 변경합니다.<br/>
-    /// 필요 조각 수가 감소하면 보유 조각 수도 새로운 상한으로 제한합니다.<br/>
-    /// 모든 값을 변경한 뒤 설정 변경 이벤트와, 필요한 경우 조각 수 변경 이벤트를 발생시킵니다. 단, 이미 진행 중인 쿨다운은 직접 변경하지 않습니다.
-    /// </summary>
-    /// <param name="fragmentsPerCharge">스킬 1회에 필요한 조각 수 & 보유 상한. 최소 1 이상이어야 합니다.</param>
-    /// <param name="cooldownSeconds">쿨다운 설정값(초). 유한한 0 이상의 값이어야 합니다.</param>
-    /// <exception cref="ArgumentOutOfRangeException">매개변수가 허용 범위를 벗어난 경우</exception>
-    public void ConfigureSkill(int fragmentsPerCharge, float cooldownSeconds)
-    {
-        if (fragmentsPerCharge < 1) throw new ArgumentOutOfRangeException(nameof(fragmentsPerCharge));
-        ValidateCooldown(cooldownSeconds, nameof(cooldownSeconds));
-
-        if (SkillChargePerSkillFragment == fragmentsPerCharge && SkillCooldown.Equals(cooldownSeconds)) return;
-
-        
-        int previousFragment = CurrentSkillFragment;
-
-        SkillChargePerSkillFragment = fragmentsPerCharge;
-        SkillCooldown = cooldownSeconds;
-        CurrentSkillFragment = Math.Min(CurrentSkillFragment, SkillChargePerSkillFragment);
-
-        SkillSettingsChanged?.Invoke(SkillChargePerSkillFragment, SkillCooldown);
-
-        if (CurrentSkillFragment != previousFragment) SkillFragmentChanged?.Invoke(CurrentSkillFragment);
-    }
-    /// <summary>
-    /// 형태 전환 쿨다운 설정값을 변경하고, 실제 변경된 경우 FormChangeCooldownChanged 이벤트를 발생시킵니다.<br/>
-    /// 진행 중인 쿨다운은 직접 변경하지 않습니다.
-    /// </summary>
-    /// <param name="seconds">쿨다운 설정값(초). 유한한 0 이상의 값이어야 합니다.</param>
-    /// <exception cref="ArgumentOutOfRangeException">seconds가 유한하지 않거나 음수인 경우.</exception>
-    public void SetFormChangeCooldown(float seconds)
-    {
-        ValidateCooldown(seconds, nameof(seconds));
-        if (FormChangeCooldown.Equals(seconds))
-        {
-            return;
-        }
-        FormChangeCooldown = seconds;
-        FormChangeCooldownChanged?.Invoke(seconds);
-    }
-    /// <summary>
-    /// 쿨다운 설정값이 유한한 0 이상의 값인지 검사합니다.<br/>
-    /// 값이 유효하지 않을 경우 예외를 던집니다.
-    /// </summary>
-    /// <param name="value">검사할 시간(단위: s).</param>
-    /// <param name="parameterName">검증 실패 시 예외에 표시할 매개변수 이름.</param>
-    /// <exception cref="ArgumentOutOfRangeException">value가 NaN, 무한대 또는 음수인 경우.</exception>
-    private static void ValidateCooldown(float value, string parameterName)
-    {
-        if (float.IsNaN(value) || float.IsInfinity(value) || value < 0f)
-        {
-            throw new ArgumentOutOfRangeException(parameterName);
-        }
     }
 }
