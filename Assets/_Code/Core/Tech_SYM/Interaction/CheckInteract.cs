@@ -51,7 +51,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
                 if (pressed) overlay.RequestClose();
                 return;
             }
-            SetTarget(player != null && player.isActiveAndEnabled ? FindTarget() : null);
+            SetTarget(player != null && player.CanReceiveInput ? FindTarget() : null);
             if (!pressed || CurrentTarget == null) return;
             CurrentTarget.Interactable.Interact();
             if (overlaySource != null && overlay != null && overlay.IsOpen) SetTarget(null);

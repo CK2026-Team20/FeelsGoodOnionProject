@@ -1218,6 +1218,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5901213471855190044, guid: 807d2bba67b21c7478fe8a9917cc545a, type: 3}
+      propertyPath: player
+      value: 
+      objectReference: {fileID: 1748932367}
+    - target: {fileID: 5901213471855190044, guid: 807d2bba67b21c7478fe8a9917cc545a, type: 3}
       propertyPath: screenRoot
       value: 
       objectReference: {fileID: 1434793770}
