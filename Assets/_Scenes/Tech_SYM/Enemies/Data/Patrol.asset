@@ -17,5 +17,7 @@ MonoBehaviour:
   speed: 2
   contactDamage: 1
   initialIdle: 0.5
+  knockbackSpeed: 5
+  controlLockMilliseconds: 0
   floatAmplitude: 0.15
   floatPeriod: 2
