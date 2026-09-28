@@ -50,7 +50,8 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             if (contacts.Count == 0) { consumed = false; return; }
             if (consumed || enemy.IsStunned || enemy.IsDead) return;
             IDamageable damageable = player;
-            if (!damageable.IsInvincible() && damageable.Damage(enemy.Definition.ContactDamage) > 0)
+            // 입력 차단은 전투 면역이 아니다. 피해 적용 여부는 Facade가 결정한다.
+            if (damageable.Damage(enemy.Definition.ContactDamage) > 0)
                 consumed = true;
         }
         public static Vector3 FeetPoint(CapsuleCollider capsule)
