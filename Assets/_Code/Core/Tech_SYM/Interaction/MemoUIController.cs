@@ -5,11 +5,15 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     /// <summary>씬 안의 화면 메모 생성·연결·해제 담당. 월드 프롬프트와는 무관하다.</summary>
     public sealed class MemoUIController : MonoBehaviour, IInteractionOverlay
     {
+        [Tooltip("메모 표시 중 이동·점프 입력을 제한할 플레이어입니다.")]
+        [SerializeField] private PlayerFacade player;
         [SerializeField] private RectTransform screenRoot;
         [SerializeField] private MemoView viewPrefab;
         private readonly Dictionary<int, MemoObject> owners = new Dictionary<int, MemoObject>();
         private MemoView view;
         private MemoViewModel model;
+        // 단일 흐름용 Facade 계약이다. 다른 요청자의 동시 차단은 지원하지 않는다.
+        private bool ownsInputBlock;
         public bool IsOpen => model != null;
         public bool Register(MemoObject owner)
         {
@@ -35,17 +39,29 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         public bool TryOpen(MemoObject owner)
         {
             if (!isActiveAndEnabled || IsOpen || owner == null || !owner.isActiveAndEnabled) return false;
-            if (screenRoot == null || viewPrefab == null)
+            if (player == null || screenRoot == null || viewPrefab == null)
             {
-                Debug.LogError("MemoUIController에 화면 Canvas와 MemoView 프리팹을 연결하세요.", this);
+                Debug.LogError("MemoUIController에 PlayerFacade, 화면 Canvas와 MemoView 프리팹을 연결하세요.", this);
                 return false;
             }
+            if (!player.CanReceiveInput) return false;
             if (!Register(owner)) return false;
-            model = new MemoViewModel(owner.Data);
-            model.StateChanged += OnStateChanged;
-            view = Instantiate(viewPrefab, screenRoot, false);
-            view.Bind(model);
-            return true;
+            try
+            {
+                model = new MemoViewModel(owner.Data);
+                model.StateChanged += OnStateChanged;
+                player.SetInputBlocked(true);
+                ownsInputBlock = true;
+                view = Instantiate(viewPrefab, screenRoot, false);
+                view.Bind(model);
+                return true;
+            }
+            catch (System.Exception exception)
+            {
+                ReleaseView();
+                Debug.LogException(exception, this);
+                return false;
+            }
         }
         public void RequestClose() => model?.RequestClose();
         private void OnStateChanged(MemoDisplayState state)
@@ -62,7 +78,13 @@ namespace FeelsGoodOnion.TechSYM.Interaction
             }
             view = null;
             model = null;
+            if (ownsInputBlock)
+            {
+                ownsInputBlock = false;
+                if (player != null) player.SetInputBlocked(false);
+            }
         }
         private void OnDisable() => ReleaseView();
+        private void OnDestroy() => ReleaseView();
     }
 }

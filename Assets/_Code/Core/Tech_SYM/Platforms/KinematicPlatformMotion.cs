@@ -176,6 +176,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             foreach (Collider other in occupants)
             {
                 GameObject actor = PlatformContacts.Actor(other);
+                // Facade에는 접지면/운반 계약이 없어 물리 컴포넌트 참조를 유지한다.
+                // 해당 계약이 제공될 때 대체하며, 입력 차단은 물리 운반을 중단하지 않는다.
                 if (actor != null && actor.TryGetComponent<PlatformPassenger>(out var passenger) && passenger.isActiveAndEnabled)
                 {
                     if (carryWithoutInertia && actor.TryGetComponent<CharacterMovement>(out var movement)

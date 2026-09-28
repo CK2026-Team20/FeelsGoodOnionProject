@@ -16,6 +16,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private Bounds previousHead;
         private bool sampled;
         private bool consumed;
+        private const float MinimumDirectionSqrMagnitude = 0.0001f;
 
         public EnemyCombat(EnemyActor enemy, BoxCollider body, BoxCollider head, PlayerFacade player)
         {
@@ -50,8 +51,29 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             if (contacts.Count == 0) { consumed = false; return; }
             if (consumed || enemy.IsStunned || enemy.IsDead) return;
             IDamageable damageable = player;
-            if (!damageable.IsInvincible() && damageable.Damage(enemy.Definition.ContactDamage) > 0)
+            // 입력 차단은 전투 면역이 아니다. 피해 적용 여부는 Facade가 결정한다.
+            if (damageable.Damage(enemy.Definition.ContactDamage) > 0)
+            {
                 consumed = true;
+                RequestKnockback();
+            }
+        }
+        private void RequestKnockback()
+        {
+            if (enemy.Definition.KnockbackSpeed <= 0f) return;
+            Vector3 center = feet != null ? feet.bounds.center : player.transform.position;
+            Vector3 direction = center - body.bounds.center;
+            if (!player.AllowDepthMovement) direction.z = 0f;
+            if (direction.sqrMagnitude <= MinimumDirectionSqrMagnitude)
+            {
+                direction = -player.CurrentVelocity;
+                if (!player.AllowDepthMovement) direction.z = 0f;
+            }
+            // 중심이 겹치고 정지한 경우에도 유효한 분리 방향을 제공한다.
+            if (direction.sqrMagnitude <= MinimumDirectionSqrMagnitude) direction = Vector3.up;
+            IKnockbackable knockbackable = player;
+            knockbackable.ApplyKnockback(direction.normalized * enemy.Definition.KnockbackSpeed,
+                enemy.Definition.ControlLockMilliseconds);
         }
         public static Vector3 FeetPoint(CapsuleCollider capsule)
         {

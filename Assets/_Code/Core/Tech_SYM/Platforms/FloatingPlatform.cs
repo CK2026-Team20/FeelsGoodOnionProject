@@ -75,7 +75,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             Rigidbody actor = collision.rigidbody;
             Collider other = collision.collider;
             if (actor == null || other == null || other.isTrigger
-                || !actor.TryGetComponent<PlayerFacade>(out var player) || player == null
+                || !actor.TryGetComponent<PlayerFacade>(out var player) || !player.isActiveAndEnabled
                 || landed.ContainsKey(actor)) return;
             for (int i = 0; i < collision.contactCount; i++)
             {
