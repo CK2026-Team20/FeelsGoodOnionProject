@@ -1,8 +1,9 @@
 namespace FeelsGoodOnion.TechSYM.Features
 {
-    /// <summary>플랫폼과 프랍에서 재사용할 수 있는 붕괴 요청 계약.</summary>
+    /// <summary>붕괴 가능한 오브젝트의 인터페이스.</summary>
     public interface IBrokenable
     {
+        /// <summary>붕괴 시작. 중복 요청은 무시한다.</summary>
         void Collapses();
     }
 }
