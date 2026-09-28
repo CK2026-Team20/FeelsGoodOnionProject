@@ -41,7 +41,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 if (actor == null || !actor.TryGetComponent<PlayerFacade>(out var player)
                     || !player.isActiveAndEnabled || !damagedThisStep.Add(player)) continue;
                 IDamageable damageable = player;
-                if (damageable.IsInvincible()) continue;
                 if (nextDamageTimes.TryGetValue(player, out double next) && Time.fixedTimeAsDouble < next) continue;
                 Vector3 incomingVelocity = contacts.ContactVelocity(collider);
                 Vector3 velocity = player.CurrentVelocity;

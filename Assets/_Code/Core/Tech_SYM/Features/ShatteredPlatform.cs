@@ -128,7 +128,8 @@ namespace FeelsGoodOnion.TechSYM.Features
 
         /// <summary>
         /// 복합 콜라이더는 Rigidbody 객체를 소유자로 판단한다.
-        /// 부모/자식이나 다른 객체의 속성을 빌려 쓰지 않고 Facade 자체가 보유한 속성만 인정한다.
+        /// Facade는 플레이어 식별에만 사용하며, 무게 마커는 같은 소유 객체에서 별도로 확인한다.
+        /// Facade에 무게 계약이 추가되면 직접 마커 참조를 그 계약으로 대체한다.
         /// </summary>
         private static bool IsActiveHeavyPlayer(Collider other)
         {
@@ -136,7 +137,7 @@ namespace FeelsGoodOnion.TechSYM.Features
             GameObject owner = other.attachedRigidbody != null ? other.attachedRigidbody.gameObject : other.gameObject;
             return owner.TryGetComponent<PlayerFacade>(out var player)
                 && player.isActiveAndEnabled
-                && player.TryGetComponent<HeavyState>(out var heavy)
+                && owner.TryGetComponent<HeavyState>(out var heavy)
                 && heavy.isActiveAndEnabled;
         }
 
