@@ -463,13 +463,28 @@ public sealed class CharacterMovement : MonoBehaviour
     }
 
     /// <summary>
-    /// 최대 자체 이동 속도와 점프 초기 속도 계산에 사용할 높이를 갱신한다.
+    /// 최대 자체 이동 속도와 점프 초기 속도 계산에 사용할 높이를 갱신
     /// </summary>
     /// <param name="moveSpeed">최대 자체 이동 속도(m/s). 음수는 0으로 제한한다.</param>
     /// <param name="jumpHeight">정지한 지면 기준 목표 점프 높이(m). 물리 스텝 오차, 천장, 플랫폼 속도나 외부 충격으로 실제 높이는 달라질 수 있다.</param>
     public void SetMovementStats(float moveSpeed, float jumpHeight)
     {
+        // 검증에 실패하면 이동 속도도 변경되지 않도록 먼저 호출
+        SetJumpHeight(jumpHeight);
         this.moveSpeed = Mathf.Max(0f, moveSpeed);
+    }
+    
+    /// <summary>
+    /// 다음 점프의 초기 속도 계산에 사용할 높이를 변경<br/>
+    /// 현재 속도나 진행 중인 점프는 변경하지 않습니다.
+    /// </summary>
+    public void SetJumpHeight(float jumpHeight)
+    {
+        if (float.IsNaN(jumpHeight) || float.IsInfinity(jumpHeight))
+        {
+            throw new System.ArgumentOutOfRangeException(nameof(jumpHeight));
+        }
+
         this.jumpHeight = Mathf.Max(0f, jumpHeight);
     }
 

@@ -4,24 +4,36 @@ using System.Collections.Generic;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(CharacterMovement))]
+[RequireComponent(typeof(PlayerSkillController))]
+[RequireComponent(typeof(PlayerFormController))]
 public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
 {
     [Header("Initial Health")]
     [SerializeField, Min(1)] private int maxHP = 3;
-    [SerializeField, Min(0)] private int currentHP = 3;
+    [SerializeField, Min(0)] private int initialHP = 3;
     [SerializeField] private bool invincible;
 
     [Header("Future Feature Settings")]
-    [SerializeField, Min(0)] private int currentSkillFragment;
-    [Tooltip("스킬 1회에 필요한 조각 수. 동시에, 최대 보유량을 의미합니다.")]
-    [SerializeField, Min(1)] private int skillChargePerSkillFragment = 3;
-    [Tooltip("남은 시간이 아닌 스킬 쿨다운 설정값(초)입니다.")]
-    [SerializeField, Min(0f)] private float skillCooldown = 1f;
-    [Tooltip("남은 시간이 아닌 형태 전환 쿨다운 설정값(초)입니다.")]
-    [SerializeField, Min(0f)] private float formChangeCooldown = 1f;
+    [SerializeField, Min(0)] private int initialSkillFragment;
+    
+    [Header("Skill Settings"), Tooltip("사전 생성된 ScriptableObject를 할당")]
+    [SerializeField] private TearSkillDefinition tearSkillDefinition;
+    [SerializeField] private ShrinkSkillDefinition shrinkSkillDefinition;
+    [SerializeField] private RestoreFormSkillDefinition restoreFormSkillDefinition;
+
+    private ShrinkSkill shrinkSkill;
+    private RestoreFormSkill restoreFormSkill;
+    
+    private PlayerSkillController skillController;
+
+    private const int SkillSlotCount = 2;
+    private const int FormSlotIndex = 0;
+    private const int TearSlotIndex = 1;
+    private bool formSkillRefreshPending;
 
     private PlayerModel model;
     private CharacterMovement movement;
+    private PlayerFormController formController;
     
     public bool IsDead => Model.IsDead;
 
@@ -76,7 +88,94 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         
         OnValidate();
         movement = GetComponent<CharacterMovement>();
-        model = new PlayerModel(currentHP, maxHP, currentSkillFragment, skillChargePerSkillFragment, skillCooldown, formChangeCooldown);
+        formController = GetComponent<PlayerFormController>();
+        int maxSkillFragment = tearSkillDefinition != null ? tearSkillDefinition.RequiredFragments : 0;
+        model = new PlayerModel(initialHP, maxHP, initialSkillFragment, maxSkillFragment);
+        InitializeSkills();
+    }
+    
+    /// <summary>스킬 슬롯을 초기화하고 시작 스킬을 생성 및 장착</summary>
+    private void InitializeSkills()
+    {
+        skillController = GetComponent<PlayerSkillController>();
+
+        skillController.Initialize(SkillSlotCount, CheckCommonSkillCondition);
+
+        if (tearSkillDefinition != null)
+        {
+            TearSkill tearSkill = new TearSkill(tearSkillDefinition, model, transform);
+            skillController.Equip(TearSlotIndex, tearSkill);
+        }
+        else
+        {
+            Debug.LogWarning("눈물 스킬 설정이 없어 해당 슬롯을 비워둡니다.", this);
+        }
+
+        if (shrinkSkillDefinition == null || restoreFormSkillDefinition == null)
+        {
+            Debug.LogWarning("축소 또는 복귀 스킬 설정이 없어 형태 전환 슬롯을 비워둡니다.", this);
+            return;
+        }
+
+        shrinkSkill = new ShrinkSkill(shrinkSkillDefinition, formController);
+        restoreFormSkill = new RestoreFormSkill(restoreFormSkillDefinition, formController);
+        formController.FormChanged += HandleFormChanged;
+
+        formSkillRefreshPending = true;
+        RefreshFormSkill();
+    }
+    
+    /// <summary>플레이어 상태에 따른 공통 스킬 사용 조건을 검사하는 함수<br/>
+    /// SkillController 초기화 시점에 주입해주어야 함</summary>
+    private PlayerSkillBlockReason CheckCommonSkillCondition()
+    {
+        if (!isActiveAndEnabled || model == null || movement == null || !movement.isActiveAndEnabled) return PlayerSkillBlockReason.Unavailable;
+        if (model.IsDead) return PlayerSkillBlockReason.Dead;
+        if (movement.IsMovementLocked) return PlayerSkillBlockReason.ControlLocked;
+
+        return PlayerSkillBlockReason.None;
+    }
+    
+    /// <summary>
+    /// 형태 변경 시 슬롯 교체를 예약<br/>
+    /// 실행 중인 스킬을 이벤트 안에서 즉시 해제하지 않습니다.
+    /// </summary>
+    private void HandleFormChanged(PlayerForm form)
+    {
+        formSkillRefreshPending = true;
+    }
+
+    /// <summary>
+    /// 기존 스킬의 실행이 끝났다면 현재 형태에 맞는 스킬을 장착합니다.
+    /// </summary>
+    private void RefreshFormSkill()
+    {
+        if (!formSkillRefreshPending ||
+            skillController == null ||
+            !skillController.IsInitialized ||
+            shrinkSkill == null ||
+            restoreFormSkill == null)
+        {
+            return;
+        }
+
+        PlayerSkill currentSkill = skillController.GetEquippedSkill(FormSlotIndex);
+
+        if (currentSkill != null && currentSkill.IsInUse) return;
+
+        PlayerSkill nextSkill = formController.IsSmall ? (PlayerSkill)restoreFormSkill : shrinkSkill;
+
+        if (!ReferenceEquals(currentSkill, nextSkill))
+        {
+            skillController.Equip(FormSlotIndex, nextSkill);
+        }
+
+        formSkillRefreshPending = false;
+    }
+
+    private void LateUpdate()
+    {
+        RefreshFormSkill();
     }
 
     /// <summary>활성화 및 생존 상태를 검사하고 Model에 피해를 적용합니다. 피격 무적 시간은 자동 생성하지 않습니다.</summary>
@@ -85,16 +184,29 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     public int Damage(int damage)
     {
         EnsureInitialized();
-        if (!isActiveAndEnabled || model.IsDead || IsInvincible())
-        {
-            return 0;
-        }
+        if (!isActiveAndEnabled || model.IsDead || IsInvincible()) return 0;
+        
         int applied = model.ApplyDamage(damage);
         if (model.IsDead)
-        {
+        { 
             ClearInput();
+            skillController.CancelAll();
         }
+        
         return applied;
+    }
+    
+    /// <summary>플레이어 공통 조건과 거리 조건을 확인하고 껍질을 회수</summary>
+    public bool TryRecoverDebris()
+    {
+        EnsureInitialized();
+
+        if (CheckCommonSkillCondition() != PlayerSkillBlockReason.None)
+        {
+            return false;
+        }
+
+        return formController.TryRecoverNearbyDebris();
     }
 
     /// <summary>명시적으로 설정한 무적 여부를 반환</summary>
@@ -164,6 +276,15 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         EnsureInitialized();
         model.SetMaxHP(value);
     }
+    
+    /// <summary>현재 형태에 대응하는 축소 또는 복귀 스킬 사용을 요청합니다.</summary>
+    public bool TryUseFormChangeSkill(out PlayerSkillBlockReason blockReason)
+    {
+        EnsureInitialized();
+        // 이전 전환의 교체 예약이 남아 있다면 먼저 반영
+        RefreshFormSkill();
+        return skillController.TryUse(FormSlotIndex, out blockReason);
+    }
 
     /// <summary>스킬 조각을 지정된 개수만큼 추가합니다.</summary>
     /// <remarks>
@@ -184,23 +305,14 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         EnsureInitialized();
         return model.TryConsumeSkillFragments(amount);
     }
-
-    /// <summary>스킬 필요 조각 수와 쿨다운 설정값을 변경합니다.<br/>
-    /// 필요 조각 수가 감소했을 때 보유 조각 수가 그를 초과한다면 보유 조각 수 또한 변경된 상한으로 제한됩니다.</summary>
-    /// <param name="fragmentsPerCharge">스킬 1회에 필요한 조각 수.</param>
-    /// <param name="cooldownSeconds">스킬 쿨다운 설정값(단위: s).</param>
-    public void ConfigureSkill(int fragmentsPerCharge, float cooldownSeconds)
+    
+    /// <summary>눈물 스킬 사용을 요청합니다.</summary>
+    /// <returns>사용 요청을 수락했는지 여부</returns>
+    public bool TryUseTearSkill(out PlayerSkillBlockReason blockReason)
     {
         EnsureInitialized();
-        model.ConfigureSkill(fragmentsPerCharge, cooldownSeconds);
-    }
 
-    /// <summary>향후 형태 전환 담당이 읽을 쿨다운 설정값을 변경합니다.</summary>
-    /// <param name="seconds">설정값(단위: s).</param>
-    public void SetFormChangeCooldown(float seconds)
-    {
-        EnsureInitialized();
-        model.SetFormChangeCooldown(seconds);
+        return skillController.TryUse(TearSlotIndex, out blockReason);
     }
 
     /// <summary>
@@ -272,11 +384,10 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     private void OnValidate()
     {
         maxHP = Mathf.Max(1, maxHP);
-        currentHP = Mathf.Clamp(currentHP, 0, maxHP);
-        skillChargePerSkillFragment = Mathf.Max(1, skillChargePerSkillFragment);
-        currentSkillFragment = Mathf.Clamp(currentSkillFragment, 0, skillChargePerSkillFragment);
-        skillCooldown = float.IsFinite(skillCooldown) ? Mathf.Max(0f, skillCooldown) : 0f;
-        formChangeCooldown = float.IsFinite(formChangeCooldown) ? Mathf.Max(0f, formChangeCooldown) : 0f;
+        initialHP = Mathf.Clamp(initialHP, 0, maxHP);
+        
+        int maxSkillFragment = tearSkillDefinition != null ? Mathf.Max(0, tearSkillDefinition.RequiredFragments) : 0;
+        initialSkillFragment = Mathf.Clamp(initialSkillFragment, 0, maxSkillFragment);
     }
     
     /// <summary>
@@ -289,5 +400,26 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     private void OnDisable()
     {
         ClearInput();
+        skillController?.CancelAll();
+    }
+
+    /// <summary>PC 선택 시 눈물 스킬의 효과 범위를 표시</summary>
+    private void OnDrawGizmos()
+    {
+        if (tearSkillDefinition == null) return;
+
+        Color previousColor = Gizmos.color;
+
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, tearSkillDefinition.EffectRadius);
+        Gizmos.color = previousColor;
+    }
+    
+    private void OnDestroy()
+    {
+        if (formController != null)
+        {
+            formController.FormChanged -= HandleFormChanged;
+        }
     }
 }

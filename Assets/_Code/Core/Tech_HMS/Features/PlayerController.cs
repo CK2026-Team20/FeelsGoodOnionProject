@@ -18,7 +18,7 @@ public sealed class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 입력 중단 이벤트를 구독하여 입력 컴포넌트가 꺼질 때 이동과 점프 요청을 해제한다.
+    /// 입력 중단 이벤트를 구독하여 입력 컴포넌트가 꺼질 때 이동과 점프 요청을 해제
     /// </summary>
     private void OnEnable()
     {
@@ -26,7 +26,7 @@ public sealed class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 입력 중단 이벤트 구독을 해제하고 남은 이동 입력과 실행 전 점프 요청을 지운다.
+    /// 입력 중단 이벤트 구독을 해제하고 남은 이동 입력과 실행 전 점프 요청을 지움
     /// </summary>
     private void OnDisable()
     {
@@ -35,7 +35,7 @@ public sealed class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 입력과 이동 컴포넌트가 사용 가능하면 이동과 점프 명령을 전달하고, 그렇지 않으면 남은 명령을 해제한다.
+    /// 입력과 이동 컴포넌트가 사용 가능하면 이동과 점프 명령을 전달하고, 그렇지 않으면 남은 명령을 해제
     /// </summary>
     private void Update()
     {
@@ -47,10 +47,13 @@ public sealed class PlayerController : MonoBehaviour
 
         UpdateMovementInput();
         UpdateJumpInput();
+        UpdateSkillInput();
+        UpdateDebrisRecoveryInput();
+        UpdateFormChangeInput();
     }
 
     /// <summary>
-    /// 입력의 가로와 세로를 월드 X와 Z로 변환한다. 사이드 모드에서는 Z를 먼저 제거하여 대각 입력에 의한 좌우 감속을 방지한다.
+    /// 입력의 가로와 세로를 월드 X와 Z로 변환, 사이드 모드에서는 Z를 먼저 제거하여 대각 입력에 의한 좌우 감속을 방지
     /// </summary>
     private void UpdateMovementInput()
     {
@@ -62,10 +65,7 @@ public sealed class PlayerController : MonoBehaviour
 
         // 정규화 전에 허용하지 않는 축을 제거한다.
         // 사이드뷰에서 W+D를 눌러도 좌우 속도가 줄지 않게 한다.
-        if (!player.AllowDepthMovement)
-        {
-            worldDirection.z = 0f;
-        }
+        if (!player.AllowDepthMovement) worldDirection.z = 0f;
 
         player.SetMoveInput(worldDirection);
     }
@@ -75,10 +75,33 @@ public sealed class PlayerController : MonoBehaviour
     /// </summary>
     private void UpdateJumpInput()
     {
-        if (inputReader.JumpPressedThisFrame)
+        if (inputReader.JumpPressedThisFrame) player.RequestJump();
+    }
+    
+    /// <summary>
+    /// 눈물 스킬 버튼을 새로 누른 프레임에 사용을 요청한다
+    /// </summary>
+    private void UpdateSkillInput()
+    {
+        // TODO: 추후 UI, 효과음 등을 연결할 때 사용 불가 사유를 활용
+        if (inputReader.TearSkillPressedThisFrame)
         {
-            player.RequestJump();
+            bool accepted = player.TryUseTearSkill(out var reason);
+            #if UNITY_EDITOR
+            Debug.Log($"[눈물 스킬 요청] 수락: {accepted} / 사유: {reason}", this);
+            #endif
         }
+        
+    }
+    
+    private void UpdateDebrisRecoveryInput()
+    {
+        if (inputReader.RecoverDebrisPressedThisFrame) player.TryRecoverDebris();
+    }
+    
+    private void UpdateFormChangeInput()
+    {
+        if (inputReader.FormChangePressedThisFrame) player.TryUseFormChangeSkill(out _);
     }
 
     /// <summary>
@@ -86,11 +109,7 @@ public sealed class PlayerController : MonoBehaviour
     /// </summary>
     private void ResetInput()
     {
-        if (player == null)
-        {
-            return;
-        }
-
+        if (player == null) return;
         player.ClearInput();
     }
 }
