@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Smoke
+  m_Name: Haikri
   m_Shader: {fileID: 4800000, guid: 1bc5c6a70411243779ce486a98012125, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -21,7 +21,6 @@ Material:
   - _SOFT_PARTICLES_ENABLED
   - _TINT_AREA_ALL
   - _TINT_COLOR_ENABLED
-  - _TRANSPARENCY_BY_LUMINANCE
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -38,7 +37,7 @@ Material:
     m_TexEnvs:
     - _AlphaTransitionMap:
         m_Texture: {fileID: 2800000, guid: cfd7bcf6308bcd348858ae121b9e0a0b, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Scale: {x: 0.1, y: 0.1}
         m_Offset: {x: 0, y: 0}
     - _AlphaTransitionMap2DArray:
         m_Texture: {fileID: 0}
@@ -61,7 +60,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: 67382fae59b354947849b9c52681185d, type: 3}
+        m_Texture: {fileID: 2800000, guid: 95813c6a7b6014c40a9960b94278a940, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseMap2DArray:
@@ -198,7 +197,7 @@ Material:
     - _AlphaTransitionMapSecondTextureSliceCount: 4
     - _AlphaTransitionMapSliceCount: 4
     - _AlphaTransitionMode: 1
-    - _AlphaTransitionProgress: 0
+    - _AlphaTransitionProgress: 0.5
     - _AlphaTransitionProgressCoord: 0
     - _AlphaTransitionProgressCoordSecondTexture: 0
     - _AlphaTransitionProgressSecondTexture: 0
@@ -281,7 +280,7 @@ Material:
     - _InverseRimTransparency: 0
     - _InverseTintRim: 0
     - _KeepEdgeTransparency: 1
-    - _LuminanceTransparencyEnabled: 1
+    - _LuminanceTransparencyEnabled: 0
     - _LuminanceTransparencyProgress: 0.12
     - _LuminanceTransparencyProgressCoord: 0
     - _LuminanceTransparencySharpness: 0.97
@@ -376,7 +375,7 @@ Material:
     - _EmissionMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _FlowMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _TintColor: {r: 2.297397, g: 2.297397, b: 2.297397, a: 1}
+    - _TintColor: {r: 31.626793, g: 31.626793, b: 31.626793, a: 1}
     - _TintMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
