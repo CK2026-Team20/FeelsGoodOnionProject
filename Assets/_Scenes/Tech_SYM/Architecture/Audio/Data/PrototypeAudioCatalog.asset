@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7dc6850f8fdf5edbbf7c816afa4ee029, type: 3}
+  m_Name: PrototypeAudioCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Audio.AudioCueCatalog
+  entries:
+  - id: music.title
+    kind: 0
+    clip: {fileID: 8300000, guid: e1622230a15d52748f7c8286f47cb261, type: 3}
+    gain: 0.6
+  - id: music.opening
+    kind: 0
+    clip: {fileID: 8300000, guid: fb9bdbe3d5865291a2707a9f07ebb397, type: 3}
+    gain: 0.6
+  - id: music.stage1
+    kind: 0
+    clip: {fileID: 8300000, guid: 47caefba599d56f8888acfa8ba7b6c1a, type: 3}
+    gain: 0.6
+  - id: music.stage2
+    kind: 0
+    clip: {fileID: 8300000, guid: f3c9ed98b0595051bea86fb9b6ad89a0, type: 3}
+    gain: 0.6
+  - id: music.stage3
+    kind: 0
+    clip: {fileID: 8300000, guid: ee23296e6c5d58608f04b768d7ad404b, type: 3}
+    gain: 0.6
+  - id: music.chase
+    kind: 0
+    clip: {fileID: 8300000, guid: 257f877aa0f2548eb05b3e863477cc38, type: 3}
+    gain: 0.6
+  - id: music.ending
+    kind: 0
+    clip: {fileID: 8300000, guid: d1cc9257c4f05b7f8191e071c327a1d5, type: 3}
+    gain: 0.6
+  - id: sfx.ui.click
+    kind: 2
+    clip: {fileID: 8300000, guid: a489e3e7e50958a3bbc4250c5f504ea4, type: 3}
+    gain: 0.5
+  - id: sfx.pickup
+    kind: 1
+    clip: {fileID: 8300000, guid: 917de5e427a45c75a6ef9fa1bfb8a2b2, type: 3}
+    gain: 0.35
+  - id: sfx.form
+    kind: 1
+    clip: {fileID: 8300000, guid: db8b6c996c045ffaa9bf30eb2c5dc543, type: 3}
+    gain: 0.35
+  - id: sfx.tear
+    kind: 1
+    clip: {fileID: 8300000, guid: a8f05ed25b3e5074b272bba30040f80e, type: 3}
+    gain: 0.35
+  - id: sfx.shell
+    kind: 1
+    clip: {fileID: 8300000, guid: 028633152f195e119ba58ae8fbf1caaf, type: 3}
+    gain: 0.35
+  - id: sfx.checkpoint
+    kind: 1
+    clip: {fileID: 8300000, guid: 32ef0efaebeb567a9f0a60e4df2bef84, type: 3}
+    gain: 0.35
+  - id: sfx.unlock
+    kind: 1
+    clip: {fileID: 8300000, guid: 5f7a41ba6556586d896402999ce42cf8, type: 3}
+    gain: 0.35
+  - id: sfx.death
+    kind: 3
+    clip: {fileID: 8300000, guid: 37ba372d56f657dd8031471b4cd560bf, type: 3}
+    gain: 0.5
+  - id: sfx.escape
+    kind: 3
+    clip: {fileID: 8300000, guid: 197320676bbe59fb92d8d4d441b78c7a, type: 3}
+    gain: 0.5
