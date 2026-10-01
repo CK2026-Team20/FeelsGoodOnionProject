@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf8d969cc3c745db993034025a55fd65, type: 3}
+  m_Name: ArchitectureInstallation
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Foundation.ArchitectureInstallation
+  bootstrapPath: Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity
+  titlePath: Assets/_Scenes/Tech_SYM/Architecture/02_Title.unity
+  corePath: Assets/_Scenes/Tech_SYM/Architecture/03_InGameCore.unity
+  stagePaths:
+  - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_1_Stage.unity
+  - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_2_Stage.unity
+  - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_3_Stage.unity
