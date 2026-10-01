@@ -144,11 +144,162 @@ namespace Cooked.Level.Editor
             Checkpoint("S2_OVEN",new Vector3(51,0,0));
             BuildOven();
             // Centre the Actor before the last corner; leave the last 3m open to turn into Stage 3.
-            Block("ExitFunnelFront",new Vector3(62.5f,4,-3.3f),new Vector3(1,8,5.4f));
-            Block("ExitFunnelBack",new Vector3(62.5f,4,3.3f),new Vector3(1,8,5.4f));
+            ExitFunnel("ExitFunnelFront",new Vector3(62.5f,4,-3.3f));
+            ExitFunnel("ExitFunnelBack",new Vector3(62.5f,4,3.3f));
             Sign("OVEN",new Vector3(51,0,0),"F 트레이 손잡이 조작 · 트레이를 펼치고 건너세요");
             Fall(36,66,14);
         }
+        private static readonly Vector3 ExitFunnelSize = new Vector3(1,8,5.4f);
+        private const float FunnelRailThickness = .18f;
+        private const float FunnelBarThickness = .10f;
+        // Small Actor diameter is .5m. An opening narrower than .35m reads as a fence,
+        // not a doorway, while most of its projected area remains open to kitchen scenery.
+        private const float MaximumFunnelVisualGap = .35f;
+        private static void ExitFunnel(string name, Vector3 centre)
+        {
+            var item = Empty(name, root, centre);
+            var physics = Empty("Collider", item.transform, centre); physics.transform.localPosition = Vector3.zero;
+            physics.AddComponent<BoxCollider>().size = ExitFunnelSize;
+            BuildExitFunnelVisual(item.transform, floorMaterial);
+        }
+        private static ProBuilderMesh BuildExitFunnelVisual(Transform parent, Material material)
+        {
+            var positions = new List<Vector3>(); var faces = new List<Face>();
+            void Box(Vector3 centre, Vector3 size)
+            {
+                var cube = ShapeGenerator.GenerateCube(PivotLocation.Center, size);
+                try
+                {
+                    int start = positions.Count;
+                    foreach (var p in cube.positions) positions.Add(p + centre);
+                    foreach (var face in cube.faces) faces.Add(new Face(face.indexes.Select(index => index + start)));
+                }
+                finally { Object.DestroyImmediate(cube.gameObject); }
+            }
+            float edge = (ExitFunnelSize.z - FunnelRailThickness) * .5f;
+            float railY = (ExitFunnelSize.y - FunnelRailThickness) * .5f;
+            foreach (float y in new[]{-railY, railY})
+                Box(new Vector3(0,y,0), new Vector3(ExitFunnelSize.x,FunnelRailThickness,ExitFunnelSize.z));
+            int intervals = Mathf.CeilToInt((edge * 2) / (MaximumFunnelVisualGap + FunnelBarThickness));
+            for (int i=0;i<=intervals;i++)
+                Box(new Vector3(0,0,-edge + edge * 2 * i / intervals),
+                    new Vector3(ExitFunnelSize.x,ExitFunnelSize.y-FunnelRailThickness*2,
+                        i==0 || i==intervals ? FunnelRailThickness : FunnelBarThickness));
+            var mesh = ProBuilderMesh.Create(positions, faces);
+            mesh.gameObject.name = "Geometry_" + parent.name;
+            mesh.transform.SetParent(parent,false); mesh.transform.localPosition = Vector3.zero;
+            mesh.GetComponent<MeshRenderer>().sharedMaterial = material;
+            foreach(var collider in mesh.GetComponents<Collider>()) Object.DestroyImmediate(collider);
+            // Reuse the original two native mesh assets/GUIDs; do not create orphan replacement assets.
+            PersistGeometryMesh(mesh, AssetRoot+"/Meshes/S2_"+parent.name+".asset");
+            return mesh;
+        }
+        [Serializable] private sealed class FunnelColliderSnapshot
+        {
+            public string entity, path, serialized, matrix;
+            public Vector3 centre, size;
+        }
+        [Serializable] private sealed class FunnelRepairEvidence
+        {
+            public string utc, scenePath, error;
+            public bool passed, dirtyAfterSave;
+            public float passageWidthBefore, passageWidthAfter, maximumVisualBarGap;
+            public FunnelColliderSnapshot[] before, after;
+            public string[] changedAssets;
+            public int missingScripts, editableFrameCount;
+        }
+        private static FunnelColliderSnapshot[] CaptureColliders(Scene scene)
+        {
+            return scene.GetRootGameObjects().SelectMany(go=>go.GetComponentsInChildren<Collider>(true))
+                .Select(c=>new FunnelColliderSnapshot {
+                    entity=c.GetEntityId().ToString(), path=HierarchyPath(c.transform),
+                    serialized=EditorJsonUtility.ToJson(c), matrix=c.transform.localToWorldMatrix.ToString("R"),
+                    centre=c.bounds.center, size=c.bounds.size
+                }).OrderBy(c=>c.entity,StringComparer.Ordinal).ToArray();
+        }
+        private static string HierarchyPath(Transform item) => item.parent==null ? item.name : HierarchyPath(item.parent)+"/"+item.name;
+        private static void RequireSameColliders(FunnelColliderSnapshot[] before, FunnelColliderSnapshot[] after)
+        {
+            if(before.Length!=after.Length) throw new InvalidOperationException("Stage2 Collider count changed.");
+            for(int i=0;i<before.Length;i++)
+                if(before[i].entity!=after[i].entity || before[i].path!=after[i].path ||
+                    before[i].serialized!=after[i].serialized || before[i].matrix!=after[i].matrix ||
+                    (before[i].centre-after[i].centre).sqrMagnitude>1e-8f || (before[i].size-after[i].size).sqrMagnitude>1e-8f)
+                    throw new InvalidOperationException("Stage2 Collider changed: "+before[i].path);
+        }
+        [MenuItem("Cooked/Level/Repair Stage2 Exit Funnel Visuals Only")]
+        public static void RepairStageTwoExitFunnelVisuals()
+        {
+            if(EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating)
+                throw new InvalidOperationException("Stable Edit Mode required.");
+            for(int i=0;i<SceneManager.sceneCount;i++)
+                if(SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Dirty scene must be saved by its owner first.");
+            const string scenePath=StageRoot+"/03_2_Stage.unity";
+            var report=new FunnelRepairEvidence { utc=DateTime.UtcNow.ToString("O"),scenePath=scenePath,
+                changedAssets=new[]{scenePath,AssetRoot+"/Meshes/S2_ExitFunnelFront.asset",AssetRoot+"/Meshes/S2_ExitFunnelBack.asset"} };
+            var previous=SceneManager.GetActiveScene(); var scene=SceneManager.GetSceneByPath(scenePath);
+            bool opened=!scene.isLoaded;
+            try
+            {
+                if(opened) scene=EditorSceneManager.OpenScene(scenePath,OpenSceneMode.Additive);
+                SceneManager.SetActiveScene(scene); // Temporary PB objects must never dirty the user's active scene.
+                var stageRoot=scene.GetRootGameObjects().Single(go=>go.name=="03_2_Stage").transform;
+                var parents=new[]{stageRoot.Find("ExitFunnelFront"),stageRoot.Find("ExitFunnelBack")};
+                if(parents.Any(p=>p==null)) throw new InvalidOperationException("Expected Stage2 exit funnels are missing.");
+                var boxes=parents.Select(p=>p.Find("Collider")?.GetComponent<BoxCollider>()).ToArray();
+                var visuals=parents.Select(p=>p.Find("Geometry_"+p.name)).ToArray();
+                for(int i=0;i<parents.Length;i++)
+                    if(boxes[i]==null || boxes[i].size!=ExitFunnelSize || visuals[i]==null ||
+                        visuals[i].GetComponent<ProBuilderMesh>()==null || visuals[i].GetComponent<MeshRenderer>()?.sharedMaterial==null ||
+                        visuals[i].GetComponentsInChildren<Collider>(true).Length!=0 ||
+                        AssetDatabase.LoadAssetAtPath<Mesh>(report.changedAssets[i+1])==null)
+                        throw new InvalidOperationException("Unexpected funnel layout; refusing broad repair.");
+                Physics.SyncTransforms(); report.before=CaptureColliders(scene);
+                report.passageWidthBefore=boxes[0].bounds.min.x-boxes[1].bounds.max.x;
+                var frames=new List<ProBuilderMesh>();
+                for(int i=0;i<parents.Length;i++)
+                {
+                    var material=visuals[i].GetComponent<MeshRenderer>().sharedMaterial;
+                    Object.DestroyImmediate(visuals[i].gameObject);
+                    frames.Add(BuildExitFunnelVisual(parents[i],material));
+                }
+                Physics.SyncTransforms(); report.after=CaptureColliders(scene);
+                RequireSameColliders(report.before,report.after);
+                for(int i=0;i<frames.Count;i++)
+                {
+                    var visualBounds=frames[i].GetComponent<MeshRenderer>().bounds;
+                    if((visualBounds.center-boxes[i].bounds.center).sqrMagnitude>1e-8f ||
+                        (visualBounds.size-boxes[i].bounds.size).sqrMagnitude>1e-8f)
+                        throw new InvalidOperationException("Frame no longer marks the original collision boundary: "+parents[i].name);
+                }
+                report.passageWidthAfter=boxes[0].bounds.min.x-boxes[1].bounds.max.x;
+                if(!Mathf.Approximately(report.passageWidthBefore,report.passageWidthAfter) ||
+                    Mathf.Abs(report.passageWidthAfter-1.2f)>1e-4f) throw new InvalidOperationException("Exit passage width changed.");
+                float span=ExitFunnelSize.z-FunnelRailThickness;
+                report.maximumVisualBarGap=span/Mathf.CeilToInt(span/(MaximumFunnelVisualGap+FunnelBarThickness))-FunnelBarThickness;
+                if(report.maximumVisualBarGap>MaximumFunnelVisualGap) throw new InvalidOperationException("Fence appears passable.");
+                report.editableFrameCount=frames.Count(m=>m.vertexCount>0 && m.faceCount>0 && m.GetComponent<MeshFilter>().sharedMesh!=null);
+                report.missingScripts=scene.GetRootGameObjects().SelectMany(go=>go.GetComponentsInChildren<Transform>(true))
+                    .Sum(t=>GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject));
+                if(report.editableFrameCount!=2 || report.missingScripts!=0) throw new InvalidOperationException("Invalid frame or missing script.");
+                foreach(var frame in frames) AssetDatabase.SaveAssetIfDirty(frame.GetComponent<MeshFilter>().sharedMesh);
+                EditorSceneManager.MarkSceneDirty(scene);
+                if(!EditorSceneManager.SaveScene(scene,scenePath)) throw new IOException("Stage2 scene save failed.");
+                report.dirtyAfterSave=scene.isDirty;
+                if(report.dirtyAfterSave) throw new InvalidOperationException("Stage2 remained dirty after save.");
+                report.passed=true;
+                Debug.Log("[Cooked.Level] Stage2 frame repair saved. All Collider serialized data/world bounds and 1.2m passage preserved. Visual capture still required.");
+            }
+            catch(Exception error) { report.error=error.ToString(); throw; }
+            finally
+            {
+                if(opened && scene.IsValid() && scene.isLoaded) EditorSceneManager.CloseScene(scene,true);
+                if(previous.IsValid() && previous.isLoaded) SceneManager.SetActiveScene(previous);
+                Directory.CreateDirectory("output/Tech_SYM/level/evidence");
+                File.WriteAllText("output/Tech_SYM/level/evidence/exit-funnel-visual-repair.json",JsonUtility.ToJson(report,true));
+            }
+        }
+
         private static void StageThree()
         {
             Floor(66,87,0,4); Floor(89,95,0,4); Floor(97,110,0,4);
@@ -410,11 +561,15 @@ namespace Cooked.Level.Editor
             mesh.gameObject.name="Geometry_"+name; mesh.transform.SetParent(parent,false); mesh.transform.localPosition=local;
             mesh.GetComponent<MeshRenderer>().sharedMaterial=material;
             // PB editable vertices/faces remain on the component. Persist the generated mesh separately too.
-            var filter=mesh.GetComponent<MeshFilter>(); var path=AssetRoot+"/Meshes/"+meshPrefix+"_"+name+".asset";
+            PersistGeometryMesh(mesh,AssetRoot+"/Meshes/"+meshPrefix+"_"+name+".asset");
+            foreach(var collider in mesh.GetComponents<Collider>()) Object.DestroyImmediate(collider);
+        }
+        private static void PersistGeometryMesh(ProBuilderMesh mesh,string path)
+        {
+            var filter=mesh.GetComponent<MeshFilter>();
             var existing=AssetDatabase.LoadAssetAtPath<Mesh>(path);
             if(existing==null) { AssetDatabase.CreateAsset(filter.sharedMesh,path); }
             else { EditorUtility.CopySerialized(filter.sharedMesh,existing); filter.sharedMesh=existing; EditorUtility.SetDirty(existing); }
-            foreach(var collider in mesh.GetComponents<Collider>()) Object.DestroyImmediate(collider);
         }
         private static Material MaterialAsset(string name,Color color)
         {
@@ -477,8 +632,6 @@ namespace Cooked.Level.Editor
         }
     }
 }
-
-
 
 
 
