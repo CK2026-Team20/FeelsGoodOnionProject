@@ -231,17 +231,16 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         movement.ApplyKnockback(knockbackVelocity, controlLockDuration / 1000f);
     }
 
-    /// <summary>입력 가능할 때 월드 이동 입력을 전달하고, 불가능하면 남은 이동 입력을 해제합니다.</summary>
-    /// <param name="input">월드 XZ 방향. 사이드 이동 모드의 Z 성분은 제거합니다.</param>
+    /// <summary>
+    /// 입력이 가능하면 월드 이동 입력을 전달하고 불가능하면 남은 이동 입력을 해제.<br/>
+    /// 이동 축 제한은 CharacterMovement에서 처리
+    /// </summary>
     public void SetMoveInput(Vector3 input)
     {
         EnsureInitialized();
-        if (!movement.AllowDepthMovement)
-        {
-            input.z = 0f;
-        }
         movement.SetMoveInput(CanReceiveInput ? input : Vector3.zero);
     }
+    
 
     /// <summary>입력 가능하면 점프를 요청합니다. 실제 접지·넉백 잠금 검사는 이동 담당이 수행합니다.</summary>
     public void RequestJump()
@@ -421,5 +420,16 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         {
             formController.FormChanged -= HandleFormChanged;
         }
+    }
+    
+    /// <summary>
+    /// 이동 모드에 따른 속도와 월드 X·Z축 이동 허용 여부를 적용.<br/>
+    /// 형태별 점프 높이는 유지합니다.
+    /// </summary>
+    public void ApplyMovementModeSettings(float moveSpeed, bool allowHorizontalMovement, bool allowDepthMovement)
+    {
+        EnsureInitialized();
+        movement.SetMoveSpeed(moveSpeed);
+        movement.SetMovementAxesAllowed(allowHorizontalMovement, allowDepthMovement);
     }
 }

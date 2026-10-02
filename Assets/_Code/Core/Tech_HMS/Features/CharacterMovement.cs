@@ -17,6 +17,11 @@ public sealed class CharacterMovement : MonoBehaviour
     /// 해당 값에 따라 FreezePositionZ가 제어되어, Z축으로의 이동을 막거나 허용함.
     /// </summary>
     [SerializeField] private bool allowDepthMovement;
+    /// <summary>
+    /// X축 이동 허용 여부.<br/>
+    /// 해당 값에 따라 FreezePositionX가 제어되어, X축으로의 이동을 막거나 허용함.
+    /// </summary>
+    [SerializeField] private bool allowHorizontalMovement = true;
     
     [Header("Jump")]
     [SerializeField, Min(0f)] private float jumpHeight = 2f;
@@ -58,10 +63,9 @@ public sealed class CharacterMovement : MonoBehaviour
     public Collider GroundCollider { get; private set; }
     public Vector3 GroundNormal { get; private set; } = Vector3.up;
     public Vector3 FacingDirection { get; private set; } = Vector3.right;
-
-    public bool IsMovementLocked => movementLockRemaining > 0f;
     public bool AllowDepthMovement => allowDepthMovement;
-
+    public bool AllowHorizontalMovement => allowHorizontalMovement;
+    public bool IsMovementLocked => movementLockRemaining > 0f;
     public Vector3 Velocity => body != null ? body.linearVelocity : Vector3.zero;
     public event Action Jumped;
 
@@ -146,14 +150,14 @@ public sealed class CharacterMovement : MonoBehaviour
         if (IsGrounded)
         {
             platformPassenger.TryGetPlatformVelocity(GroundCollider, out platformVelocity, out _);
-            platformVelocity = ConstrainDepth(platformVelocity);
+            platformVelocity = ConstrainMovementAxes(platformVelocity);
         }
 
         bool movementLocked = IsMovementLocked;
 
         UpdateSelfVelocity(deltaTime, movementLocked);
 
-        externalHorizontalVelocity += ConstrainDepth(new Vector3(pendingImpulse.x, 0f, pendingImpulse.z));
+        externalHorizontalVelocity += ConstrainMovementAxes(new Vector3(pendingImpulse.x, 0f, pendingImpulse.z));
 
         float verticalVelocity = body.linearVelocity.y;
 
@@ -208,7 +212,7 @@ public sealed class CharacterMovement : MonoBehaviour
         velocity.y = verticalVelocity;
 
         // 일반 이동 스텝의 최종 속도를 적용한다. 넉백 예약 스텝은 별도 처리한다.
-        body.linearVelocity = ConstrainDepth(velocity);
+        body.linearVelocity = ConstrainMovementAxes(velocity);
 
         externalHorizontalVelocity = Vector3.MoveTowards(
             externalHorizontalVelocity, Vector3.zero, externalDeceleration * deltaTime);
@@ -223,7 +227,7 @@ public sealed class CharacterMovement : MonoBehaviour
     /// <param name="movementLocked">true이면 이동 입력을 무시하고 자체 속도를 감속한다.</param>
     private void UpdateSelfVelocity(float deltaTime, bool movementLocked)
     {
-        Vector3 input = movementLocked ? Vector3.zero : ConstrainDepth(moveInput);
+        Vector3 input = movementLocked ? Vector3.zero : ConstrainMovementAxes(moveInput);
         bool hasInput = input.sqrMagnitude > 0.0001f;
         float acceleration = IsGrounded ? groundAcceleration : airAcceleration;
         float deceleration = IsGrounded ? groundDeceleration : airDeceleration;
@@ -337,12 +341,14 @@ public sealed class CharacterMovement : MonoBehaviour
     }
 
     /// <summary>
-    /// 월드 기준 이동 입력에서 수직 성분을 제거하고 크기를 1 이하로 제한해 저장한다. 입력은 다음 호출까지 유지된다.
+    /// 월드 기준 이동 입력에서 수직 성분을 제거하고 크기를 1 이하로 제한해 저장.<br/>
+    /// 입력은 다음 호출까지 유지됨.
     /// </summary>
-    /// <param name="worldDirection">월드 XZ 평면의 이동 방향과 입력 강도. Y는 무시한다.</param>
     public void SetMoveInput(Vector3 worldDirection)
     {
         worldDirection.y = 0f;
+        worldDirection = ConstrainMovementAxes(worldDirection);
+
         moveInput = Vector3.ClampMagnitude(worldDirection, 1f);
     }
 
@@ -373,7 +379,7 @@ public sealed class CharacterMovement : MonoBehaviour
     /// <param name="velocityChange">월드 기준 속도 변화량(m/s). 힘이나 질량 기반 충격량이 아니며, 깊이 이동이 금지되면 Z는 무시한다.</param>
     public void AddImpulse(Vector3 velocityChange)
     {
-        pendingImpulse += ConstrainDepth(velocityChange);
+        pendingImpulse += ConstrainMovementAxes(velocityChange);
     }
 
     /// <summary>
@@ -390,7 +396,7 @@ public sealed class CharacterMovement : MonoBehaviour
         {
             return;
         }
-        pendingKnockbackVelocity = ConstrainDepth(knockbackVelocity);
+        pendingKnockbackVelocity = ConstrainMovementAxes(knockbackVelocity);
         hasPendingKnockback = true;
         selfVelocity = Vector3.zero;
         externalHorizontalVelocity = Vector3.zero;
@@ -410,7 +416,7 @@ public sealed class CharacterMovement : MonoBehaviour
     /// <param name="deltaTime">물리 스텝 시간(초).</param>
     private void ApplyPendingKnockback(float deltaTime)
     {
-        Vector3 velocity = ConstrainDepth(pendingKnockbackVelocity);
+        Vector3 velocity = ConstrainMovementAxes(pendingKnockbackVelocity);
         hasPendingKnockback = false;
         pendingKnockbackVelocity = Vector3.zero;
         selfVelocity = Vector3.zero;
@@ -487,52 +493,55 @@ public sealed class CharacterMovement : MonoBehaviour
 
         this.jumpHeight = Mathf.Max(0f, jumpHeight);
     }
-
+    
     /// <summary>
-    /// 깊이 이동 허용 여부와 Rigidbody 제약을 갱신하고, 금지 시 저장된 이동 속도의 Z 성분을 제거한다.
-    /// 현재 Z 위치를 고정할 뿐 지정된 레인 위치로 정렬하지는 않는다.
+    /// 월드 X·Z축 이동 허용 여부를 함께 설정<br/>
+    /// 제한되는 축의 입력과 속도를 제거합니다.
     /// </summary>
-    /// <param name="allowed">true이면 XZ 이동을 허용하고, false이면 Z 이동을 제한한다.</param>
-    public void SetDepthMovementAllowed(bool allowed)
+    public void SetMovementAxesAllowed(bool allowHorizontalMovement, bool allowDepthMovement)
     {
-        allowDepthMovement = allowed;
+        this.allowHorizontalMovement = allowHorizontalMovement;
+        this.allowDepthMovement = allowDepthMovement;
 
-        selfVelocity = ConstrainDepth(selfVelocity);
-        externalHorizontalVelocity = ConstrainDepth(externalHorizontalVelocity);
-        pendingImpulse = ConstrainDepth(pendingImpulse);
-        pendingKnockbackVelocity = ConstrainDepth(pendingKnockbackVelocity);
-
-        body.linearVelocity = ConstrainDepth(body.linearVelocity);
+        moveInput = ConstrainMovementAxes(moveInput);
+        selfVelocity = ConstrainMovementAxes(selfVelocity);
+        externalHorizontalVelocity = ConstrainMovementAxes(externalHorizontalVelocity);
+        pendingImpulse = ConstrainMovementAxes(pendingImpulse);
+        pendingKnockbackVelocity = ConstrainMovementAxes(pendingKnockbackVelocity);
+        body.linearVelocity = ConstrainMovementAxes(body.linearVelocity);
 
         ApplyConstraints();
+        body.WakeUp();
     }
 
     /// <summary>
-    /// Rigidbody의 회전을 모든 축에서 고정하고, 사이드 이동 모드일 때 Z 위치도 고정한다. 기존 제약 설정을 대체한다.
+    /// X축 설정을 유지하면서 Z축 이동 허용 여부만 변경합니다.
+    /// </summary>
+    public void SetDepthMovementAllowed(bool allowed)
+    {
+        SetMovementAxesAllowed(allowHorizontalMovement, allowed);
+    }
+
+    /// <summary>
+    /// 물리 회전, 허용되지 않은 이동 축의 위치를 고정
     /// </summary>
     private void ApplyConstraints()
     {
-        // 이 클래스가 캐릭터의 위치/회전 제약을 소유한다.
         body.constraints = RigidbodyConstraints.FreezeRotation;
-
-        if (!allowDepthMovement)
-        {
-            body.constraints |= RigidbodyConstraints.FreezePositionZ;
-        }
+        if (!allowHorizontalMovement) body.constraints |= RigidbodyConstraints.FreezePositionX;
+        if (!allowDepthMovement) body.constraints |= RigidbodyConstraints.FreezePositionZ;
     }
 
     /// <summary>
-    /// 깊이 이동이 금지되어 있으면 벡터의 Z 성분을 제거한다.
+    /// 허용되지 않은 월드 X·Z축 성분을 제거합니다.
+    /// Y축 성분은 유지합니다.
     /// </summary>
     /// <param name="value">축 제약을 적용할 월드 기준 벡터.</param>
     /// <returns>현재 이동 모드의 축 제약이 반영된 벡터.</returns>
-    private Vector3 ConstrainDepth(Vector3 value)
+    private Vector3 ConstrainMovementAxes(Vector3 value)
     {
-        if (!allowDepthMovement)
-        {
-            value.z = 0f;
-        }
-
+        if (!allowHorizontalMovement) value.x = 0f;
+        if (!allowDepthMovement) value.z = 0f;
         return value;
     }
 
@@ -547,5 +556,25 @@ public sealed class CharacterMovement : MonoBehaviour
         float inwardSpeed = Vector3.Dot(velocity, normal);
 
         return inwardSpeed < 0f ? velocity - normal * inwardSpeed : velocity;
+    }
+    
+    /// <summary>
+    /// 최대 자체 이동 속도를 변경합니다.
+    /// 점프 높이와 현재 수직 속도는 변경하지 않습니다.
+    /// </summary>
+    /// <param name="moveSpeed">
+    /// 최대 자체 이동 속도(m/s). 음수는 0으로 제한합니다.
+    /// </param>
+    /// <exception cref="System.ArgumentOutOfRangeException">
+    /// 전달한 값이 NaN 또는 무한대인 경우입니다.
+    /// </exception>
+    public void SetMoveSpeed(float moveSpeed)
+    {
+        if (float.IsNaN(moveSpeed) || float.IsInfinity(moveSpeed))
+        {
+            throw new System.ArgumentOutOfRangeException(nameof(moveSpeed));
+        }
+
+        this.moveSpeed = Mathf.Max(0f, moveSpeed);
     }
 }
