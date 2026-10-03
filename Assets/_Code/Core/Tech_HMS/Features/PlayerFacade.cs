@@ -34,11 +34,48 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     private PlayerModel model;
     private CharacterMovement movement;
     private PlayerFormController formController;
+    private readonly PlayerStateMachine stateMachine = new PlayerStateMachine();
+    private readonly PlayerSkillPresentation skillPresentation = new PlayerSkillPresentation();
+
+    /// <summary>플레이어의 현재 행동 상태</summary>
+    /// <remarks>FSM은 Facade가 생성하고 소유합니다. 초기화 전 접근 시 먼저 초기화합니다.</remarks>
+    public PlayerState CurrentState
+    {
+        get
+        {
+            EnsureInitialized();
+            return stateMachine.CurrentState;
+        }
+    }
+
+    /// <summary>행동 상태가 변경된 뒤 이전 상태와 새 상태를 순서대로 전달합니다.</summary>
+    public event Action<PlayerState, PlayerState> StateChanged;
+    /// <summary>활성화된 생존 플레이어가 실제 점프를 실행한 물리 스텝의 끝에 발생합니다.</summary>
+    public event Action Jumped;
+    /// <summary>활성화된 생존 플레이어의 착지를 알립니다. 착지 애니메이션·파티클 연결에 사용합니다.</summary>
+    public event Action Landed;
+    /// <summary>체력이 실제로 감소한 뒤 적용된 피해량을 전달합니다.</summary>
+    /// <remarks>치명적인 피해도 포함합니다. 피격 깜빡임 등에 사용하며 넉백은 별도 요청으로 처리합니다.</remarks>
+    public event Action<int> Damaged;
+    /// <summary>명시적인 부활에 성공하여 이동 정보·체력·FSM을 갱신한 뒤 발생합니다.</summary>
+    public event Action Revived;
+    /// <summary>실제 발동이 확정된 스킬의 종류를 전달합니다.</summary>
+    /// <remarks>동시에 발동한 스킬도 각각 전달합니다. 애니메이션 우선순위는 SkillAnimationRequested에서 처리합니다.</remarks>
+    public event Action<PlayerSkillId> SkillActivated;
+    /// <summary>
+    /// LateUpdate에서 재생할 스킬 애니메이션의 종류를 전달합니다.
+    /// </summary>
+    /// <remarks>
+    /// 해당 갱신까지 모인 요청 중 눈물이 형태 전환보다 우선하며, 사망·넉백 제한 중에는 요청을 버립니다.<br/>
+    /// 수신 측에서 현재 형태의 Animator에 연결해야 합니다.<br/>
+    /// 애니메이션 재생 완료를 기다리지 않고 스킬 효과와 FSM 전환을 처리합니다.
+    /// </remarks>
+    public event Action<PlayerSkillId> SkillAnimationRequested;
     
     public bool IsDead => Model.IsDead;
 
     /// <summary>
-    /// 외부 요청으로 인한 PC의 조작(X, Z축 이동 및 점프)이 차된된 상태를 의미합니다.
+    /// 외부 요청으로 PC의 이동·점프·스킬 조작이 차단된 상태를 의미합니다.
     /// </summary>
     /// <remarks>
     /// 사망이나 비활성 상태 등을 모두 포함한 최종 입력 가능 여부를 의미하지 않으며, 이는 CanReceiveInput를 통해 확인해야 합니다.<para>
@@ -48,7 +85,15 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     /// <summary>
     /// 외부 입력 차단 여부, 활성 상태, 생존 여부와 이동 컴포넌트의 활성 상태 등을 종합적으로 확인하고 이동 입력 수신 여부를 결정합니다.
     /// </summary>
-    public bool CanReceiveInput => isActiveAndEnabled && !IsInputBlocked && !IsDead && movement.isActiveAndEnabled;
+    public bool CanReceiveInput
+    {
+        get
+        {
+            EnsureInitialized();
+            return isActiveAndEnabled && !IsInputBlocked && !model.IsDead &&
+                movement.isActiveAndEnabled && !movement.IsControlLocked && stateMachine.AllowsControl;
+        }
+    }
     
     public IReadOnlyPlayerModel Model
     {
@@ -91,13 +136,20 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         formController = GetComponent<PlayerFormController>();
         int maxSkillFragment = tearSkillDefinition != null ? tearSkillDefinition.RequiredFragments : 0;
         model = new PlayerModel(initialHP, maxHP, initialSkillFragment, maxSkillFragment);
+        stateMachine.StateChanged += HandleStateChanged;
+        model.HealthChanged += HandleHealthChanged;
+        movement.MovementUpdated += RefreshState;
+        movement.Jumped += HandleJumped;
+        movement.Landed += HandleLanded;
         InitializeSkills();
+        RefreshState();
     }
     
     /// <summary>스킬 슬롯을 초기화하고 시작 스킬을 생성 및 장착</summary>
     private void InitializeSkills()
     {
         skillController = GetComponent<PlayerSkillController>();
+        skillController.SkillActivated += HandleSkillActivated;
 
         skillController.Initialize(SkillSlotCount, CheckCommonSkillCondition);
 
@@ -131,7 +183,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     {
         if (!isActiveAndEnabled || model == null || movement == null || !movement.isActiveAndEnabled) return PlayerSkillBlockReason.Unavailable;
         if (model.IsDead) return PlayerSkillBlockReason.Dead;
-        if (movement.IsMovementLocked) return PlayerSkillBlockReason.ControlLocked;
+        if (IsInputBlocked || movement.IsControlLocked || !stateMachine.AllowsControl) return PlayerSkillBlockReason.ControlLocked;
 
         return PlayerSkillBlockReason.None;
     }
@@ -173,9 +225,72 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         formSkillRefreshPending = false;
     }
 
+    /// <summary>형태 전환 슬롯을 갱신한 뒤 우선순위에 따라 스킬 애니메이션 재생 요청을 전달합니다.</summary>
     private void LateUpdate()
     {
         RefreshFormSkill();
+        if (skillPresentation.TryTake(out PlayerSkillId skill) &&
+            !model.IsDead && !movement.IsControlLocked)
+        {
+            SkillAnimationRequested?.Invoke(skill);
+        }
+    }
+
+    /// <summary>현재 생명 상태와 이동 담당의 정보를 FSM에 반영합니다.</summary>
+    /// <remarks>물리 스텝 완료·제어 잠금·체력 변경 시 호출합니다. 물리 계산이나 제한 시간을 중복 관리하지 않습니다.</remarks>
+    private void RefreshState()
+    {
+        if (model == null) return;
+        stateMachine.Refresh(model.IsDead, movement.IsControlLocked, movement.IsGrounded,
+            movement.SelfHorizontalSpeed, movement.Velocity.y);
+    }
+
+    /// <summary>사망·넉백 진입 시 남은 입력과 재생 요청을 정리하고 상태 변경을 전달합니다.</summary>
+    /// <param name="previousState">변경 전 행동 상태</param>
+    /// <param name="currentState">변경 후 행동 상태</param>
+    private void HandleStateChanged(PlayerState previousState, PlayerState currentState)
+    {
+        if (currentState == PlayerState.Dead || currentState == PlayerState.Knockback)
+        {
+            ClearInput();
+            skillPresentation.Clear();
+        }
+        StateChanged?.Invoke(previousState, currentState);
+    }
+
+    /// <summary>체력 변경 시 사망에 필요한 정리를 수행하고 FSM을 갱신합니다.</summary>
+    /// <param name="currentHP">변경 후 현재 체력. 실제 사망 여부는 Model에서 조회합니다.</param>
+    /// <param name="maximumHP">변경 후 최대 체력. 이벤트 계약에 따라 수신하며 이 처리에서는 사용하지 않습니다.</param>
+    private void HandleHealthChanged(int currentHP, int maximumHP)
+    {
+        if (model.IsDead)
+        {
+            ClearInput();
+            skillController?.CancelAll();
+            skillPresentation.Clear();
+        }
+        RefreshState();
+    }
+
+    /// <summary>플레이어가 활성화된 생존 상태이면 이동 담당의 점프 실행 이벤트를 전달합니다.</summary>
+    private void HandleJumped()
+    {
+        if (isActiveAndEnabled && !model.IsDead) Jumped?.Invoke();
+    }
+
+    /// <summary>플레이어가 활성화된 생존 상태이면 이동 담당의 착지 이벤트를 전달합니다.</summary>
+    private void HandleLanded()
+    {
+        if (isActiveAndEnabled && !model.IsDead) Landed?.Invoke();
+    }
+
+    /// <summary>스킬의 실제 발동을 전달하고, 우선순위를 적용할 애니메이션 요청을 등록합니다.</summary>
+    /// <param name="skill">발동이 확정된 스킬의 종류</param>
+    private void HandleSkillActivated(PlayerSkillId skill)
+    {
+        if (!isActiveAndEnabled) return;
+        skillPresentation.Request(skill);
+        SkillActivated?.Invoke(skill);
     }
 
     /// <summary>활성화 및 생존 상태를 검사하고 Model에 피해를 적용합니다. 피격 무적 시간은 자동 생성하지 않습니다.</summary>
@@ -187,11 +302,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         if (!isActiveAndEnabled || model.IsDead || IsInvincible()) return 0;
         
         int applied = model.ApplyDamage(damage);
-        if (model.IsDead)
-        { 
-            ClearInput();
-            skillController.CancelAll();
-        }
+        if (applied > 0) Damaged?.Invoke(applied);
         
         return applied;
     }
@@ -231,17 +342,16 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         movement.ApplyKnockback(knockbackVelocity, controlLockDuration / 1000f);
     }
 
-    /// <summary>입력 가능할 때 월드 이동 입력을 전달하고, 불가능하면 남은 이동 입력을 해제합니다.</summary>
-    /// <param name="input">월드 XZ 방향. 사이드 이동 모드의 Z 성분은 제거합니다.</param>
+    /// <summary>
+    /// 입력이 가능하면 월드 이동 입력을 전달하고 불가능하면 남은 이동 입력을 해제.<br/>
+    /// 이동 축 제한은 CharacterMovement에서 처리
+    /// </summary>
     public void SetMoveInput(Vector3 input)
     {
         EnsureInitialized();
-        if (!movement.AllowDepthMovement)
-        {
-            input.z = 0f;
-        }
         movement.SetMoveInput(CanReceiveInput ? input : Vector3.zero);
     }
+    
 
     /// <summary>입력 가능하면 점프를 요청합니다. 실제 접지·넉백 잠금 검사는 이동 담당이 수행합니다.</summary>
     public void RequestJump()
@@ -261,12 +371,37 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         movement.CancelJumpRequest();
     }
 
-    /// <summary>HP를 회복하고 실제 회복량을 반환합니다. HP 0에서도 회복 가능하지만 위치 이동·리스폰은 수행하지 않습니다.</summary>
+    /// <summary>생존 중 HP를 회복합니다. 사망 중에는 0을 반환하며 부활시키지 않습니다.</summary>
     /// <param name="amount">회복 요청량.</param>
     public int Heal(int amount)
     {
         EnsureInitialized();
         return model.Heal(amount);
+    }
+
+    /// <summary>
+    /// 사망한 플레이어를 현재 위치에서 부활시킵니다.<br/>
+    /// 이동 정보와 체력을 정리하고 FSM 갱신 후 Revived 이벤트를 발생시킵니다.
+    /// </summary>
+    /// <param name="health">부활 시 체력. 양수여야 하며 최대 HP를 초과하면 최대 HP로 제한합니다.</param>
+    /// <param name="clearGround"><c>true</c>: 이전 접지·접촉 기록도 초기화<br/><c>false</c>: 현재 접지 정보 유지</param>
+    /// <returns><c>true</c>: 부활에 성공함<br/><c>false</c>: 생존 중이거나 health가 0 이하임</returns>
+    /// <remarks>
+    /// 이전 속도·넉백·입력은 정리하며, 형태·조각·쿨다운·외부 입력 차단 설정은 유지합니다.<br/>
+    /// 위치 이동은 리스폰 담당에서 수행합니다. 이동한 뒤 호출한다면 clearGround를 true로 지정해야 합니다.
+    /// </remarks>
+    public bool TryRevive(int health, bool clearGround = false)
+    {
+        EnsureInitialized();
+        if (!model.IsDead || health <= 0) return false;
+
+        skillController.CancelAll();
+        skillPresentation.Clear();
+        movement.ResetForRevive(clearGround);
+        if (!model.TryRevive(health)) return false;
+        RefreshState();
+        Revived?.Invoke();
+        return true;
     }
 
     /// <summary>최대 HP를 변경합니다. 감소 시 현재 HP도 유효 범위로 제한합니다.</summary>
@@ -316,7 +451,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     }
 
     /// <summary>
-    /// 플레이어의 이동·점프 조작 입력을 차단하거나 해제한다.
+    /// 플레이어의 이동·점프·스킬 조작 입력을 차단하거나 해제한다.
     /// 중력·외력과 UI 닫기 입력은 중단하지 않는다.
     /// </summary>
     /// <param name="blocked"><c>true</c>: 입력 차단<br/><c>false</c>: 입력 차단 해제.</param>
@@ -401,6 +536,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     {
         ClearInput();
         skillController?.CancelAll();
+        skillPresentation.Clear();
     }
 
     /// <summary>PC 선택 시 눈물 스킬의 효과 범위를 표시</summary>
@@ -417,9 +553,29 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     
     private void OnDestroy()
     {
+        stateMachine.StateChanged -= HandleStateChanged;
+        if (model != null) model.HealthChanged -= HandleHealthChanged;
+        if (movement != null)
+        {
+            movement.MovementUpdated -= RefreshState;
+            movement.Jumped -= HandleJumped;
+            movement.Landed -= HandleLanded;
+        }
+        if (skillController != null) skillController.SkillActivated -= HandleSkillActivated;
         if (formController != null)
         {
             formController.FormChanged -= HandleFormChanged;
         }
+    }
+    
+    /// <summary>
+    /// 이동 모드에 따른 속도와 월드 X·Z축 이동 허용 여부를 적용.<br/>
+    /// 형태별 점프 높이는 유지합니다.
+    /// </summary>
+    public void ApplyMovementModeSettings(float moveSpeed, bool allowHorizontalMovement, bool allowDepthMovement)
+    {
+        EnsureInitialized();
+        movement.SetMoveSpeed(moveSpeed);
+        movement.SetMovementAxesAllowed(allowHorizontalMovement, allowDepthMovement);
     }
 }
