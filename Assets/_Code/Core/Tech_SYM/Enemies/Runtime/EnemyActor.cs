@@ -4,7 +4,7 @@ using UnityEngine;
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
     [DisallowMultipleComponent, DefaultExecutionOrder(-200)]
-    public sealed class EnemyActor : MonoBehaviour, IDamageable, IStunnable
+    public sealed class EnemyActor : MonoBehaviour, IDamageable, IStunnable, IStunState
     {
         [Header("Definition")]
         [Tooltip("개체별 실행 상태는 공유하지 않는 설정 SO입니다.")]
@@ -47,11 +47,12 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private EnemyCombat combat;
         private Collider targetShape;
         private bool deathRaised;
+        private bool publishedStunState;
         public EnemyDefinition Definition => definition;
         public EnemyMotor Motor { get; private set; }
         public EnemyState CurrentState => states?.Current ?? EnemyState.IDLE;
         public int CurrentHealth => model?.Health ?? (definition != null ? definition.Health : 0);
-        public bool IsStunned => model != null && model.IsStunned;
+        public bool IsStunned => model != null && !model.IsDead && model.IsStunned;
         public double StunRemainingSeconds => (model?.StunMilliseconds ?? 0) / 1000;
         public bool IsDead => model != null && model.IsDead;
         public bool IsReturning => states != null && states.IsReturning;
@@ -72,6 +73,8 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         }
         public float FloatOffset => floating?.Offset ?? 0;
         public event Action<EnemyActor> Died;
+        /// <summary>스턴 상태가 변경되면 알립니다. true는 적용, false는 해제입니다.</summary>
+        public event Action<bool> StunStateChanged;
 
         private void OnEnable()
         {
@@ -93,6 +96,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
                 Debug.LogError($"Enemy setup failed ({name}): {exception.Message}", this);
                 enabled = false;
             }
+            if (isActiveAndEnabled) PublishStunStateChanged();
         }
         private void ValidateSetup()
         {
@@ -127,6 +131,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             states?.Tick(Time.fixedDeltaTime);
             floating.Tick(Time.fixedDeltaTime);
             Motor.ApplyFloat(floating.Offset);
+            PublishStunStateChanged();
         }
         private void OnDisable()
         {
@@ -154,6 +159,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             if (!isActiveAndEnabled || model == null) return 0;
             int applied = model.Stun(stunDur);
             if (applied > 0) states?.Stun();
+            PublishStunStateChanged();
             return applied;
         }
         public void Stomp()
@@ -165,8 +171,21 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (deathRaised) return;
             deathRaised = true;
-            try { Died?.Invoke(this); }
+            try
+            {
+                PublishStunStateChanged();
+                Died?.Invoke(this);
+            }
             finally { gameObject.SetActive(false); }
+        }
+        /// <summary>직전 알림과 상태가 다를 때만 이벤트를 호출합니다.</summary>
+        /// <remarks>스턴 시간 연장 시에는 중복 호출하지 않으며, 사망 및 재활성화로 해제된 상태도 반영합니다.</remarks>
+        private void PublishStunStateChanged()
+        {
+            bool isStunned = IsStunned;
+            if (publishedStunState == isStunned) return;
+            publishedStunState = isStunned;
+            StunStateChanged?.Invoke(isStunned);
         }
         public bool InPatrolRange(Vector3 point)
         {
