@@ -12,6 +12,9 @@ using UnityEngine;
 public class PlayerSkillController : MonoBehaviour
 {
     private SkillSlot[] slots;
+    /// <summary>장착된 스킬의 발동이 확정되고 슬롯에 쿨다운을 적용한 뒤 스킬 종류를 전달합니다.</summary>
+    /// <remarks>스킬 슬롯을 구독하므로 형태 전환으로 장착 스킬이 교체되어도 발동을 전달합니다.</remarks>
+    public event Action<PlayerSkillId> SkillActivated;
 
     /// <summary>
     /// PC와 연결된 스킬 사용 제한 공통 조건을 검사하는 함수.<br/>
@@ -48,6 +51,7 @@ public class PlayerSkillController : MonoBehaviour
         for (int i = 0; i < slots.Length; i++)
         {
             slots[i] = new SkillSlot();
+            slots[i].Activated += HandleSkillActivated;
         }
     }
 
@@ -178,8 +182,16 @@ public class PlayerSkillController : MonoBehaviour
 
         foreach (SkillSlot slot in slots)
         {
+            slot.Activated -= HandleSkillActivated;
             slot.Unequip();
         }
+    }
+
+    /// <summary>슬롯에서 전달한 스킬의 발동을 외부에 알립니다.</summary>
+    /// <param name="skill">발동이 확정된 스킬 인스턴스</param>
+    private void HandleSkillActivated(PlayerSkill skill)
+    {
+        SkillActivated?.Invoke(skill.Id);
     }
 
     private SkillSlot GetSlot(int slotIndex)

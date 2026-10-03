@@ -58,6 +58,12 @@ public sealed class CharacterMovement : MonoBehaviour
     private bool jumpRequested;
     private float originalSleepThreshold;
     private bool sleepSettingsOverridden;
+    /// <summary>접촉 검사에서 연속으로 접지하지 않은 시간. (단위: s)</summary>
+    private float airborneDuration;
+    /// <summary>다음 접지 시 착지 이벤트를 발생시킬지 여부. 점프 실행 또는 최소 공중 시간 충족 시 설정합니다.</summary>
+    private bool landingArmed;
+    /// <summary>점프 외의 낙하에서 착지 이벤트를 허용할 최소 공중 시간. 접지 흔들림을 걸러냅니다. (단위: s)</summary>
+    private const float MinimumLandingAirTime = 0.06f;
 
     public bool IsGrounded { get; private set; }
     public Collider GroundCollider { get; private set; }
@@ -67,7 +73,23 @@ public sealed class CharacterMovement : MonoBehaviour
     public bool AllowHorizontalMovement => allowHorizontalMovement;
     public bool IsMovementLocked => movementLockRemaining > 0f;
     public Vector3 Velocity => body != null ? body.linearVelocity : Vector3.zero;
+    /// <summary>플랫폼 운반·외력을 제외한 자체 수평 속력. (단위: m/s)</summary>
+    /// <remarks>Idle/Move 판정과 이동 애니메이션에 사용합니다. 입력을 놓아도 감속 중에는 0보다 클 수 있습니다.</remarks>
+    public float SelfHorizontalSpeed => selfVelocity.magnitude;
+    /// <summary>이동 제한 시간이 남아 있거나 넉백 적용이 예약되어 있는지 확인합니다.</summary>
+    /// <remarks>넉백이 실제 물리에 반영되기 전에도 후속 입력을 차단할 수 있도록 예약 상태를 포함합니다.</remarks>
+    public bool IsControlLocked => IsMovementLocked || hasPendingKnockback;
+    /// <summary>점프를 실제로 실행한 물리 스텝의 끝에 발생합니다. 속도 적용과 MovementUpdated 전달 이후 호출합니다.</summary>
     public event Action Jumped;
+    /// <summary>착지 조건을 만족하여 접지한 물리 스텝의 끝에 한 번 발생합니다.</summary>
+    /// <remarks>
+    /// 점프 실행 후의 접지 또는 최소 공중 시간 이후의 접지를 알립니다.<br/>
+    /// 처음부터 바닥에 배치된 경우와 최소 공중 시간보다 짧은 접지 흔들림은 제외합니다.
+    /// </remarks>
+    public event Action Landed;
+    /// <summary>물리 스텝 완료, 제어 제한 요청 또는 부활용 이동 초기화 이후 발생합니다.</summary>
+    /// <remarks>수신 측에서 최신 이동 정보를 조회하여 FSM을 갱신합니다. 동일 상태에서도 호출될 수 있습니다.</remarks>
+    public event Action MovementUpdated;
 
     /// <summary>
     /// 같은 오브젝트의 Rigidbody와 캡슐을 캐싱하고, 직접 계산한 속도로 움직이도록 물리 설정과 축 제약을 초기화한다.
@@ -114,6 +136,9 @@ public sealed class CharacterMovement : MonoBehaviour
         hasPendingKnockback = false;
         pendingKnockbackVelocity = Vector3.zero;
 
+        airborneDuration = 0f;
+        landingArmed = false;
+
         contacts.Clear();
         IsGrounded = false;
         GroundCollider = null;
@@ -141,10 +166,13 @@ public sealed class CharacterMovement : MonoBehaviour
         if (hasPendingKnockback)
         {
             ApplyPendingKnockback(deltaTime);
+            MovementUpdated?.Invoke();
             return;
         }
 
         RefreshGround();
+        bool landedThisStep = UpdateLanding(deltaTime);
+        bool jumpedThisStep = false;
 
         Vector3 platformVelocity = Vector3.zero;
         if (IsGrounded)
@@ -191,7 +219,8 @@ public sealed class CharacterMovement : MonoBehaviour
             externalHorizontalVelocity += new Vector3(platformVelocity.x, 0f, platformVelocity.z);
 
             platformVelocity = Vector3.zero;
-            Jumped?.Invoke();
+            landingArmed = true;
+            jumpedThisStep = true;
         }
 
         jumpRequested = false;
@@ -218,6 +247,34 @@ public sealed class CharacterMovement : MonoBehaviour
             externalHorizontalVelocity, Vector3.zero, externalDeceleration * deltaTime);
 
         movementLockRemaining = Mathf.Max(0f, movementLockRemaining - deltaTime);
+        MovementUpdated?.Invoke();
+        // 같은 스텝에 착지 후 재점프했다면 점프 표현을 마지막에 전달합니다.
+        if (landedThisStep) Landed?.Invoke();
+        if (jumpedThisStep) Jumped?.Invoke();
+    }
+
+    /// <summary>
+    /// 접촉 검사 결과로 공중 시간을 갱신하고 착지 이벤트 발생 여부를 반환합니다.
+    /// </summary>
+    /// <param name="deltaTime">이번 물리 스텝의 시간. (단위: s)</param>
+    /// <returns><c>true</c>: 예약된 착지가 이번 접지로 완료됨<br/><c>false</c>: 공중 상태이거나 착지 예약이 없음</returns>
+    /// <remarks>
+    /// 점프 실행 시에는 즉시 착지를 예약합니다.<br/>
+    /// 그 외에는 MinimumLandingAirTime 이상 접촉이 없을 때 예약하여, 강제 접지 해제나 짧은 흔들림에 의한 오검출을 줄입니다.
+    /// </remarks>
+    private bool UpdateLanding(float deltaTime)
+    {
+        if (!IsGrounded)
+        {
+            airborneDuration += deltaTime;
+            if (airborneDuration >= MinimumLandingAirTime) landingArmed = true;
+            return false;
+        }
+
+        bool shouldNotifyLanding = landingArmed;
+        airborneDuration = 0f;
+        landingArmed = false;
+        return shouldNotifyLanding;
     }
 
     /// <summary>
@@ -359,7 +416,7 @@ public sealed class CharacterMovement : MonoBehaviour
     /// </summary>
     public void RequestJump()
     {
-        if (!IsMovementLocked)
+        if (!IsControlLocked)
         {
             jumpRequested = true;
         }
@@ -407,6 +464,7 @@ public sealed class CharacterMovement : MonoBehaviour
         {
             body.WakeUp();
         }
+        MovementUpdated?.Invoke();
     }
 
     /// <summary>
@@ -441,7 +499,7 @@ public sealed class CharacterMovement : MonoBehaviour
     /// <param name="clearSelfVelocity">true이면 자체 이동 속도를 즉시 0으로 만든다. 외부 속도는 지우지 않는다.</param>
     public void LockMovement(float duration, bool clearSelfVelocity = true)
     {
-        if (duration <= 0f)
+        if (!float.IsFinite(duration) || duration <= 0f)
         {
             return;
         }
@@ -454,6 +512,43 @@ public sealed class CharacterMovement : MonoBehaviour
         {
             selfVelocity = Vector3.zero;
         }
+        MovementUpdated?.Invoke();
+    }
+
+    /// <summary>
+    /// 부활 시 이전 입력·넉백·외력·속도와 착지 이벤트 예약을 초기화합니다.
+    /// </summary>
+    /// <param name="clearGround"><c>true</c>: 접촉 기록·접지 상태·지지면 정보도 초기화<br/><c>false</c>: 현재 접지 정보 유지</param>
+    /// <remarks>
+    /// PlayerFacade의 명시적인 부활 처리에서 호출하며, 사망 진입 시에는 호출하지 않습니다.<br/>
+    /// 리스폰으로 위치를 옮겼다면 clearGround를 true로 지정해야 합니다.<br/>
+    /// 초기화 후 MovementUpdated 이벤트를 발생시킵니다.
+    /// </remarks>
+    public void ResetForRevive(bool clearGround = false)
+    {
+        moveInput = Vector3.zero;
+        selfVelocity = Vector3.zero;
+        externalHorizontalVelocity = Vector3.zero;
+        pendingImpulse = Vector3.zero;
+        pendingKnockbackVelocity = Vector3.zero;
+        hasPendingKnockback = false;
+        movementLockRemaining = 0f;
+        jumpRequested = false;
+        airborneDuration = 0f;
+        landingArmed = false;
+        if (clearGround)
+        {
+            contacts.Clear();
+            IsGrounded = false;
+            GroundCollider = null;
+            GroundNormal = Vector3.up;
+        }
+        if (body != null && !body.isKinematic)
+        {
+            body.linearVelocity = Vector3.zero;
+            body.WakeUp();
+        }
+        MovementUpdated?.Invoke();
     }
 
     /// <summary>

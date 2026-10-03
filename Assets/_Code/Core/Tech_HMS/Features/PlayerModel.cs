@@ -20,8 +20,7 @@ public interface IReadOnlyPlayerModel
     /// </remarks>
     int MaxSkillFragment { get; }
     /// <summary>
-    /// 캐릭터의 '현재 체력'이 0인 상태를 의미함.<br/>
-    /// 추후 FSM 도입 시 수정되거나 제거될 수 있음.
+    /// 현재 체력이 0인 사망 상태. 일반 회복으로는 해제되지 않습니다.
     /// </summary>
     bool IsDead { get; }
     /// <summary>체력 변경 시 현재 체력과 최대 체력을 순서대로 전달합니다.</summary>
@@ -92,14 +91,14 @@ public sealed class PlayerModel : IReadOnlyPlayerModel
     /// 현재 체력이 실제 변경된 경우 HealthChanged 이벤트를 발생시킵니다.
     /// </summary>
     /// <remarks>
-    /// 현재 체력이 0인 경우에도 회복을 제한하는 별도의 처리는 현재 없습니다.
-    /// 사망 이후 회복 허용 여부와 부활 처리는 호출하는 측에서 결정해야 합니다.<para>
+    /// 사망 중에는 회복되지 않습니다. 부활은 PlayerFacade.TryRevive로 요청합니다.<para>
     /// 추후, 피해와 회복을 공통 처리할 필요가 생기면(또는 구분의 의미가 없다고 판단되면) ApplyDamage와 함께 하나의 체력 변경 함수로 병합을 검토할 수 있습니다.</para>
     /// </remarks>
     /// <param name="amount">회복량. 0 이하는 무시합니다.</param>
     /// <returns>실제로 회복한 체력.</returns>
     public int Heal(int amount)
     {
+        if (IsDead) return 0;
         int applied = Math.Min(Math.Max(0, amount), MaxHP - CurrentHP);
         if (applied == 0)
         {
@@ -108,6 +107,18 @@ public sealed class PlayerModel : IReadOnlyPlayerModel
         CurrentHP += applied;
         HealthChanged?.Invoke(CurrentHP, MaxHP);
         return applied;
+    }
+
+    /// <summary>사망 중인 플레이어의 체력을 설정하고 HealthChanged 이벤트를 발생시킵니다.</summary>
+    /// <param name="health">부활 시 체력. 양수여야 하며 최대 HP 이하로 제한합니다.</param>
+    /// <returns><c>true</c>: 체력을 설정하여 부활함<br/><c>false</c>: 생존 중이거나 health가 0 이하임</returns>
+    /// <remarks>PlayerFacade의 부활 처리에서 호출합니다. 이동 정보와 FSM 정리는 호출 측에서 담당합니다.</remarks>
+    internal bool TryRevive(int health)
+    {
+        if (!IsDead || health <= 0) return false;
+        CurrentHP = Math.Min(health, MaxHP);
+        HealthChanged?.Invoke(CurrentHP, MaxHP);
+        return true;
     }
     /// <summary>
     /// 최대 체력을 변경하고 HealthChanged 이벤트를 발생시킵니다.

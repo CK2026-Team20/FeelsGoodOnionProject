@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 368dfbb29c0138f4abf76032049cfabe, type: 3}
   m_Name: TestTearSkillDifinition
   m_EditorClassIdentifier: Assembly-CSharp::TearSkillDefinition
+  icon: {fileID: 0}
   cooldown: 5
   initCooldown: 3
-  requiredFragments: 1
+  requiredFragments: 5
   preparationTime: 0
   effectRadius: 3
   stunDuration: 2

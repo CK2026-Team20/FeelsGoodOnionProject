@@ -11,6 +11,9 @@ public class SkillSlot
 {
     private PlayerSkill equippedSkill;
     private float remainingCooldown;
+    /// <summary>쿨다운을 적용한 뒤 실제 발동이 확정된 스킬 인스턴스를 전달합니다.</summary>
+    /// <remarks>스킬의 Activated 이벤트를 전달하므로 같은 호출 안에서 종료되는 즉발 스킬도 수신할 수 있습니다.</remarks>
+    public event Action<PlayerSkill> Activated;
     /// <summary>현재 장착된 스킬입니다.<br/>
     /// 빈 슬롯이라면 null입니다.</summary>
     public PlayerSkill EquippedSkill => equippedSkill;
@@ -142,11 +145,14 @@ public class SkillSlot
     /// </summary>
     public void Cancel() => equippedSkill?.Cancel();
 
+    /// <summary>현재 장착된 스킬의 발동이면 쿨다운을 시작하고 외부에 전달합니다.</summary>
+    /// <param name="skill">발동 이벤트를 발생시킨 스킬 인스턴스</param>
     private void HandleSkillActivated(PlayerSkill skill)
     {
         if (!ReferenceEquals(equippedSkill, skill)) return;
 
         totalCooldown = skill.Cooldown;
         remainingCooldown = totalCooldown;
+        Activated?.Invoke(skill);
     }
 }
