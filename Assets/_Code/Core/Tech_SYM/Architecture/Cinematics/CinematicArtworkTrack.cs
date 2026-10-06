@@ -27,7 +27,7 @@ namespace Cooked.Cinematics
             if (active < 0) return; // Retain the last sample at the held endpoint.
             CinematicPanel Sample(int index)
             {
-                if (index > active) return default;
+                if (index != active) return default;
                 var input = (ScriptPlayable<CinematicArtworkBehaviour>)playable.GetInput(index);
                 var data = input.GetBehaviour();
                 float progress = index < active || input.GetDuration() <= 0 ? 1 :

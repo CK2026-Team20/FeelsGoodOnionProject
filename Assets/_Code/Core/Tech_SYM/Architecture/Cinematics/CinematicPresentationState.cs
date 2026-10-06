@@ -12,7 +12,7 @@ namespace Cooked.Cinematics
         public bool IsRevealed => Artwork != null;
     }
 
-    // Immutable cumulative projection: top-left, top-right, bottom-left, bottom-right.
+    // Four source slots retained for serialization compatibility; only the current artwork is populated.
     public readonly struct CinematicFrame
     {
         private readonly CinematicPanel topLeft, topRight, bottomLeft, bottomRight;

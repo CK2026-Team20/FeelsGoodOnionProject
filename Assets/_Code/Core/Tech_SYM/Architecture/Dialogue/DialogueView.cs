@@ -5,24 +5,40 @@ using System.Threading;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
+using System.Collections.Generic;
 
 namespace Cooked.Dialogue
 {
     /// <summary>UGUI presentation only. Composition supplies a VM; no global lookups or model access.</summary>
     public sealed class DialogueView : MonoBehaviour
     {
+        [Tooltip("대화 본문 화면의 표시·입력을 제어할 CanvasGroup입니다. 로그 그룹과 구분해 연결하세요.")]
         [SerializeField] private CanvasGroup rootGroup;
+        [Tooltip("지난 대화 로그 화면의 표시·입력을 제어할 CanvasGroup입니다.")]
         [SerializeField] private CanvasGroup logGroup;
+        [Tooltip("현재 문장의 화자 이름을 표시할 TMP 텍스트입니다.")]
         [SerializeField] private TMP_Text speaker;
+        [Tooltip("현재 대화 문장을 순차 표시할 TMP 텍스트입니다.")]
         [SerializeField] private TMP_Text body;
+        [Tooltip("자동 진행 상태를 표시할 TMP 텍스트입니다. 자동 버튼의 상태 안내에 사용됩니다.")]
         [SerializeField] private TMP_Text autoLabel;
+        [Tooltip("이전에 표시한 문장 로그를 출력할 TMP 텍스트입니다.")]
         [SerializeField] private TMP_Text history;
+        [Tooltip("문장 표시가 끝나 다음 입력을 기다릴 때 보이는 안내 오브젝트입니다.")]
         [SerializeField] private GameObject nextMarker;
+        [Tooltip("대화 본문 클릭으로 표시 완료 또는 다음 문장 진행을 요청하는 버튼입니다. 한 입력에 한 번만 진행합니다.")]
         [SerializeField] private UnityEngine.UI.Button panelButton;
+        [Tooltip("대화 자동 진행을 켜고 끄는 버튼입니다.")]
         [SerializeField] private UnityEngine.UI.Button autoButton;
+        [Tooltip("현재 대화의 지난 문장 로그를 여는 버튼입니다.")]
         [SerializeField] private UnityEngine.UI.Button historyButton;
+        [Tooltip("현재 대화 시퀀스를 건너뛰는 버튼입니다.")]
         [SerializeField] private UnityEngine.UI.Button skipButton;
+        [Tooltip("대화 로그만 닫고 본문으로 돌아가는 버튼입니다. 메모 닫기 기능과는 다릅니다.")]
         [SerializeField] private UnityEngine.UI.Button logCloseButton;
+        [Tooltip("긴 대화 로그를 스크롤할 ScrollRect입니다. 로그 화면의 스크롤 영역을 연결하세요.")]
         [SerializeField] private UnityEngine.UI.ScrollRect logScroll;
         private DialogueViewModel model;
         private Tween typing;
@@ -31,6 +47,8 @@ namespace Cooked.Dialogue
         private long shownSession = -1;
         private long shownRow = -1;
         private string shownHistory;
+        private int consumedFrame = -1;
+        private bool lastOptionsPaused;
 
         // Called by the editor builder; field references are serialized into the independent prefab.
         public void Configure(CanvasGroup root, CanvasGroup log, TMP_Text speakerText, TMP_Text contextText,
@@ -61,15 +79,55 @@ namespace Cooked.Dialogue
         }
         private void Awake() { if (rootGroup != null) SetGroup(rootGroup, false); }
         private void OnChanged(object sender, PropertyChangedEventArgs args) { Present(); }
-        private void OnAdvance() { model?.Advance(Time.frameCount); }
-        private void OnAuto() { model?.ToggleAuto(); }
-        private void OnHistory() { model?.OpenLog(); }
-        private void OnSkip() { model?.SkipAll(); }
-        private void OnLogClose() { model?.CloseLog(); }
+        private void OnAdvance() { consumedFrame = Time.frameCount; model?.Advance(Time.frameCount); }
+        private void OnAuto() { consumedFrame = Time.frameCount; model?.ToggleAuto(); }
+        private void OnHistory() { consumedFrame = Time.frameCount; model?.OpenLog(); }
+        private void OnSkip() { consumedFrame = Time.frameCount; model?.SkipAll(); }
+        private void OnLogClose() { consumedFrame = Time.frameCount; model?.CloseLog(); }
+
+        private void LateUpdate()
+        {
+            if (model == null || !model.CanAdvance || model.LogOpen || consumedFrame == Time.frameCount) return;
+            // Escape belongs to the options command even on the frame that options closes.
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) return;
+            bool key = HasNewKeyPress(keyboard);
+            bool click = Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame;
+            if (!key && !click) return;
+            if (EventSystem.current != null)
+            {
+                if (key && EventSystem.current.currentSelectedGameObject != null &&
+                    EventSystem.current.currentSelectedGameObject.GetComponentInParent<UnityEngine.UI.Selectable>() != null &&
+                    (keyboard.enterKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame)) return;
+                if (click)
+                {
+                    var hits = new List<RaycastResult>();
+                    EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = Mouse.current.position.ReadValue() }, hits);
+                    if (hits.Count > 0)
+                    {
+                        var selectable = hits[0].gameObject.GetComponentInParent<UnityEngine.UI.Selectable>();
+                        // Buttons own their release/submit command, including the dialogue panel.
+                        if (selectable != null) return;
+                    }
+                }
+            }
+            consumedFrame = Time.frameCount;
+            model.Advance(Time.frameCount);
+        }
+        // anyKey is an aggregate button: a second key while the first stays held is not a 0->1 edge.
+        public static bool HasNewKeyPress(Keyboard keyboard)
+        {
+            if (keyboard == null) return false;
+            foreach (var key in keyboard.allKeys)
+                if (key.wasPressedThisFrame) return true;
+            return false;
+        }
 
         private void Present()
         {
             if (model == null) return;
+            if (lastOptionsPaused != model.OptionsPaused) consumedFrame = Time.frameCount;
+            lastOptionsPaused = model.OptionsPaused;
             SetGroup(rootGroup, model.IsActive);
             if (!model.IsActive)
             {
@@ -81,6 +139,7 @@ namespace Cooked.Dialogue
             bool newRow = shownSession != model.SessionId || shownRow != model.RowId;
             if (newRow)
             {
+                consumedFrame = Time.frameCount;
                 StopTyping();
                 shownSession = model.SessionId;
                 shownRow = model.RowId;

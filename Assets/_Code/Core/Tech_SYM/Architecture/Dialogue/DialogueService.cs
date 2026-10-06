@@ -14,7 +14,8 @@ namespace Cooked.Dialogue
         private readonly List<DialogueRow> history = new List<DialogueRow>();
         private readonly IReadOnlyList<DialogueRow> historyView;
         private IReadOnlyList<DialogueRow> rows;
-        private IDisposable inputLease;
+        private IDisposable inputLease, worldLease;
+        private bool starting;
         private int rowIndex;
         private int lastProgressFrame = -1;
         private IDialogueDelayHandle cooldown;
@@ -53,9 +54,14 @@ namespace Cooked.Dialogue
 
         public bool TryStart(string dialogueCode)
         {
-            if (disposed || IsActive || optionsPaused || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
+            if (disposed || starting || IsActive || optionsPaused || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
             // Acquire before publishing a visible conversation; failure cannot strand an active UI.
-            inputLease = control.BlockGameplay("Dialogue");
+            starting = true;
+            try
+            {
+                inputLease = control.BlockGameplay("Dialogue");
+                worldLease = control.PauseWorld("Dialogue");
+                if (disposed || optionsPaused) { ReleaseLeases(); return false; }
             rows = found;
             rowIndex = 0;
             SessionId++;
@@ -67,6 +73,18 @@ namespace Cooked.Dialogue
             lastProgressFrame = -1;
             BeginRow();
             return true;
+            }
+            catch (Exception startError)
+            {
+                State = DialogueState.Closed;
+                rows = null;
+                var errors = new List<Exception> { startError };
+                try { CancelAutoDelay(); } catch (Exception e) { errors.Add(e); }
+                try { CancelCooldown(); } catch (Exception e) { errors.Add(e); }
+                try { ReleaseLeases(); } catch (Exception e) { errors.Add(e); }
+                throw new AggregateException("Dialogue start failed.", errors);
+            }
+            finally { starting = false; }
         }
 
         public bool Advance(int frameId)
@@ -141,15 +159,24 @@ namespace Cooked.Dialogue
             Outcome = result;
             AutoEnabled = false;
             LogOpen = false;
-            CancelAutoDelay();
-            CancelCooldown();
             history.Clear();
             rows = null;
-            var lease = inputLease;
-            inputLease = null;
-            lease?.Dispose();
-            Notify();
-            Ended?.Invoke(result);
+            var errors = new List<Exception>();
+            try { CancelAutoDelay(); } catch (Exception e) { errors.Add(e); }
+            try { CancelCooldown(); } catch (Exception e) { errors.Add(e); }
+            try { ReleaseLeases(); } catch (Exception e) { errors.Add(e); }
+            try { Notify(); } catch (Exception e) { errors.Add(e); }
+            try { Ended?.Invoke(result); } catch (Exception e) { errors.Add(e); }
+            if (errors.Count > 0) throw new AggregateException("Dialogue completion cleanup failed.", errors);
+        }
+        private void ReleaseLeases()
+        {
+            var input = inputLease; var world = worldLease;
+            inputLease = worldLease = null;
+            var errors = new List<Exception>();
+            try { input?.Dispose(); } catch (Exception e) { errors.Add(e); }
+            try { world?.Dispose(); } catch (Exception e) { errors.Add(e); }
+            if (errors.Count > 0) throw new AggregateException("Dialogue leases could not be released cleanly.", errors);
         }
         private void OnControlChanged(ControlState state)
         {
@@ -204,10 +231,13 @@ namespace Cooked.Dialogue
         {
             if (disposed) return;
             disposed = true;
-            if (IsActive) Finish(DialogueOutcome.Cancelled);
-            control.Changed -= OnControlChanged;
-            Changed = null;
-            Ended = null;
+            try { if (IsActive) Finish(DialogueOutcome.Cancelled); else ReleaseLeases(); }
+            finally
+            {
+                control.Changed -= OnControlChanged;
+                Changed = null;
+                Ended = null;
+            }
         }
     }
 }

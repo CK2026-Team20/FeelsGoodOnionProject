@@ -2,7 +2,7 @@
   "Rows": [
     { "Dialogue_Code": "EXPLORE_OVEN_01", "Sequence": 1, "Name": "어니", "Context": "포포의 흔적이야! 오븐 안쪽으로 이어져 있어.", "ContextRevealDuration": 2.0 },
     { "Dialogue_Code": "EXPLORE_OVEN_01", "Sequence": 2, "Name": "어니", "Context": "껍질을 발판에 놓으면 트레이까지 건너갈 수 있겠어.", "ContextRevealDuration": 3.0 },
-    { "Dialogue_Code": "EXPLORE_OVEN_01", "Sequence": 3, "Name": "어니", "Context": "좋아, 천천히 가 보자. 기다려, 포포!", "ContextRevealDuration": 0.0 },
+    { "Dialogue_Code": "EXPLORE_OVEN_01", "Sequence": 3, "Name": "어니", "Context": "좋아, 천천히 가 보자. 기다려, 포포!", "ContextRevealDuration": 2.0 },
     { "Dialogue_Code": "EXPLORE_SAFE_02", "Sequence": 1, "Name": "어니", "Context": "여기는 조용하네… 잠깐 숨을 고르자.", "ContextRevealDuration": 1.5 },
     { "Dialogue_Code": "EXPLORE_SAFE_02", "Sequence": 2, "Name": "어니", "Context": "눈물 조각도 챙겼고, 이제 저쪽 길로!", "ContextRevealDuration": 2.0 }
   ]

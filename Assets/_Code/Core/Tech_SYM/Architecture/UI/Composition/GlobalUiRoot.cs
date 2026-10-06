@@ -4,7 +4,9 @@ namespace Cooked.UI
 {
     public sealed class GlobalUiRoot : MonoBehaviour
     {
+        [Tooltip("음량·재시도·타이틀 이동을 표시할 옵션 화면입니다.")]
         [SerializeField] private OptionsView optionsView;
+        [Tooltip("씬 전환 중 화면을 덮는 페이드 화면입니다.")]
         [SerializeField] private FadeView fadeView;
         private OptionsViewModel optionsModel; private FadeViewModel fadeModel;
         public void Configure(OptionsView options, FadeView fade) { optionsView = options; fadeView = fade; }

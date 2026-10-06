@@ -5,11 +5,25 @@ namespace Cooked.UI
 {
     public sealed class OptionsView : BoundView<OptionsViewModel>
     {
+        [Tooltip("옵션 화면의 표시·입력 허용을 제어할 CanvasGroup입니다.")]
         [SerializeField] private CanvasGroup modal;
         private InputAction escapeAction;
-        [SerializeField] private UnityEngine.UI.Button close, retry, title;
-        [SerializeField] private UnityEngine.UI.Slider master, music, sfx;
-        [SerializeField] private TMP_Text values, error;
+        [Tooltip("옵션을 닫는 버튼입니다. 메모 닫기 버튼이 아닙니다.")]
+        [SerializeField] private UnityEngine.UI.Button close;
+        [Tooltip("저장 체크포인트부터 다시 시작할 버튼입니다.")]
+        [SerializeField] private UnityEngine.UI.Button retry;
+        [Tooltip("현재 세션을 종료하고 타이틀로 이동할 버튼입니다.")]
+        [SerializeField] private UnityEngine.UI.Button title;
+        [Tooltip("전체 음량을 조절할 Slider입니다. 값 0~1을 사용하며 0은 무음입니다.")]
+        [SerializeField] private UnityEngine.UI.Slider master;
+        [Tooltip("음악 음량을 조절할 Slider입니다. 값 0~1이며 전체 음량과 함께 적용됩니다.")]
+        [SerializeField] private UnityEngine.UI.Slider music;
+        [Tooltip("효과음 음량을 조절할 Slider입니다. 값 0~1이며 전체 음량과 함께 적용됩니다.")]
+        [SerializeField] private UnityEngine.UI.Slider sfx;
+        [Tooltip("현재 음량 설정값을 표시할 TMP 텍스트입니다.")]
+        [SerializeField] private TMP_Text values;
+        [Tooltip("설정 저장 실패 등 옵션 오류를 표시할 TMP 텍스트입니다.")]
+        [SerializeField] private TMP_Text error;
         public void Configure(CanvasGroup group, UnityEngine.UI.Button closeButton,
             UnityEngine.UI.Button retryButton, UnityEngine.UI.Button titleButton, UnityEngine.UI.Slider masterSlider,
             UnityEngine.UI.Slider musicSlider, UnityEngine.UI.Slider sfxSlider, TMP_Text volumeText, TMP_Text errorText)

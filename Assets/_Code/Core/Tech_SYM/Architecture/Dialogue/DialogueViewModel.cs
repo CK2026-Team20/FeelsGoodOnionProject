@@ -42,9 +42,13 @@ namespace Cooked.Dialogue
         {
             if (disposed) return;
             disposed = true;
-            service.Cancel();
-            service.Changed -= OnChanged;
-            PropertyChanged = null;
+            try { service.Cancel(); }
+            finally
+            {
+                // A failing completion observer must not retain this disposed binding.
+                service.Changed -= OnChanged;
+                PropertyChanged = null;
+            }
         }
     }
 }

@@ -60,20 +60,20 @@ namespace Cooked.Cinematics.Editor
             foreach (var old in timeline.GetRootTracks().ToArray()) timeline.DeleteTrack(old);
             timeline.editorSettings.frameRate = 60;
             timeline.durationMode = TimelineAsset.DurationMode.FixedLength;
-            timeline.fixedDuration = 11.1;
+            timeline.fixedDuration = 12;
             var track = timeline.CreateTrack<CinematicArtworkTrack>(null, name + " - Four Story Cuts");
             for (int i = 0; i < 4; i++)
             {
                 TimelineClip clip = track.CreateClip<CinematicArtworkClip>();
                 clip.displayName = name + "_0" + (i + 1);
-                clip.start = i * 2.7;
+                clip.start = i * 3;
                 clip.duration = 3;
                 clip.easeInDuration = 0;
                 clip.easeOutDuration = 0;
                 var artwork = AssetDatabase.LoadAssetAtPath<Texture2D>(AssetRoot + "/Artwork/" + clip.displayName + ".png");
                 SetReference(clip.asset, "artwork", artwork);
                 var serialized = new SerializedObject(clip.asset);
-                serialized.FindProperty("endScale").floatValue = 1.04f;
+                serialized.FindProperty("endScale").floatValue = 1f;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
             EditorUtility.SetDirty(track);
@@ -105,20 +105,20 @@ namespace Cooked.Cinematics.Editor
                 background.color = new Color(.98f,.86f,.62f,1);
                 background.raycastTarget = true; // Consume world/HUD clicks while cinematic is visible.
                 var dots = Rect("HalftoneGutter", visual).gameObject.AddComponent<ComicHalftoneGraphic>();
-                dots.color = new Color(.76f,.43f,.20f,.20f); dots.raycastTarget = false;
+                dots.gameObject.SetActive(false);
                 var board = Rect("ComicBoard", visual);
-                board.offsetMin = new Vector2(32, 28); board.offsetMax = new Vector2(-32, -104);
+                Stretch(board);
                 var panels = new RectTransform[4];
                 var artworks = new UnityEngine.UI.RawImage[4];
                 for (int i = 0; i < 4; i++)
                 {
                     var panel = Rect("Panel" + (i + 1), board);
-                    panel.anchorMin = new Vector2((i % 2) * .5f, i < 2 ? .5f : 0);
-                    panel.anchorMax = panel.anchorMin + new Vector2(.5f, .5f);
-                    panel.offsetMin = new Vector2(9, 9); panel.offsetMax = new Vector2(-9, -9);
+                    panel.anchorMin = Vector2.zero;
+                    panel.anchorMax = Vector2.one;
+                    panel.offsetMin = panel.offsetMax = Vector2.zero;
                     var frame = panel.gameObject.AddComponent<UnityEngine.UI.Image>();
                     frame.color = new Color(.035f,.028f,.023f,1); frame.raycastTarget = false;
-                    var inside = Rect("Inner", panel); inside.offsetMin = new Vector2(8,8); inside.offsetMax = new Vector2(-8,-8);
+                    var inside = Rect("Inner", panel); Stretch(inside);
                     var paper = inside.gameObject.AddComponent<UnityEngine.UI.Image>();
                     paper.color = new Color(1,.97f,.88f,1); paper.raycastTarget = false;
                     panels[i] = inside; artworks[i] = Artwork("Artwork" + (i + 1), inside);

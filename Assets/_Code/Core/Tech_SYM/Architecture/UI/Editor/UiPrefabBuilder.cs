@@ -123,7 +123,7 @@ namespace Cooked.UI.Editor
             Text(Box("Subtitle", canvas.transform, new Vector2(.5f,.5f), new Vector2(0,105), new Vector2(1100,80)), font, "어니와 포포의 주방 탈출", 36, Ink);
             var start = Button("NewGame", canvas.transform, font, "새 게임", new Vector2(0,-45), new Vector2(460,90));
             var quit = Button("Quit", canvas.transform, font, "게임 종료", new Vector2(0,-160), new Vector2(460,80));
-            view.Configure(start, quit); composition.Configure(view); return root;
+            view.Configure(start, quit); composition.Configure(view); PrototypeUiAuthoring.ConfigureTitle(root); return root;
         }
         public static GameObject CreateGame(TMP_FontAsset font)
         {
@@ -136,15 +136,15 @@ namespace Cooked.UI.Editor
             var count = Text(Box("FragmentCount", h, new Vector2(0,1), new Vector2(322,-36), new Vector2(170,60)), font, "—/—", 38, Color.white, TextAlignmentOptions.MidlineLeft);
             count.fontStyle = FontStyles.Bold;
             var countShadow = count.gameObject.AddComponent<UnityEngine.UI.Shadow>(); countShadow.effectColor = new Color(0,0,0,.65f); countShadow.effectDistance = new Vector2(2,-2);
-            var form = AbilityCard(h,font,"Form",HudIconGraphic.Symbol.Form,"R",30);
-            var tear = AbilityCard(h,font,"Tear",HudIconGraphic.Symbol.Tear,"E",146);
-            var recover = AbilityCard(h,font,"Recover",HudIconGraphic.Symbol.Recover,"Q",262);
+            var form = AbilityCard(h,font,"Form",HudIconGraphic.Symbol.Form,"Q",30);
+            var tear = AbilityCard(h,font,"Tear",HudIconGraphic.Symbol.Tear,"F",146);
+            CanvasGroup recover = null;
             var dialogue = Fill("DialogueMount", screen.transform); var cinematic = Fill("CinematicMount", screen.transform); cinematic.SetAsLastSibling();
             var worldRect = Fill("WorldCanvas", root.transform); var world = worldRect.gameObject.AddComponent<Canvas>(); world.renderMode = RenderMode.WorldSpace;
             worldRect.sizeDelta = new Vector2(1000,1000); worldRect.localScale = Vector3.one;
             var anchor = Box("PromptAnchor", worldRect, new Vector2(.5f,.5f), Vector2.zero, new Vector2(420,80)); anchor.localScale = Vector3.one * .004f;
             Image(anchor, new Color(.1f,.15f,.12f,.9f)); var pg = anchor.gameObject.AddComponent<CanvasGroup>(); pg.alpha = 0; pg.blocksRaycasts = false;
-            var label = Text(Fill("Label", anchor), font, "F  상호작용", 30, Color.white);
+            var label = Text(Fill("Label", anchor), font, "E  상호작용", 30, Color.white);
             hud.ConfigureIcons(group, hearts, count, form, tear, recover); prompt.Configure(pg, anchor, label);
             composition.Configure(hud, prompt, world, dialogue, cinematic); return root;
         }

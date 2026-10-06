@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Cooked.Contracts;
@@ -21,6 +22,7 @@ namespace Cooked.Cinematics
         private OperationResult playResult;
         private long revision;
         private bool presentationPaused;
+        private IDisposable inputLease, worldLease;
         public CinematicPresentationState Presentation { get; } = new CinematicPresentationState();
         public CinematicOutcome Outcome { get; private set; }
         public CinematicPhase Phase { get; private set; }
@@ -57,6 +59,8 @@ namespace Cooked.Cinematics
             {
                 TimelineAsset timeline = catalog.Get(id);
                 CinematicArtworkTrack track = Validate(timeline, id);
+                inputLease = control.BlockGameplay("Cinematic");
+                worldLease = control.PauseWorld("Cinematic");
                 Presentation.SetFrame(default);
                 director.playableAsset = timeline;
                 director.SetGenericBinding(track, bridge);
@@ -70,10 +74,13 @@ namespace Cooked.Cinematics
             }
             catch (Exception exception)
             {
-                bridge.ReleaseClipTweens();
-                Error = "Cinematic Prepare " + id + ": " + exception.Message;
+                var errors = new List<Exception> { exception };
                 Phase = CinematicPhase.Faulted;
-                Presentation.SetFlags(false, false);
+                Attempt(errors, () => director.Stop());
+                Attempt(errors, ReleaseLeases);
+                Attempt(errors, () => Presentation.SetFlags(false, false));
+                Attempt(errors, () => Presentation.SetFrame(default));
+                Error = "Cinematic Prepare " + id + ": " + new AggregateException(errors);
                 result.Fail(Error);
             }
             yield break;
@@ -121,12 +128,11 @@ namespace Cooked.Cinematics
             {
                 double end = director.duration;
                 if (director.time < end - 0.00001) return;
-                // One terminal sample retains the final image. Normal advancement belongs to Unity.
                 director.time = Math.Max(0, end - 0.000001);
                 director.Evaluate();
-                Finish(CinematicOutcome.Completed);
             }
-            catch (Exception exception) { FailPlayback(exception); }
+            catch (Exception exception) { FailPlayback(exception); return; }
+            Finish(CinematicOutcome.Completed);
         }
 
         public void Skip()
@@ -138,27 +144,47 @@ namespace Cooked.Cinematics
         public void Hide()
         {
             if (Phase == CinematicPhase.Disposed) return;
-            if (Phase == CinematicPhase.Ready || Phase == CinematicPhase.Playing) Finish(CinematicOutcome.Cancelled);
+            var errors = new List<Exception>();
+            if (Phase == CinematicPhase.Ready || Phase == CinematicPhase.Playing)
+                Attempt(errors, () => Finish(CinematicOutcome.Cancelled));
             revision++;
-            // Stop may sample/rebuild its preview graph in Edit Mode; release handles after that lifecycle.
-            director.Stop();
-            bridge.ReleaseClipTweens();
+            Attempt(errors, () => director.Stop());
             if (director.playableAsset is TimelineAsset timeline)
-                foreach (var track in timeline.GetOutputTracks()) director.ClearGenericBinding(track);
-            director.playableAsset = null;
+                foreach (var track in timeline.GetOutputTracks()) Attempt(errors, () => director.ClearGenericBinding(track));
+            Attempt(errors, () => director.playableAsset = null);
             playResult = null;
-            Presentation.SetFlags(false, false);
-            Presentation.SetFrame(default);
             Phase = CinematicPhase.Idle;
+            Attempt(errors, ReleaseLeases);
+            Attempt(errors, () => Presentation.SetFlags(false, false));
+            Attempt(errors, () => Presentation.SetFrame(default));
+            ThrowErrors(errors, "Cinematic Hide cleanup failed.");
         }
 
         public void Dispose()
         {
             if (Phase == CinematicPhase.Disposed) return;
-            Hide();
-            control.Changed -= OnControlChanged;
-            bridge.Bind(null);
-            Phase = CinematicPhase.Disposed;
+            try { Hide(); }
+            finally
+            {
+                control.Changed -= OnControlChanged;
+                bridge.Bind(null);
+                Phase = CinematicPhase.Disposed;
+                ReleaseLeases();
+            }
+        }
+
+        private static void Attempt(List<Exception> errors, Action action)
+        { try { action(); } catch (Exception e) { errors.Add(e); } }
+        private static void ThrowErrors(List<Exception> errors, string message)
+        { if (errors.Count > 0) throw new AggregateException(message, errors); }
+        private void ReleaseLeases()
+        {
+            var input = inputLease; var world = worldLease;
+            inputLease = worldLease = null;
+            var errors = new List<Exception>();
+            Attempt(errors, () => input?.Dispose());
+            Attempt(errors, () => world?.Dispose());
+            ThrowErrors(errors, "Cinematic lease cleanup failed.");
         }
 
         private void OnControlChanged(ControlState state)
@@ -179,20 +205,29 @@ namespace Cooked.Cinematics
             if (Phase != CinematicPhase.Playing && Phase != CinematicPhase.Ready) return;
             Outcome = outcome;
             Phase = CinematicPhase.Holding;
-            director.Pause();
-            UpdateFlags();
-            if (playResult == null || playResult.Status != OperationStatus.Pending) return;
-            if (outcome == CinematicOutcome.Cancelled) playResult.Cancel(); else playResult.Succeed();
+            // Terminal result must survive a throwing presentation observer.
+            if (playResult != null && playResult.Status == OperationStatus.Pending)
+            {
+                if (outcome == CinematicOutcome.Cancelled) playResult.Cancel(); else playResult.Succeed();
+            }
+            var errors = new List<Exception>();
+            Attempt(errors, () => director.Pause());
+            Attempt(errors, UpdateFlags);
+            if (errors.Count > 0) Attempt(errors, ReleaseLeases);
+            ThrowErrors(errors, "Cinematic completion observer failed.");
         }
 
         private void FailPlayback(Exception exception)
         {
-            Error = "Cinematic playback: " + exception.Message;
+            var errors = new List<Exception> { exception };
+            Error = "Cinematic playback: " + exception;
             Phase = CinematicPhase.Faulted;
             Outcome = CinematicOutcome.None;
-            director.Pause();
-            Presentation.SetFlags(Presentation.IsVisible, false);
             if (playResult != null && playResult.Status == OperationStatus.Pending) playResult.Fail(Error);
+            Attempt(errors, () => director.Pause());
+            Attempt(errors, ReleaseLeases);
+            Attempt(errors, () => Presentation.SetFlags(false, false));
+            Error = new AggregateException("Cinematic playback failed.", errors).ToString();
         }
 
         private void UpdateFlags()
@@ -204,8 +239,8 @@ namespace Cooked.Cinematics
         private static CinematicArtworkTrack Validate(TimelineAsset timeline, CinematicId id)
         {
             if (timeline == null) throw new InvalidOperationException("Missing Timeline for " + id);
-            if (double.IsNaN(timeline.duration) || double.IsInfinity(timeline.duration) || Math.Abs(timeline.duration - 11.1) > 0.001)
-                throw new InvalidOperationException("Expected approved 11.1-second Timeline: " + id);
+            if (double.IsNaN(timeline.duration) || double.IsInfinity(timeline.duration) || timeline.duration <= 0)
+                throw new InvalidOperationException("Expected a finite positive Timeline duration: " + id);
             var tracks = timeline.GetOutputTracks().ToArray();
             if (tracks.Length != 1 || !(tracks[0] is CinematicArtworkTrack track))
                 throw new InvalidOperationException("Expected one CinematicArtworkTrack: " + id);
@@ -216,11 +251,13 @@ namespace Cooked.Cinematics
                 var art = clips[i].asset as CinematicArtworkClip;
                 if (art == null || art.Artwork == null || double.IsNaN(clips[i].duration) || clips[i].duration <= 0)
                     throw new InvalidOperationException("Missing artwork or invalid duration at " + id + "/" + (i + 1));
-                if (float.IsNaN(art.EndScale) || float.IsInfinity(art.EndScale) || Math.Abs(art.EndScale - 1.04f) > 0.0001f)
-                    throw new InvalidOperationException("Expected approved 1.04 zoom at " + id + "/" + (i + 1));
-                if (Math.Abs(clips[i].start - i * 2.7) > 0.001 || Math.Abs(clips[i].duration - 3) > 0.001)
-                    throw new InvalidOperationException("Invalid approved cut timing at " + id + "/" + (i + 1));
+                if (float.IsNaN(art.EndScale) || float.IsInfinity(art.EndScale) || Math.Abs(art.EndScale - 1f) > 0.0001f)
+                    throw new InvalidOperationException("Cinematic scale must remain one at " + id + "/" + (i + 1));
+                if (Math.Abs(clips[i].start - (i == 0 ? 0 : clips[i-1].end)) > 0.001 || double.IsInfinity(clips[i].duration))
+                    throw new InvalidOperationException("Artwork clips must be contiguous and non-overlapping at " + id + "/" + (i + 1));
             }
+            if (Math.Abs(clips[clips.Length - 1].end - timeline.duration) > 0.001)
+                throw new InvalidOperationException("Timeline duration must match the last artwork.");
             return track;
         }
 

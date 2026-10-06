@@ -11,6 +11,7 @@ namespace Cooked.UI
         { this.flow = flow; this.options = options; this.application = application ?? new ApplicationService(); flow.Changed += OnFlow; options.Changed += OnOptions; }
         public void NewGame() { if (CanStart) flow.Request(new FlowRequest(FlowCommand.NewGame)); }
         public void Quit() { if (CanStart) application.Quit(); }
+        public void OpenOptions() { if (CanStart) options.Open(); }
         private void OnFlow(FlowSnapshot _) => Notify(); private void OnOptions() => Notify();
         protected override void Release() { flow.Changed -= OnFlow; options.Changed -= OnOptions; }
     }
@@ -59,10 +60,9 @@ namespace Cooked.UI
         public bool TearUnlocked => session.IsActive && session.IsUnlocked(AbilityId.Tear);
         public bool RecoverUnlocked => session.IsActive && session.IsUnlocked(AbilityId.RecoverShell);
         public string Checkpoint => session.IsActive ? "체크포인트  " + session.Checkpoint.CheckpointId : "";
-        public string Abilities => "이동 WASD · 점프 Space · 상호작용 F" +
-            (session.IsUnlocked(AbilityId.FormChange) ? " · 형태 전환 R" : "") +
-            (session.IsUnlocked(AbilityId.Tear) ? " · 눈물 E" : "") +
-            (session.IsUnlocked(AbilityId.RecoverShell) ? " · 껍질 회수 Q" : "");
+        public string Abilities => "이동 방향키 · 점프 Space · 상호작용 E" +
+            (session.IsUnlocked(AbilityId.FormChange) ? " · 형태 전환 Q" : "") +
+            (session.IsUnlocked(AbilityId.Tear) ? " · 눈물 F" : "");
         public HudViewModel(IPlayerBridgeService bridge, IGameSessionService session)
         { this.bridge = bridge; this.session = session; bridge.Changed += OnPlayer; session.Changed += OnSession; }
         public void SetVisible(bool value) { if (IsDisposed || Visible == value) return; Visible = value; Notify(); }
@@ -77,7 +77,7 @@ namespace Cooked.UI
         public Quaternion Facing { get; private set; } = Quaternion.identity;
         public string Label { get; private set; } = "";
         public void SetPrompt(bool visible, Vector3 position, Quaternion facing, string label)
-        { if (IsDisposed) return; targetVisible = visible; Position = position; Facing = facing; Label = "F  " + (label ?? "상호작용"); Notify(); }
+        { if (IsDisposed) return; targetVisible = visible; Position = position; Facing = facing; Label = "E  " + (label ?? "상호작용"); Notify(); }
         public void SetGameplayVisible(bool value) { if (IsDisposed) return; gameplayVisible = value; Notify(); }
         public void Clear() => SetPrompt(false, Vector3.zero, Quaternion.identity, "");
     }
