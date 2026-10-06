@@ -1142,6 +1142,7 @@ MonoBehaviour:
   installation: {fileID: 11400000, guid: a5be07157c90e954fa58e3f77f514a56, type: 2}
   ui: {fileID: 2109316081}
   audio: {fileID: 70943295}
+  presentationCamera: {fileID: 1547377900}
 --- !u!114 &1868384416
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -21,6 +21,7 @@ namespace Cooked.Foundation
         private IDisposable inputLease, worldLease;
         private bool disposed, booted, sessionInitialized;
         private long revision;
+        private string selectedStagePath;
         public FlowSnapshot Snapshot { get; private set; } = new FlowSnapshot(FlowState.Booting, false, 0, null);
         public event Action<FlowSnapshot> Changed;
 
@@ -140,6 +141,8 @@ namespace Cooked.Foundation
         {
             stageId = stageId ?? Path.GetFileNameWithoutExtension(catalog.StagePaths[0]);
             if (!IsStage(stageId)) throw new InvalidOperationException($"Unknown entry Stage: {stageId}");
+            foreach (string path in catalog.StagePaths)
+                if (Path.GetFileNameWithoutExtension(path) == stageId) selectedStagePath = path;
             Publish(FlowState.LoadingGame, true, null);
             if (!alreadyCovered) yield return Step(r => fade.Cover(token, r), token);
             yield return Step(r => scenes.Unload(catalog.TitlePath, token, r), token);
@@ -248,7 +251,8 @@ namespace Cooked.Foundation
         }
         private IEnumerator LoadStages(CancellationToken token)
         {
-            foreach (string path in catalog.StagePaths) yield return Step(r => scenes.LoadAdditive(path, token, r), token);
+            if (selectedStagePath == null) throw new InvalidOperationException("No selected stage.");
+            yield return Step(r => scenes.LoadAdditive(selectedStagePath, token, r), token);
         }
         private IEnumerator UnloadStages(CancellationToken token)
         {

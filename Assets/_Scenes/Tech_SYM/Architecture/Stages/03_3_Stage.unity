@@ -1027,7 +1027,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 431948783}
-  m_Mesh: {fileID: 4300000, guid: ea794973e1bad674e925a5ace725e7fa, type: 2}
+  m_Mesh: {fileID: 1899114167}
 --- !u!114 &431948786
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2071,6 +2071,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S3_ENTRY
+  unlockForm: 0
+  unlockTear: 0
+  cameraZone:
+    Id: 
+    Movement: 1
+    AlignmentOffset: {x: 33.999996, y: 0, z: 30.000004}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &921524923
 Transform:
@@ -2118,6 +2124,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S3_CHASE
+  unlockForm: 0
+  unlockTear: 0
+  cameraZone:
+    Id: 
+    Movement: 1
+    AlignmentOffset: {x: 19.999996, y: 0, z: 30.000004}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &948667591
 Transform:
@@ -2176,7 +2188,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 967364528}
-  m_Mesh: {fileID: 4300000, guid: 0424b5e3d3e6d35459be294d7c7818a3, type: 2}
+  m_Mesh: {fileID: 1904271850}
 --- !u!114 &967364531
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2484,7 +2496,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 975038572}
-  m_Mesh: {fileID: 4300000, guid: b15da965e99b7bb40acc9d8ad86feaef, type: 2}
+  m_Mesh: {fileID: 2032630226}
 --- !u!114 &975038575
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2971,7 +2983,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1012075369}
-  m_Mesh: {fileID: 4300000, guid: 9ec67b6c30c46c14da74d296adf4b1bb, type: 2}
+  m_Mesh: {fileID: 846001039}
 --- !u!114 &1012075372
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3504,7 +3516,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1026345504}
-  m_Mesh: {fileID: 4300000, guid: 987d29ad06ec95840ab54f38b0c20581, type: 2}
+  m_Mesh: {fileID: 1018219993}
 --- !u!114 &1026345507
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3812,7 +3824,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1065418433}
-  m_Mesh: {fileID: 4300000, guid: d72825af930b4ca46b42601658e258e7, type: 2}
+  m_Mesh: {fileID: 725121972}
 --- !u!114 &1065418436
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4173,7 +4185,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1102332515}
-  m_Mesh: {fileID: 4300000, guid: 1a3f525380cb35e4aa215f780e36063d, type: 2}
+  m_Mesh: {fileID: 52382318}
 --- !u!114 &1102332518
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4481,7 +4493,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1138829138}
-  m_Mesh: {fileID: 4300000, guid: 2352189afe7812c44bfe5d1749808a8b, type: 2}
+  m_Mesh: {fileID: 978602362}
 --- !u!114 &1138829141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4966,7 +4978,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1378110733}
-  m_Mesh: {fileID: 4300000, guid: 821cd36c4b972f84ab10ff8090c950fb, type: 2}
+  m_Mesh: {fileID: 1988631651}
 --- !u!114 &1378110736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6127,7 +6139,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1872443217}
-  m_Mesh: {fileID: 4300000, guid: ee1e71741558ae54c9d406ba8ff784b1, type: 2}
+  m_Mesh: {fileID: 1442832766}
 --- !u!114 &1872443220
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7205,6 +7217,8 @@ MonoBehaviour:
   - {x: -6, y: 0, z: 30.000004}
   chaseRetreatGate: {fileID: 1024930370}
   chaseStartProgress: 18
+  chaseCheckpointId: S3_CHASE
+  progressWaypoints: []
 --- !u!4 &2109316082
 Transform:
   m_ObjectHideFlags: 0

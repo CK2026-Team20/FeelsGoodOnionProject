@@ -21,6 +21,7 @@ namespace Cooked.Integration
         private readonly AudioFlowBinding audioFlow;
         private readonly IDisposable stageSubscription;
         private readonly List<StageService> stages = new List<StageService>();
+        private readonly List<FeelsGoodOnion.TechSYM.Interaction.MemoUIController> memos = new List<FeelsGoodOnion.TechSYM.Interaction.MemoUIController>();
         private CheckpointSnapshot checkpoint;
         private readonly HashSet<AbilityId> unlocked = new HashSet<AbilityId>();
         private int fragments;
@@ -50,11 +51,25 @@ namespace Cooked.Integration
                 stage.Initialize(bus,flow,actor,code=>runtime.TryStartSafeDialogue(stage.StageId,code),runtime.Session);
                 stage.BindChaseStart(s=>chase.TryStart(s.StageId,s.ChaseWaypoints,s.Actor));
                 stage.ChaseStarted+=OnChaseStarted;
+                foreach(var memo in stage.GetComponentsInChildren<FeelsGoodOnion.TechSYM.Interaction.MemoUIController>(true))
+                { memo.Initialize(control); memos.Add(memo); }
                 foreach(var instruction in stage.GetComponentsInChildren<LevelInstruction>(true))
                     prompts.Add(new CoreUiBinding.InstructionSource(instruction.transform,instruction.Text));
             }
             ui.SetInstructions(prompts);
-            camera.Bind(runtime.Player);
+            runtime.ActorHost.Interaction.BindOverlays(memos);
+            camera.Bind(runtime.Player, control, runtime.ActorHost.CameraRig);
+            ui.SetActorCamera(runtime.ActorHost.CameraRig.OutputCamera);
+            foreach(var stage in stages)
+                foreach(var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true)) zone.Bind(camera,actor);
+            var initialStage = (StageService)runtime.Stages.Require(runtime.Session.Checkpoint.StageId);
+            var initialPoint = initialStage.GetCheckpoint(runtime.Session.Checkpoint.CheckpointId);
+            var initialZone = initialPoint.CameraZone;
+            if(string.IsNullOrWhiteSpace(initialZone.Id))
+                initialZone = new CameraZoneRequest(initialStage.StageId + "_Entry",
+                    initialStage.StageId == "03_2_Stage" ? CameraMovementMode.Quarter : CameraMovementMode.Side,
+                    initialPoint.transform.position);
+            camera.EnterZone(initialZone,true);
             audioFlow.SetStage(runtime.Session.Checkpoint.StageId);
             checkpoint=runtime.Session.Checkpoint; fragments=runtime.Player.Snapshot.Fragments;
             unlocked.Clear();
@@ -102,9 +117,13 @@ namespace Cooked.Integration
             observing=false;
             runtime.Session.Changed-=OnSession; runtime.Player.Changed-=OnPlayer;
             var errors=new List<Exception>();
+            foreach(var memo in memos)
+                if(memo != null) { try { memo.Unbind(); } catch(Exception e) { errors.Add(e); } }
+            memos.Clear();
             foreach(var stage in stages)
             {
                 if(stage==null) continue;
+                foreach (var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true)) zone.Bind(null,null);
                 stage.ChaseStarted-=OnChaseStarted;
                 try { stage.Dispose(); } catch(Exception e) { errors.Add(e); }
             }

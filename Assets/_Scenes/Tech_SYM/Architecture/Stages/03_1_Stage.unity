@@ -931,7 +931,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 422303623}
-  m_Mesh: {fileID: 4300000, guid: dc45daa9629968e4f89e86f75426c6ba, type: 2}
+  m_Mesh: {fileID: 854492318}
 --- !u!114 &422303626
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1228,6 +1228,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S1_SKILL
+  unlockForm: 0
+  unlockTear: 0
+  cameraZone:
+    Id: 
+    Movement: 1
+    AlignmentOffset: {x: -20, y: -2.3, z: 0}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &482348753
 Transform:
@@ -1563,7 +1569,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 583594315}
-  m_Mesh: {fileID: 4300000, guid: 2fd77bc8f33ddfa4d80e700ce8ad2548, type: 2}
+  m_Mesh: {fileID: 1416468230}
 --- !u!114 &583594318
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2165,7 +2171,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 766341700}
-  m_Mesh: {fileID: 4300000, guid: 96c20f5918558664e9ad260faacf1898, type: 2}
+  m_Mesh: {fileID: 95342575}
 --- !u!114 &766341703
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3005,6 +3011,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S1_START
+  unlockForm: 0
+  unlockTear: 0
+  cameraZone:
+    Id: 
+    Movement: 1
+    AlignmentOffset: {x: -2, y: 0, z: 0}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &830977231
 Transform:
@@ -3593,7 +3605,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 935333955}
-  m_Mesh: {fileID: 4300000, guid: 5a3fd1892e3539742bba741a040a181e, type: 2}
+  m_Mesh: {fileID: 1391308308}
 --- !u!114 &935333958
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3901,7 +3913,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 938732317}
-  m_Mesh: {fileID: 4300000, guid: 30327cbf20b491c439ad3b3268a017b3, type: 2}
+  m_Mesh: {fileID: 527600772}
 --- !u!114 &938732320
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4209,7 +4221,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1051601565}
-  m_Mesh: {fileID: 4300000, guid: 38c86a8f5a9c30c4d88f399187f12fb6, type: 2}
+  m_Mesh: {fileID: 1552376841}
 --- !u!114 &1051601568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4812,7 +4824,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1345932992}
-  m_Mesh: {fileID: 4300000, guid: c606ac988472c6149bed1299f0513fe2, type: 2}
+  m_Mesh: {fileID: 703206243}
 --- !u!114 &1345932995
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5120,7 +5132,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1375661954}
-  m_Mesh: {fileID: 4300000, guid: 363e35ef383f77946a1b58cc7496af6b, type: 2}
+  m_Mesh: {fileID: 1762891548}
 --- !u!114 &1375661957
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5819,7 +5831,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1490811617}
-  m_Mesh: {fileID: 4300000, guid: 90c166a590e89b140821033a4d2cc070, type: 2}
+  m_Mesh: {fileID: 889849951}
 --- !u!114 &1490811620
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6304,6 +6316,8 @@ MonoBehaviour:
   chaseWaypoints: []
   chaseRetreatGate: {fileID: 0}
   chaseStartProgress: 18
+  chaseCheckpointId: S3_CHASE
+  progressWaypoints: []
 --- !u!4 &1612306505
 Transform:
   m_ObjectHideFlags: 0
@@ -6478,7 +6492,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1754605995}
-  m_Mesh: {fileID: 4300000, guid: 1c38132201f30674b9eb26364c51e3ea, type: 2}
+  m_Mesh: {fileID: 773425747}
 --- !u!114 &1754605998
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7051,7 +7065,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1979959848}
-  m_Mesh: {fileID: 4300000, guid: 3e76c1570718cad4d8fcc9dcb70c273d, type: 2}
+  m_Mesh: {fileID: 252423808}
 --- !u!114 &1979959851
 MonoBehaviour:
   m_ObjectHideFlags: 0

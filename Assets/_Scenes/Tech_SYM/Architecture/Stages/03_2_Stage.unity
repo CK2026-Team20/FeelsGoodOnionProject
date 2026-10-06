@@ -3269,7 +3269,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 814516440}
-  m_Mesh: {fileID: 4300000, guid: 7380e72ffb108b44c8bed9879691df80, type: 2}
+  m_Mesh: {fileID: 109095838}
 --- !u!114 &814516443
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7283,6 +7283,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S2_ENTRY
+  unlockForm: 0
+  unlockTear: 0
+  cameraZone:
+    Id: 
+    Movement: 1
+    AlignmentOffset: {x: -1.9999962, y: 0, z: 36.000004}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &1024930371
 Transform:
@@ -9971,6 +9977,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S2_OVEN
+  unlockForm: 0
+  unlockTear: 0
+  cameraZone:
+    Id: 
+    Movement: 1
+    AlignmentOffset: {x: -14.999996, y: 0, z: 36.000004}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &1868384416
 Transform:
@@ -10099,7 +10111,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1897810878}
-  m_Mesh: {fileID: 4300000, guid: 3b87184324c1a38489f4758ad31dc3f4, type: 2}
+  m_Mesh: {fileID: 1169602562}
 --- !u!114 &1897810881
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14012,6 +14024,8 @@ MonoBehaviour:
   chaseWaypoints: []
   chaseRetreatGate: {fileID: 0}
   chaseStartProgress: 18
+  chaseCheckpointId: S3_CHASE
+  progressWaypoints: []
 --- !u!4 &2109316082
 Transform:
   m_ObjectHideFlags: 0

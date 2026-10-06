@@ -506,23 +506,9 @@ namespace Cooked.Level.Editor
             var go=Empty("CoreLevelCamera",null,Vector3.zero);
             try
             {
-                var rig=Empty("Camera",go.transform,Vector3.zero); var camera=rig.AddComponent<Camera>(); camera.fieldOfView=50; camera.nearClipPlane=.1f; camera.farClipPlane=200;
-                camera.tag="MainCamera";
-                var follow=go.AddComponent<LevelCameraService>(); Set(follow,"cameraRig",rig.transform);
-                var so=new SerializedObject(follow); var zones=so.FindProperty("zones"); zones.arraySize=3;
-                string[] ids={"SIDE_1","QUARTER","SIDE_3"}; float[] min={-3,0,0}, max={36,30,44};
-                for(int i=0;i<3;i++)
-                {
-                    var z=zones.GetArrayElementAtIndex(i); z.FindPropertyRelative("Id").stringValue=ids[i];
-                    z.FindPropertyRelative("MinimumProgress").floatValue=min[i]; z.FindPropertyRelative("MaximumProgress").floatValue=max[i];
-                    z.FindPropertyRelative("Origin").vector3Value=i==0?Vector3.zero:i==1?new Vector3(36,0,0):new Vector3(36,0,30);
-                    z.FindPropertyRelative("Forward").vector3Value=i==0?Vector3.right:i==1?Vector3.forward:Vector3.left;
-                    z.FindPropertyRelative("HalfWidth").floatValue=i==1?6:2;
-                    z.FindPropertyRelative("AllowDepth").boolValue=i==1;
-                    z.FindPropertyRelative("Offset").vector3Value=i==1?new Vector3(-10,12,-7):i==0?new Vector3(1,3,-12):new Vector3(-1,3,12);
-                    z.FindPropertyRelative("LookOffset").vector3Value=new Vector3(i==2?-2:2,0,0);
-                }
-                so.ApplyModifiedPropertiesWithoutUndo(); SavePrefab(go,"CoreLevelCamera");
+                // The output Camera/Brain and HMS cameras belong to the spawned Actor.
+                go.AddComponent<LevelCameraService>();
+                SavePrefab(go,"CoreLevelCamera");
             }
             finally { Object.DestroyImmediate(go); }
         }

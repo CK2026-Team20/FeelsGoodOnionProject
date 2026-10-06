@@ -32,20 +32,31 @@ namespace Cooked.Session
         }
         private void Update()
         {
+            if (interaction != null && Time.frameCount > suppressButtonsThroughFrame &&
+                control != null && !control.State.PresentationPaused && Keyboard.current != null &&
+                Keyboard.current.eKey.wasPressedThisFrame && interaction.TryCloseOverlay())
+            { bridge?.ClearInput(); return; }
             if (bridge == null || reader == null || !reader.CanReadInput || !bridge.CanAct)
             {
                 bridge?.ClearInput(); interaction?.Refresh(); return;
+            }
+            if (Time.frameCount <= suppressButtonsThroughFrame)
+            {
+                bridge.ClearInput(); interaction.Refresh(); return;
+            }
+            // UI/메모가 이 프레임에 제어를 바꾸면 아래 게임 명령을 모두 소비합니다.
+            if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            {
+                interaction.TryInteract();
+                if (bridge == null || !bridge.CanAct || Time.frameCount <= suppressButtonsThroughFrame) return;
             }
             Vector2 move = reader.MoveInput;
             bridge.Move(new Vector3(move.x, 0, move.y));
             interaction.Refresh();
             if (Time.frameCount <= suppressButtonsThroughFrame) return;
             if (reader.JumpPressedThisFrame) bridge.Jump();
-            // F consumes interaction only; E is the only tear binding. No legacy CheckInteract.
-            if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame) interaction.TryInteract();
             if (reader.TearSkillPressedThisFrame) bridge.Tear();
             if (reader.FormChangePressedThisFrame) bridge.ChangeForm();
-            if (reader.RecoverDebrisPressedThisFrame) bridge.RecoverShell();
         }
         public void Unbind()
         {

@@ -21,6 +21,7 @@ namespace Cooked.Integration
         private readonly IGameFlowService flow;
         private readonly List<IDisposable> eventSubscriptions = new List<IDisposable>();
         private bool disposed, visibilityInitialized;
+        private bool actorBindingsReady;
         public GameSessionService Session { get; }
         public PlayerBridgeService Player { get; }
         public DialogueService Dialogue { get; }
@@ -85,7 +86,7 @@ namespace Cooked.Integration
         {
             ThrowIfDisposed();
             if (!Session.IsActive) throw new InvalidOperationException("Session is inactive.");
-            Stages.Refresh();
+            Stages.Refresh(Session.Checkpoint.StageId);
             var saved = Session.Checkpoint;
             var stage = Stages.Require(saved.StageId);
             if (!stage.TryGetCheckpointPose(saved.CheckpointId, out Pose pose))
@@ -93,8 +94,6 @@ namespace Cooked.Integration
             try
             {
                 host.Spawn(pose, saved.Fragments);
-                Player.SetDepthMovementAllowed(saved.StageId == "03_2_Stage");
-                ActorReady?.Invoke();
             }
             catch (Exception spawnError)
             {
@@ -106,6 +105,19 @@ namespace Cooked.Integration
                 throw;
             }
         }
+        // Spawn is synchronous, but HMS initializes its authoritative movement mode in Start.
+        // The runtime coroutine calls this after Start and keeps gameplay hidden until Brain is ready.
+        public void CompleteActorBindings()
+        {
+            ThrowIfDisposed();
+            if (actorBindingsReady) throw new InvalidOperationException("Actor bindings were already completed.");
+            if (host.CameraRig == null || !host.CameraRig.IsReady)
+                throw new InvalidOperationException("Actor HMS mode has not initialized.");
+            ActorReady?.Invoke();
+            actorBindingsReady = true;
+        }
+        public bool ActorViewReady => actorBindingsReady && host.CameraRig != null &&
+            host.CameraRig.IsReady && host.CameraRig.SelectionComplete;
         public IEnumerator DespawnActor()
         {
             if (disposed) yield break;
@@ -120,6 +132,7 @@ namespace Cooked.Integration
         }
         private void NotifyActorRemoving()
         {
+            actorBindingsReady = false;
             var handlers = ActorRemoving;
             if (handlers == null) return;
             var errors = new List<Exception>();
@@ -130,7 +143,7 @@ namespace Cooked.Integration
         public bool TryStartSafeDialogue(string stageId, string code)
         {
             ThrowIfDisposed();
-            if (!CanAcceptWorldRequest || stageId != "03_2_Stage") return false;
+            if (!CanAcceptWorldRequest) return false;
             Stages.Require(stageId);
             return Dialogue.TryStart(code);
         }
@@ -140,6 +153,7 @@ namespace Cooked.Integration
             ThrowIfDisposed();
             if (visibilityInitialized && GameplayVisible == value) return;
             GameplayVisible = value; visibilityInitialized = true;
+            if (host.CameraRig != null) host.CameraRig.SetOutputVisible(value);
             GameplayVisibilityChanged?.Invoke(value);
             // UI owns mount activation; rebind only after it has become active again.
             // DialogueView.OnDisable cancels and unbinds when opening/ending hides the mount.

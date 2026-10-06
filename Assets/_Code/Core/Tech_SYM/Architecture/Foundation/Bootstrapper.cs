@@ -7,6 +7,7 @@ namespace Cooked.Foundation
     [DisallowMultipleComponent]
     public sealed class Bootstrapper : MonoBehaviour
     {
+        [Tooltip("대화 ID·화자·문장을 담은 JSON TextAsset입니다. 시작 시 검증하므로 현재 대화 테이블 자산을 연결하세요.")]
         [SerializeField] private TextAsset dialogueTable;
         private static Bootstrapper active;
         private ServiceLocator appServices;

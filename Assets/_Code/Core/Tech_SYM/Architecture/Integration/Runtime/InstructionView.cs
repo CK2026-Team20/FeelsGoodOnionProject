@@ -5,7 +5,9 @@ namespace Cooked.Integration
 {
     public sealed class InstructionView : BoundView<InstructionViewModel>
     {
+        [Tooltip("조작 설명의 표시 여부를 제어할 CanvasGroup입니다.")]
         [SerializeField] private CanvasGroup group;
+        [Tooltip("가장 가까운 기믹의 조작 설명을 출력할 TMP 텍스트입니다.")]
         [SerializeField] private TMP_Text label;
         public void Configure(CanvasGroup group, TMP_Text label) { this.group = group; this.label = label; }
         protected override void Refresh()

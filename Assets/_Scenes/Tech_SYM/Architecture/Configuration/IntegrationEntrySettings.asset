@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: IntegrationEntrySettings
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Integration.IntegrationEntrySettings
   entries:
-  - stageId: 03_1_Stage
-    checkpointId: S1_START
+  - stageId: 1_Stage
+    checkpointId: P_START
     fragments: 0
     abilities: 
   - stageId: 03_2_Stage
     checkpointId: S2_ENTRY
-    fragments: 1
+    fragments: 5
     abilities: 000000000200000001000000i
   - stageId: 03_3_Stage
     checkpointId: S3_ENTRY
-    fragments: 1
+    fragments: 5
     abilities: 000000000200000001000000i

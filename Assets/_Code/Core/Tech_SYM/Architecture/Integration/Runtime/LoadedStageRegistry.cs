@@ -14,13 +14,13 @@ namespace Cooked.Integration
         private readonly Dictionary<string, IStageService> stages = new Dictionary<string, IStageService>(StringComparer.Ordinal);
         public LoadedStageRegistry(SceneCatalog catalog) { this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog)); }
         public IReadOnlyCollection<IStageService> Stages => new List<IStageService>(stages.Values).AsReadOnly();
-        public void Refresh()
+        public void Refresh(string expectedStageId = null)
         {
             var next = new Dictionary<string, IStageService>(StringComparer.Ordinal);
             foreach (string path in catalog.StagePaths)
             {
                 var scene = SceneManager.GetSceneByPath(path);
-                if (!scene.IsValid() || !scene.isLoaded) throw new InvalidOperationException("Stage not loaded: " + path);
+                if (!scene.IsValid() || !scene.isLoaded) continue;
                 IStageService found = null;
                 foreach (var root in scene.GetRootGameObjects())
                     foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
@@ -36,6 +36,8 @@ namespace Cooked.Integration
                 if (next.ContainsKey(found.StageId)) throw new InvalidOperationException("Duplicate Stage: " + found.StageId);
                 next.Add(found.StageId, found);
             }
+            if (next.Count != 1 || (expectedStageId != null && !next.ContainsKey(expectedStageId)))
+                throw new InvalidOperationException("Exactly the selected Stage must be loaded: " + expectedStageId);
             stages.Clear();
             foreach (var pair in next) stages.Add(pair.Key, pair.Value);
         }

@@ -25,14 +25,14 @@ namespace Cooked.Integration.Editor
         public const string Root = "Assets/_Scenes/Tech_SYM/Architecture";
         public const string EntriesPath = Root + "/Configuration/IntegrationEntrySettings.asset";
         public static SceneCatalog Catalog => new SceneCatalog(Root+"/01_Bootstrapper.unity",Root+"/02_Title.unity",
-            Root+"/03_InGameCore.unity",Enumerable.Range(1,3).Select(i=>Root+"/Stages/03_"+i+"_Stage.unity"));
+            Root+"/03_InGameCore.unity",new[]{Root+"/Prototype/1_Stage.unity",Root+"/Stages/03_2_Stage.unity",Root+"/Stages/03_3_Stage.unity"});
         [MenuItem("Cooked/Core/Build Core Owned Assets")]
         public static void BuildCoreAssets()
         {
             RequireCleanEditor();
             Cooked.Session.Editor.SessionActorBuilder.Build();
             Cooked.Chase.Editor.ChaseAssetBuilder.Build();
-            Cooked.Level.Editor.LevelAssetBuilder.Build();
+            PrototypeStageAuthoring.Build();
         }
         [MenuItem("Cooked/Core/Build Final Scenes")]
         public static void BuildScenes()
@@ -56,9 +56,9 @@ namespace Cooked.Integration.Editor
             installation.Configure(Catalog); EditorUtility.SetDirty(installation);
             var entries=GetOrCreate<IntegrationEntrySettings>(EntriesPath);
             entries.Configure(new[]{
-                new IntegrationEntrySettings.Entry("03_1_Stage","S1_START",0),
-                new IntegrationEntrySettings.Entry("03_2_Stage","S2_ENTRY",1,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear),
-                new IntegrationEntrySettings.Entry("03_3_Stage","S3_ENTRY",1,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear)
+                new IntegrationEntrySettings.Entry("1_Stage","P_START",0),
+                new IntegrationEntrySettings.Entry("03_2_Stage","S2_ENTRY",5,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear),
+                new IntegrationEntrySettings.Entry("03_3_Stage","S3_ENTRY",5,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear)
             });
             EditorUtility.SetDirty(entries);
             Author(Catalog.BootstrapPath,()=>BuildBootstrap(installation));
@@ -85,7 +85,7 @@ namespace Cooked.Integration.Editor
             var camera=cameraRoot.AddComponent<Camera>(); camera.cullingMask=0; camera.depth=-100;
             camera.clearFlags=CameraClearFlags.SolidColor; camera.backgroundColor=Color.black;
             cameraRoot.AddComponent<AudioListener>();
-            root.AddComponent<AppComposition>().Configure(bootstrap,installation,ui,audio);
+            root.AddComponent<AppComposition>().Configure(bootstrap,installation,ui,audio,camera);
         }
         private static void BuildCore(IntegrationEntrySettings entries)
         {
@@ -96,7 +96,6 @@ namespace Cooked.Integration.Editor
             ui.transform.SetParent(root.transform,false);
             var cameraRoot=Instantiate(Cooked.Level.Editor.LevelAssetBuilder.AssetRoot+"/Prefabs/CoreLevelCamera.prefab");
             cameraRoot.transform.SetParent(root.transform,false);
-            var camera=cameraRoot.GetComponentInChildren<Camera>(true);
             var cameraService=cameraRoot.GetComponent<LevelCameraService>();
             var dialogue=Instantiate(Cooked.Dialogue.Editor.DialoguePrefabBuilder.PrefabPath,ui.DialogueMount).GetComponent<DialogueView>();
             var driver=root.AddComponent<DialogueDriver>();
@@ -109,8 +108,8 @@ namespace Cooked.Integration.Editor
             var instruction=BuildInstruction(screen,Require<TMP_FontAsset>(Cooked.UI.Editor.UiPrefabBuilder.FontPath));
             instruction.transform.SetSiblingIndex(ui.DialogueMount.GetSiblingIndex());
             ui.CinematicMount.SetAsLastSibling();
-            binding.Configure(ui,camera,instruction);
-            root.AddComponent<CoreComposition>().Configure(host,driver,dialogue,cinematic,entries,binding,cameraService,camera,chase);
+            binding.Configure(ui,instruction);
+            root.AddComponent<CoreComposition>().Configure(host,driver,dialogue,cinematic,entries,binding,cameraService,chase);
             var lightRoot=new GameObject("KitchenLight"); lightRoot.transform.SetParent(root.transform,false);
             var light=lightRoot.AddComponent<Light>(); light.type=LightType.Directional; light.intensity=1.5f;
             light.color=new Color(1,.92f,.8f); lightRoot.transform.rotation=Quaternion.Euler(48,-25,0);

@@ -16,6 +16,6 @@ MonoBehaviour:
   titlePath: Assets/_Scenes/Tech_SYM/Architecture/02_Title.unity
   corePath: Assets/_Scenes/Tech_SYM/Architecture/03_InGameCore.unity
   stagePaths:
-  - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_1_Stage.unity
+  - Assets/_Scenes/Tech_SYM/Architecture/Prototype/1_Stage.unity
   - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_2_Stage.unity
   - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_3_Stage.unity

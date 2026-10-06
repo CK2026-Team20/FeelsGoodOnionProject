@@ -26,8 +26,8 @@ namespace Cooked.Session.Editor
             var tear = GetOrCreate<TearSkillDefinition>(AssetRoot + "/TearSkill.asset");
             var shrink = GetOrCreate<ShrinkSkillDefinition>(AssetRoot + "/ShrinkSkill.asset");
             var restore = GetOrCreate<RestoreFormSkillDefinition>(AssetRoot + "/RestoreSkill.asset");
-            ConfigureSkill(tear, 3f); ConfigureSkill(shrink, .25f); ConfigureSkill(restore, .25f);
-            var ts = new SerializedObject(tear); ts.FindProperty("requiredFragments").intValue = 1;
+            ConfigureSkill(tear, 0f); ConfigureSkill(shrink, .25f); ConfigureSkill(restore, .25f);
+            var ts = new SerializedObject(tear); ts.FindProperty("requiredFragments").intValue = 5;
             ts.FindProperty("effectRadius").floatValue = 3; ts.FindProperty("stunDuration").floatValue = 2;
             ts.ApplyModifiedPropertiesWithoutUndo();
             GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(OnionPath);
@@ -64,10 +64,7 @@ namespace Cooked.Session.Editor
                 var motion = new SerializedObject(body.GetComponent<CharacterMovement>());
                 motion.FindProperty("moveSpeed").floatValue = 5; motion.FindProperty("jumpHeight").floatValue = 2;
                 motion.ApplyModifiedPropertiesWithoutUndo();
-                var facing = new SerializedObject(root.AddComponent<ActorFacingPresentation>());
-                facing.FindProperty("movement").objectReferenceValue = body.GetComponent<CharacterMovement>();
-                facing.FindProperty("visualRoot").objectReferenceValue = visual.transform;
-                facing.ApplyModifiedPropertiesWithoutUndo();
+                HmsActorCameraAuthoring.Assemble(root, facade, true);
                 var fall = new SerializedObject(root.AddComponent<ActorFallGuard>());
                 fall.FindProperty("actor").objectReferenceValue = facade; fall.ApplyModifiedPropertiesWithoutUndo();
                 SessionActorHost.ValidateInputOwnership(root);
@@ -86,6 +83,7 @@ namespace Cooked.Session.Editor
             }
             finally { UnityEngine.Object.DestroyImmediate(host); }
             AssetDatabase.SaveAssets();
+            PrototypePlayerAuthoring.ApplyOwnedActor();
         }
         private static PlayerDebris BuildDebris(GameObject model)
         {

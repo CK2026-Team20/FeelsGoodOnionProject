@@ -12,22 +12,29 @@ namespace Cooked.Integration
 {
     public sealed class CoreComposition : MonoBehaviour
     {
+        [Tooltip("세션 플레이어를 생성·복원·제거할 SessionActorHost입니다. 씬에 직접 배치한 중복 플레이어 대신 이 담당을 사용합니다.")]
         [SerializeField] private SessionActorHost actor;
+        [Tooltip("대화 문장 진행을 갱신하는 담당입니다. 해당 Core의 DialogueDriver를 연결하세요.")]
         [SerializeField] private DialogueDriver dialogueDriver;
+        [Tooltip("현재 대화와 로그를 보여 줄 화면입니다. 해당 Core의 DialogueView를 연결하세요.")]
         [SerializeField] private DialogueView dialogueView;
+        [Tooltip("오프닝·엔딩 재생을 담당하는 CinematicHost입니다.")]
         [SerializeField] private CinematicHost cinematic;
+        [Tooltip("직접 씬 진입 때 사용할 체크포인트·조각·해금 능력 설정 자산입니다.")]
         [SerializeField] private IntegrationEntrySettings entries;
+        [Tooltip("Core HUD와 월드 안내를 세션 상태에 연결하는 담당입니다.")]
         [SerializeField] private CoreUiBinding ui;
+        [Tooltip("트리거 구간별 카메라와 이동축 전환을 담당하는 컴포넌트입니다.")]
         [SerializeField] private LevelCameraService cameraService;
-        [SerializeField] private Camera gameplayCamera;
+        [Tooltip("마지막 구간의 추격 무리를 갱신하고 포획을 전달할 담당입니다.")]
         [SerializeField] private ChaseRuntimeDriver chase;
         private GameSessionRuntime runtime;
         private CoreWorldBinding world;
         public void Configure(SessionActorHost actorHost, DialogueDriver driver, DialogueView dialogue,
             CinematicHost cinematicHost, IntegrationEntrySettings entrySettings, CoreUiBinding uiBinding,
-            LevelCameraService levelCamera, Camera camera, ChaseRuntimeDriver chaseDriver)
+            LevelCameraService levelCamera, ChaseRuntimeDriver chaseDriver)
         { actor=actorHost; dialogueDriver=driver; dialogueView=dialogue; cinematic=cinematicHost; entries=entrySettings;
-          ui=uiBinding; cameraService=levelCamera; gameplayCamera=camera; chase=chaseDriver; }
+          ui=uiBinding; cameraService=levelCamera; chase=chaseDriver; }
         public GameSessionRuntime CreateSession(ServiceLocator app, SceneCatalog catalog, AudioFlowBinding audioFlow)
         {
             if (runtime != null) throw new InvalidOperationException("Core already owns a session.");
@@ -45,11 +52,6 @@ namespace Cooked.Integration
                 try { Cleanup(); } catch (Exception cleanup) { throw new AggregateException(error, cleanup); }
                 throw;
             }
-        }
-        private void LateUpdate()
-        {
-            if (runtime != null && runtime.Player.HasActor)
-                runtime.Player.SetInputBasis(gameplayCamera.transform.right, gameplayCamera.transform.forward);
         }
         private void Cleanup()
         {

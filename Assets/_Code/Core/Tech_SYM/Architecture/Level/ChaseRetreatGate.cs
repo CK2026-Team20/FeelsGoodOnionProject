@@ -5,6 +5,7 @@ namespace Cooked.Level
     /// <summary>Level-owned physical retreat barrier. Chase rules and start acceptance belong to Chase.</summary>
     public sealed class ChaseRetreatGate : MonoBehaviour
     {
+        [Tooltip("추격 시작 뒤 뒤로 돌아가지 못하도록 활성화할 BoxCollider입니다. 플레이어와 겹치지 않는 위치의 차단 콜라이더를 연결하세요.")]
         [SerializeField] private BoxCollider blocker;
         public bool IsClosed { get; private set; }
         public Bounds ClosureBounds

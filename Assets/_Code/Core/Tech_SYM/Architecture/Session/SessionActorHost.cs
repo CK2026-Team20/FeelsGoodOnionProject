@@ -4,13 +4,16 @@ using System.Collections.Generic;
 using Cooked.Contracts;
 using FeelsGoodOnion.TechSYM.Interaction;
 using UnityEngine;
+using Cooked.Level;
 
 namespace Cooked.Session
 {
     /// <summary>InGameCore owns this host; retry replaces only its actor, not the host or UI.</summary>
     public sealed class SessionActorHost : MonoBehaviour
     {
+        [Tooltip("세션에 생성할 플레이어 루트 프리팹입니다. 병합 PlayerFacade·물리·외형 연결이 준비된 프리팹을 지정하세요.")]
         [SerializeField] private GameObject actorPrefab;
+        [Tooltip("플레이어 껍질·일회성 객체를 세션 종료 때 정리할 소유 범위입니다.")]
         [SerializeField] private SessionTransientScope transientScope;
         private PlayerBridgeService bridge;
         private IGameplayControlService control;
@@ -18,6 +21,7 @@ namespace Cooked.Session
         private GameObject actorRoot;
         private bool releasing, shutdown, spawning;
         public GameObject ActorRoot => actorRoot;
+        public ActorCameraRig CameraRig => actorRoot != null ? actorRoot.GetComponentInChildren<ActorCameraRig>(true) : null;
         public PlayerInteractionService Interaction { get; private set; }
         public event Action<PlayerInteractionService> InteractionChanged;
 
@@ -50,6 +54,9 @@ namespace Cooked.Session
                 var reader = actorRoot.GetComponentInChildren<PlayerInputReader>(true);
                 var router = actorRoot.GetComponent<GameplayInputRouter>();
                 if (actor == null || reader == null || router == null) throw new InvalidOperationException("Actor prefab dependencies missing.");
+                var camera = CameraRig;
+                if (camera == null) throw new InvalidOperationException("Actor prefab requires the authored HMS Cinemachine rig.");
+                camera.ValidateConfiguration();
                 // All HMS serialized dependencies were authored before first activation.
                 actorRoot.SetActive(true);
                 bridge.Attach(actor);
@@ -116,7 +123,7 @@ namespace Cooked.Session
             if (root.GetComponentsInChildren<PlayerInputReader>(true).Length != 1 || root.GetComponentsInChildren<GameplayInputRouter>(true).Length != 1)
                 throw new InvalidOperationException("Actor requires one input reader and one gameplay router.");
             foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
-                if (behaviour != null && (behaviour.GetType().Name == "TestPlayerFunc" || behaviour.GetType().Name == "PlayerSkillHUD"))
+                if (behaviour != null && (behaviour.GetType().Name == "TestPlayerFunc" || behaviour.GetType().Name == "PlayerSkillHUD" || behaviour.GetType().Name == "TestPlayerMovementMode"))
                     throw new InvalidOperationException("Legacy debug input component found in actor.");
         }
         public void Shutdown()

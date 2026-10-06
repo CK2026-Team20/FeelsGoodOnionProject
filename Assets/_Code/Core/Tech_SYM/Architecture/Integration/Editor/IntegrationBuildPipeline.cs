@@ -18,6 +18,7 @@ namespace Cooked.Integration.Editor
             public string startedUtc, finishedUtc, projectPath, executable, result;
             public string[] scenes, changedProjectSettings;
             public int errors, warnings;
+            public string setupBefore, setupAfter, startSceneBefore, startSceneAfter;
             public ulong bytes;
         }
         [MenuItem("Cooked/Integration/Build Windows Player")]
@@ -44,7 +45,7 @@ namespace Cooked.Integration.Editor
             Directory.CreateDirectory(output);
             string executable = Path.Combine(output, "CookedPrototype.exe");
             var before = SettingsHashes(project);
-            var evidence = new BuildEvidence { projectPath = project, startedUtc = DateTime.UtcNow.ToString("O"), scenes = scenes, executable = executable };
+            var evidence = new BuildEvidence { setupBefore = SceneSetupSnapshot(), startSceneBefore = AssetDatabase.GetAssetPath(UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene), projectPath = project, startedUtc = DateTime.UtcNow.ToString("O"), scenes = scenes, executable = executable };
             try
             {
                 BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
@@ -67,16 +68,21 @@ namespace Cooked.Integration.Editor
             finally
             {
                 evidence.finishedUtc = DateTime.UtcNow.ToString("O");
+                evidence.setupAfter = SceneSetupSnapshot();
+                evidence.startSceneAfter = AssetDatabase.GetAssetPath(UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene);
                 var after = SettingsHashes(project);
                 evidence.changedProjectSettings = before.Keys.Union(after.Keys).Where(p => !before.TryGetValue(p, out var a) || !after.TryGetValue(p, out var b) || a != b).ToArray();
                 File.WriteAllText(Path.Combine(output, "build-evidence.json"), JsonUtility.ToJson(evidence, true));
                 if (evidence.changedProjectSettings.Length != 0)
                     Debug.LogError("Build changed ProjectSettings; review required: " + string.Join(", ", evidence.changedProjectSettings));
             }
+            if(evidence.setupBefore != evidence.setupAfter || evidence.startSceneBefore != evidence.startSceneAfter)
+                throw new InvalidOperationException("Build scene setup/startScene differs; no automatic save/discard attempted.");
             if (evidence.changedProjectSettings.Length != 0)
                 throw new InvalidOperationException("Build did not preserve ProjectSettings. Do not approve for release.");
             Debug.Log("Cooked build created. Runtime LOOP is still unverified: " + executable);
         }
+        private static string SceneSetupSnapshot() => string.Join(";",UnityEditor.SceneManagement.EditorSceneManager.GetSceneManagerSetup().Select(s=>s.path+"|loaded="+s.isLoaded+"|active="+s.isActive+"|dirty="+UnityEngine.SceneManagement.SceneManager.GetSceneByPath(s.path).isDirty));
         private static Dictionary<string, string> SettingsHashes(string project)
         {
             var result = new Dictionary<string, string>(StringComparer.Ordinal);

@@ -6,6 +6,7 @@ namespace Cooked.Session
     [DisallowMultipleComponent]
     public sealed class SessionTransientLifetime : MonoBehaviour
     {
+        [Tooltip("이 객체를 세션 종료 시 함께 정리할 소유 범위입니다. 다른 세션의 범위를 연결하지 마세요.")]
         [SerializeField] private SessionTransientScope scope;
         private SessionTransientService owner;
         private void OnEnable()

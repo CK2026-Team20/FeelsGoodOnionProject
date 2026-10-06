@@ -19,6 +19,7 @@ namespace Cooked.Session
         private PlayerFormController form;
         private PlayerSkill observedTear;
         private CharacterMovement movement;
+        private PlayerMovementModeController movementMode;
         private Vector3 inputRight = Vector3.right, inputForward = Vector3.forward;
         private bool deathReported, disposed, detaching, pendingTear, pendingForm;
         public bool HasActor => actor != null;
@@ -53,6 +54,7 @@ namespace Cooked.Session
             skills = actor.GetComponent<PlayerSkillController>();
             form = actor.GetComponent<PlayerFormController>();
             movement = actor.GetComponent<CharacterMovement>();
+            movementMode = actor.GetComponent<PlayerMovementModeController>();
             observedTear = skills.GetEquippedSkill(TearSlot);
             CameraTarget = actor.transform.Find("CameraAnchor") ?? actor.transform;
             deathReported = false; pendingTear = false; pendingForm = false;
@@ -77,7 +79,7 @@ namespace Cooked.Session
             var oldForm = form;
             var oldTear = observedTear;
             bool hadActor = oldModel != null;
-            actor = null; model = null; skills = null; movement = null; form = null; observedTear = null; CameraTarget = null;
+            actor = null; model = null; skills = null; movement = null; movementMode = null; form = null; observedTear = null; CameraTarget = null;
             pendingTear = false; pendingForm = false;
             try
             {
@@ -112,22 +114,34 @@ namespace Cooked.Session
             else if (delta < 0 && !actor.TryConsumeSkillFragments(-delta)) throw new InvalidOperationException("Fragment restore rejected.");
             if (model.CurrentSkillFragment != fragments) throw new InvalidOperationException("Fragment restore mismatch.");
         }
-        public void SetDepthMovementAllowed(bool allowed) { RequireActor(); movement.SetDepthMovementAllowed(allowed); }
+        public void SetDepthMovementAllowed(bool allowed) => SetWorldMovementAxes(true, allowed);
         public void SetInputBasis(Vector3 right, Vector3 forward)
         {
             right.y = forward.y = 0;
             if (right.sqrMagnitude < .001f || forward.sqrMagnitude < .001f) return;
             inputRight = right.normalized; inputForward = forward.normalized;
         }
+        public void SetWorldMovementAxes(bool x, bool z)
+        {
+            RequireActor();
+            if (!x && !z) throw new ArgumentException("An active movement mode requires at least one axis.");
+            SetInputBasis(Vector3.right, Vector3.forward);
+            if (movementMode == null || !movementMode.TrySetMode(!x ? PlayerMovementMode.BackFixed :
+                z ? PlayerMovementMode.Quarter : PlayerMovementMode.Side))
+                throw new InvalidOperationException("HMS movement mode is not ready.");
+            ClearInput();
+        }
         public void Move(Vector3 input)
         {
             if (!CanAct) { ClearInput(); return; }
+            input.x = movement.AllowHorizontalMovement ? input.x : 0;
+            input.z = movement.AllowDepthMovement ? input.z : 0;
             Vector3 world = inputRight * input.x + inputForward * input.z;
             if (!actor.AllowDepthMovement) world = Vector3.right * Mathf.Sign(inputRight.x) * input.x;
             actor.SetMoveInput(Vector3.ClampMagnitude(world, 1));
         }
         public void ClearInput() { if (actor != null) actor.ClearInput(); }
-        public bool Jump() { if (!CanAct) return false; actor.RequestJump(); return true; }
+        public bool Jump() { if (!CanAct || movement == null || !movement.IsGrounded) return false; actor.RequestJump(); return true; }
         /// <returns>Request accepted. Preparation may still cancel; only AbilitySucceeded is an audio success signal.</returns>
         public bool Tear()
         {
@@ -144,6 +158,14 @@ namespace Cooked.Session
         public bool ChangeForm()
         {
             if (!CanUse(AbilityId.FormChange)) return false;
+            var animation = actor.GetComponent<PlayerAnimationController>();
+            var output = actor.GetComponent<PlayerAnimatorOutput>();
+            if (animation != null && animation.isActiveAndEnabled && output != null && output.isActiveAndEnabled)
+            {
+                var request = animation.CurrentRequest;
+                if (request.IsOneShot && (request.Animation == PlayerAnimationId.Shrink ||
+                    request.Animation == PlayerAnimationId.RestoreForm)) return false;
+            }
             var current = skills.GetEquippedSkill(FormSlot);
             if (current != null && current.IsInUse) return false;
             pendingForm = true;
@@ -154,12 +176,6 @@ namespace Cooked.Session
                 return accepted;
             }
             catch { pendingForm = false; throw; }
-        }
-        public bool RecoverShell()
-        {
-            if (!CanUse(AbilityId.RecoverShell) || !actor.TryRecoverDebris()) return false;
-            NotifyAbility(AbilityId.RecoverShell);
-            return true;
         }
         private void OnTearActivated(PlayerSkill skill)
         {

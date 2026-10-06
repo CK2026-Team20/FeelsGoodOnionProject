@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: RestoreSkill
   m_EditorClassIdentifier: Assembly-CSharp::RestoreFormSkillDefinition
   icon: {fileID: 0}
-  cooldown: 0.25
+  cooldown: 0
   initCooldown: 0
   preparationTime: 0

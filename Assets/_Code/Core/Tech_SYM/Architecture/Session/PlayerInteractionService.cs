@@ -5,14 +5,23 @@ using UnityEngine;
 
 namespace Cooked.Session
 {
-    /// <summary>F-only interaction selector. Does not poll input or reference a View.</summary>
+    /// <summary>E interaction selector. Does not poll input or reference a View.</summary>
     public sealed class PlayerInteractionService : IDisposable
     {
         private readonly PlayerBridgeService player;
         private readonly float distance;
         private readonly int layers;
         private InteractionPromptAnchor target;
-        public const string InputLabel = "F";
+        private readonly List<IInteractionOverlay> overlays = new List<IInteractionOverlay>();
+        public const string InputLabel = "E";
+        public void BindOverlays(IEnumerable<IInteractionOverlay> values)
+        { overlays.Clear(); if (values != null) overlays.AddRange(values); }
+        public bool TryCloseOverlay()
+        {
+            foreach (var overlay in overlays)
+                if (overlay != null && overlay.IsOpen) { overlay.RequestClose(); return true; }
+            return false;
+        }
         public InteractionPromptAnchor Target => target;
         public bool IsVisible => player.CanAct && target != null && target.CanInteract;
         public Vector3 PromptPosition => IsVisible ? target.WorldPosition : Vector3.zero;
@@ -66,12 +75,14 @@ namespace Cooked.Session
         }
         public bool TryInteract()
         {
+            if (TryCloseOverlay()) return true;
             if (!player.CanAct) return false;
             Refresh();
             return target != null && target.CanInteract && target.Interactable.Interact();
         }
         public void Dispose()
         {
+            overlays.Clear();
             target = null; var handlers = Changed; Changed = null;
             var errors = new List<Exception>(); SessionCleanup.Notify(errors, handlers);
             SessionCleanup.ThrowIfAny(errors, "Interaction disposal observer failures.");

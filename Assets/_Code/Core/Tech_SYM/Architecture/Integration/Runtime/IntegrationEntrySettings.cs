@@ -12,9 +12,13 @@ namespace Cooked.Integration
         [Serializable]
         public sealed class Entry
         {
+            [Tooltip("진입할 스테이지의 고유 ID입니다. 해당 StageService의 Stage Id와 정확히 일치해야 합니다.")]
             [SerializeField] private string stageId;
+            [Tooltip("직접 진입 시 사용할 체크포인트 ID입니다. 해당 스테이지에 등록된 Checkpoint Id와 일치해야 합니다.")]
             [SerializeField] private string checkpointId;
-            [SerializeField, Range(0, 1)] private int fragments;
+            [Tooltip("직접 진입 시 보유할 눈물 조각 수입니다(0~5개). 0은 조각 없음이며 5개를 모아야 눈물을 사용할 수 있습니다.")]
+            [SerializeField, Range(0, 5)] private int fragments;
+            [Tooltip("직접 진입 시 이미 해금할 능력 목록입니다. 비어 있으면 능력이 잠겨 있으며 이후 체크포인트에서 해금됩니다.")]
             [SerializeField] private AbilityId[] abilities = Array.Empty<AbilityId>();
             public string StageId => stageId;
             public CheckpointSnapshot Checkpoint => new CheckpointSnapshot(stageId, checkpointId, fragments);
@@ -28,12 +32,13 @@ namespace Cooked.Integration
             public void Validate()
             {
                 _ = Checkpoint;
-                if (fragments > 1) throw new InvalidOperationException("Current HMS tear capacity is one fragment.");
+                if (fragments < 0 || fragments > 5) throw new InvalidOperationException("Tear fragments must be between zero and five.");
                 if (abilities == null) throw new InvalidOperationException("Entry abilities must be specified.");
                 foreach (var ability in abilities)
                     if (!Enum.IsDefined(typeof(AbilityId), ability)) throw new InvalidOperationException("Invalid entry ability.");
             }
         }
+        [Tooltip("스테이지 직접 진입용 초기 설정 목록입니다. 각 Stage Id는 중복 없이 한 번만 등록해야 합니다.")]
         [SerializeField] private Entry[] entries = Array.Empty<Entry>();
         public Entry Require(string stageId)
         {

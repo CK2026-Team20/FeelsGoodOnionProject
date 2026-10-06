@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: ShrinkSkill
   m_EditorClassIdentifier: Assembly-CSharp::ShrinkSkillDefinition
   icon: {fileID: 0}
-  cooldown: 0.25
+  cooldown: 0
   initCooldown: 0
   preparationTime: 0
