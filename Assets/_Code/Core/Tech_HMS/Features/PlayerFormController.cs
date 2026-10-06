@@ -356,11 +356,6 @@ public sealed class PlayerFormController : MonoBehaviour
             return PlayerSkillBlockReason.InvalidForm;
         }
 
-        if (!debrisRecovered)
-        {
-            return PlayerSkillBlockReason.DebrisNotRecovered;
-        }
-
         if (!HasRestoreSpace())
         {
             return PlayerSkillBlockReason.NotEnoughSpace;
@@ -370,7 +365,7 @@ public sealed class PlayerFormController : MonoBehaviour
     }
 
     /// <summary>
-    /// 회수 여부와 공간을 확인하고 기본 형태로 복귀합니다.
+    /// 공간 확인 성공 후 거리와 무관하게 소유 껍질 회수와 기본 형태 복귀를 함께 처리합니다.
     /// </summary>
     public bool RestoreForm()
     {
@@ -379,6 +374,10 @@ public sealed class PlayerFormController : MonoBehaviour
             return false;
         }
 
+        // 실패 시 껍질을 보존합니다. 공간이 생겨도 새 요청 없이는 자동 복귀하지 않습니다.
+        if (OwnedDebris != null) OwnedDebris.Remove();
+        OwnedDebris = null;
+        debrisRecovered = true;
         ApplyForm(PlayerForm.Normal);
         FormChanged?.Invoke(CurrentForm);
 
