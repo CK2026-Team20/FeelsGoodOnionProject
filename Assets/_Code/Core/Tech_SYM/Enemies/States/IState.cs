@@ -1,6 +1,6 @@
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
-    public enum EnemyState { IDLE, PATROL, CHASING, STUNNED }
+    public enum EnemyState { IDLE, PATROL, STUNNED }
     public interface IState
     {
         EnemyState Kind { get; }

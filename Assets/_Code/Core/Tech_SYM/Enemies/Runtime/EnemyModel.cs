@@ -34,6 +34,6 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (seconds > 0) StunMilliseconds = Math.Max(0, StunMilliseconds - seconds * 1000.0);
         }
-        public void Kill() { Health = 0; StunMilliseconds = 0; }
+        public void ClearStun() => StunMilliseconds = 0;
     }
 }

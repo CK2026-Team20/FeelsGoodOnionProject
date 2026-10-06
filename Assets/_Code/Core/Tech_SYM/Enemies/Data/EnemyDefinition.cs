@@ -13,7 +13,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         [SerializeField] private EnemyKind kind = EnemyKind.Patrol;
         [Tooltip("활성화마다 초기화할 체력입니다.")]
         [SerializeField, Min(1)] private int health = 3;
-        [Tooltip("순찰 및 추격 속도(m/s)입니다.")]
+        [Tooltip("순찰 속도(m/s)입니다.")]
         [SerializeField, Min(0.01f)] private float speed = 2f;
         [Tooltip("플레이어에게 접촉당 한 번 가하는 피해입니다.")]
         [SerializeField, Min(0)] private int contactDamage = 1;

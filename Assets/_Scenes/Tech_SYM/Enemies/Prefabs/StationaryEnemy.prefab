@@ -9,8 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 278282293767706423}
-  - component: {fileID: 1680834239179257207}
-  - component: {fileID: 3346159818468212725}
   m_Layer: 0
   m_Name: HeadSensor
   m_TagString: Untagged
@@ -33,41 +31,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 4458559846967882501}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1680834239179257207
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 887500578443653553}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.8, y: 0.05, z: 0.6}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3346159818468212725
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 887500578443653553}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 21df7c1c19a16f445b3f5daed28437b1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyContactSensor
-  owner: {fileID: 2492422943514009054}
-  isHead: 1
 --- !u!1 &1909918129116334984
 GameObject:
   m_ObjectHideFlags: 0
@@ -103,6 +66,7 @@ Transform:
   - {fileID: 6948369381499412172}
   - {fileID: 4079102006257605152}
   - {fileID: 6518025946226626456}
+  - {fileID: 3379291867356069527}
   m_Father: {fileID: 4995431480892894955}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &7053960110188820071
@@ -139,7 +103,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyContactSensor
   owner: {fileID: 2492422943514009054}
-  isHead: 0
 --- !u!1 &3382561748497290519
 GameObject:
   m_ObjectHideFlags: 0
@@ -151,6 +114,7 @@ GameObject:
   - component: {fileID: 4995431480892894955}
   - component: {fileID: 2492422943514009054}
   - component: {fileID: 7858945187973195197}
+  - component: {fileID: 2679581048087728334}
   m_Layer: 0
   m_Name: StationaryEnemy
   m_TagString: Untagged
@@ -188,14 +152,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyActor
   definition: {fileID: 11400000, guid: 3a9285a127d6dca4f9c13f15abc844a9, type: 2}
   body: {fileID: 7053960110188820071}
-  head: {fileID: 1680834239179257207}
   target: {fileID: 0}
   initiallyInvincible: 0
   initialDirection: 0
   patrolDistance: 3
-  patrolRadius: 5
-  sightDistance: 5
-  sightAngle: 120
   terrainMask:
     serializedVersion: 2
     m_Bits: 1
@@ -223,6 +183,25 @@ MonoBehaviour:
   searchDistance: 10
   size: {x: 2, y: 1.5}
   lifetime: 0
+--- !u!114 &2679581048087728334
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3382561748497290519}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17f8da3663076ae40a103148a4f13594, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyStunVisual
+  stunEffect: {fileID: 3959009622283687769}
+  targetRenderer: {fileID: 5816777719438816033}
+  normalTexture: {fileID: 2800000, guid: ad3e10f0da5fd734886ef5ba0b3a5c3e, type: 3}
+  stunnedTexture: {fileID: 2800000, guid: 8b6350f1ced5f5c449f4f594c628036f, type: 3}
+  materialIndex: 0
+  texturePropertyName: _BaseMap
+  additionalTexturePropertyNames: []
 --- !u!1 &3778207049728361613
 GameObject:
   m_ObjectHideFlags: 0
@@ -493,3 +472,74 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1001 &7604279105256714704
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 4458559846967882501}
+    m_Modifications:
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.9
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6878942526314833545, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_Name
+      value: StunEffect
+      objectReference: {fileID: 0}
+    - target: {fileID: 6878942526314833545, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+--- !u!4 &3379291867356069527 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5143809522885693255, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+  m_PrefabInstance: {fileID: 7604279105256714704}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3959009622283687769 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6878942526314833545, guid: 5542a6b18ff8ad04f957557d3a7fa058, type: 3}
+  m_PrefabInstance: {fileID: 7604279105256714704}
+  m_PrefabAsset: {fileID: 0}
