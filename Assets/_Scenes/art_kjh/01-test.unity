@@ -3271,15 +3271,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 1b1e49667b248f944abd5990bac905b0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.859
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1b1e49667b248f944abd5990bac905b0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 3.372
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1b1e49667b248f944abd5990bac905b0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.331
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1b1e49667b248f944abd5990bac905b0, type: 3}
       propertyPath: m_LocalRotation.w
@@ -8090,7 +8090,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!64 &1000554314
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -8236,10 +8236,14 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: 24a7d53380714d74f9be54c75acbfc6b, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 38cd0a43f9431654ab96fe5b4e133e28, type: 2}
+      objectReference: {fileID: 2100000, guid: 16453895077747c47896516659e2e12f, type: 2}
     - target: {fileID: 919132149155446097, guid: 24a7d53380714d74f9be54c75acbfc6b, type: 3}
       propertyPath: m_Name
       value: bg_gasstove
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 24a7d53380714d74f9be54c75acbfc6b, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -13129,6 +13133,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: pf_burner
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: a48cde5921ae3284d96712f020acbca7, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -13344,7 +13352,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7861203876094565698, guid: 099876a803832484a8760915d592f6ab, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 3.331
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7861203876094565698, guid: 099876a803832484a8760915d592f6ab, type: 3}
       propertyPath: m_LocalPosition.z

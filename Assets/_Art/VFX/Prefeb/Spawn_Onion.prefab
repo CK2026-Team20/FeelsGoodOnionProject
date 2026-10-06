@@ -2412,7 +2412,7 @@ ParticleSystem:
   startDelay:
     serializedVersion: 3
     minMaxState: 0
-    scalar: 0.7
+    scalar: 0.1
     minScalar: 0
     maxCurve:
       serializedVersion: 2
@@ -2454,7 +2454,7 @@ ParticleSystem:
     startLifetime:
       serializedVersion: 3
       minMaxState: 0
-      scalar: 0.85
+      scalar: 1
       minScalar: 5
       maxCurve:
         serializedVersion: 2
@@ -5021,7 +5021,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 3
       minMaxState: 3
-      scalar: 0.18
+      scalar: 0.1
       minScalar: 0.03
       maxCurve:
         serializedVersion: 2
@@ -5282,7 +5282,7 @@ ParticleSystem:
       countCurve:
         serializedVersion: 3
         minMaxState: 0
-        scalar: 35
+        scalar: 45
         minScalar: 30
         maxCurve:
           serializedVersion: 2
@@ -9827,7 +9827,7 @@ GameObject:
   - component: {fileID: 6727982344526098404}
   - component: {fileID: 8567850051683202496}
   m_Layer: 0
-  m_Name: Particle System (4)
+  m_Name: "\uC1FC\uD06C\uC6E8\uC774\uBE0C"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -390,7 +390,7 @@ Material:
     - _EmissionMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _FlowMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _TintColor: {r: 1.1961352, g: 2.936294, b: 5.6351247, a: 1}
+    - _TintColor: {r: 0.6359601, g: 1.5611664, b: 2.9960783, a: 1}
     - _TintMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

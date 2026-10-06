@@ -12,6 +12,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHAMODULATE_ENABLED
   - _ALPHA_TRANSITION_BLEND_SECOND_TEX_MULTIPLY
   - _ALPHA_TRANSITION_MAP_MODE_2D
   - _ALPHA_TRANSITION_MAP_SECOND_TEXTURE_MODE_2D
@@ -24,7 +25,6 @@ Material:
   - _TINT_AREA_ALL
   - _TINT_COLOR_ENABLED
   - _TRANSPARENCY_BY_RIM
-  - _VERTEX_DEFORMATION_ENABLED
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -52,8 +52,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _AlphaTransitionMapSecondTexture:
-        m_Texture: {fileID: 2800000, guid: 9acd3619ec69b8542ae242fed0f7fe56, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Texture: {fileID: 2800000, guid: 6b08335485af66d458dc218c87b6f7d3, type: 3}
+        m_Scale: {x: 0.25, y: 1}
         m_Offset: {x: 0, y: 1.67}
     - _AlphaTransitionMapSecondTexture2DArray:
         m_Texture: {fileID: 0}
@@ -156,7 +156,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _VertexDeformationMap:
-        m_Texture: {fileID: 2800000, guid: e039e7f7a2a5d974baecbf2a069a678d, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
@@ -189,8 +189,8 @@ Material:
     - _AlphaTransitionMapRowCount: 1
     - _AlphaTransitionMapSecondTextureChannelsX: 0
     - _AlphaTransitionMapSecondTextureMapMode: 0
-    - _AlphaTransitionMapSecondTextureOffsetXCoord: 0
-    - _AlphaTransitionMapSecondTextureOffsetYCoord: 31
+    - _AlphaTransitionMapSecondTextureOffsetXCoord: 31
+    - _AlphaTransitionMapSecondTextureOffsetYCoord: 0
     - _AlphaTransitionMapSecondTextureProgress: 0
     - _AlphaTransitionMapSecondTextureProgressCoord: 0
     - _AlphaTransitionMapSecondTextureRandomRowCoord: 0
@@ -204,7 +204,7 @@ Material:
     - _AlphaTransitionProgress: 0.28
     - _AlphaTransitionProgressCoord: 0
     - _AlphaTransitionProgressCoordSecondTexture: 0
-    - _AlphaTransitionProgressSecondTexture: 0.46
+    - _AlphaTransitionProgressSecondTexture: 0.52
     - _AlphaTransitionSecondTextureBlendMode: 2
     - _BaseMapChannel: 0
     - _BaseMapMirrorSampling: 0
@@ -232,9 +232,9 @@ Material:
     - _BaseMapToneShadows: 0.25
     - _BaseMapToneShadowsCoord: 0
     - _Blend: 0
-    - _BlendDst: 10
+    - _BlendDst: 0
     - _BlendModePreserveSpecular: 1
-    - _BlendSrc: 5
+    - _BlendSrc: 2
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
@@ -350,7 +350,7 @@ Material:
     - _TintRimProgressCoord: 0
     - _TintRimSharpness: 0.5
     - _TintRimSharpnessCoord: 0
-    - _TransparentBlendMode: 0
+    - _TransparentBlendMode: 2
     - _VertexAlphaMode: 0
     - _VertexDeformationBaseValue: 0
     - _VertexDeformationEnabled: 0
@@ -379,7 +379,7 @@ Material:
     - _EmissionMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _FlowMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _TintColor: {r: 0.024866648, g: 0.23605707, b: 1.7572463, a: 0.34901962}
+    - _TintColor: {r: 0.024866648, g: 0.23605707, b: 1.7572463, a: 0.6039216}
     - _TintMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
