@@ -35,14 +35,5 @@ namespace Cooked.Audio
         { if (paused) sources[channel].Pause(); else sources[channel].UnPause(); }
         public bool IsPlaying(int channel) => sources[channel].isPlaying;
 
-        /// <summary>Source-output evidence, not proof of physical loudspeaker playback.</summary>
-        public float MeasureSourceOutputRms(int channel, float[] buffer)
-        {
-            if (buffer == null || buffer.Length != 1024) throw new ArgumentException("1024 samples required.", nameof(buffer));
-            sources[channel].GetOutputData(buffer, 0);
-            double square = 0;
-            foreach (float sample in buffer) square += sample * sample;
-            return (float)Math.Sqrt(square / buffer.Length);
-        }
     }
 }

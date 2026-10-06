@@ -80,16 +80,6 @@ namespace Cooked.Audio
         public void Dispose()
         { if (disposed) return; disposed = true; Cancel(); }
 
-#if UNITY_EDITOR
-        /// <summary>Advances only this handle, never DOTween's global tween list.</summary>
-        public void AdvanceForVerification(float scaledDelta, float unscaledDelta)
-        {
-            RequireAlive();
-            if (updateType != UpdateType.Manual) throw new InvalidOperationException("Verification requires Manual update mode.");
-            if (current != null && current.IsPlaying()) current.ManualUpdate(scaledDelta, unscaledDelta);
-        }
-        public bool HasOwnedTweenForVerification => current != null && current.IsActive();
-#endif
         private void RequireAlive()
         { if (disposed) throw new ObjectDisposedException(nameof(DotweenMusicCrossfadeDriver)); }
     }

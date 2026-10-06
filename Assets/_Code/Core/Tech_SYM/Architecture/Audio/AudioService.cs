@@ -4,16 +4,6 @@ using Cooked.Contracts;
 
 namespace Cooked.Audio
 {
-    public readonly struct AudioVoiceSnapshot
-    {
-        public int Channel { get; }
-        public string CueId { get; }
-        public bool Paused { get; }
-        public float Gain { get; }
-        public AudioVoiceSnapshot(int channel, string cueId, bool paused, float gain)
-        { Channel = channel; CueId = cueId; Paused = paused; Gain = gain; }
-    }
-
     /// <summary>App-lifetime policy. Contains no scene, UI, disk, or player-model access.</summary>
     public sealed class AudioService : IAudioService
     {
@@ -159,14 +149,6 @@ namespace Cooked.Audio
             if (disposed) return;
             for (int i = 2; i < ChannelCount; i++)
                 if (voices[i].Cue != null && !voices[i].Paused && !driver.IsPlaying(i)) StopVoice(i);
-        }
-
-        public AudioVoiceSnapshot[] CaptureVoices()
-        {
-            var result = new AudioVoiceSnapshot[ChannelCount];
-            for (int i = 0; i < result.Length; i++)
-                result[i] = new AudioVoiceSnapshot(i, voices[i].Cue?.Id, voices[i].Paused, Gain(i));
-            return result;
         }
 
         public void Dispose()
