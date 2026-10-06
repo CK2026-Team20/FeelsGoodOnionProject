@@ -7,6 +7,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     [DisallowMultipleComponent]
     public sealed class UIScaleTween : MonoBehaviour
     {
+        [Tooltip("UI 열기·닫기 크기 변화 시간입니다(초, 인스펙터 최소 0.01). 높이면 더 천천히 바뀝니다. 월드 정지 중에도 진행하며 옵션이 표시를 정지하면 멈춥니다.")]
         [SerializeField, Min(0.01f)] private float duration = 0.18f;
         private Vector3 restScale;
         private bool initialized;
@@ -36,6 +37,11 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         {
             tween?.Kill(false);
             tween = null;
+        }
+        public void SetPaused(bool paused)
+        {
+            if (paused) tween?.Pause();
+            else tween?.Play();
         }
         private void OnDisable()
         {

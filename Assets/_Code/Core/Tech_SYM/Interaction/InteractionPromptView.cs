@@ -4,7 +4,9 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     /// <summary>고정 UI 루트에서 대상을 추적한다. 말풍선 자식만 켜고 끈다.</summary>
     public sealed class InteractionPromptView : MonoBehaviour
     {
+        [Tooltip("상호작용 대상이 있을 때 표시할 말풍선 외형 오브젝트입니다.")]
         [SerializeField] private GameObject bubble;
+        [Tooltip("말풍선 등장·퇴장 크기 표현을 담당할 UIScaleTween입니다.")]
         [SerializeField] private UIScaleTween scaleTween;
         private InteractionPromptViewModel model;
         private Camera viewCamera;
