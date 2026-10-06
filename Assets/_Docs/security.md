@@ -22,4 +22,21 @@
 
 .meta의 GUID·import 설정과 원본 파일은 함께 보호한다. 참조용 원본 프리팹에 Apply하거나 원본 리소스를 이동해 우회 수정하지 않는다. 권한이 불분명하거나 예외 대상이 지정되지 않았으면 읽기 전용으로 유지한다.
 
+읽기·참조 허용에는 공개 API·이벤트 사용과 자기 소유 씬·프리팹·오브젝트에 타 작업자의 컴포넌트를 추가·설정·연결하는 조립이 포함된다. 자기 소유 배치의 prefab instance override는 그 배치에 저장할 수 있다. 컴포넌트의 소스가 Tech_HMS라는 이유로 자기 소유 Inspector 설정까지 금지하지 않는다. 원본 코드·씬·프리팹·.meta·import 설정의 직접 수정, 보호 원본에 Apply, 원본 이동·삭제·GUID 변경은 별도의 명시적 파일 허가가 필요하다. _Art와 공유 자산도 같은 원본 보호를 적용한다.
+
 예외를 사용할 때는 허용자·대상 경로·작업 범위·변경 결과를 남긴다. 검토 시 추가·삭제·이름 변경을 포함한 Git diff와 .meta 변경을 함께 확인한다. 다른 작업자의 경로 변경 또는 GUID 손상이 발견되면 사용자에게 즉시 보고한다.
+
+## 파일별 승인 예외와 미승인 작업
+
+| 대상 | 허용 작업 | 근거·기간 | 현재 적용 |
+|---|---|---|---|
+| 루트 AGENTS.md·CLAUDE.md·README.md, Assets/_Docs 프로젝트 Markdown·대응 메타데이터, Tech_SYM 지역 지침 | 문서 정합성·중복·참조 경로 정비 | 2026-10-05 최신 지침 적용 요청 | 이번 정비 범위에 허용 |
+| Tech_SYM 코드·소유 씬·프리팹·설정 | 최신 확정 명세와 대조해 확인된 불일치 수정·영향 검증 | 같은 최신 요청; 기존 미커밋 변경 보존 | 확인된 차이만 허용, 무관한 재작성 금지 |
+| Assets/_Code/Core/Tech_HMS/Features/PlayerInputReader.cs 및 PlayerFormController.cs | F/E/Q 입력과 별도 회수키 없는 Q 자동 회수·복귀 규칙의 최소 변경 | 앞선 사용자 답변의 이번 세션 한정 허가 | 해당 규칙에만 적용; 툴팁·전체 리팩터링 허가 아님 |
+| HMS 12파일의 Tooltip 누락 62필드 | 설명 추가 초안만 존재 | inspector-ux-보호영역 기록; 별도 허가 미확인 | 수정 금지·읽기 전용 |
+| Unity·Editor가 자동 저장한 자산·ProjectSettings 변경 | 원인·전후 diff 확인 후 보존·커밋 | 2026-10-06 사용자 직접 지시: 자동으로 추가된 것도 앞으로 전부 커밋 | 자동 변경에만 적용, 수동 보호 원본 수정 권한은 확대하지 않음 |
+| 공용 Interfaces·공유 _Prefabs·_Art·다른 작업자 영역·Packages·ProjectSettings | 읽기·검사 | 별도 파일 허용 없음 | 수정 금지; 기존 변경은 이번 작업 기준점으로 보존 |
+
+기본 권한 표와 예외 표를 함께 적용한다. 과거 세션 한정 허가를 새 세션의 영구 권한으로 사용하지 않는다. 넓은 프로젝트 정비 요청만으로 보호 파일의 쓰기 권한이 생기지 않는다.
+
+현재 플랫폼 실행의 보호 기준점 1,025개는 원래 해시를 유지한다. 최종 감사에서 승인된 자동 저장5건 외 변화는0이다. ProBuilder의 editor.autoRecalculateCollisions 기본값 저장, URP의 Shader Prefilter 및 RuntimeSettings17항목, Input System project-wide Actions의 사전 로드 참조, UnityConnect의 m_Enabled 저장을 확인했다. 패키지 소스에서 확인한 원인과 native 빌드 전후로만 확인한 내부 저장을 구분하며 정확한 해시는 verification의 automatic-change-authorization.json에 보존한다. 이후 자동 저장도 새 기준점으로 몰래 덮지 않고 원래 기준점·변경 시점·원인·현재 값을 함께 기록한다. 앞선250개 미커밋 변경과 HMS 입력·폼의 승인된 두 파일도 기능별 검토 후 포함한다.

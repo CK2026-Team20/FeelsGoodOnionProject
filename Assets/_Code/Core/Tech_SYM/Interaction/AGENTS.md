@@ -6,14 +6,10 @@ CheckInteract 대상 선택, 월드 프롬프트, 메모 Model·ViewModel·View�
 
 ## 유지할 계약
 
-거리·수평각·차폐를 거쳐 대상을 선택하고 E를 한 번 전달한다. 열린 메모의 닫기를 먼저 처리한다. MemoID는 양수이며 다른 MemoObject와 중복하지 않는다.
+거리·수평각·차폐를 거쳐 대상을 선택하고 E를 한 번 전달한다. 메모는 E로만 열고 닫으며 마우스 종료 버튼은 없다. 열린 메모의 닫기를 먼저 처리한다. MemoID는 양수이며 다른 MemoObject와 중복하지 않는다.
 
-MemoUIController의 bool 입력 차단은 단일 흐름용이다. 다중 토큰 차단이 필요한 Architecture에 그대로 섞지 않는다. View는 상태 표시와 입력 전달만 맡고 자기 구독만 해제한다.
-
-현재 작업자는 Tech_SYM이며 변경은 승인된 Tech_SYM 범위에 한정한다. Tech_HMS 등 다른 작업자 폴더, 공용 Interfaces, _Art 원본과 그 .meta는 참조 전용이다. 같은 직군의 별도 명시적 파일 허용이 없는 한 수정하지 않는다.
+MemoUIController는 주입된 제어 서비스에서 자기 입력·월드 토큰을 소유한다. Architecture는 CoreWorldBinding이 공유 서비스를 주입하며 독립 씬은 CheckInteract가 별도 서비스를 조립·해제한다. 독립 조립은 PlayerInputReader의 소유 비활성화를 사용하고 Facade bool 차단으로 되돌아가지 않는다. View는 상태 표시와 입력 전달만 맡고 자기 구독만 해제한다.
 
 ## 검증
 
 가려진 대상·동거리 대상, 중복 ID·누락 Sprite, 열린 상태 E 닫기, 외부 비활성화·파괴, 재바인딩 중복 및 입력 복원을 확인한다.
-
-실행하지 않은 검증을 통과로 기록하지 않는다. Editor의 자산 생성 메뉴와 읽기·검증 메뉴를 구분하며 다른 기능의 씬을 재생성하지 않는다.

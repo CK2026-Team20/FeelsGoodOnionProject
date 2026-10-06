@@ -1,5 +1,9 @@
 # Feels Good Onion Project 개요
 
+> 팀 개발 환경·협업 규칙 안내다. 아래 제품 기획 소개는 작성 당시 참고 자료이며 현재 기능 명세는 [Assets/_Docs/planning-index.md](Assets/_Docs/planning-index.md)와 최신 직접 지시를 따른다. 특히 종전 거리 누적 3-Strike 추격 설명을 현재 FrontContact 포획 규칙에 적용하지 않는다.
+
+현재 플랫폼의 부모 기준 X/Y/Z 이동량·트리거 로컬 정렬 설정은 [설정 가이드](Assets/_Docs/tracking/ready-platform-hms-cleanup-2026-10-06/플랫폼·정렬 설정 가이드.md), 실제 붕괴 자산 연결은 [Animator 연결 가이드](Assets/_Docs/tracking/ready-platform-hms-cleanup-2026-10-06/붕괴 애니메이션 연결 가이드.md)를 따른다. 시험 전용 소스·메뉴 정리 이후의 실행 방법은 [실행 절차](Assets/_Docs/operations.md)에 기록한다. 자동 저장 변경도 원인·diff를 확인하여 커밋에 포함하며 보호 원본의 수동 변경 권한은 별도로 지킨다.
+
 본 문서는 본 프로젝트의 개발 환경, 협업 전략, 브랜치 규칙 및 컨벤션을 정의한 가이드라인입니다. 본 프로젝트는 대학 학기작 프로젝트로 진행됩니다.
 
 ---

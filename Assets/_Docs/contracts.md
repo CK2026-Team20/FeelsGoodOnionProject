@@ -2,6 +2,14 @@
 
 현재 네트워크 소비자용 API는 없다. 아래 계약은 다른 작업자의 플레이어·월드 기능을 연결하거나 프로젝트 데이터를 공급하는 개발자가 사용하는 경계다. 파일 수정 권한과 런타임 API 사용 권한은 다르며 공개 API를 호출한다고 원본 파일 수정 권한이 생기지 않는다.
 
+공개 API·이벤트 소비와 자기 소유 씬·프리팹의 컴포넌트 추가·설정·연결 및 배치 override 저장은 참조 허용에 포함한다. 타 작업자 원본 코드·자산·.meta·import 설정의 직접 수정, 원본 Apply·이동·삭제·GUID 변경은 별도 명시적 파일 허가가 필요하다.
+
+## 앱·플레이 출력 수명
+
+GameSessionRuntime의 GameplayVisible은 표시 요청, ActorViewReady는 HMS/초기 Brain 준비 완료다. GameRuntimeService의 GameplayOutputChanged는 두 상태가 모두 참일 때 실제 플레이 출력이 준비되었다고 통지하며 독립적인 표시 상태를 저장하지 않는다. ActorRemoving에서 이전 ActorCameraRig 출력을 먼저 끄고 false를 통지한다. 재시도는 GameplayVisible이 계속 true여도 새 Actor 준비가 끝나면 다시 통지한다.
+
+AppComposition은 자기 하위 presentationCamera와 같은 오브젝트의 AudioListener 하나만 소유한다. 플레이 출력 true에서는 둘을 끄고 false에서는 켠다. 이전 세션의 이벤트만 종료하고 앱 구독은 다음 판까지 유지한다. 앱 파괴에서는 자기 구독을 해제하고 자기 출력을 끈다. Actor 출력 Transform은 CinemachineBrain이 갱신한다.
+
 ## 공용 상호작용·전투
 
 | 호출 | 입력 | 출력과 거절 |
@@ -42,3 +50,21 @@ Dialogue_Code·Name·Context는 공백만으로 이루어지지 않은 비어 �
 IGameFlowService.Request의 bool은 상태상 요청 수락 여부다. 수락이 최종 전환 완료를 의미하지 않는다. FlowSnapshot의 State·IsBusy·Error를 관찰한다. 중복 전환과 허용되지 않은 상태의 명령은 false다.
 
 OperationResult는 Pending에서 Succeeded·Failed·Cancelled 중 하나로 끝난다. 코루틴 실행 중 취소 토큰을 전달하고 취소를 성공으로 변환하지 않는다. 연출은 Prepare → Play → Hide 순서이며 이전 연출을 숨기지 않은 Prepare는 실패 결과다. 대화 TryStart는 이미 진행 중·옵션 정지·없는 코드일 때 false다. 명령을 이벤트와 직접 호출 양쪽으로 중복 전달하지 않는다.
+
+## 프로토타입 연결 계약 (2026-10-05)
+
+LoadedStageRegistry는 선택한 StageId와 일치하는 스테이지 하나만 요구한다. 설치의 첫 경로는 Prototype/1_Stage이며 기존 Stage2/3 직접 진입은 각 기존 설정을 사용한다. HMS PlayerMovementModeController가 모드·속도·물리 축을 소유한다. TrySetMode는 활성 상태와 Start의 IsInitialized 이후에만 수락하며 같은 모드는 이벤트를 재발행하지 않는다. Side/Quarter/Corridor 요청은 각각 Side/Quarter/BackFixed에 대응한다. 실제 Brain 블렌드와 통로 X/side Z 정렬 완료 후 모드를 확정하고 Bridge는 CharacterMovement의 공개 축 값을 소비한다. 초기 체크포인트 모드는 출력이 숨겨진 상태에서 적용하고 카메라 준비 전 생성 작업을 성공 처리하지 않는다.
+
+MemoUIController.Initialize(control)는 정지 토큰 소유를 조립하며 E닫기는 Gameplay CanAct 검사보다 먼저 처리한다. 메모 View에는 마우스 닫기 버튼·리스너가 없으며 E만 열기·닫기를 요청한다. 최상위 옵션이 있으면 아래 메모를 닫지 않는다. 컷신 관찰자 예외가 결과를 Cancelled로 덮거나 정지 토큰 해제를 막지 않도록 결과 확정과 독립 정리 오류를 구분한다.
+
+## 정렬 설정과 전환 요청
+
+CameraZoneData의 직렬화 필드는 Id(string)·Movement(CameraMovementMode)·AlignmentOffset(Vector3)이다. Movement 저장값은 Side=1, Corridor=2, Quarter=3이다. AlignmentOffset은 소유 트리거/체크포인트 자신의 로컬 좌표이며 Resolve(Transform)가 TransformPoint로 월드 위치를 계산한다. readonly CameraZoneRequest는 Id·Movement·AlignmentPosition을 제공한다. LevelCameraService.EnterZone(request, snap)는 유효한 비어 있지 않은 ID·지원 모드·유한 XYZ 요청만 처리한다. 잘못된 요청은 기존 전환을 취소하거나 CurrentZoneId를 바꾸지 않는다. snap 초기 적용은 현재 Actor 생성 위치를 이동시키지 않는다.
+
+CheckpointMarker의 CameraZone은 같은 Resolve 결과를 제공한다. 기존 빈 ID 체크포인트는 CoreWorldBinding이 StageId별 초기 모드로 대체한다. 체크포인트 bodyOffset은 별도 월드 생성 이동량이므로 정렬 오프셋으로 해석하지 않는다.
+
+## 붕괴 Animator 자산 계약
+
+ShatteredPlatform의 collapseAnimator는 지정한 visual 자체의 Animator를 참조한다. 지원 Collider는 루트에 유지하며 Visual와 자식에는 Collider/Rigidbody를 연결하지 않는다. Controller의 첫 Base Layer에 기본 Ready, Collapse, Completed 상태와 Collapse Trigger를 둔다. Ready→Collapse는 Trigger 조건·전환 시간 0, Collapse→Completed는 Exit Time 1·전환 시간 0이다. Ready/Completed Motion은 비우고 실제 단일 비반복·양수 길이 클립을 Collapse Motion에 연결한다.
+
+Animator는 양수 속도·게임 시간에 따르는 Normal/Fixed 갱신·root motion 비활성을 사용한다. 실제 상태와 클립 재생 완료를 관찰하며 고정 시간으로 성공 완료를 대신하지 않는다. 클립 없음은 경고와 물리 붕괴·숨김을, 잘못된 Controller/상태/참조나 진행 정지는 오류와 같은 안전 후처리를 제공한다. 비활성화·재사용 시 자기 작업을 취소하고 Visual 자식의 원래 위치·회전·크기·렌더 상태와 Ready를 복원한다. 별도 Animator나 보호 원본 자산은 임의 변경하지 않는다.

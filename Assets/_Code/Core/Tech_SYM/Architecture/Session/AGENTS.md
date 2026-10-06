@@ -10,10 +10,8 @@ PlayerRoot는 비활성 프리팹으로 보관하고 의존성이 갖춰진 뒤 
 
 빈 PlayerRoot 아래 ActorBody에 Facade·물리 컴포넌트를 함께 두는 현행 경계를 유지한다. Scene과 Actor의 임시 참조는 제거 통지 후 정리한다. 자기 차단 토큰만 해제한다.
 
-현재 작업자는 Tech_SYM이며 변경은 승인된 Tech_SYM 범위에 한정한다. Tech_HMS 등 다른 작업자 폴더, 공용 Interfaces, _Art 원본과 그 .meta는 참조 전용이다. 같은 직군의 별도 명시적 파일 허용이 없는 한 수정하지 않는다.
+HMS Mode/Visual과 Actor 소유 CameraRig의 출력 Brain·HMS CameraController·네 카메라 참조는 첫 Awake 전에 직렬화로 조립한다. TrySetMode는 Start의 IsInitialized 이후 사용하고 Bridge는 CharacterMovement의 공개 축 상태를 소비하며 별도 축 원본을 두지 않는다. 보호 HMS 원본 수정이나 런타임 private 필드 주입으로 초기화 순서를 우회하지 않는다. 자기 소유 Inspector·배치 override 조립은 참조 허용에 포함한다.
 
 ## 검증
 
 같은 체크포인트 재진입, 능력 해금 유지, 조각 복원, 준비 취소, 재진입 중 종료 오류, 중복 Dispose, Actor와 임시 객체 잔존 여부를 검증한다.
-
-실행하지 않은 검증을 통과로 기록하지 않는다. Editor의 자산 생성 메뉴와 읽기·검증 메뉴를 구분하며 다른 기능의 씬을 재생성하지 않는다.

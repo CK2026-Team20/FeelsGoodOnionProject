@@ -10,10 +10,10 @@ GameFlowService는 전환 시작 시 busy 상태를 동기 게시한다. Core를
 
 세션 연출 참조를 앱 수명으로 캐시하지 않는다. 실패 복구까지 실패하면 입력·월드 차단을 유지한다. ServiceLocator를 View의 업무 서비스 검색 경로로 확장하지 않는다.
 
-현재 작업자는 Tech_SYM이며 변경은 승인된 Tech_SYM 범위에 한정한다. Tech_HMS 등 다른 작업자 폴더, 공용 Interfaces, _Art 원본과 그 .meta는 참조 전용이다. 같은 직군의 별도 명시적 파일 허용이 없는 한 수정하지 않는다.
+Editor 진입은 실제 편집 활성 씬의 정확한 경로로 결정한다. 지정 여섯 경로만 Bootstrap을 경유하고 다른 경로는 startScene=null로 직접 Play한다. 원래 값과 자신이 설정한 값을 구분해 Stop·취소·재로드 시 외부 변경을 덮지 않고 일회성 route를 비운다. 지정 통합 경로의 설치 불일치는 진입 실패이며 비대상 진입은 설치 자산을 요구하지 않는다. 공개 API·컴포넌트는 자기 소유 배치에서 조립할 수 있고 보호 원본의 직접 수정·Apply는 별도 허가가 필요하다.
+
+Stop 중 Play 요청 플래그만 false가 되어도 실제 runtime/Editor Play가 남아 있을 수 있다. 씬 setup 비교와 aborted-entry 정리는 실제 Play·import·컴파일이 모두 끝난 안정 update에서 실행한다. 이를 이유로 외부 startScene 변경을 덮거나 route를 재사용하지 않는다.
 
 ## 검증
 
 중복 요청 거절, Editor 경로 매핑, 부분 초기화 실패, 취소·복구 실패 및 Dispose 후 콜백 부재를 확인한다.
-
-실행하지 않은 검증을 통과로 기록하지 않는다. Editor의 자산 생성 메뉴와 읽기·검증 메뉴를 구분하며 다른 기능의 씬을 재생성하지 않는다.
