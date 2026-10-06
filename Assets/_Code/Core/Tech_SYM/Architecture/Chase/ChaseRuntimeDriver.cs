@@ -10,10 +10,14 @@ namespace Cooked.Chase
     [DisallowMultipleComponent]
     public sealed class ChaseRuntimeDriver : MonoBehaviour
     {
+        [Tooltip("추격 속도와 시작 거리 조건을 제공하는 설정 자산입니다. 무리의 밸런스는 이 자산에서 조절하세요.")]
         [SerializeField] private ChaseDefinition definition = null;
+        [Tooltip("추격 무리의 등장·상하 움직임·퇴장 외형을 표현할 컴포넌트입니다. 포획 판정 자체는 바꾸지 않습니다.")]
         [SerializeField] private ChaseSwarmPresentation presentation = null;
         private IPlayerBridgeService bridge;
         private string reportedFailure;
+        private PlayerFacade actor;
+        private ChasePath route;
         public ChaseService Service { get; private set; }
         public string LastRejection { get; private set; }
 
@@ -44,14 +48,23 @@ namespace Cooked.Chase
                 (bridge.CameraTarget != actor.transform && !bridge.CameraTarget.IsChildOf(actor.transform)))
                 return Reject("Stage Actor does not match the session bridge CameraTarget owner.");
             bool accepted = Service.Start(stageId, waypoints, new PlayerActor(actor));
+            if (accepted) { this.actor = actor; route = new ChasePath(waypoints); }
             LastRejection = Service.LastRejection;
             return accepted;
         }
+
+        public bool ReportFrontContact(PlayerFacade candidate) => candidate != null && candidate == actor && Service != null && Service.CaptureFromFrontTrigger();
 
         private void LateUpdate()
         {
             Service?.Tick(Time.deltaTime, Time.frameCount);
             if (Service != null) presentation.Tick(Time.deltaTime, Time.unscaledDeltaTime);
+            if (Service != null && route != null && Service.Snapshot.State == ChaseState.Running)
+            {
+                float p = Service.Snapshot.SwarmProgress;
+                var direction = route.Evaluate(Mathf.Min(route.Length, p + .1f)) - route.Evaluate(Mathf.Max(0,p - .1f));
+                if (direction.sqrMagnitude > .0001f) transform.rotation = Quaternion.FromToRotation(Vector3.right,direction.normalized);
+            }
             if (Service != null && Service.Failure != null && Service.Failure != reportedFailure)
             {
                 reportedFailure = Service.Failure;
@@ -64,7 +77,7 @@ namespace Cooked.Chase
             if (presentation != null) presentation.Unbind();
             Service?.Dispose();
             Service = null;
-            bridge = null;
+            bridge = null; actor = null; route = null;
         }
         private bool Reject(string message) { LastRejection = message; return false; }
         private void OnDisable() => Shutdown();

@@ -53,8 +53,13 @@ namespace Cooked.Chase
             swarmProgress = Math.Min(path.Length, swarmProgress + (double)settings.Speed * deltaTime);
             // Beyond the route end is not a substitute for Level's rescue/escape acceptance.
             playerProgress = Math.Min(path.Length, playerProgress);
-            SetSnapshot(playerProgress - swarmProgress <= settings.CaptureGap + 0.00001
-                ? ChaseState.Caught : ChaseState.Running, ChaseStopReason.None, playerProgress);
+            SetSnapshot(ChaseState.Running, ChaseStopReason.None, playerProgress);
+        }
+        public bool Capture()
+        {
+            if (Snapshot.State != ChaseState.Running) return false;
+            Snapshot = new ChaseSnapshot(ChaseState.Caught, ChaseStopReason.None, Snapshot.Gap, Snapshot.SwarmProgress, Snapshot.SwarmPosition);
+            return true;
         }
 
         public void Stop(ChaseStopReason reason)

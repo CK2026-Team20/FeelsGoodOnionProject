@@ -37,7 +37,7 @@ namespace Cooked.Chase
         {
             LastRejection = null;
             if (disposed) return Reject("Chase service disposed.");
-            if (stageId != ChaseSettings.StageId) return Reject("Chase is restricted to 03_3_Stage.");
+            if (string.IsNullOrWhiteSpace(stageId)) return Reject("A configured Stage ID is required.");
             if (Snapshot.State != ChaseState.Ready) return Reject("Chase attempt is no longer Ready.");
             if (flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy || control.State.WorldPaused)
                 return Reject("Gameplay is not running or the world is paused.");
@@ -69,22 +69,23 @@ namespace Cooked.Chase
                 Fault("Chase tick failed: " + error.Message);
                 throw;
             }
-            if (Snapshot.State == ChaseState.Caught)
-            {
-                // Terminal state is committed before callbacks, so reentrancy cannot issue another retry.
-                try
-                {
-                    eventBus.Publish(new FlowRequestedEvent(new FlowRequest(FlowCommand.RetryCheckpoint)));
-                    if (flow.Snapshot.State != FlowState.Retrying || !flow.Snapshot.IsBusy)
-                        Fault("Caught retry was not accepted synchronously by GameFlow (state=" + flow.Snapshot.State + ").");
-                }
-                catch (Exception error)
-                {
-                    Fault("Caught retry dispatch failed: " + error.Message);
-                    throw;
-                }
-            }
             if (!disposed) Changed?.Invoke(Snapshot);
+        }
+
+        public bool CaptureFromFrontTrigger()
+        {
+            if (disposed || control.State.WorldPaused || flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy ||
+                !bridge.HasActor || bridge.Snapshot.IsDead || actor == null || !actor.IsAlive || !model.Capture()) return false;
+            // Terminal state precedes dispatch; multiple colliders cannot request a second retry.
+            try
+            {
+                eventBus.Publish(new FlowRequestedEvent(new FlowRequest(FlowCommand.RetryCheckpoint)));
+                if (flow.Snapshot.State != FlowState.Retrying || !flow.Snapshot.IsBusy)
+                    Fault("Front-trigger retry was not accepted by GameFlow.");
+            }
+            catch (Exception error) { Fault("Capture dispatch failed: " + error.Message); throw; }
+            if (!disposed) Changed?.Invoke(Snapshot);
+            return true;
         }
 
         public void Stop(ChaseStopReason reason)

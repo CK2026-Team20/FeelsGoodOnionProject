@@ -44,7 +44,7 @@ namespace Cooked.Chase.Editor
                 var driver = root.AddComponent<ChaseRuntimeDriver>();
                 var presentation = root.AddComponent<ChaseSwarmPresentation>();
                 var visual = Child(root.transform, "Visual");
-                Child(root.transform, "Physics"); // no damage collider: distance model is the only verdict
+                ConfigureFront(root);
                 Child(root.transform, "VFX");
                 Child(root.transform, "SFX"); // cue playback is owned by the injected Audio service
                 for (int i = 0; i < 3; i++)
@@ -90,6 +90,24 @@ namespace Cooked.Chase.Editor
             }
         }
 
+        public static void ConfigureFront(GameObject root)
+        {
+            var child = root.transform.Find("FrontContact");
+            if (child == null) child = Child(root.transform, "FrontContact").transform;
+            child.localPosition = new Vector3(.4f,1,0);
+            var box = child.GetComponent<BoxCollider>();
+            if (box == null) box = child.gameObject.AddComponent<BoxCollider>();
+            box.isTrigger = true; box.size = new Vector3(.8f,2f,4f);
+            var contact = child.GetComponent<ChaseFrontContact>();
+            if (contact == null) contact = child.gameObject.AddComponent<ChaseFrontContact>();
+            SetReference(contact,"driver",root.GetComponent<ChaseRuntimeDriver>());
+        }
+        public static void ApplyFront()
+        {
+            var root = PrefabUtility.LoadPrefabContents(PrefabPath);
+            try { ConfigureFront(root); PrefabUtility.SaveAsPrefabAsset(root,PrefabPath); }
+            finally { PrefabUtility.UnloadPrefabContents(root); }
+        }
         private static GameObject Child(Transform parent, string name)
         { var child = new GameObject(name); child.transform.SetParent(parent, false); return child; }
         private static Bounds CombinedBounds(Renderer[] renderers)

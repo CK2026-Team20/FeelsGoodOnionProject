@@ -12,10 +12,15 @@ namespace Cooked.Chase
     [DisallowMultipleComponent]
     public sealed class ChaseSwarmPresentation : MonoBehaviour
     {
+        [Tooltip("등장·퇴장 크기 변화와 상하 흔들림을 적용할 외형 자식입니다. 논리·접촉 트리거 루트 대신 외형만 연결하세요.")]
         [SerializeField] private GameObject visual = null;
+        [Tooltip("등장 크기 변화 시간입니다(초, 최소 0.01). 높이면 더 천천히 나타납니다. 월드 정지 중에는 멈춥니다.")]
         [SerializeField, Min(.01f)] private float appearSeconds = .2f;
+        [Tooltip("퇴장 크기 변화 시간입니다(초, 최소 0.01). 높이면 더 천천히 사라집니다. 월드 정지와 별개로 진행하지만 옵션 중에는 멈춥니다.")]
         [SerializeField, Min(.01f)] private float exitSeconds = .18f;
+        [Tooltip("상하 흔들림의 편도 시간입니다(초, 최소 0.01). 높이면 더 느리게 흔들리며 왕복은 이 시간의 두 배입니다.")]
         [SerializeField, Min(.01f)] private float bobHalfPeriod = .32f;
+        [Tooltip("기본 외형 위치에서 위로 흔들리는 거리입니다(로컬 단위, 0 이상). 0이면 상하 흔들림을 만들지 않습니다.")]
         [SerializeField, Min(0)] private float bobHeight = .06f;
         private ChaseService service;
         private IGameplayControlService control;
