@@ -53,7 +53,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             }
             removed.Clear();
             foreach (PlayerFacade owner in nextDamageTimes.Keys)
-                if (owner == null || !damagedThisStep.Contains(owner)) removed.Add(owner);
+                // A brief knockback exit is still inside the same damage cooldown.
+                // Retain its deadline until expiry; destroyed actors and disabled platforms release ownership.
+                if (owner == null || (!damagedThisStep.Contains(owner) && Time.fixedTimeAsDouble >= nextDamageTimes[owner])) removed.Add(owner);
             foreach (PlayerFacade owner in removed) nextDamageTimes.Remove(owner);
         }
 

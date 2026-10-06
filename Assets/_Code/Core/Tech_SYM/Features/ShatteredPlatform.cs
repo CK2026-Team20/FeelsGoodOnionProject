@@ -1,4 +1,4 @@
-using DG.Tweening;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -13,53 +13,49 @@ namespace FeelsGoodOnion.TechSYM.Features
     public sealed class ShatteredPlatform : MonoBehaviour, IBrokenable
     {
         /// <summary>플랫폼 붕괴 진행 단계.</summary>
-        public enum CollapsePhase { Ready, Wiggling, Collapsed, Regenerating, DestroyScheduled }
+        public enum CollapsePhase { Ready, Wiggling, Collapsed, Regenerating, DestroyScheduled, Animating }
 
         [Header("References")]
-        [Tooltip("콜라이더가 없는 렌더 오브젝트")]
+        [Tooltip("붕괴 모습을 표시할 자식 오브젝트입니다. 자신과 하위에 Collider를 두지 말고, 실제 붕괴 Animator는 이 오브젝트에 연결하세요.")]
         [SerializeField] private Transform visual;
-        [Tooltip("오브젝트 충돌 검증 콜라이더")]
+        [Tooltip("플레이어를 받치는 이 오브젝트의 BoxCollider입니다. Trigger를 끄세요. 경고가 끝나면 꺼져서 플레이어가 떨어집니다.")]
         [SerializeField] private Collider supportCollider;
+        [Tooltip("위의 표시 자식 자신에 있는 Animator입니다. SYM 붕괴 Controller를 연결하고 Collapse 상태의 Motion에 실제 클립을 넣으세요. 클립만 비어 있으면 경고 후 물리 붕괴와 외형 숨김은 진행됩니다.")]
+        [SerializeField] private Animator collapseAnimator;
 
         [Header("Collapse")]
         [FormerlySerializedAs("wiggleDuration")]
-        [Tooltip("플랫폼 붕괴 경고 트윈 시간")]
+        [Tooltip("밟은 뒤 흔들리며 경고할 시간(초)입니다. 길수록 늦게 무너집니다. 최소 0.01초이며, 끝나면 지지 Collider를 끄고 붕괴 애니메이션을 시작합니다.")]
         [SerializeField, Min(0.01f)] private float warningEndSeconds = 1f;
-        [Tooltip("플랫폼 붕괴 트윈 지정 시간")]
-        [SerializeField, Min(0.01f)] private float collapseEndSeconds = 1.25f;
 
         [Header("Shake")]
         [FormerlySerializedAs("wiggleAngle")]
-        [Tooltip("회전강도. 0이면 흔들림 없음.")]
+        [Tooltip("경고 중 표시 자식이 흔들리는 회전 크기(도)입니다. 크게 하면 더 세게 흔들리고, 0이면 흔들림 없이 경고 시간만 기다립니다.")]
         [SerializeField, Min(0f)] private float shakeAngleDegrees = 4f;
         [FormerlySerializedAs("wiggleFrequency")]
-        [Tooltip("초당 흔들림 횟수.")]
+        [Tooltip("경고 중 1초에 흔들리는 횟수입니다. 높을수록 빠르게 흔들립니다. 최소 0.1이며 기본값은 8입니다.")]
         [SerializeField, Min(0.1f)] private float shakeFrequency = 8f;
 
         [Header("Regeneration")]
-        [Tooltip("재생성 가능 여부. 동적으로 작동하지 않습니다.")]
-        [FormerlySerializedAs("canRegenerate")]
+        [Tooltip("켜면 붕괴 후 기다렸다가 깜빡이며 복구하고, 끄면 실제 붕괴 재생 또는 미연결 처리가 끝난 뒤 제거합니다. 밟는 순간의 값을 사용합니다. Prototype에서는 끄세요.")]
         [SerializeField] private bool canRegenerate = true;
-        [Tooltip("붕괴 유지 시간.")]
+        [Tooltip("복구를 켰을 때 붕괴 외형이 사라진 뒤 복구를 시작하기까지의 대기 시간(초)입니다. 0이면 바로 깜빡임 복구를 시작합니다.")]
         [SerializeField, Min(0f)] private float collapsedHoldSeconds = 0.5f;
         [FormerlySerializedAs("regenerationDuration")]
-        [Tooltip("재생성 까지 걸리는 시간.")]
+        [Tooltip("복구 중 표시 자식이 깜빡이는 시간(초)입니다. 최소 0.01초이며, 완료 후에 지지 Collider를 다시 켭니다. 복구를 끄면 사용하지 않습니다.")]
         [SerializeField, Min(0.01f)] private float regenerationSeconds = 3f;
         [FormerlySerializedAs("blinkInterval")]
-        [Tooltip("Blink Tween 간격")]
+        [Tooltip("복구 중 외형을 켜거나 끄는 간격(초)입니다. 작을수록 빠르게 깜빡입니다. 최소 0.01초이며, 복구를 끄면 사용하지 않습니다.")]
         [SerializeField, Min(0.01f)] private float blinkIntervalSeconds = 0.15f;
 
         /// <summary>현재 진행 단계.</summary>
         public CollapsePhase Phase { get; private set; } = CollapsePhase.Ready;
-        /// <summary>붕괴 시작부터 발판이 사라질 때까지의 시간(초).</summary>
-        public float CollapseEndSeconds => Mathf.Max(warningEndSeconds, collapseEndSeconds);
         /// <summary>재생성 가능 여부.</summary>
         public bool CanRegenerate => canRegenerate;
-        /// <summary>붕괴 시작부터 재생성 완료 또는 파괴 예약까지의 시간(초).</summary>
-        public float CycleDurationSeconds => CollapseEndSeconds + (canRegenerate ? collapsedHoldSeconds + regenerationSeconds : 0f);
 
         private PlatformPresentation presentation;
-        private Sequence cycle;
+        private Coroutine cycle;
+        private int cycleVersion;
         private bool supportWasEnabled;
         private const float MinimumSupportDot = 0.5f;
 
@@ -70,7 +66,6 @@ namespace FeelsGoodOnion.TechSYM.Features
         private void OnValidate()
         {
             warningEndSeconds = Valid(warningEndSeconds, 0.01f, 1f);
-            collapseEndSeconds = Valid(collapseEndSeconds, warningEndSeconds, warningEndSeconds);
             shakeAngleDegrees = Valid(shakeAngleDegrees, 0f, 4f);
             shakeFrequency = Valid(shakeFrequency, 0.1f, 8f);
             collapsedHoldSeconds = Valid(collapsedHoldSeconds, 0f, 0.5f);
@@ -96,7 +91,13 @@ namespace FeelsGoodOnion.TechSYM.Features
                 enabled = false;
                 return;
             }
-            presentation = new PlatformPresentation(visual);
+            presentation = new PlatformPresentation(visual, collapseAnimator);
+            presentation.Restore();
+        }
+
+        private void OnEnable()
+        {
+            if (Phase != CollapsePhase.DestroyScheduled) presentation?.Restore();
         }
 
         private void OnCollisionEnter(Collision collision) => TryCollapseFromContact(collision);
@@ -142,7 +143,7 @@ namespace FeelsGoodOnion.TechSYM.Features
         }
 
         /// <summary>
-        /// 붕괴 트윈 시작. 중복 요청은 무시한다.
+        /// 경고·붕괴·후처리를 한 번 시작한다. 중복 요청은 무시한다.
         /// 시작 후 플레이어가 떠나도 계속 진행한다.
         /// </summary>
         public void Collapses()
@@ -152,56 +153,122 @@ namespace FeelsGoodOnion.TechSYM.Features
             OnValidate();
             supportWasEnabled = supportCollider.enabled;
             Phase = CollapsePhase.Wiggling;
-            cycle = DOTween.Sequence();
-            cycle.SetTarget(this).SetLink(gameObject, LinkBehaviour.KillOnDisable)
-                .SetUpdate(UpdateType.Fixed, false).SetEase(Ease.Linear).SetAutoKill(true).SetRecyclable(false);
-            cycle.Append(presentation.Shake(warningEndSeconds, shakeAngleDegrees, shakeFrequency));
-            cycle.AppendInterval(CollapseEndSeconds - warningEndSeconds);
-            cycle.AppendCallback(CompleteCollapse);
-            // 재생성 여부는 트윈 시작 시 결정한다.
-            if (canRegenerate)
+            int version = ++cycleVersion;
+            cycle = StartCoroutine(RunCycle(version, canRegenerate));
+        }
+
+        private IEnumerator RunCycle(int version, bool regenerate)
+        {
+            presentation.Shake(warningEndSeconds, shakeAngleDegrees, shakeFrequency);
+            while (!presentation.TweenCompleted)
             {
-                cycle.AppendInterval(collapsedHoldSeconds);
-                cycle.AppendCallback(BeginRegeneration);
-                cycle.Append(presentation.Blink(regenerationSeconds, blinkIntervalSeconds));
-                cycle.OnComplete(Restore);
+                if (!CycleCanContinue(version)) yield break;
+                if (!presentation.TweenExists)
+                {
+                    AbortCycle("경고 Tween이 완료 전에 제거되었습니다.");
+                    yield break;
+                }
+                yield return null;
             }
+            // 완료 직후 옵션 정지가 들어와도 물리 해제와 다음 단계는 재개 뒤에만 진행한다.
+            while (Time.timeScale <= 0f)
+            {
+                if (!CycleCanContinue(version)) yield break;
+                yield return null;
+            }
+            if (!CycleCanContinue(version)) yield break;
+            presentation.Restore();
+            if (!CycleCanContinue(version)) yield break;
+            supportCollider.enabled = false;
+            Phase = CollapsePhase.Animating;
+            if (!presentation.TryBeginCollapseAnimation())
+                ReportAnimationFailure(false);
             else
             {
-                cycle.OnComplete(DestroyPlatform);
+                while (true)
+                {
+                    if (!CycleCanContinue(version)) yield break;
+                    if (Time.timeScale <= 0f) { yield return null; continue; }
+                    PlatformPresentation.AnimationProgress progress = presentation.ObserveCollapseAnimation(Time.deltaTime);
+                    if (progress == PlatformPresentation.AnimationProgress.Completed) break;
+                    if (progress == PlatformPresentation.AnimationProgress.ClipNotLinked
+                        || progress == PlatformPresentation.AnimationProgress.Failed)
+                    {
+                        ReportAnimationFailure(progress == PlatformPresentation.AnimationProgress.ClipNotLinked);
+                        break;
+                    }
+                    yield return null;
+                }
             }
-            cycle.OnUpdate(ValidateRunningReferences);
-            cycle.OnKill(() => { cycle = null; Restore(); });
-            cycle.Play();
-        }
-
-        /// <summary>붕괴 완료. 콜라이더를 끄고 플랫폼을 숨긴다.</summary>
-        private void CompleteCollapse()
-        {
-            if (supportCollider != null) supportCollider.enabled = false;
-            presentation?.SetVisible(false);
+            if (!CycleCanContinue(version)) yield break;
+            presentation.EndCollapseAnimation();
+            presentation.SetVisible(false);
             Phase = CollapsePhase.Collapsed;
-        }
+            if (!regenerate)
+            {
+                cycle = null;
+                Phase = CollapsePhase.DestroyScheduled;
+                Destroy(gameObject);
+                yield break;
+            }
 
-        /// <summary>재생성 시작. 콜라이더는 꺼진 상태로 유지한다.</summary>
-        private void BeginRegeneration()
-        {
+            float holdElapsed = 0f;
+            while (holdElapsed < collapsedHoldSeconds)
+            {
+                if (!CycleCanContinue(version)) yield break;
+                yield return null;
+                holdElapsed += Time.deltaTime;
+            }
+            while (Time.timeScale <= 0f)
+            {
+                if (!CycleCanContinue(version)) yield break;
+                yield return null;
+            }
+            if (!CycleCanContinue(version)) yield break;
+            // 클립이 바꾼 자식 위치·회전·크기도 복구한다. 지지 Collider는 아직 꺼져 있다.
+            presentation.Restore();
+            if (!CycleCanContinue(version)) yield break;
             Phase = CollapsePhase.Regenerating;
-            presentation?.SetVisible(true);
+            presentation.Blink(regenerationSeconds, blinkIntervalSeconds);
+            while (!presentation.TweenCompleted)
+            {
+                if (!CycleCanContinue(version)) yield break;
+                if (!presentation.TweenExists)
+                {
+                    AbortCycle("복구 Tween이 완료 전에 제거되었습니다.");
+                    yield break;
+                }
+                yield return null;
+            }
+            while (Time.timeScale <= 0f)
+            {
+                if (!CycleCanContinue(version)) yield break;
+                yield return null;
+            }
+            if (!CycleCanContinue(version)) yield break;
+            cycle = null;
+            Restore();
         }
 
-        /// <summary>1회성 플랫폼 파괴 예약.</summary>
-        private void DestroyPlatform()
+        private void ReportAnimationFailure(bool clipNotLinked)
         {
-            Phase = CollapsePhase.DestroyScheduled;
-            Destroy(gameObject);
+            string message = $"붕괴 플랫폼 '{name}': {presentation.AnimationIssue} 지지 Collider 해제와 외형 숨김으로 물리 붕괴를 진행합니다.";
+            if (clipNotLinked) Debug.LogWarning(message, this);
+            else Debug.LogError(message, this);
         }
 
-        /// <summary>필수 오브젝트가 사라지면 트윈을 취소한다.</summary>
-        private void ValidateRunningReferences()
+        /// <summary>각 대기 구간에서 자기 실행과 필수 물리·표현 참조를 확인한다.</summary>
+        private bool CycleCanContinue(int version)
         {
-            if (supportCollider != null && presentation != null && presentation.IsValid) return;
-            Debug.LogError("붕괴 플랫폼 실행 중 필수 참조가 제거되어 연출을 취소합니다.", this);
+            if (version != cycleVersion || !isActiveAndEnabled || Phase == CollapsePhase.DestroyScheduled) return false;
+            if (supportCollider != null && presentation != null && presentation.IsValid) return true;
+            AbortCycle("실행 중 지지 Collider 또는 표시 자식이 제거·비활성화되었습니다.");
+            return false;
+        }
+
+        private void AbortCycle(string reason)
+        {
+            Debug.LogError($"붕괴 플랫폼 '{name}': {reason} 자기 실행을 취소하고 설정을 복원합니다.", this);
             CancelCycle();
             enabled = false;
         }
@@ -217,13 +284,15 @@ namespace FeelsGoodOnion.TechSYM.Features
 
         private void CancelCycle()
         {
-            Sequence owned = cycle;
+            ++cycleVersion;
+            Coroutine owned = cycle;
             cycle = null;
-            if (owned != null && owned.IsActive()) owned.Kill(false);
+            if (owned != null) StopCoroutine(owned);
+            presentation?.CancelTween();
             Restore();
         }
 
-        /// <summary>비활성화 시 트윈 취소.</summary>
+        /// <summary>비활성화 시 자기 코루틴·트윈·Animator 요청을 취소하고 재사용 상태를 복원한다.</summary>
         private void OnDisable() => CancelCycle();
         private void OnDestroy() => CancelCycle();
     }

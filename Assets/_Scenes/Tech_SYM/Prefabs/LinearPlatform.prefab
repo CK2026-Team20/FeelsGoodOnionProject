@@ -179,6 +179,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 768ee01fdc70c4a46acce825510ce565, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.LinearShuttlePlatform
-  initialDirection: 1
+  travelOffset: {x: 1.5, y: 0, z: 0}
   moveSpeed: 1
-  travelSeconds: 1.5

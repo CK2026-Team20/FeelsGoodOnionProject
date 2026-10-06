@@ -11,7 +11,9 @@ namespace FeelsGoodOnion.TechSYM.OvenTray
     [RequireComponent(typeof(KinematicPlatformMotion), typeof(InteractionPromptAnchor))]
     public sealed class OvenTrayObject : MonoBehaviour, IInteractable
     {
+        [Tooltip("닫힌 위치에서 열린 위치까지의 이동량입니다(부모 로컬 좌표). XYZ의 부호로 방향을, 크기로 이동 거리를 정합니다. 모두 0이면 위치가 바뀌지 않습니다.")]
         [SerializeField] private Vector3 travelOffset = new Vector3(0f, 0f, -3f);
+        [Tooltip("트레이의 편도 열기·닫기 시간입니다(초, 최소 0.02). 같은 이동량에서 높이면 더 천천히 움직입니다. 이동 중 E 재조작은 받지 않습니다.")]
         [SerializeField, Min(0.02f)] private float moveDuration = 0.8f;
         private KinematicPlatformMotion motion;
         private InteractionPromptAnchor anchor;

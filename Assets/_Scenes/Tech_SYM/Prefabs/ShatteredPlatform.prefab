@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 8084077480822937354}
   - component: {fileID: 391216798005354681}
   - component: {fileID: 1209339659630813911}
+  - component: {fileID: 5449978033573604114}
   m_Layer: 0
   m_Name: Plane_Visual
   m_TagString: Untagged
@@ -90,6 +91,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!95 &5449978033573604114
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 659560428559354962}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: db7af632a64b8844d9a1f93104d557f4, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &8995724270021319167
 GameObject:
   m_ObjectHideFlags: 0
@@ -159,8 +182,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.ShatteredPlatform
   visual: {fileID: 8084077480822937354}
   supportCollider: {fileID: 5155477896370594363}
+  collapseAnimator: {fileID: 5449978033573604114}
   warningEndSeconds: 1
-  collapseEndSeconds: 1.25
   shakeAngleDegrees: 10
   shakeFrequency: 8
   canRegenerate: 1
