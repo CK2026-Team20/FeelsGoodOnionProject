@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using Cooked.Contracts;
+using Cooked.Session;
 using UnityEngine;
 
 namespace Cooked.Integration
@@ -12,22 +13,39 @@ namespace Cooked.Integration
     {
         private readonly Func<GameSessionRuntime> createLoadedCore;
         private GameSessionRuntime session;
+        // A disposed session may still own incomplete Core composition cleanup. Keep it
+        // separate from CurrentSession so recovery retries release without despawning it again.
+        private GameSessionRuntime pendingRelease;
         private bool disposed;
+        private Action<GameSessionRuntime> releaseLoadedCore;
+        // T9: CoreComposition must dispose world/UI/cinematics and clear its runtime field,
+        // without destroying or unloading the Core scene. No implicit no-op fallback.
+        public void BindSessionRelease(Action<GameSessionRuntime> release)
+        { ThrowIfDisposed(); releaseLoadedCore = release ?? throw new ArgumentNullException(nameof(release)); }
         public GameRuntimeService(Func<GameSessionRuntime> createLoadedCore)
         { this.createLoadedCore = createLoadedCore ?? throw new ArgumentNullException(nameof(createLoadedCore)); }
         public ICinematicService Cinematics => RequireSession().Cinematics;
         public GameSessionRuntime CurrentSession => session;
+        public string ActiveStageId => session?.ActiveStageId;
         public event Action<bool> GameplayOutputChanged;
         public void SetGameplayVisible(bool visible) => RequireSession().SetGameplayVisible(visible);
         public void CancelDialogue() { if (!disposed) session?.CancelDialogue(); }
         public IEnumerator InitializeSession(string entryStageId, CancellationToken token, OperationResult result)
         {
             ThrowIfDisposed(); token.ThrowIfCancellationRequested();
-            if (session != null) throw new InvalidOperationException("Previous session must be shut down first.");
+            if (session != null || pendingRelease != null) throw new InvalidOperationException("Previous session must be shut down first.");
             // Assign before Begin: failed partial initialization remains reachable for Foundation recovery.
             session = createLoadedCore() ?? throw new InvalidOperationException("Loaded Core did not provide a session composition.");
             session.GameplayVisibilityChanged += OnGameplayVisibilityChanged;
             session.ActorRemoving += OnActorRemoving;
+            var preparation = new OperationResult();
+            yield return session.PrepareInitialStages(token, preparation);
+            if (preparation.Status != OperationStatus.Succeeded)
+            {
+                if (preparation.Status == OperationStatus.Cancelled) result.Cancel();
+                else result.Fail(preparation.Error ?? "Initial Stage preparation failed.");
+                yield break;
+            }
             session.Begin(entryStageId);
             PublishGameplayOutput();
             result.Succeed();
@@ -59,6 +77,11 @@ namespace Cooked.Integration
             PublishGameplayOutput();
             result.Succeed();
         }
+        public IEnumerator PrepareCurrentStageForRetry(CancellationToken token, OperationResult result)
+        {
+            token.ThrowIfCancellationRequested();
+            yield return RequireSession().PrepareCurrentStageForRetry(token, result);
+        }
         public IEnumerator DespawnActor(CancellationToken token, OperationResult result)
         {
             token.ThrowIfCancellationRequested();
@@ -79,6 +102,7 @@ namespace Cooked.Integration
                     () => ReleaseSession(old), result);
                 yield break;
             }
+            if (pendingRelease != null) ReleaseSession(pendingRelease);
             result.Succeed();
         }
         public void Dispose()
@@ -91,8 +115,7 @@ namespace Cooked.Integration
             catch (Exception error) { errors.Add(error); }
             finally
             {
-                DetachSession(old);
-                session = null;
+                SessionCleanup.Attempt(errors, () => ReleaseSession(old ?? pendingRelease));
                 try { GameplayOutputChanged?.Invoke(false); }
                 catch (Exception error) { errors.Add(error); }
                 finally { GameplayOutputChanged = null; }
@@ -122,16 +145,29 @@ namespace Cooked.Integration
         }
         private void ReleaseSession(GameSessionRuntime old)
         {
-            try { DetachSession(old); }
+            if (old == null) return;
+            pendingRelease = old;
+            var errors = new List<Exception>();
+            try
+            {
+                SessionCleanup.Attempt(errors, () => DetachSession(old));
+                if (releaseLoadedCore == null) errors.Add(new InvalidOperationException("T9 CoreComposition session release callback is not connected."));
+                else SessionCleanup.Attempt(errors, () =>
+                {
+                    releaseLoadedCore(old);
+                    pendingRelease = null; // Only confirmed Core cleanup permits Title/another round.
+                });
+            }
             finally
             {
                 if (ReferenceEquals(session, old))
                 {
                     session = null;
                     // App subscribers survive Title and the next game; only the old session is detached.
-                    GameplayOutputChanged?.Invoke(false);
+                    SessionCleanup.Notify(errors, GameplayOutputChanged, false);
                 }
             }
+            SessionCleanup.ThrowIfAny(errors, "Core composition release failed.");
         }
         private GameSessionRuntime RequireSession()
         {
@@ -141,4 +177,3 @@ namespace Cooked.Integration
         private void ThrowIfDisposed() { if (disposed) throw new ObjectDisposedException(nameof(GameRuntimeService)); }
     }
 }
-

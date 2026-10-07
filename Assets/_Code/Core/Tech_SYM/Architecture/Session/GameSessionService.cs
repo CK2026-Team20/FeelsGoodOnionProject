@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
+using UnityEngine;
 
 namespace Cooked.Session
 {
     public sealed class GameSessionService : IGameSessionService
     {
-        private readonly HashSet<AbilityId> unlocked = new HashSet<AbilityId>();
+        // Session execution provenance, never checkpoint/serialized data. First grant owns the ability.
+        private readonly Dictionary<AbilityId, string> unlocked = new Dictionary<AbilityId, string>();
         private CheckpointSnapshot checkpoint;
         private bool disposed;
         public bool IsActive { get; private set; }
@@ -22,23 +24,31 @@ namespace Cooked.Session
             IsActive = true;
             Changed?.Invoke();
         }
-        public void CaptureCheckpoint(string stageId, string checkpointId, int fragments)
+        public void CaptureCheckpoint(Vector3 position, int fragments)
         {
             RequireActive();
-            var next = new CheckpointSnapshot(stageId, checkpointId, fragments);
-            if (checkpoint.StageId == next.StageId && checkpoint.CheckpointId == next.CheckpointId) return;
+            var next = new CheckpointSnapshot(position, fragments);
             checkpoint = next;
             Changed?.Invoke();
         }
-        public bool IsUnlocked(AbilityId ability) => IsActive && !disposed && unlocked.Contains(ability);
-        public void Unlock(AbilityId ability)
+        public bool IsUnlocked(AbilityId ability) => IsActive && !disposed && unlocked.ContainsKey(ability);
+        public void Unlock(AbilityId ability, string grantingStageId)
         {
             RequireActive();
             if (!Enum.IsDefined(typeof(AbilityId), ability)) throw new ArgumentOutOfRangeException(nameof(ability));
-            bool changed = unlocked.Add(ability);
-            // The first form tutorial must also make its shell recoverable.
-            if (ability == AbilityId.FormChange) changed |= unlocked.Add(AbilityId.RecoverShell);
-            if (changed) Changed?.Invoke();
+            RequireStageId(grantingStageId);
+            if (ability == AbilityId.RecoverShell || unlocked.ContainsKey(ability)) return;
+            unlocked.Add(ability, grantingStageId);
+            Changed?.Invoke();
+        }
+        public IReadOnlyList<AbilityId> ResetStageUnlocks(string stageId)
+        {
+            RequireActive(); RequireStageId(stageId);
+            var remove = new List<AbilityId>();
+            foreach (var pair in unlocked) if (pair.Value == stageId) remove.Add(pair.Key);
+            foreach (var ability in remove) unlocked.Remove(ability);
+            if (remove.Count != 0) Changed?.Invoke();
+            return remove.AsReadOnly();
         }
         public void End()
         {
@@ -55,7 +65,9 @@ namespace Cooked.Session
             try { End(); }
             finally { disposed = true; Changed = null; }
         }
-        private static CheckpointSnapshot Validate(CheckpointSnapshot value) => new CheckpointSnapshot(value.StageId, value.CheckpointId, value.Fragments);
+        private static CheckpointSnapshot Validate(CheckpointSnapshot value) => new CheckpointSnapshot(value.Position, value.Fragments);
+        private static void RequireStageId(string stageId)
+        { if (string.IsNullOrWhiteSpace(stageId)) throw new ArgumentException("Granting Stage ID required.", nameof(stageId)); }
         private void RequireActive() { ThrowIfDisposed(); if (!IsActive) throw new InvalidOperationException("Session is inactive."); }
         private void ThrowIfDisposed() { if (disposed) throw new ObjectDisposedException(nameof(GameSessionService)); }
     }

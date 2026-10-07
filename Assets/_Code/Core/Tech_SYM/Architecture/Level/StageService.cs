@@ -112,8 +112,8 @@ namespace Cooked.Level
                 case StageTriggerKind.Escape:
                     if (!rescued || (chaseWaypoints.Length > 1 && !chaseAccepted)) return false;
                     float resumeProgress = float.NegativeInfinity;
-                    if (session != null && session.IsActive && session.Checkpoint.StageId == stageId &&
-                        TryGetCheckpointPose(session.Checkpoint.CheckpointId, out var savedPose)) resumeProgress = ProgressAt(savedPose.position);
+                    // T9 removes this obsolete puzzle gate. DTO migration uses only the actual saved position.
+                    if (session != null && session.IsActive) resumeProgress = ProgressAt(session.Checkpoint.Position);
                     foreach (var puzzle in GetComponentsInChildren<ShellPressureLatch>(true))
                         if (!puzzle.IsSolved && puzzle.CrossingProgress > resumeProgress) return false;
                     eventBus.Publish(new FlowRequestedEvent(new FlowRequest(FlowCommand.Escape))); break;
@@ -129,10 +129,7 @@ namespace Cooked.Level
             // The collider can overlap the start volume before its ActorBody reaches the line.
             if (ProgressAt(actor.transform.position) < chaseStartProgress || tryStartChase == null || chaseRetreatGate == null) return false;
             if (session == null || !session.IsActive) return false;
-            // CP82 is physically behind X84; jumping across the thin CP trigger must not leave an older snapshot.
-            if (session.Checkpoint.StageId != stageId || session.Checkpoint.CheckpointId != chaseCheckpointId)
-                eventBus.Publish(new CheckpointReachedEvent(stageId, chaseCheckpointId));
-            if (session.Checkpoint.StageId != stageId || session.Checkpoint.CheckpointId != chaseCheckpointId) return false;
+            // T9 migrates the remaining chase/puzzle assembly. Starting chase never captures a checkpoint.
             if (!chaseRetreatGate.CanClose(actor)) return false;
             chaseStartInProgress = true;
             try

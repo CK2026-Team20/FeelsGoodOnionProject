@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using Cooked.Contracts;
 using Cooked.Dialogue;
 using Cooked.Foundation;
@@ -22,6 +23,70 @@ namespace Cooked.Integration
         private readonly List<IDisposable> eventSubscriptions = new List<IDisposable>();
         private bool disposed, visibilityInitialized;
         private bool actorBindingsReady;
+        private string lastContactCheckpointId;
+        private Func<string, CancellationToken, OperationResult, IEnumerator> prepareStage;
+        private Action<string, IReadOnlyList<AbilityId>> resetAbilityNotices;
+        private Func<string, (string StartId, string EndId)> checkpointPair;
+        // T9 supplies the authored start/end pair. These IDs are contact configuration, never saved data.
+        public void BindCheckpointPair(Func<string, (string StartId, string EndId)> resolve)
+        { ThrowIfDisposed(); checkpointPair = resolve ?? throw new ArgumentNullException(nameof(resolve)); }
+        public string ActiveStageId { get; private set; }
+        // Authoring configuration only. Never used to restore a retry position.
+        public string InitialCheckpointId { get; private set; }
+        public IStageService ActiveStage => Stages.Require(ActiveStageId);
+        // T9 transitions release bindings/Actor first, select one loaded Stage, then prepare/bind.
+        // This is execution configuration; the saved Position/Fragments are never augmented.
+        public void SelectActiveStage(string stageId)
+        {
+            ThrowIfDisposed();
+            if (!Session.IsActive || Player.HasActor) throw new InvalidOperationException("Stage selection requires an active session with Actor references released.");
+            var stage = Stages.Require(stageId);
+            ActiveStageId = stageId;
+            InitialCheckpointId = stage.InitialCheckpointId;
+            lastContactCheckpointId = null;
+        }
+        public void BindStageLifecycle(Func<string, CancellationToken, OperationResult, IEnumerator> prepare,
+            Action<string, IReadOnlyList<AbilityId>> resetNotices)
+        {
+            ThrowIfDisposed();
+            prepareStage = prepare ?? throw new ArgumentNullException(nameof(prepare));
+            resetAbilityNotices = resetNotices ?? throw new ArgumentNullException(nameof(resetNotices));
+        }
+        public IEnumerator PrepareInitialStages(CancellationToken token, OperationResult result)
+        {
+            ThrowIfDisposed();
+            Stages.Refresh();
+            foreach (var stage in Stages.Stages)
+            {
+                var step = new OperationResult();
+                yield return PrepareStage(stage.StageId, token, step);
+                if (step.Status != OperationStatus.Succeeded) { CopyFailure(step, result); yield break; }
+            }
+            result.Succeed();
+        }
+        private IEnumerator PrepareStage(string stageId, CancellationToken token, OperationResult result)
+        {
+            ThrowIfDisposed(); token.ThrowIfCancellationRequested();
+            if (prepareStage == null) { result.Fail("T9 Stage preparation callback is not connected."); yield break; }
+            yield return prepareStage(stageId, token, result);
+            token.ThrowIfCancellationRequested();
+            if (result.Status == OperationStatus.Pending) result.Fail("Stage preparation did not report completion: " + stageId);
+        }
+        public IEnumerator PrepareCurrentStageForRetry(CancellationToken token, OperationResult result)
+        {
+            ThrowIfDisposed();
+            if (!Session.IsActive || Player.HasActor) { result.Fail("Retry preparation requires an active session without an Actor."); yield break; }
+            var step = new OperationResult();
+            yield return PrepareStage(ActiveStageId, token, step);
+            if (step.Status != OperationStatus.Succeeded) { CopyFailure(step, result); yield break; }
+            if (resetAbilityNotices == null) { result.Fail("T6/T9 ability notice reset callback is not connected."); yield break; }
+            var relocked = Session.ResetStageUnlocks(ActiveStageId);
+            resetAbilityNotices(ActiveStageId, relocked);
+            lastContactCheckpointId = null;
+            result.Succeed();
+        }
+        private static void CopyFailure(OperationResult source, OperationResult target)
+        { if (source.Status == OperationStatus.Cancelled) target.Cancel(); else target.Fail(source.Error ?? "Stage preparation failed."); }
         public GameSessionService Session { get; }
         public PlayerBridgeService Player { get; }
         public DialogueService Dialogue { get; }
@@ -54,6 +119,7 @@ namespace Cooked.Integration
                 scope.Register<IGameSessionService>(Session);
                 Player = new PlayerBridgeService(control, Session, bus);
                 scope.Register<IPlayerBridgeService>(Player);
+                Player.Dying += OnActorDying;
                 var transients = new SessionTransientService();
                 scope.Register<SessionTransientService>(transients);
                 Dialogue = new DialogueService(app.Get<IDialogueTableService>(), control, new DOTweenDialogueDelayScheduler(), new DialogueSettings(.3f, 3f));
@@ -63,7 +129,8 @@ namespace Cooked.Integration
                 dialogueDriver.Initialize(Dialogue);
                 dialogueView.Bind(dialogueModel);
                 host.Initialize(Player, control, transients);
-                eventSubscriptions.Add(bus.Subscribe<CheckpointReachedEvent>(CaptureCheckpoint));
+                // CheckpointReachedEvent has no Actor attribution. T9 migrates actual contacts
+                // to TryCaptureCheckpoint(stageId, checkpointId, source); anonymous bus capture is rejected.
                 eventSubscriptions.Add(bus.Subscribe<AbilityUnlockedEvent>(Unlock));
             }
             catch (Exception initializationError)
@@ -79,18 +146,24 @@ namespace Cooked.Integration
         {
             ThrowIfDisposed();
             var entry = entries.Require(entryStageId);
-            Session.Begin(entry.Checkpoint);
-            foreach (var ability in entry.Abilities) Session.Unlock(ability);
+            Stages.Refresh(entryStageId);
+            var stage = Stages.Require(entryStageId);
+            if (!stage.TryGetCheckpointPose(entry.CheckpointId, out Pose initialPose))
+                throw new InvalidOperationException("Missing initial entry marker: " + entryStageId + "/" + entry.CheckpointId);
+            ActiveStageId = entryStageId;
+            InitialCheckpointId = entry.CheckpointId;
+            lastContactCheckpointId = null;
+            Session.Begin(new CheckpointSnapshot(initialPose.position, entry.Fragments));
+            foreach (var ability in entry.Abilities) Session.Unlock(ability, entryStageId);
         }
         public void SpawnActorAtCheckpoint()
         {
             ThrowIfDisposed();
             if (!Session.IsActive) throw new InvalidOperationException("Session is inactive.");
-            Stages.Refresh(Session.Checkpoint.StageId);
             var saved = Session.Checkpoint;
-            var stage = Stages.Require(saved.StageId);
-            if (!stage.TryGetCheckpointPose(saved.CheckpointId, out Pose pose))
-                throw new InvalidOperationException("Missing checkpoint " + saved.StageId + "/" + saved.CheckpointId);
+            Stages.Require(ActiveStageId);
+            // Rotation is fresh authoring, not a third checkpoint value. Retry never re-queries a marker.
+            var pose = new Pose(saved.Position, Quaternion.identity);
             try
             {
                 host.Spawn(pose, saved.Fragments);
@@ -121,14 +194,12 @@ namespace Cooked.Integration
         public IEnumerator DespawnActor()
         {
             if (disposed) yield break;
-            CancelDialogue();
-            // Subscribers drop borrowed world/Actor references before the host destroys the Actor.
-            Exception bindingFailure = null;
-            try { NotifyActorRemoving(); }
-            catch (Exception error) { bindingFailure = error; }
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, CancelDialogue);
+            // Every observer releases its references even if another presentation observer fails.
+            SessionCleanup.Attempt(errors, NotifyActorRemoving);
             yield return host.Despawn();
-            Stages.Clear();
-            if (bindingFailure != null) throw new InvalidOperationException("World bindings failed to release.", bindingFailure);
+            SessionCleanup.ThrowIfAny(errors, "World bindings failed to release.");
         }
         private void NotifyActorRemoving()
         {
@@ -144,6 +215,7 @@ namespace Cooked.Integration
         {
             ThrowIfDisposed();
             if (!CanAcceptWorldRequest) return false;
+            if (stageId != ActiveStageId) return false;
             Stages.Require(stageId);
             return Dialogue.TryStart(code);
         }
@@ -161,17 +233,34 @@ namespace Cooked.Integration
         }
         private bool CanAcceptWorldRequest => !disposed && Session.IsActive && Player.HasActor &&
             !Player.Snapshot.IsDead && flow.Snapshot.State == FlowState.Playing && !flow.Snapshot.IsBusy;
-        private void CaptureCheckpoint(CheckpointReachedEvent message)
+        private void OnActorDying()
         {
-            if (!CanAcceptWorldRequest) return;
-            var stage = Stages.Require(message.StageId);
-            if (!stage.TryGetCheckpointPose(message.CheckpointId, out _))
-                throw new InvalidOperationException("Checkpoint event references an unknown checkpoint.");
-            Session.CaptureCheckpoint(message.StageId, message.CheckpointId, Player.Snapshot.Fragments);
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, CancelDialogue);
+            SessionCleanup.Attempt(errors, () => host.Interaction?.TryCloseOverlay());
+            SessionCleanup.ThrowIfAny(errors, "Death presentation cancellation failed.");
+        }
+        public bool TryCaptureCheckpoint(string stageId, string checkpointId, PlayerFacade source)
+        {
+            if (!CanAcceptWorldRequest || stageId != ActiveStageId || source == null || source != Player.Actor ||
+                host.ActorRoot == null || !source.transform.IsChildOf(host.ActorRoot.transform)) return false;
+            if (checkpointPair == null) throw new InvalidOperationException("T9 start/end checkpoint contact policy is not connected.");
+            var pair = checkpointPair(stageId);
+            var stage = Stages.Require(stageId);
+            if (string.IsNullOrWhiteSpace(pair.StartId) || string.IsNullOrWhiteSpace(pair.EndId) || pair.StartId == pair.EndId ||
+                !stage.TryGetCheckpointPose(pair.StartId, out _) || !stage.TryGetCheckpointPose(pair.EndId, out _))
+                throw new InvalidOperationException("Stage must author distinct registered start/end checkpoints.");
+            if (checkpointId != pair.StartId && checkpointId != pair.EndId) return false;
+            if (!stage.TryGetCheckpointPose(checkpointId, out _))
+                throw new InvalidOperationException("Checkpoint contact references an unknown checkpoint.");
+            if (lastContactCheckpointId == checkpointId) return false;
+            Session.CaptureCheckpoint(source.transform.position, Player.Snapshot.Fragments);
+            lastContactCheckpointId = checkpointId;
+            return true;
         }
         private void Unlock(AbilityUnlockedEvent message)
         {
-            if (CanAcceptWorldRequest) Session.Unlock(message.Ability);
+            if (CanAcceptWorldRequest) Session.Unlock(message.Ability, ActiveStageId);
         }
         public void Dispose()
         {
@@ -182,19 +271,19 @@ namespace Cooked.Integration
             foreach (var subscription in eventSubscriptions) Attempt(subscription.Dispose);
             eventSubscriptions.Clear();
             Attempt(NotifyActorRemoving);
+            Attempt(() => { if (Player != null) Player.Dying -= OnActorDying; });
             Attempt(() => { if (dialogueView != null) dialogueView.Unbind(); });
             Attempt(() => { if (dialogueDriver != null) dialogueDriver.Detach(); });
             Attempt(() => dialogueModel?.Dispose());
-            Attempt(() => { if (host != null) host.ReleaseNow(); });
+            Attempt(() => { if (host != null) host.ReleaseSession(); });
             Attempt(() => { if (Session != null && Session.IsActive) Session.End(); });
             Attempt(() => scope?.Dispose());
             Stages.Clear();
+            ActiveStageId = null; InitialCheckpointId = null; lastContactCheckpointId = null;
+            prepareStage = null; resetAbilityNotices = null; checkpointPair = null;
             ActorReady = null; ActorRemoving = null; GameplayVisibilityChanged = null;
             if (errors.Count != 0) throw new AggregateException("Core session cleanup failed.", errors);
         }
         private void ThrowIfDisposed() { if (disposed) throw new ObjectDisposedException(nameof(GameSessionRuntime)); }
     }
 }
-
-
-

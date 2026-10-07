@@ -9,10 +9,17 @@ namespace Cooked.Session
         [SerializeField] private PlayerFacade actor;
         [Tooltip("이 값보다 월드 Y 위치가 낮아지면 사망합니다(월드 단위). 값을 높이면 더 높은 위치에서 낙사합니다. 0은 비활성화가 아니라 월드 Y=0 경계입니다.")]
         [SerializeField] private float killHeight = -10f;
+        private PlayerBridgeService bridge;
+        public void Bind(PlayerBridgeService source) => bridge = source;
         private void FixedUpdate()
         {
             if (actor != null && !actor.IsDead && actor.transform.position.y < killHeight)
-                actor.Damage(actor.Model.MaxHP);
+            {
+                if (bridge == null || bridge.Actor != actor)
+                    throw new System.InvalidOperationException("Fall guard requires the current session PlayerBridge.");
+                bridge.ForceDeath(Vector3.zero, skipPresentation: true);
+            }
         }
+        private void OnDisable() => bridge = null;
     }
 }

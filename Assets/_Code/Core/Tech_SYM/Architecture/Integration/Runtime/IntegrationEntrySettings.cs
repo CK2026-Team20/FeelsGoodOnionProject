@@ -18,10 +18,11 @@ namespace Cooked.Integration
             [SerializeField] private string checkpointId;
             [Tooltip("직접 진입 시 보유할 눈물 조각 수입니다(0~5개). 0은 조각 없음이며 5개를 모아야 눈물을 사용할 수 있습니다.")]
             [SerializeField, Range(0, 5)] private int fragments;
-            [Tooltip("직접 진입 시 이미 해금할 능력 목록입니다. 비어 있으면 능력이 잠겨 있으며 이후 체크포인트에서 해금됩니다.")]
+            [Tooltip("직접 진입 시 이미 해금할 능력 목록입니다. 출처는 진입 Stage이며 사망 시 다시 잠깁니다. 비어 있으면 해금 트리거 접촉까지 잠깁니다.")]
             [SerializeField] private AbilityId[] abilities = Array.Empty<AbilityId>();
             public string StageId => stageId;
-            public CheckpointSnapshot Checkpoint => new CheckpointSnapshot(stageId, checkpointId, fragments);
+            public string CheckpointId => checkpointId;
+            public int Fragments => fragments;
             public IReadOnlyList<AbilityId> Abilities => Array.AsReadOnly(abilities);
             public Entry(string stageId, string checkpointId, int fragments, params AbilityId[] abilities)
             {
@@ -31,7 +32,8 @@ namespace Cooked.Integration
             }
             public void Validate()
             {
-                _ = Checkpoint;
+                if (string.IsNullOrWhiteSpace(stageId) || string.IsNullOrWhiteSpace(checkpointId))
+                    throw new InvalidOperationException("Entry Stage/Checkpoint authoring IDs are required.");
                 if (fragments < 0 || fragments > 5) throw new InvalidOperationException("Tear fragments must be between zero and five.");
                 if (abilities == null) throw new InvalidOperationException("Entry abilities must be specified.");
                 foreach (var ability in abilities)

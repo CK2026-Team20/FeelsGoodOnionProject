@@ -36,8 +36,8 @@ namespace Cooked.Integration
                 if (next.ContainsKey(found.StageId)) throw new InvalidOperationException("Duplicate Stage: " + found.StageId);
                 next.Add(found.StageId, found);
             }
-            if (next.Count != 1 || (expectedStageId != null && !next.ContainsKey(expectedStageId)))
-                throw new InvalidOperationException("Exactly the selected Stage must be loaded: " + expectedStageId);
+            if (next.Count != catalog.StagePaths.Count || (expectedStageId != null && !next.ContainsKey(expectedStageId)))
+                throw new InvalidOperationException("All catalog Stage scenes must be loaded, including selected Stage: " + expectedStageId);
             stages.Clear();
             foreach (var pair in next) stages.Add(pair.Key, pair.Value);
         }

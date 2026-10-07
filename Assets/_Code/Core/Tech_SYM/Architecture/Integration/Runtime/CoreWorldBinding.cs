@@ -43,7 +43,9 @@ namespace Cooked.Integration
             if (actor == null) throw new InvalidOperationException("Spawned Actor has no facade.");
             chase.Initialize(runtime.Player,control,flow,bus);
             var prompts=new List<CoreUiBinding.InstructionSource>();
-            foreach(var item in runtime.Stages.Stages)
+            // T9 owns full Stage assembly. Minimal active-stage consumer migration: all-loaded
+            // is an inventory, never a request to bind every Stage to the current Actor.
+            foreach(var item in new[] { runtime.ActiveStage })
             {
                 var stage=item as StageService;
                 if(stage==null) throw new InvalidOperationException("Unexpected Stage implementation.");
@@ -62,15 +64,16 @@ namespace Cooked.Integration
             ui.SetActorCamera(runtime.ActorHost.CameraRig.OutputCamera);
             foreach(var stage in stages)
                 foreach(var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true)) zone.Bind(camera,actor);
-            var initialStage = (StageService)runtime.Stages.Require(runtime.Session.Checkpoint.StageId);
-            var initialPoint = initialStage.GetCheckpoint(runtime.Session.Checkpoint.CheckpointId);
+            // T9 replaces authoring-marker camera selection with a zone query at actual Position.
+            var initialStage = (StageService)runtime.Stages.Require(runtime.ActiveStageId);
+            var initialPoint = initialStage.GetCheckpoint(runtime.InitialCheckpointId);
             var initialZone = initialPoint.CameraZone;
             if(string.IsNullOrWhiteSpace(initialZone.Id))
                 initialZone = new CameraZoneRequest(initialStage.StageId + "_Entry",
                     initialStage.StageId == "03_2_Stage" ? CameraMovementMode.Quarter : CameraMovementMode.Side,
                     initialPoint.transform.position);
             camera.EnterZone(initialZone,true);
-            audioFlow.SetStage(runtime.Session.Checkpoint.StageId);
+            audioFlow.SetStage(runtime.ActiveStageId);
             checkpoint=runtime.Session.Checkpoint; fragments=runtime.Player.Snapshot.Fragments;
             unlocked.Clear();
             foreach(AbilityId ability in Enum.GetValues(typeof(AbilityId)))
@@ -100,7 +103,7 @@ namespace Cooked.Integration
         {
             if(!observing || !runtime.Session.IsActive) return;
             var next=runtime.Session.Checkpoint;
-            if(next.StageId!=checkpoint.StageId || next.CheckpointId!=checkpoint.CheckpointId)
+            if(!next.Equals(checkpoint))
                 audio.PlaySfx(AudioCueIds.Checkpoint);
             checkpoint=next;
             bool newlyUnlocked=false;

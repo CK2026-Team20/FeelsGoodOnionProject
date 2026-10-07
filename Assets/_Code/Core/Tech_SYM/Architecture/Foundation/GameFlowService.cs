@@ -24,6 +24,7 @@ namespace Cooked.Foundation
         private string selectedStagePath;
         public FlowSnapshot Snapshot { get; private set; } = new FlowSnapshot(FlowState.Booting, false, 0, null);
         public event Action<FlowSnapshot> Changed;
+        public string ActiveStageId => runtime.ActiveStageId;
 
         public GameFlowService(SceneCatalog catalog, ISceneService scenes, IFadeService fade,
             IGameplayControlService control, IGameRuntimeService runtime,
@@ -146,13 +147,14 @@ namespace Cooked.Foundation
             Publish(FlowState.LoadingGame, true, null);
             if (!alreadyCovered) yield return Step(r => fade.Cover(token, r), token);
             yield return Step(r => scenes.Unload(catalog.TitlePath, token, r), token);
-            yield return Step(r => scenes.LoadAdditive(catalog.CorePath, token, r), token);
+            if (!scenes.IsLoaded(catalog.CorePath)) yield return Step(r => scenes.LoadAdditive(catalog.CorePath, token, r), token);
+            scenes.SetRootsActive(catalog.CorePath, true);
             scenes.SetActive(catalog.CorePath); // BEFORE dynamic objects / session initialization
+            yield return LoadStages(token); // Session.Begin needs the initially authored marker's real Pose.
             // Mark before initialization so even partially initialized sessions get teardown on error.
             sessionInitialized = true;
             yield return Step(r => runtime.InitializeSession(stageId, token, r), token);
             runtime.SetGameplayVisible(false);
-            yield return LoadStages(token);
             yield return Step(r => runtime.SpawnActorAtCheckpoint(token, r), token);
             if (opening)
             {
@@ -174,10 +176,8 @@ namespace Cooked.Foundation
             yield return Step(r => fade.Cover(token, r), token);
             runtime.CancelDialogue();
             yield return Step(r => runtime.DespawnActor(token, r), token);
-            yield return UnloadStages(token);
-            // Core remains loaded/active, its UI and game scope survive.
             scenes.SetActive(catalog.CorePath);
-            yield return LoadStages(token);
+            yield return Step(r => runtime.PrepareCurrentStageForRetry(token, r), token);
             yield return Step(r => runtime.SpawnActorAtCheckpoint(token, r), token);
             runtime.SetGameplayVisible(true);
             yield return Step(r => fade.Reveal(token, r), token);
@@ -220,8 +220,7 @@ namespace Cooked.Foundation
                 yield return Step(r => runtime.ShutdownSession(token, r), token);
                 sessionInitialized = false;
             }
-            yield return UnloadStages(token);
-            yield return Step(r => scenes.Unload(catalog.CorePath, token, r), token);
+            HidePersistentScenes();
         }
         private IEnumerator Recover(OperationResult recovery)
         {
@@ -235,16 +234,7 @@ namespace Cooked.Foundation
                 if (stop.Status == OperationStatus.Succeeded) sessionInitialized = false;
                 else errors.Add(stop.Error ?? "Session teardown cancelled.");
             }
-            for (int i = catalog.StagePaths.Count - 1; i >= 0; i--)
-            {
-                string path = catalog.StagePaths[i];
-                var unload = new OperationResult();
-                yield return SafeOperation(r => scenes.Unload(path, CancellationToken.None, r), unload);
-                if (unload.Status != OperationStatus.Succeeded) errors.Add(unload.Error ?? $"Unload cancelled: {path}");
-            }
-            var core = new OperationResult();
-            yield return SafeOperation(r => scenes.Unload(catalog.CorePath, CancellationToken.None, r), core);
-            if (core.Status != OperationStatus.Succeeded) errors.Add(core.Error ?? "Core cleanup cancelled.");
+            try { HidePersistentScenes(); } catch (Exception e) { errors.Add(e.ToString()); }
             if (errors.Count > 0) { recovery.Fail(string.Join("\n", errors)); yield break; }
             yield return ShowTitle(CancellationToken.None);
             recovery.Succeed();
@@ -252,15 +242,17 @@ namespace Cooked.Foundation
         private IEnumerator LoadStages(CancellationToken token)
         {
             if (selectedStagePath == null) throw new InvalidOperationException("No selected stage.");
-            yield return Step(r => scenes.LoadAdditive(selectedStagePath, token, r), token);
-        }
-        private IEnumerator UnloadStages(CancellationToken token)
-        {
-            for (int i = catalog.StagePaths.Count - 1; i >= 0; i--)
+            foreach (string path in catalog.StagePaths)
             {
-                string path = catalog.StagePaths[i];
-                yield return Step(r => scenes.Unload(path, token, r), token);
+                if (!scenes.IsLoaded(path)) yield return Step(r => scenes.LoadAdditive(path, token, r), token);
+                scenes.SetRootsActive(path, path == selectedStagePath);
             }
+        }
+        private void HidePersistentScenes()
+        {
+            foreach (string path in catalog.StagePaths)
+                if (scenes.IsLoaded(path)) scenes.SetRootsActive(path, false);
+            if (scenes.IsLoaded(catalog.CorePath)) scenes.SetRootsActive(catalog.CorePath, false);
         }
         private static IEnumerator Step(Func<OperationResult, IEnumerator> operation, CancellationToken token)
         {
@@ -319,4 +311,3 @@ namespace Cooked.Foundation
         }
     }
 }
-

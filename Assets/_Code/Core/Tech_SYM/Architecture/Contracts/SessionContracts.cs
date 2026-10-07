@@ -1,19 +1,20 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 namespace Cooked.Contracts
 {
+    // RecoverShell is source compatibility only; T6/T9 remove its last consumers.
     public enum AbilityId { FormChange, Tear, RecoverShell }
     public readonly struct CheckpointSnapshot
     {
-        public CheckpointSnapshot(string stageId, string checkpointId, int fragments)
+        public CheckpointSnapshot(Vector3 position, int fragments)
         {
-            if (string.IsNullOrWhiteSpace(stageId)) throw new ArgumentException("Stage ID required.", nameof(stageId));
-            if (string.IsNullOrWhiteSpace(checkpointId)) throw new ArgumentException("Checkpoint ID required.", nameof(checkpointId));
-            if (fragments < 0) throw new ArgumentOutOfRangeException(nameof(fragments));
-            StageId = stageId; CheckpointId = checkpointId; Fragments = fragments;
+            if (!float.IsFinite(position.x) || !float.IsFinite(position.y) || !float.IsFinite(position.z))
+                throw new ArgumentOutOfRangeException(nameof(position), "Checkpoint position must be finite.");
+            if (fragments < 0 || fragments > 5) throw new ArgumentOutOfRangeException(nameof(fragments));
+            Position = position; Fragments = fragments;
         }
-        public string StageId { get; }
-        public string CheckpointId { get; }
+        public Vector3 Position { get; }
         public int Fragments { get; }
     }
     public readonly struct PlayerSnapshot
@@ -36,9 +37,10 @@ namespace Cooked.Contracts
         CheckpointSnapshot Checkpoint { get; }
         event Action Changed;
         void Begin(CheckpointSnapshot initialCheckpoint);
-        void CaptureCheckpoint(string stageId, string checkpointId, int fragments);
+        void CaptureCheckpoint(Vector3 position, int fragments);
         bool IsUnlocked(AbilityId ability);
-        void Unlock(AbilityId ability);
+        void Unlock(AbilityId ability, string grantingStageId);
+        IReadOnlyList<AbilityId> ResetStageUnlocks(string stageId);
         void End();
     }
     public interface IPlayerBridgeService : IDisposable

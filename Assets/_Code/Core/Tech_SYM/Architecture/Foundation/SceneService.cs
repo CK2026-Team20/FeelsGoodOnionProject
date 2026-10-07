@@ -11,6 +11,7 @@ namespace Cooked.Foundation
     {
         private readonly SceneCatalog catalog;
         private readonly HashSet<string> paths;
+        private readonly Dictionary<string, Dictionary<GameObject, bool>> authoredRoots = new Dictionary<string, Dictionary<GameObject, bool>>(StringComparer.Ordinal);
         private bool busy, disposed;
         public SceneService(SceneCatalog catalog)
         {
@@ -23,7 +24,7 @@ namespace Cooked.Foundation
             Validate(scenePath);
             if (busy) { result.Fail("Another scene operation is in progress."); yield break; }
             if (token.IsCancellationRequested) { result.Cancel(); yield break; }
-            if (IsLoaded(scenePath)) { result.Succeed(); yield break; }
+            if (IsLoaded(scenePath)) { RememberRoots(scenePath); result.Succeed(); yield break; }
             busy = true;
             try
             {
@@ -38,10 +39,13 @@ namespace Cooked.Foundation
                 if (operation == null) { result.Fail($"Load returned null: {scenePath}"); yield break; }
                 // Do not interrupt Unity's non-cancellable load. A cancelled newly-loaded scene is cleaned up here.
                 while (!operation.isDone) yield return null;
+                RememberRoots(scenePath);
                 if (token.IsCancellationRequested || disposed)
                 {
+                    // A persistent Core/Stage load completes once even when the initiating request
+                    // is cancelled. Recovery hides it; retry/next game must reuse that instance.
                     var loaded = SceneManager.GetSceneByPath(scenePath);
-                    if (loaded.isLoaded && scenePath != catalog.BootstrapPath)
+                    if (loaded.isLoaded && scenePath == catalog.TitlePath)
                     {
                         var cleanup = SceneManager.UnloadSceneAsync(loaded);
                         if (cleanup == null) { result.Fail($"Cancellation cleanup returned null: {scenePath}"); yield break; }
@@ -59,6 +63,8 @@ namespace Cooked.Foundation
         {
             Validate(scenePath);
             if (scenePath == catalog.BootstrapPath) { result.Fail("Bootstrapper cannot be unloaded."); yield break; }
+            if (scenePath == catalog.CorePath || ContainsStage(scenePath))
+            { result.Fail("Persistent Core/Stage scenes cannot be unloaded."); yield break; }
             if (busy) { result.Fail("Another scene operation is in progress."); yield break; }
             if (token.IsCancellationRequested) { result.Cancel(); yield break; }
             if (!IsLoaded(scenePath)) { result.Succeed(); yield break; }
@@ -89,7 +95,25 @@ namespace Cooked.Foundation
             if (SceneManager.GetActiveScene() == scene) return;
             if (!SceneManager.SetActiveScene(scene)) throw new InvalidOperationException($"Cannot activate scene: {scenePath}");
         }
-        public void Dispose() { disposed = true; }
+        private bool ContainsStage(string path)
+        { foreach (var stage in catalog.StagePaths) if (stage == path) return true; return false; }
+        private void RememberRoots(string path)
+        {
+            var scene = SceneManager.GetSceneByPath(path);
+            if (!scene.isLoaded || authoredRoots.ContainsKey(path)) return;
+            var roots = new Dictionary<GameObject, bool>();
+            foreach (var root in scene.GetRootGameObjects()) roots.Add(root, root.activeSelf);
+            authoredRoots.Add(path, roots);
+        }
+        public void SetRootsActive(string scenePath, bool active)
+        {
+            Validate(scenePath);
+            if (!IsLoaded(scenePath)) throw new InvalidOperationException("Cannot show/hide unloaded scene: " + scenePath);
+            RememberRoots(scenePath);
+            foreach (var root in authoredRoots[scenePath])
+                if (root.Key != null) root.Key.SetActive(active && root.Value);
+        }
+        public void Dispose() { disposed = true; authoredRoots.Clear(); }
         private void Validate(string path)
         {
             if (disposed) throw new ObjectDisposedException(nameof(SceneService));

@@ -59,7 +59,8 @@ namespace Cooked.UI
         public bool FormUnlocked => session.IsActive && session.IsUnlocked(AbilityId.FormChange);
         public bool TearUnlocked => session.IsActive && session.IsUnlocked(AbilityId.Tear);
         public bool RecoverUnlocked => session.IsActive && session.IsUnlocked(AbilityId.RecoverShell);
-        public string Checkpoint => session.IsActive ? "체크포인트  " + session.Checkpoint.CheckpointId : "";
+        // T6 removes the legacy CP label binding after its View migration.
+        public string Checkpoint => "";
         public string Abilities => "이동 방향키 · 점프 Space · 상호작용 E" +
             (session.IsUnlocked(AbilityId.FormChange) ? " · 형태 전환 Q" : "") +
             (session.IsUnlocked(AbilityId.Tear) ? " · 눈물 F" : "");

@@ -27,14 +27,18 @@ namespace Cooked.Contracts
         IEnumerator LoadAdditive(string scenePath, CancellationToken token, OperationResult result);
         IEnumerator Unload(string scenePath, CancellationToken token, OperationResult result);
         void SetActive(string scenePath);
+        // Restores authored root activeSelf; never enables intentionally inactive children.
+        void SetRootsActive(string scenePath, bool active);
     }
     public interface IGameRuntimeService
     {
+        string ActiveStageId { get; }
         // Valid only after InitializeSession and before ShutdownSession. Never cached by app flow.
         ICinematicService Cinematics { get; }
         void SetGameplayVisible(bool visible);
         // Safe with no active session; resolves only the current session DialogueService.
         void CancelDialogue();
+        IEnumerator PrepareCurrentStageForRetry(CancellationToken token, OperationResult result);
         IEnumerator InitializeSession(string entryStageId, CancellationToken token, OperationResult result);
         IEnumerator SpawnActorAtCheckpoint(CancellationToken token, OperationResult result);
         IEnumerator DespawnActor(CancellationToken token, OperationResult result);

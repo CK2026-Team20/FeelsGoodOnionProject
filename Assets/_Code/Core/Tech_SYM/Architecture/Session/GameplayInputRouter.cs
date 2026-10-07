@@ -32,9 +32,11 @@ namespace Cooked.Session
         }
         private void Update()
         {
+            // Death completion must advance even while gameplay/memo blocks normal input.
+            bridge?.TickDeathPresentation();
             if (interaction != null && Time.frameCount > suppressButtonsThroughFrame &&
                 control != null && !control.State.PresentationPaused && Keyboard.current != null &&
-                Keyboard.current.eKey.wasPressedThisFrame && interaction.TryCloseOverlay())
+                Keyboard.current.fKey.wasPressedThisFrame && interaction.TryCloseOverlay())
             { bridge?.ClearInput(); return; }
             if (bridge == null || reader == null || !reader.CanReadInput || !bridge.CanAct)
             {
@@ -45,7 +47,7 @@ namespace Cooked.Session
                 bridge.ClearInput(); interaction.Refresh(); return;
             }
             // UI/메모가 이 프레임에 제어를 바꾸면 아래 게임 명령을 모두 소비합니다.
-            if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame)
             {
                 interaction.TryInteract();
                 if (bridge == null || !bridge.CanAct || Time.frameCount <= suppressButtonsThroughFrame) return;

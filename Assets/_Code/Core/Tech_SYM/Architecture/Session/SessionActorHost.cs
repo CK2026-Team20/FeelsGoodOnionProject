@@ -21,6 +21,7 @@ namespace Cooked.Session
         private GameObject actorRoot;
         private bool releasing, shutdown, spawning;
         public GameObject ActorRoot => actorRoot;
+        // T9 removes this compatibility dependency when Core's separated rig is connected.
         public ActorCameraRig CameraRig => actorRoot != null ? actorRoot.GetComponentInChildren<ActorCameraRig>(true) : null;
         public PlayerInteractionService Interaction { get; private set; }
         public event Action<PlayerInteractionService> InteractionChanged;
@@ -54,12 +55,23 @@ namespace Cooked.Session
                 var reader = actorRoot.GetComponentInChildren<PlayerInputReader>(true);
                 var router = actorRoot.GetComponent<GameplayInputRouter>();
                 if (actor == null || reader == null || router == null) throw new InvalidOperationException("Actor prefab dependencies missing.");
+                reader.SetTearSkillBinding("<Keyboard>/e");
+                actor.transform.SetPositionAndRotation(pose.position, pose.rotation);
                 var camera = CameraRig;
                 if (camera == null) throw new InvalidOperationException("Actor prefab requires the authored HMS Cinemachine rig.");
                 camera.ValidateConfiguration();
                 // All HMS serialized dependencies were authored before first activation.
                 actorRoot.SetActive(true);
+                var forms = actor.GetComponent<PlayerFormController>();
+                if (forms == null || forms.CurrentForm != PlayerForm.Normal || forms.OwnedDebris != null)
+                    throw new InvalidOperationException("A fresh Actor must start Normal with no shell.");
+                actor.SetMaxHP(3);
+                actor.SetInvincible(false);
+                actor.SetHitInvincibilityDuration(2f);
+                if (actor.GetComponent<PlayerAnimatorOutput>()?.KnockbackControlLockMilliseconds <= 0f)
+                    Debug.LogWarning("공통 넉백 클립 연결 대기: 기존 설정의 0ms 조작 제한을 사용합니다. 실제 애니메이션 재생은 미검증입니다.", actor);
                 bridge.Attach(actor);
+                foreach (var guard in actorRoot.GetComponentsInChildren<ActorFallGuard>(true)) guard.Bind(bridge);
                 bridge.RestoreFragments(fragments);
                 actor.Heal(actor.Model.MaxHP);
                 Interaction = new PlayerInteractionService(bridge);
@@ -130,6 +142,13 @@ namespace Cooked.Session
         {
             if (shutdown) return;
             shutdown = true;
+            ReleaseSession();
+            InteractionChanged = null;
+        }
+        // Normal session release is reusable; only OnDestroy/Shutdown permanently closes the host.
+        // T9 removes transientScope/transients after all shell consumers have migrated.
+        public void ReleaseSession()
+        {
             var errors = new List<Exception>();
             try
             {
@@ -138,7 +157,6 @@ namespace Cooked.Session
             }
             finally
             {
-                InteractionChanged = null;
                 bridge = null; control = null; transients = null;
             }
             SessionCleanup.ThrowIfAny(errors, "Actor host shutdown completed with teardown failures.");
