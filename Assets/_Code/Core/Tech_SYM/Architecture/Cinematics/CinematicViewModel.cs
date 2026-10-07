@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using Cooked.Contracts;
+using UnityEngine;
 
 namespace Cooked.Cinematics
 {
@@ -14,18 +16,33 @@ namespace Cooked.Cinematics
             this.state = state ?? throw new ArgumentNullException(nameof(state));
             state.Changed += OnChanged;
         }
-        public CinematicFrame Frame => state.Frame;
+        public Texture2D Artwork => disposed ? null : state.Artwork;
+        public string Caption => disposed ? string.Empty : state.Caption;
         public bool IsVisible => !disposed && state.IsVisible;
         public bool CanSkip => !disposed && state.CanSkip;
         public event Action Changed;
         public void Skip() { if (CanSkip) service.Skip(); }
-        private void OnChanged() { if (!disposed) Changed?.Invoke(); }
+        private void OnChanged()
+        {
+            if (disposed) return;
+            long version = state.Version;
+            var errors = new List<Exception>();
+            var listeners = Changed;
+            if (listeners != null)
+                foreach (Action listener in listeners.GetInvocationList())
+                {
+                    if (disposed || version != state.Version) break;
+                    if (Changed == null || Array.IndexOf(Changed.GetInvocationList(), listener) < 0) continue;
+                    try { listener(); } catch (Exception error) { errors.Add(error); }
+                }
+            if (errors.Count > 0) throw new AggregateException("Cinematic ViewModel observer failures.", errors);
+        }
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
-            state.Changed -= OnChanged;
-            Changed = null;
+            try { state.Changed -= OnChanged; }
+            finally { Changed = null; }
         }
     }
 }

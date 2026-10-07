@@ -1,36 +1,58 @@
+using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Cooked.Cinematics
 {
     public sealed class CinematicView : MonoBehaviour
     {
-        [Tooltip("컷신 화면 전체의 표시와 입력 허용을 제어하는 CanvasGroup입니다. 원화와 스킵 버튼을 포함한 그룹을 연결하세요.")]
+        [Tooltip("원화·문구·Skip 버튼을 포함한 화면의 CanvasGroup입니다. 연출 표시 중 아래 화면의 포인터 입력을 막습니다.")]
         [SerializeField] private CanvasGroup visibility;
-        [Tooltip("원화를 표시할 화면 영역 목록입니다. 타임라인에 지정된 순서에 맞는 한 영역만 전체 화면으로 표시하고 다른 영역은 숨깁니다.")]
-        [SerializeField] private RectTransform[] panelViewports;
-        [Tooltip("원화 텍스처를 표시할 RawImage 목록입니다. 타임라인에 지정된 순서에 맞는 이미지 한 장만 표시하고 나머지는 숨깁니다.")]
-        [SerializeField] private UnityEngine.UI.RawImage[] panelArtwork;
-        [Tooltip("현재 컷신을 완료 처리하고 건너뛰는 버튼입니다. 메모 닫기 버튼과는 별도 기능입니다.")]
-        [SerializeField] private UnityEngine.UI.Button skipButton;
+        [Tooltip("원화 한 장이 들어갈 RectTransform 영역입니다. 하단 문구 영역을 제외하고 배치하면 원화 비율을 유지하며 이 영역 안에 맞춥니다.")]
+        [SerializeField] private RectTransform artworkViewport;
+        [Tooltip("기존 원화 Texture2D 한 장을 표시할 RawImage입니다. 지정한 원화 영역 아래의 이미지 하나를 연결하세요.")]
+        [SerializeField] private RawImage artwork;
+        [Tooltip("현재 컷의 문구를 표시할 TMP_Text입니다. 원화 아래에 배치하고 한국어 글꼴을 연결하세요.")]
+        [SerializeField] private TMP_Text caption;
+        [Tooltip("연출 전체를 한 번 건너뛰는 버튼입니다. 옵션을 열었거나 연출이 끝났으면 사용할 수 없습니다.")]
+        [SerializeField] private Button skipButton;
         private CinematicViewModel viewModel;
         private bool bound;
-        public bool IsConfigured => visibility != null && panelViewports != null && panelViewports.Length == 4 && panelArtwork != null && panelArtwork.Length == 4 && skipButton != null;
+        public bool IsConfigured => visibility != null && artworkViewport != null && artwork != null && caption != null && skipButton != null;
 
-        public void Bind(CinematicViewModel value)
+        public void Configure(CanvasGroup visibility, RectTransform artworkViewport, RawImage artwork, TMP_Text caption, Button skipButton)
         {
-            Unsubscribe();
-            viewModel = value;
-            if (isActiveAndEnabled) Subscribe();
+            if (visibility == null || artworkViewport == null || artwork == null || caption == null || skipButton == null)
+                throw new ArgumentException("CinematicView needs CanvasGroup, artwork viewport, one RawImage, bottom TMP_Text and Skip Button.");
+            Unbind();
+            this.visibility = visibility;
+            this.artworkViewport = artworkViewport;
+            this.artwork = artwork;
+            this.caption = caption;
+            this.skipButton = skipButton;
             Refresh();
         }
-        public void Unbind() { Unsubscribe(); viewModel = null; Refresh(); }
+        public void Bind(CinematicViewModel value)
+        {
+            if (!IsConfigured) throw new InvalidOperationException("CinematicView serialized bindings are incomplete.");
+            Unsubscribe();
+            viewModel = value;
+            try { if (isActiveAndEnabled) Subscribe(); Refresh(); }
+            catch { Unbind(); throw; }
+        }
+        public void Unbind()
+        {
+            try { Unsubscribe(); }
+            finally { viewModel = null; Refresh(); }
+        }
         private void OnEnable() { Subscribe(); Refresh(); }
-        private void OnDisable() { Unsubscribe(); }
+        private void OnDisable() { try { Unsubscribe(); } finally { Clear(); } }
         private void OnDestroy() { Unbind(); }
         private void OnRectTransformDimensionsChange() { if (viewModel != null) Refresh(); }
         private void Subscribe()
         {
-            if (bound || viewModel == null) return;
+            if (bound || viewModel == null || !IsConfigured) return;
             viewModel.Changed += Refresh;
             skipButton.onClick.AddListener(OnSkip);
             bound = true;
@@ -38,37 +60,40 @@ namespace Cooked.Cinematics
         private void Unsubscribe()
         {
             if (!bound) return;
-            viewModel.Changed -= Refresh;
-            if (skipButton != null) skipButton.onClick.RemoveListener(OnSkip);
             bound = false;
+            try { if (viewModel != null) viewModel.Changed -= Refresh; }
+            finally { if (skipButton != null) skipButton.onClick.RemoveListener(OnSkip); }
         }
-        private void OnSkip() { viewModel?.Skip(); }
+        private void OnSkip() { if (bound && isActiveAndEnabled) viewModel?.Skip(); }
         private void Refresh()
         {
-            if (visibility == null) return;
-            bool visible = viewModel != null && viewModel.IsVisible;
-            visibility.alpha = visible ? 1 : 0;
-            visibility.blocksRaycasts = visible;
-            visibility.interactable = visible;
-            if (skipButton != null) skipButton.interactable = visible && viewModel.CanSkip;
-            if (!visible) return;
-            var frame = viewModel.Frame;
-            for (int i = 0; i < 4; i++) SetArtwork(panelArtwork[i], panelViewports[i], frame[i]);
+            if (!IsConfigured || !isActiveAndEnabled || viewModel == null || !viewModel.IsVisible) { Clear(); return; }
+            visibility.alpha = 1;
+            visibility.blocksRaycasts = true;
+            visibility.interactable = true;
+            skipButton.interactable = viewModel.CanSkip;
+            artwork.texture = viewModel.Artwork;
+            artwork.enabled = artwork.texture != null;
+            artwork.raycastTarget = true;
+            caption.text = viewModel.Caption;
+            caption.raycastTarget = false;
+            FitArtwork();
         }
-        private void SetArtwork(UnityEngine.UI.RawImage image, RectTransform viewport, CinematicPanel panel)
+        private void Clear()
         {
-            var texture = panel.Artwork;
-            image.texture = texture;
-            image.enabled = texture != null;
-            viewport.gameObject.SetActive(texture != null);
-            image.color = new Color(1,1,1,panel.Opacity);
-            if (texture == null || viewport == null) return;
-            Vector2 size = viewport.rect.size;
+            if (visibility != null) { visibility.alpha = 0; visibility.blocksRaycasts = false; visibility.interactable = false; }
+            if (skipButton != null) skipButton.interactable = false;
+            if (artwork != null) { artwork.texture = null; artwork.enabled = false; }
+            if (caption != null) caption.text = string.Empty;
+        }
+        private void FitArtwork()
+        {
+            var texture = artwork.texture;
+            if (texture == null || texture.width <= 0 || texture.height <= 0) return;
+            Vector2 size = artworkViewport.rect.size;
             float ratio = (float)texture.width / texture.height;
-            // Fit the single full-screen artwork without animation or cropping.
             float width = Mathf.Min(size.x, size.y * ratio);
-            image.rectTransform.sizeDelta = new Vector2(width, width / ratio);
-            image.rectTransform.localScale = Vector3.one;
+            artwork.rectTransform.sizeDelta = new Vector2(width, width / ratio);
         }
     }
 }

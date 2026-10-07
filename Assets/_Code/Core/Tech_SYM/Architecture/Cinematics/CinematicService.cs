@@ -1,143 +1,191 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Cooked.Contracts;
-using UnityEngine;
-using UnityEngine.Playables;
-using UnityEngine.Timeline;
 
 namespace Cooked.Cinematics
 {
-    public enum CinematicPhase { Idle, Ready, Playing, Holding, Faulted, Disposed }
+    public enum CinematicPhase { Idle, Ready, Playing, Holding, Faulted, Disposed, Preparing }
 
+    // Sole owner of cursor, remaining time, operation results and borrowed control leases.
+    // Host ticks unscaled time; IEnumerator Play only observes the same service state.
     public sealed class CinematicService : ICinematicService
     {
-        private readonly PlayableDirector director;
-        private readonly CinematicFrameBridge bridge;
         private readonly CinematicCatalog catalog;
         private readonly IGameplayControlService control;
-        private CancellationToken operationToken;
+        private CinematicCut[] cuts;
+        private int cursor = -1;
+        private double remainingSeconds, elapsedSeconds;
+        private CancellationToken prepareToken, playToken;
         private OperationResult playResult;
         private long revision;
-        private bool presentationPaused;
         private IDisposable inputLease, worldLease;
         public CinematicPresentationState Presentation { get; } = new CinematicPresentationState();
         public CinematicOutcome Outcome { get; private set; }
         public CinematicPhase Phase { get; private set; }
         public long Revision => revision;
-        public double Time => director == null ? 0 : director.time;
+        public double Time => elapsedSeconds;
+        public double RemainingSeconds => remainingSeconds;
         public string Error { get; private set; }
 
-        public CinematicService(PlayableDirector director, CinematicFrameBridge bridge,
-            CinematicCatalog catalog, IGameplayControlService control)
+        public CinematicService(CinematicCatalog catalog, IGameplayControlService control)
         {
-            this.director = director != null ? director : throw new ArgumentNullException(nameof(director));
-            this.bridge = bridge != null ? bridge : throw new ArgumentNullException(nameof(bridge));
             this.catalog = catalog != null ? catalog : throw new ArgumentNullException(nameof(catalog));
             this.control = control ?? throw new ArgumentNullException(nameof(control));
-            bridge.Bind(Presentation);
-            director.playOnAwake = false;
-            director.timeUpdateMode = DirectorUpdateMode.UnscaledGameTime;
-            director.extrapolationMode = DirectorWrapMode.Hold;
-            presentationPaused = control.State.PresentationPaused;
             control.Changed += OnControlChanged;
         }
 
+        // Pin at invocation, not at the iterator's first MoveNext: a queued old iterator
+        // must never prepare/play a newer session that happens to be Ready.
         public IEnumerator Prepare(CinematicId id, CancellationToken token, OperationResult result)
         {
             RequirePending(result);
-            if (Phase == CinematicPhase.Disposed) { result.Fail("CinematicService is disposed."); yield break; }
-            if (Phase != CinematicPhase.Idle) { result.Fail("Hide the previous cinematic before Prepare."); yield break; }
-            if (token.IsCancellationRequested) { Outcome = CinematicOutcome.Cancelled; result.Cancel(); yield break; }
-            revision++;
-            operationToken = token;
+            return PrepareRoutine(id, token, result, revision);
+        }
+
+        private IEnumerator PrepareRoutine(CinematicId id, CancellationToken token, OperationResult result, long expected)
+        {
+            PrepareNow(id, token, result, expected);
+            yield break;
+        }
+
+        private void PrepareNow(CinematicId id, CancellationToken token, OperationResult result, long expected)
+        {
+            if (expected != revision) { result.Cancel(); return; }
+            if (Phase == CinematicPhase.Disposed) { result.Fail("CinematicService is disposed."); return; }
+            if (Phase != CinematicPhase.Idle) { result.Fail("Hide the previous cinematic before Prepare."); return; }
+            if (token.IsCancellationRequested) { Outcome = CinematicOutcome.Cancelled; result.Cancel(); return; }
+            long run = ++revision;
+            Phase = CinematicPhase.Preparing;
+            prepareToken = token;
+            playToken = default;
             Outcome = CinematicOutcome.None;
             Error = null;
+            elapsedSeconds = 0;
+            IDisposable acquiredInput = null, acquiredWorld = null;
             try
             {
-                TimelineAsset timeline = catalog.Get(id);
-                CinematicArtworkTrack track = Validate(timeline, id);
-                inputLease = control.BlockGameplay("Cinematic");
-                worldLease = control.PauseWorld("Cinematic");
-                Presentation.SetFrame(default);
-                director.playableAsset = timeline;
-                director.SetGenericBinding(track, bridge);
-                director.RebuildGraph();
-                director.time = 0;
-                director.Evaluate();
-                if (!Presentation.Frame[0].IsRevealed) throw new InvalidOperationException("Timeline did not prepare its first frame: " + id);
+                cuts = catalog.Snapshot(id);
+                cursor = 0;
+                remainingSeconds = cuts[0].DurationSeconds;
+                acquiredInput = control.BlockGameplay("Cinematic");
+                if (!ContinuePrepare(run, token, result)) return;
+                acquiredWorld = control.PauseWorld("Cinematic");
+                if (!ContinuePrepare(run, token, result)) return;
+                inputLease = acquiredInput;
+                worldLease = acquiredWorld;
+                acquiredInput = acquiredWorld = null;
                 Phase = CinematicPhase.Ready;
-                UpdateFlags();
-                result.Succeed();
+                Publish();
+                if (ContinuePrepare(run, token, result)) result.Succeed();
             }
-            catch (Exception exception)
+            catch (Exception error)
             {
-                var errors = new List<Exception> { exception };
-                Phase = CinematicPhase.Faulted;
-                Attempt(errors, () => director.Stop());
-                Attempt(errors, ReleaseLeases);
-                Attempt(errors, () => Presentation.SetFlags(false, false));
-                Attempt(errors, () => Presentation.SetFrame(default));
-                Error = "Cinematic Prepare " + id + ": " + new AggregateException(errors);
-                result.Fail(Error);
+                if (IsCurrent(run)) FailRun(error, result, "Cinematic Prepare " + id);
+                else if (result.Status == OperationStatus.Pending) result.Fail("Superseded Cinematic Prepare " + id + ": " + error);
             }
-            yield break;
+            finally
+            {
+                var errors = new List<Exception>();
+                Release(errors, acquiredInput, acquiredWorld);
+                if (errors.Count > 0)
+                {
+                    var error = new AggregateException("Cinematic untransferred lease cleanup failed.", errors);
+                    if (IsCurrent(run)) FailRun(error, result, "Cinematic Prepare " + id);
+                    else if (result.Status == OperationStatus.Pending) result.Fail(error.ToString());
+                }
+            }
+        }
+
+        private bool ContinuePrepare(long run, CancellationToken token, OperationResult result)
+        {
+            if (!IsCurrent(run)) { if (result.Status == OperationStatus.Pending) result.Cancel(); return false; }
+            if (!token.IsCancellationRequested) return true;
+            Finish(CinematicOutcome.Cancelled);
+            if (result.Status == OperationStatus.Pending) result.Cancel();
+            return false;
         }
 
         public IEnumerator Play(CancellationToken token, OperationResult result)
         {
             RequirePending(result);
+            return PlayRoutine(token, result, revision);
+        }
+
+        private IEnumerator PlayRoutine(CancellationToken token, OperationResult result, long run)
+        {
+            if (!IsCurrent(run)) { result.Cancel(); yield break; }
             if (Phase != CinematicPhase.Ready) { result.Fail("Cinematic must be Ready before Play."); yield break; }
+            playToken = token;
             playResult = result;
-            operationToken = token;
-            long run = revision;
-            if (token.IsCancellationRequested) { Finish(CinematicOutcome.Cancelled); yield break; }
-            Phase = CinematicPhase.Playing;
             try
             {
-                director.Play();
-                if (presentationPaused) director.Pause();
-                UpdateFlags();
-            }
-            catch (Exception exception) { FailPlayback(exception); }
-            try
-            {
-                while (run == revision && Phase == CinematicPhase.Playing)
+                if (IsCancelled) { Finish(CinematicOutcome.Cancelled); yield break; }
+                Phase = CinematicPhase.Playing;
+                try { Publish(); } catch (Exception error) { if (IsCurrent(run)) FailRun(error, result, "Cinematic Play"); }
+                while (IsCurrent(run) && Phase == CinematicPhase.Playing)
                 {
-                    ObservePlayback();
-                    if (Phase == CinematicPhase.Playing) yield return null;
+                    // Cancellation remains observable even if the Host cannot tick this frame.
+                    if (IsCancelled) { Finish(CinematicOutcome.Cancelled); break; }
+                    yield return null;
                 }
             }
             finally
             {
-                // A coroutine owner can dispose the iterator without advancing it again.
-                if (run == revision && Phase == CinematicPhase.Playing) Finish(CinematicOutcome.Cancelled);
+                try
+                {
+                    if (IsCurrent(run) && Phase == CinematicPhase.Playing) Finish(CinematicOutcome.Cancelled);
+                }
+                finally { if (result.Status == OperationStatus.Pending) result.Cancel(); }
             }
-            // Hide/Dispose can invalidate this iterator before the next MoveNext.
-            if (result.Status == OperationStatus.Pending) result.Cancel();
         }
 
-        public void ObservePlayback()
+        public void Tick(float unscaledDeltaSeconds)
         {
-            if (Phase != CinematicPhase.Ready && Phase != CinematicPhase.Playing) return;
-            if (operationToken.IsCancellationRequested) { Finish(CinematicOutcome.Cancelled); return; }
-            if (Phase != CinematicPhase.Playing) return;
-            try
+            if (Phase != CinematicPhase.Ready && Phase != CinematicPhase.Playing && Phase != CinematicPhase.Holding) return;
+            if (IsCancelled)
             {
-                double end = director.duration;
-                if (director.time < end - 0.00001) return;
-                director.time = Math.Max(0, end - 0.000001);
-                director.Evaluate();
+                if (Phase == CinematicPhase.Holding) Hide(); // Preserve the already terminal outcome.
+                else Finish(CinematicOutcome.Cancelled);
+                return;
             }
-            catch (Exception exception) { FailPlayback(exception); return; }
-            Finish(CinematicOutcome.Completed);
+            if (Phase != CinematicPhase.Playing || control.State.PresentationPaused) return;
+            long run = revision;
+            if (float.IsNaN(unscaledDeltaSeconds) || float.IsInfinity(unscaledDeltaSeconds) || unscaledDeltaSeconds < 0)
+            {
+                FailRun(new ArgumentOutOfRangeException(nameof(unscaledDeltaSeconds), "Tick seconds must be finite and nonnegative."), playResult, "Cinematic Tick");
+                return;
+            }
+            double delta = unscaledDeltaSeconds;
+            while (IsCurrent(run) && Phase == CinematicPhase.Playing)
+            {
+                if (delta < remainingSeconds)
+                {
+                    remainingSeconds -= delta;
+                    elapsedSeconds += delta;
+                    return;
+                }
+                delta -= remainingSeconds;
+                elapsedSeconds += remainingSeconds;
+                remainingSeconds = 0;
+                if (cursor == cuts.Length - 1) { Finish(CinematicOutcome.Completed); return; }
+                cursor++;
+                remainingSeconds = cuts[cursor].DurationSeconds;
+                try { Publish(); }
+                catch (Exception error) { if (IsCurrent(run)) FailRun(error, playResult, "Cinematic cut " + (cursor + 1)); return; }
+                // An observer can open Options, cancel, or Hide and prepare another request.
+                if (!IsCurrent(run)) return;
+                if (IsCancelled) { Finish(CinematicOutcome.Cancelled); return; }
+                if (control.State.PresentationPaused) return;
+            }
         }
 
         public void Skip()
         {
-            if (Phase != CinematicPhase.Playing || presentationPaused) return;
+            if (Phase != CinematicPhase.Playing) return;
+            if (IsCancelled) { Finish(CinematicOutcome.Cancelled); return; }
+            if (control.State.PresentationPaused) return;
             Finish(CinematicOutcome.Skipped);
         }
 
@@ -145,122 +193,114 @@ namespace Cooked.Cinematics
         {
             if (Phase == CinematicPhase.Disposed) return;
             var errors = new List<Exception>();
-            if (Phase == CinematicPhase.Ready || Phase == CinematicPhase.Playing)
-                Attempt(errors, () => Finish(CinematicOutcome.Cancelled));
-            revision++;
-            Attempt(errors, () => director.Stop());
-            if (director.playableAsset is TimelineAsset timeline)
-                foreach (var track in timeline.GetOutputTracks()) Attempt(errors, () => director.ClearGenericBinding(track));
-            Attempt(errors, () => director.playableAsset = null);
-            playResult = null;
-            Phase = CinematicPhase.Idle;
-            Attempt(errors, ReleaseLeases);
-            Attempt(errors, () => Presentation.SetFlags(false, false));
-            Attempt(errors, () => Presentation.SetFrame(default));
+            Reset(CinematicPhase.Idle, errors);
             ThrowErrors(errors, "Cinematic Hide cleanup failed.");
         }
 
         public void Dispose()
         {
             if (Phase == CinematicPhase.Disposed) return;
-            try { Hide(); }
-            finally
-            {
-                control.Changed -= OnControlChanged;
-                bridge.Bind(null);
-                Phase = CinematicPhase.Disposed;
-                ReleaseLeases();
-            }
+            var errors = new List<Exception>();
+            // Reject reentrant Prepare before disposing leases or notifying observers.
+            try { control.Changed -= OnControlChanged; }
+            catch (Exception error) { errors.Add(error); }
+            finally { Reset(CinematicPhase.Disposed, errors); }
+            ThrowErrors(errors, "Cinematic Dispose cleanup failed.");
         }
 
-        private static void Attempt(List<Exception> errors, Action action)
-        { try { action(); } catch (Exception e) { errors.Add(e); } }
-        private static void ThrowErrors(List<Exception> errors, string message)
-        { if (errors.Count > 0) throw new AggregateException(message, errors); }
-        private void ReleaseLeases()
-        {
-            var input = inputLease; var world = worldLease;
-            inputLease = worldLease = null;
-            var errors = new List<Exception>();
-            Attempt(errors, () => input?.Dispose());
-            Attempt(errors, () => world?.Dispose());
-            ThrowErrors(errors, "Cinematic lease cleanup failed.");
-        }
+        private bool IsCancelled => prepareToken.IsCancellationRequested || playToken.IsCancellationRequested;
+        private bool IsCurrent(long run) => revision == run && Phase != CinematicPhase.Disposed;
 
         private void OnControlChanged(ControlState state)
         {
-            if (Phase == CinematicPhase.Disposed) return;
-            if (presentationPaused == state.PresentationPaused) return;
-            presentationPaused = state.PresentationPaused;
-            if (Phase == CinematicPhase.Playing)
+            if (Phase != CinematicPhase.Ready && Phase != CinematicPhase.Playing && Phase != CinematicPhase.Holding) return;
+            long run = revision;
+            try { Publish(); }
+            catch (Exception error)
             {
-                if (presentationPaused) director.Pause();
-                else director.Resume();
+                if (IsCurrent(run)) FailRun(error, playResult, "Cinematic control presentation");
+                throw;
             }
-            UpdateFlags();
+        }
+
+        private void Publish()
+        {
+            bool visible = cuts != null && (Phase == CinematicPhase.Ready || Phase == CinematicPhase.Playing || Phase == CinematicPhase.Holding);
+            Presentation.Publish(visible ? cuts[cursor] : null, visible ? cursor : -1,
+                visible, Phase == CinematicPhase.Playing && !control.State.PresentationPaused);
         }
 
         private void Finish(CinematicOutcome outcome)
         {
-            if (Phase != CinematicPhase.Playing && Phase != CinematicPhase.Ready) return;
+            if (Phase != CinematicPhase.Ready && Phase != CinematicPhase.Playing && Phase != CinematicPhase.Preparing) return;
             Outcome = outcome;
+            var result = playResult;
+            if (result != null && result.Status == OperationStatus.Pending)
+            {
+                if (outcome == CinematicOutcome.Cancelled) result.Cancel(); else result.Succeed();
+            }
+            if (outcome == CinematicOutcome.Cancelled)
+            {
+                var errors = new List<Exception>();
+                Reset(CinematicPhase.Holding, errors);
+                ThrowErrors(errors, "Cinematic cancellation cleanup failed.");
+                return;
+            }
             Phase = CinematicPhase.Holding;
-            // Terminal result must survive a throwing presentation observer.
-            if (playResult != null && playResult.Status == OperationStatus.Pending)
+            cursor = cuts.Length - 1;
+            remainingSeconds = 0;
+            long run = revision;
+            try { Publish(); }
+            catch (Exception error)
             {
-                if (outcome == CinematicOutcome.Cancelled) playResult.Cancel(); else playResult.Succeed();
+                var errors = new List<Exception> { error };
+                // Result and Outcome are terminal; observer failures still hide and release.
+                if (IsCurrent(run)) Reset(CinematicPhase.Holding, errors);
+                ThrowErrors(errors, "Cinematic completion observer failed.");
             }
-            var errors = new List<Exception>();
-            Attempt(errors, () => director.Pause());
-            Attempt(errors, UpdateFlags);
-            if (errors.Count > 0) Attempt(errors, ReleaseLeases);
-            ThrowErrors(errors, "Cinematic completion observer failed.");
         }
 
-        private void FailPlayback(Exception exception)
+        private void FailRun(Exception error, OperationResult result, string context)
         {
-            var errors = new List<Exception> { exception };
-            Error = "Cinematic playback: " + exception;
-            Phase = CinematicPhase.Faulted;
-            Outcome = CinematicOutcome.None;
-            if (playResult != null && playResult.Status == OperationStatus.Pending) playResult.Fail(Error);
-            Attempt(errors, () => director.Pause());
-            Attempt(errors, ReleaseLeases);
-            Attempt(errors, () => Presentation.SetFlags(false, false));
-            Error = new AggregateException("Cinematic playback failed.", errors).ToString();
+            Error = context + ": " + error;
+            if (result != null && result.Status == OperationStatus.Pending) result.Fail(Error);
+            var errors = new List<Exception> { error };
+            long next = revision + 1;
+            Reset(CinematicPhase.Faulted, errors);
+            // Cleanup observers may already have prepared a newer request.
+            if (revision == next && Phase == CinematicPhase.Faulted)
+                Error = new AggregateException(context + " failed.", errors).ToString();
         }
 
-        private void UpdateFlags()
+        private void Reset(CinematicPhase target, List<Exception> errors)
         {
-            bool visible = Phase == CinematicPhase.Ready || Phase == CinematicPhase.Playing || Phase == CinematicPhase.Holding;
-            Presentation.SetFlags(visible, Phase == CinematicPhase.Playing && !presentationPaused);
+            // Detach all resources before calling borrowed owners or observers.
+            var input = inputLease;
+            var world = worldLease;
+            var result = playResult;
+            inputLease = worldLease = null;
+            playResult = null;
+            if (Phase == CinematicPhase.Preparing || Phase == CinematicPhase.Ready || Phase == CinematicPhase.Playing)
+                Outcome = target == CinematicPhase.Faulted ? CinematicOutcome.None : CinematicOutcome.Cancelled;
+            if (result != null && result.Status == OperationStatus.Pending) result.Cancel();
+            ++revision;
+            Phase = target;
+            cuts = null;
+            cursor = -1;
+            remainingSeconds = 0;
+            prepareToken = playToken = default;
+            try { Presentation.Publish(null, -1, false, false); }
+            catch (Exception error) { errors.Add(error); }
+            finally { Release(errors, input, world); }
         }
 
-        private static CinematicArtworkTrack Validate(TimelineAsset timeline, CinematicId id)
+        private static void Release(List<Exception> errors, IDisposable input, IDisposable world)
         {
-            if (timeline == null) throw new InvalidOperationException("Missing Timeline for " + id);
-            if (double.IsNaN(timeline.duration) || double.IsInfinity(timeline.duration) || timeline.duration <= 0)
-                throw new InvalidOperationException("Expected a finite positive Timeline duration: " + id);
-            var tracks = timeline.GetOutputTracks().ToArray();
-            if (tracks.Length != 1 || !(tracks[0] is CinematicArtworkTrack track))
-                throw new InvalidOperationException("Expected one CinematicArtworkTrack: " + id);
-            var clips = track.GetClips().OrderBy(clip => clip.start).ToArray();
-            if (clips.Length != 4) throw new InvalidOperationException("Expected four artwork clips: " + id);
-            for (int i = 0; i < clips.Length; i++)
-            {
-                var art = clips[i].asset as CinematicArtworkClip;
-                if (art == null || art.Artwork == null || double.IsNaN(clips[i].duration) || clips[i].duration <= 0)
-                    throw new InvalidOperationException("Missing artwork or invalid duration at " + id + "/" + (i + 1));
-                if (float.IsNaN(art.EndScale) || float.IsInfinity(art.EndScale) || Math.Abs(art.EndScale - 1f) > 0.0001f)
-                    throw new InvalidOperationException("Cinematic scale must remain one at " + id + "/" + (i + 1));
-                if (Math.Abs(clips[i].start - (i == 0 ? 0 : clips[i-1].end)) > 0.001 || double.IsInfinity(clips[i].duration))
-                    throw new InvalidOperationException("Artwork clips must be contiguous and non-overlapping at " + id + "/" + (i + 1));
-            }
-            if (Math.Abs(clips[clips.Length - 1].end - timeline.duration) > 0.001)
-                throw new InvalidOperationException("Timeline duration must match the last artwork.");
-            return track;
+            try { input?.Dispose(); } catch (Exception error) { errors.Add(error); }
+            finally { try { world?.Dispose(); } catch (Exception error) { errors.Add(error); } }
         }
-
+        private static void ThrowErrors(List<Exception> errors, string message)
+        { if (errors.Count > 0) throw new AggregateException(message, errors); }
         private static void RequirePending(OperationResult result)
         {
             if (result == null) throw new ArgumentNullException(nameof(result));
