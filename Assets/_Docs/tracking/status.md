@@ -7,10 +7,13 @@
 | 명세/권한 | 최종 선택·두 값 저장·현재 Stage 능력 재잠금·전체 Stage 최초 로드/이후 유지 반영 | 원본 DOCX/PDF 편집 없음 |
 | T1 HMS 최소 확장 | 9개 .cs, 커밋 `5d1770d`; 실제 Editor 컴파일 오류0 및 공개 API/순수 계약10건 통과 | 실제 Interact/Dead/Knockback clip 재생·물리·Brain 완료 증거와 구분 |
 | T2 수명/저장/입력 | 43ada64 통합·독립 검토 승인·메인 Editor 오류0·실제 두 값/원자성/재잠금 계약 PASS | 실제 Stage/접촉/Core callback 연결은 T9; 통합 Play/물리/Brain/빌드는 T10 |
-| T3~T9 | 기존 자산/직렬화 기준점과 GUID 참조 조사, Execution Graph 유지 | 카메라/발판/적/표시/연출/작성 도구/실제 자산 연결·32개 지정 소스 이관 후 삭제 |
-| Unity 자산 읽기 | 통합6씬·소유58프리팹 Missing Script0, 직렬화682기록; 원래 씬 setup 복구 | 새 구현 Play/Windows 빌드 통과를 뜻하지 않음 |
+| T3 카메라 | `cd85a52` 통합·독립 검토 승인·메인 Editor 오류0; 최신 요청/재진입/취소 소스 관찰17개 통과 | 실제 Brain·Side 정렬·초기 위치 모드와 자산 연결은 T9/T10 |
+| T4 발판/장치/조각 | `915e5e9` 통합·독립 검토 승인·메인 Editor 오류0; 실제 소스 관찰82개 통과 | 실제 PhysX 접촉/운반·주기 침범·조각 재등장과 Stage 연결은 T9/T10 |
+| T5 일반 적 | `14e2160` 통합·독립 검토 승인·메인 Editor 오류0; 소스 관찰11개 통과 | 실제 Collider 접촉·순찰 지형·기절 표시와 자산 연결은 T9/T10 |
+| T6~T9 | T6 상호작용/화면 구현 진행, 기존 자산/직렬화 기준점과 GUID 참조 조사, Execution Graph 유지 | 대화/옵션/HUD·연출·작성 도구·실제 자산 연결·32개 지정 소스 이관 후 삭제 |
+| Unity 자산 읽기 | 통합6씬과 전체 소유12씬·58프리팹 Missing Script0, 앞선 통합 직렬화682기록; 원래 씬 setup 복구 | 새 구현 Play/Windows 빌드 통과를 뜻하지 않음 |
 | 실제 클립/원화 | 기존 Opening/Ending 원화8장 확인; 플레이어 animation clip 슬롯은 미연결 | 임의 FBX Take를 피격/사망 클립으로 지정하지 않음; 제공/연결 후 실제 재생 검증 필요 |
-| QA | 기존 Excel 케이스39개와 FunQA 원본/작성양식 hash 보존 | 새 요구 기능 실행·새 빌드·팀 플레이·FunQA 평가 미실행 |
+| QA | 최신 확정안39케이스/V01..V34 전체 연결, 읽기 전용 Excel PDF18쪽 텍스트·배치 검수; 이전 원본 백업/FunQA 원본·작성양식 hash 보존 | 실제 빌드 판정39개·새 통합 기능 실행·새 빌드·팀 플레이·FunQA 평가 미실행 |
 
 [기능 명세서](ready-system-v11-refactor-2026-10-06/기능 명세서.md) · [확정안 적용 명세](ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md) · [실행 계획](ready-system-v11-refactor-2026-10-06/plan.md) · [검증 항목](ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md). 씬 reload 여부의 두 문제와 대책은 확정안 적용 명세에서 비교한다. checkpoint payload는 Position/Fragments뿐이며 Stage/능력/필드 상태는 저장하지 않는다.
 

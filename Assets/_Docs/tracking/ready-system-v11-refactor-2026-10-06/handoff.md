@@ -77,3 +77,12 @@ HMS ActorBody 물리 동거는 GetComponent/attachedRigidbody 공개 계약의 �
 T2 16개 .cs는 43ada64로 통합했다. 독립 검토에서 발견한 Dead Interrupted/미완료 Core release 두 경로를 RED→GREEN으로 보정한 후 승인됐다. 메인 Editor 컴파일 오류0, 실제 CheckpointContract PASS이며 공개 저장값은 Position/Fragments뿐이다. 기존 씬 setup/active/startScene/clean을 보존했다. 실제 Stage reset·접촉 저장·Core release callback 연결은 T9, 통합 Play/물리/Brain/클립/Windows 빌드는 T10이며 아직 완료로 쓰지 않는다.
 
 후속 공개 계약: BindStageLifecycle(prepare, actualRelockedAbilitiesNotice), BindCheckpointPair(start,end), BindSessionRelease(release), SessionActorHost.ReleaseSession(), Enemy HurtCollider resolver. release callback은 같은 runtime으로 재호출돼도 부분 해제 뒤 이어서 정리할 수 있어야 한다. T3/T4/T5는 43ada64 기반 독립 worktree에서 진행한다.
+
+
+## T3/T4/T5 통합과 현재 검증 경계 — 2026-10-07
+
+T3 `cd85a52`의 카메라 요청 소스17관찰, T4 `915e5e9`의 발판·장치·조각 소스82관찰, T5 `14e2160`의 일반 적 소스11관찰이 통과했고 각각 독립 검토 승인 후 메인에 반영됐다. T4의 실제 지지면 넉백 원점/경사진 생성 침범 두 P2와 T3의 재진입 예외 경로는 수정 전 실패와 수정 후 동일 회귀 통과를 보존했다. 메인 HEAD `915e5e9` 실제 Editor 재컴파일 오류0이며 T1 확장 이후 HMS9개 Git blob은 그대로다. 보호 기준점432개 중 허용9개 외 차이0·원본 DOCX/사용자 확정안 hash 동일을 확인했다.
+
+이 결과는 엔진 대역을 포함한 소스/API 계약과 실제 Editor 컴파일 증거다. Stage/Core hook·App 출력/Core 리그·native 참조 이관·PhysX/실제 입력/새 빌드는 T9/T10에서 연결·실행한다. 공개 Bind/Reset/Release 계약은 각 작업 `output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T*-evidence`의 인계·proof를 따른다. 완료한 네 worktree의 ignored 소스/검증 로그는 main에 SHA 동일 복사 후 recoverable archive했다. T6는 이 메인 HEAD의 별도 worktree에서 구현 중이다.
+
+최신 기능 Excel39케이스는 V01..V34 전체에 연결했고 실제 빌드 판정39개는 모두 미실행이다. 읽기 전용 Excel PDF18쪽에서 조건/조작/기대 텍스트 전체 확인·렌더 배치 검토를 수행했다. FunQA 원본/작성양식 hash는 그대로다. 지정 삭제32개는 아직 보존 중이며 현재 native23개 자산/코드99참조의 이관 준비표가 있다. 소유 범위 밖 native GUID 참조0은 삭제의 충분조건이 아니므로 실제 기능/메뉴/호출/참조 이관을 마친 뒤 T9에서만 삭제한다.
