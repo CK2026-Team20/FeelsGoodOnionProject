@@ -108,20 +108,16 @@ namespace Cooked.Level.Editor
         public static void Build()
         {
             AuthoringOutputScope.RequireEditMode();
-            // RequireEditMode protects external dirty scenes; an owned unsaved authoring scratch is allowed.
+            // RequireEditMode protects external dirty scenes; the owned saved scratch may be dirty.
             EnsureFolder(AssetRoot + "/Prefabs"); EnsureFolder(AssetRoot + "/Meshes");
             EnsureFolder(AssetRoot + "/Materials"); EnsureFolder(StageRoot);
             floorMaterial = MaterialAsset("WarmCounter", new Color(.71f,.45f,.24f));
             accentMaterial = MaterialAsset("MintInteractable", new Color(.27f,.73f,.61f));
             wallMaterial = MaterialAsset("WarmCeramic", new Color(.95f,.83f,.60f));
-            Scene previous = SceneManager.GetActiveScene();
-            Scene scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
-            try
+            using (AuthoringOutputScope.BeginScene())
             {
-                SceneManager.SetActiveScene(scratch);
                 BuildVisualPrefabs(); BuildCameraPrefab(); // Backdrop is authored by Content Dev.
             }
-            finally { EditorSceneManager.CloseScene(scratch, true); if (previous.IsValid()) SceneManager.SetActiveScene(previous); }
             // Catalog uses Prototype/1_Stage plus these two Stages. Existing 03_1 is independent and is not overwritten.
             for (int number = 2; number <= 3; number++) BuildStage(number);
             Cooked.Integration.Editor.AuthoringOutputScope.SaveOwnedAssets(); AssetDatabase.Refresh();

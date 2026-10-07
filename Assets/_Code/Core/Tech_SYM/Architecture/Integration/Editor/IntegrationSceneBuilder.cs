@@ -251,7 +251,7 @@ namespace Cooked.Integration.Editor
                 if (SceneManager.GetSceneAt(i).isDirty && !ownedScratchScenes.Contains(SceneManager.GetSceneAt(i)))
                     throw new InvalidOperationException("Save reviewed dirty scenes explicitly before authoring.");
         }
-        /// <summary>Creates only an additive unsaved scratch scene, restoring the prior active scene on disposal.</summary>
+        /// <summary>Owns a disposable saved scratch under the temporary root; restores the previous active scene.</summary>
         public static IDisposable BeginScene()
         {
             RequireEditMode();
@@ -262,13 +262,41 @@ namespace Cooked.Integration.Editor
         private sealed class SceneLease : IDisposable
         {
             private readonly Scene previous;
+            private readonly System.Collections.Generic.List<string> createdFolders = new System.Collections.Generic.List<string>();
             private Scene scratch;
+            private string scratchAssetPath;
             private bool disposed;
             public SceneLease()
             {
                 previous=SceneManager.GetActiveScene();
-                scratch=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Additive);
-                ownedScratchScenes.Add(scratch);SceneManager.SetActiveScene(scratch);
+                try
+                {
+                    string folder=temporaryRoot ?? TemporaryRoot;
+                    EnsureScratchFolder(folder);
+                    scratchAssetPath=AssetDatabase.GenerateUniqueAssetPath(folder+"/__AuthoringScratch_"+Guid.NewGuid().ToString("N")+".unity");
+                    scratch=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Additive);
+                    ownedScratchScenes.Add(scratch);
+                    // Unity rejects another additive scene while a dirty untitled scene is open.
+                    // Save only this owned empty scratch before prefab authoring can dirty it.
+                    if(!EditorSceneManager.SaveScene(scratch,scratchAssetPath))
+                        throw new IOException("Cannot save owned authoring scratch: "+scratchAssetPath);
+                    SceneManager.SetActiveScene(scratch);
+                }
+                catch
+                {
+                    try { Dispose(); } catch(Exception cleanupError) { Debug.LogException(cleanupError); }
+                    throw; // preserve the acquisition/save failure; report cleanup failure separately
+                }
+            }
+            private void EnsureScratchFolder(string path)
+            {
+                if(AssetDatabase.IsValidFolder(path)) return;
+                int slash=path.LastIndexOf('/');
+                if(slash<1) throw new ArgumentException("Invalid scratch folder: "+path);
+                EnsureScratchFolder(path.Substring(0,slash));
+                if(string.IsNullOrEmpty(AssetDatabase.CreateFolder(path.Substring(0,slash),path.Substring(slash+1))))
+                    throw new IOException("Cannot create owned scratch folder: "+path);
+                createdFolders.Add(path);
             }
             public void Dispose()
             {
@@ -277,7 +305,25 @@ namespace Cooked.Integration.Editor
                 finally
                 {
                     ownedScratchScenes.Remove(scratch);
-                    if(scratch.IsValid() && scratch.isLoaded) EditorSceneManager.CloseScene(scratch,true);
+                    try
+                    {
+                        if(scratch.IsValid() && scratch.isLoaded && !EditorSceneManager.CloseScene(scratch,true))
+                            throw new IOException("Cannot close owned authoring scratch: "+scratchAssetPath);
+                    }
+                    finally
+                    {
+                        // The unique asset was reserved by this lease; never delete a user scene.
+                        if(!string.IsNullOrEmpty(scratchAssetPath) && AssetDatabase.AssetPathExists(scratchAssetPath) && !AssetDatabase.DeleteAsset(scratchAssetPath))
+                            throw new IOException("Cannot delete owned authoring scratch: "+scratchAssetPath);
+                        for(int i=createdFolders.Count-1;i>=0;i--)
+                        {
+                            string folder=createdFolders[i];
+                            string absoluteFolder=Path.Combine(Path.GetDirectoryName(Application.dataPath),folder);
+                            // Include unimported/hidden files in the emptiness check; preserve any unrelated contents.
+                            if(AssetDatabase.IsValidFolder(folder) && Directory.Exists(absoluteFolder) && !Directory.EnumerateFileSystemEntries(absoluteFolder).Any())
+                                if(!AssetDatabase.DeleteAsset(folder)) throw new IOException("Cannot delete empty owned scratch folder: "+folder);
+                        }
+                    }
                 }
             }
         }
