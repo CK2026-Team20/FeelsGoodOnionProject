@@ -7,10 +7,19 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 {
     /// <summary>키네마틱 이동과 탑승자 속도 전달.</summary>
     [DisallowMultipleComponent, DefaultExecutionOrder(-300)]
-    [RequireComponent(typeof(Rigidbody), typeof(BoxCollider), typeof(PlatformContacts))]
     public sealed class KinematicPlatformMotion : MonoBehaviour
     {
+        [Tooltip("실제로 이동할 PhysicsBody 자식의 Rigidbody입니다. 루트에 직접 물리를 둔 기존 배치는 같은 객체를 연결합니다. 위치·회전 작성자는 이 컴포넌트 하나입니다.")]
+        [SerializeField] private Rigidbody physicsBody;
+        [Tooltip("위 물리 몸체의 지지 BoxCollider와 같은 객체에 있는 접촉 전달자입니다. 다른 물리 몸체의 접촉은 연결하지 않습니다.")]
+        [SerializeField] private PlatformContacts platformContacts;
         private Rigidbody body;
+        private Vector3 authoredLocalPosition;
+        private Quaternion authoredLocalRotation;
+        private Quaternion rotationStart, rotationDestination;
+        private bool rotationTween;
+        public Rigidbody PhysicsBody => body != null ? body : physicsBody != null ? physicsBody : GetComponent<Rigidbody>();
+        public PlatformContacts Contacts => contacts != null ? contacts : platformContacts != null ? platformContacts : GetComponent<PlatformContacts>();
         private PlatformContacts contacts;
         private readonly List<Collider> occupants = new List<Collider>();
         private Vector3 target;
@@ -29,13 +38,13 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private float tweenDuration, tweenElapsed;
         private bool completionPending;
         private Action tweenCompleted;
-        public bool IsTweening => travelTween != null;
+        public bool IsTweening => travelTween != null || rotationTween;
         public float RemainingTweenSeconds => Mathf.Max(0f, tweenDuration - tweenElapsed);
         public Vector3 Velocity { get; private set; }
         public Vector3 PreviousVelocity { get; private set; }
         public Vector3 Direction => Velocity.sqrMagnitude > 0.000001f ? Velocity.normalized : Vector3.zero;
         public float Speed => Velocity.magnitude;
-        public Vector3 Position => body != null ? body.position : transform.position;
+        public Vector3 Position => PhysicsBody != null ? PhysicsBody.position : transform.position;
 
         private void Reset()
         {
@@ -48,14 +57,16 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         private void Awake()
         {
-            body = GetComponent<Rigidbody>();
-            contacts = GetComponent<PlatformContacts>();
+            if (!BindPhysics(physicsBody != null ? physicsBody : GetComponent<Rigidbody>(),
+                platformContacts != null ? platformContacts : GetComponent<PlatformContacts>()))
+            { Debug.LogError("이동 발판의 PhysicsBody/Contacts를 명시적으로 연결하세요.", this); enabled = false; return; }
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             body.constraints = RigidbodyConstraints.FreezeRotation;
-            var collider = GetComponent<BoxCollider>();
+            var collider = contacts.Surface;
+            if (collider == null) collider = contacts.GetComponent<BoxCollider>();
             collider.isTrigger = false;
             originalMaterial = collider.sharedMaterial;
             motionMaterial = new PhysicsMaterial("Platform Motion")
@@ -64,6 +75,53 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 frictionCombine = PhysicsMaterialCombine.Minimum, bounceCombine = PhysicsMaterialCombine.Minimum
             };
             collider.sharedMaterial = motionMaterial;
+        }
+
+        public bool BindPhysics(Rigidbody physicalBody, PlatformContacts physicalContacts)
+        {
+            if (physicalBody == null || physicalContacts == null
+                || physicalContacts.GetComponent<Rigidbody>() != physicalBody
+                || (physicalBody.transform != transform && !physicalBody.transform.IsChildOf(transform))) return false;
+            CancelMotion();
+            body = physicsBody = physicalBody;
+            contacts = platformContacts = physicalContacts;
+            authoredLocalPosition = body.transform.localPosition;
+            authoredLocalRotation = body.transform.localRotation;
+            effectOrigin = body.position;
+            return true;
+        }
+
+        public void ResetForRetry()
+        {
+            CancelMotion();
+            if (body == null) return;
+            body.position = body.transform.parent != null
+                ? body.transform.parent.TransformPoint(authoredLocalPosition) : authoredLocalPosition;
+            body.rotation = body.transform.parent != null
+                ? body.transform.parent.rotation * authoredLocalRotation : authoredLocalRotation;
+            effectOrigin = body.position;
+            contacts?.ResetForRetry();
+        }
+
+        public void CancelMotion()
+        {
+            CancelTween(); hasTarget = false; path = MotionPath.None;
+            effects.Clear(); occupants.Clear(); carried.Clear();
+            Velocity = PreviousVelocity = Vector3.zero;
+            contacts?.ResetForRetry();
+        }
+
+        /// <summary>힌지의 회전도 동일한 물리 작성자가 실행한다.</summary>
+        public bool TryRotateTo(Quaternion worldDestination, float duration, Action onCompleted)
+        {
+            if (!isActiveAndEnabled || body == null || IsTweening || duration <= 0f || !float.IsFinite(duration)
+                || !float.IsFinite(worldDestination.x) || !float.IsFinite(worldDestination.y)
+                || !float.IsFinite(worldDestination.z) || !float.IsFinite(worldDestination.w)) return false;
+            if (path == MotionPath.Effect || path == MotionPath.Travel || HasTravelDriver()) { ReportConflict(); return false; }
+            rotationStart = body.rotation; rotationDestination = worldDestination;
+            tweenDuration = duration; tweenElapsed = 0f; tweenCompleted = onCompleted;
+            completionPending = false; rotationTween = true; path = MotionPath.Tween;
+            return true;
         }
 
         /// <summary>이번 물리 스텝의 목표 위치 지정.</summary>
@@ -101,6 +159,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             travelTween?.Kill(false);
             travelTween = null;
+            rotationTween = false;
+            if (path == MotionPath.Tween) path = MotionPath.None;
             tweenCompleted = null;
             completionPending = false;
         }
@@ -132,6 +192,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (ReferenceEquals(owner, null)) return;
             if (effects.TryGetValue(owner, out var value) && keepPosition) effectOrigin += value;
             effects.Remove(owner);
+            if (effects.Count == 0 && path == MotionPath.Effect) path = MotionPath.None;
         }
 
         private void ReportConflict()
@@ -157,6 +218,13 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             bool carryWithoutInertia = path == MotionPath.Effect;
             Vector3 next = hasTarget ? target : body.position;
             bool tweenStep = travelTween != null;
+            Quaternion nextRotation = body.rotation;
+            if (rotationTween)
+            {
+                tweenElapsed = Mathf.Min(tweenDuration, tweenElapsed + Time.fixedDeltaTime);
+                nextRotation = Quaternion.Slerp(rotationStart, rotationDestination,
+                    DOVirtual.EasedValue(0f, 1f, tweenElapsed / tweenDuration, Ease.OutSine));
+            }
             if (tweenStep)
             {
                 tweenElapsed = Mathf.Min(tweenDuration, tweenElapsed + Time.fixedDeltaTime);
@@ -176,20 +244,32 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             foreach (Collider other in occupants)
             {
                 GameObject actor = PlatformContacts.Actor(other);
+                Rigidbody rigid = other.attachedRigidbody;
+                if (rigid == body || (rigid != null && !carried.Add(rigid))) continue;
+                Vector3 riderDisplacement = rigid != null
+                    ? next + nextRotation * Quaternion.Inverse(body.rotation) * (rigid.position - body.position) - rigid.position
+                    : displacement;
                 // Facade에는 접지면/운반 계약이 없어 물리 컴포넌트 참조를 유지한다.
                 // 해당 계약이 제공될 때 대체하며, 입력 차단은 물리 운반을 중단하지 않는다.
                 if (actor != null && actor.TryGetComponent<PlatformPassenger>(out var passenger) && passenger.isActiveAndEnabled)
                 {
-                    if (carryWithoutInertia && actor.TryGetComponent<CharacterMovement>(out var movement)
-                        && movement.isActiveAndEnabled && movement.IsGrounded && movement.GroundCollider == contacts.Surface)
+                    var movement = actor.GetComponent<CharacterMovement>();
+                    var rigidMovement = actor.GetComponent<PlatformRigidbodyMovement>();
+                    bool hasMovement = (movement != null && movement.isActiveAndEnabled)
+                        || (rigidMovement != null && rigidMovement.isActiveAndEnabled);
+                    bool grounded = (movement != null && movement.isActiveAndEnabled && movement.IsGrounded && movement.GroundCollider == contacts.Surface)
+                        || (rigidMovement != null && rigidMovement.isActiveAndEnabled && rigidMovement.IsGrounded && rigidMovement.GroundCollider == contacts.Surface);
+                    if (!hasMovement || (carryWithoutInertia && grounded))
                     {
                         Rigidbody rider = other.attachedRigidbody;
-                        if (rider != null && !rider.isKinematic && carried.Add(rider)) rider.position += displacement;
+                        if (rider != null && !rider.isKinematic) rider.position += riderDisplacement;
                     }
                     passenger.ReceivePlatformVelocity(contacts.Surface, other,
-                        carryWithoutInertia ? Vector3.zero : Velocity,
+                        carryWithoutInertia ? Vector3.zero : riderDisplacement / Time.fixedDeltaTime,
                         carryWithoutInertia ? Vector3.zero : PreviousVelocity);
                 }
+                else if (rigid != null && !rigid.isKinematic)
+                    rigid.position += riderDisplacement;
             }
             hasTarget = false;
             // 부유 연출은 위치만 옮겨 키네마틱 속도가 플레이어를 밀어내지 않게 한다.
@@ -201,22 +281,17 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             }
             else if (carryWithoutInertia) body.position = next;
             else body.MovePosition(next);
+            if (rotationTween)
+            { body.MoveRotation(nextRotation); completionPending = tweenElapsed >= tweenDuration; }
             completed?.Invoke();
         }
 
-        private void OnDisable()
-        {
-            CancelTween();
-            hasTarget = false;
-            Velocity = PreviousVelocity = Vector3.zero;
-            occupants.Clear();
-            carried.Clear();
-        }
+        private void OnDisable() => CancelMotion();
 
         private void OnDestroy()
         {
             CancelTween();
-            var collider = GetComponent<BoxCollider>();
+            var collider = contacts != null ? contacts.Surface : null;
             if (collider != null && collider.sharedMaterial == motionMaterial) collider.sharedMaterial = originalMaterial;
             if (motionMaterial != null) Destroy(motionMaterial);
         }

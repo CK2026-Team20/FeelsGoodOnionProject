@@ -7,7 +7,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 {
     /// <summary>활성 HeavyState가 밟으면 내려가는 압력판.</summary>
     [DisallowMultipleComponent, DefaultExecutionOrder(-450)]
-    [RequireComponent(typeof(KinematicPlatformMotion), typeof(PlatformContacts))]
+    [RequireComponent(typeof(KinematicPlatformMotion))]
     public sealed class PressurePlatePlatform : MonoBehaviour
     {
         [Header("Pressure")]
@@ -32,9 +32,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private void Awake()
         {
             OnValidate();
-            contacts = GetComponent<PlatformContacts>();
             motion = GetComponent<KinematicPlatformMotion>();
-            origin = transform.position;
+            contacts = motion.Contacts;
+            origin = motion.Position;
         }
 
         private void Start()
@@ -60,7 +60,10 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             foreach (Collider other in occupants)
             {
                 GameObject actor = PlatformContacts.Actor(other);
-                if (actor != null && actor.TryGetComponent<HeavyState>(out var heavy) && heavy.isActiveAndEnabled)
+                if (actor != null && actor.TryGetComponent<HeavyState>(out var heavy) && heavy.isActiveAndEnabled
+                    && (actor.TryGetComponent<PlayerDebris>(out _) ||
+                        (actor.TryGetComponent<PlayerFacade>(out var player) && player.isActiveAndEnabled
+                        && (!actor.TryGetComponent<PlayerFormController>(out var form) || form.CurrentForm == PlayerForm.Normal))))
                 { pressed = true; break; }
             }
             if (pressed != IsPressed)
@@ -92,12 +95,16 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (owned != null && owned.IsActive()) owned.Kill(false);
         }
 
+        public void ResetForRetry()
+        {
+            StopTransition(); IsPressed = false; Progress = 0f;
+            motion?.ResetForRetry(); contacts?.ResetForRetry(); occupants.Clear();
+        }
         private void OnDisable()
         {
             StopTransition();
             IsPressed = false;
-            Progress = 0f;
-            if (motion != null) motion.MoveTo(origin);
+
             occupants.Clear();
         }
         private void OnDestroy() => StopTransition();

@@ -38,6 +38,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         private KinematicPlatformMotion motion;
         private BoxCollider surface;
+        private PlatformContacts contacts;
+        private bool registered;
         private float landingOffset;
         private Sequence landingTween;
         private readonly Dictionary<Rigidbody, Collider> landed = new Dictionary<Rigidbody, Collider>();
@@ -48,19 +50,22 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             OnValidate();
             motion = GetComponent<KinematicPlatformMotion>();
-            surface = GetComponent<BoxCollider>();
+            contacts = motion.Contacts;
+            surface = contacts != null ? contacts.GetComponent<BoxCollider>() : null;
         }
 
         private void OnEnable()
         {
-            if (motion == null || !motion.RegisterEffect(this)) { enabled = false; return; }
-            landingOffset = 0f;
+            if (contacts != null) contacts.ContactReported += OnCollisionEnter;
+            registered = false;
         }
 
         private void FixedUpdate()
         {
             if (motion == null || !motion.isActiveAndEnabled
                 || surface == null || !surface.enabled) return;
+            if (!registered)
+            { if (!motion.RegisterEffect(this)) { enabled = false; return; } registered = true; }
             ReleaseDepartedPlayers();
             if (landingTween != null && landingTween.IsActive())
                 landingTween.ManualUpdate(Time.fixedDeltaTime, Time.fixedDeltaTime);
@@ -80,7 +85,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             for (int i = 0; i < collision.contactCount; i++)
             {
                 ContactPoint point = collision.GetContact(i);
-                if (point.thisCollider != surface || Vector3.Dot(-point.normal, Vector3.up) < 0.5f) continue;
+                if (point.thisCollider != surface || Vector3.Dot(-point.normal, surface.transform.up) < 0.5f) continue;
                 landed.Add(actor, other);
                 if (!IsReacting && landingDepth > 0f) BeginLanding();
                 return;
@@ -130,7 +135,16 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             foreach (Rigidbody actor in departed) landed.Remove(actor);
         }
 
+        public void ResetForRetry()
+        {
+            CancelLanding(); motion?.ResetForRetry(); registered = false; contacts?.ResetForRetry();
+        }
         private void OnDisable()
+        {
+            if (contacts != null) contacts.ContactReported -= OnCollisionEnter;
+            CancelLanding();
+        }
+        private void CancelLanding()
         {
             Sequence owned = landingTween;
             landingTween = null;
@@ -139,6 +153,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             landed.Clear();
             departed.Clear();
             if (motion != null) motion.ReleaseEffect(this);
+            registered = false;
         }
 
         private void OnValidate()

@@ -13,7 +13,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         [Header("이동")]
         [Tooltip("시작점에서 도착점까지의 전체 이동량(X/Y/Z, m). 부모가 있으면 부모의 로컬 좌표이며 회전·배율이 반영됩니다. 부모가 없으면 월드 좌표입니다. 0이면 시작점에 머뭅니다. 실행 시작 시 적용하며 청록색 기즈모로 경로를 표시합니다.")]
         [SerializeField] private Vector3 travelOffset = new Vector3(6f, 0f, 0f);
-        [Tooltip("현재 월드 경로를 따라 이동하는 속도(m/s). 값이 클수록 빨리 왕복하며 최소값은 0.01입니다. 편도시간은 경로 길이와 속도로 계산하고 끝점에서 기다리지 않습니다. 실행 시작 시 적용합니다.")]
+        [Tooltip("현재 월드 경로를 따라 이동하는 속도(m/s). 값이 클수록 빨리 왕복하며 최소값은 0.01입니다. 편도시간은 경로 길이와 속도로 계산하고 양 끝점에서 각각 0.5초 기다립니다. 실행 시작 시 적용합니다.")]
         [SerializeField, Min(0.01f)] private float moveSpeed = 2f;
 
         private KinematicPlatformMotion motion;
@@ -22,6 +22,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private Vector3 cachedTravelOffset;
         private float cachedMoveSpeed;
         private double cycleProgress;
+        private float endpointWait;
+        private bool returning;
         private bool initialized;
         private bool hadParent;
         private bool invalidPathReported;
@@ -35,7 +37,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             motion = GetComponent<KinematicPlatformMotion>();
             pathParent = transform.parent;
             hadParent = pathParent != null;
-            startInParent = hadParent ? transform.localPosition : transform.position;
+            Vector3 start = motion != null ? motion.Position : transform.position;
+            startInParent = hadParent ? pathParent.InverseTransformPoint(start) : start;
             cachedTravelOffset = travelOffset;
             cachedMoveSpeed = moveSpeed;
             cycleProgress = 0.0;
@@ -56,12 +59,22 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             // 부모 배율이 바뀌어도 현재 월드 경로 길이에 맞는 속도로 진행한다.
             double length = PathLength(start, end);
             double nextProgress = cycleProgress;
-            if (length > 0.0)
+            if (endpointWait > 0f)
             {
-                double oneWaySeconds = length / cachedMoveSpeed;
-                nextProgress = (cycleProgress + (deltaTime / oneWaySeconds) % 2.0) % 2.0;
+                endpointWait = Mathf.Max(0f, endpointWait - deltaTime);
+                if (endpointWait < 0.000001f) endpointWait = 0f;
             }
-            double fraction = nextProgress <= 1.0 ? nextProgress : 2.0 - nextProgress;
+            else if (length > 0.0)
+            {
+                double step = deltaTime * cachedMoveSpeed / length;
+                nextProgress = returning ? Math.Max(0.0, cycleProgress - step) : Math.Min(1.0, cycleProgress + step);
+                if ((!returning && nextProgress >= 1.0) || (returning && nextProgress <= 0.0))
+                {
+                    endpointWait = 0.5f;
+                    returning = !returning;
+                }
+            }
+            double fraction = nextProgress;
             Vector3 target = PointOnPath(start, end, fraction);
 
             // MoveTo의 좌표뿐 아니라 운반 속도를 구하는 float 연산의 overflow도 막는다.
@@ -73,6 +86,16 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             }
             cycleProgress = nextProgress;
             motion.MoveTo(target);
+        }
+
+        /// <summary>Stage의 초기 경로 시작점으로 복구한다. 저장 데이터가 아니다.</summary>
+        public void ResetForRetry()
+        {
+            cycleProgress = 0.0;
+            endpointWait = 0f;
+            returning = false;
+            invalidPathReported = false;
+            motion?.ResetForRetry();
         }
 
         private bool TryGetEndpoints(out Vector3 start, out Vector3 end)

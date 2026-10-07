@@ -25,7 +25,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             OnValidate();
             motion = GetComponent<KinematicPlatformMotion>();
-            origin = transform.position;
+            origin = motion.Position;
         }
 
         private void Start()
@@ -45,6 +45,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             float speed = pressed ? travelOffset.magnitude / pressurePlate.TravelSeconds : returnSpeed;
             motion.MoveTo(Vector3.MoveTowards(motion.Position, destination, speed * Time.fixedDeltaTime));
         }
+
+        public void ResetForRetry() => motion?.ResetForRetry();
+        private void OnDisable() => motion?.CancelMotion();
 
         private void OnValidate()
         {

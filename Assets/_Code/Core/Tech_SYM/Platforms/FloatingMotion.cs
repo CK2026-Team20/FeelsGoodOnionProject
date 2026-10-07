@@ -8,7 +8,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
     public sealed class FloatingMotion : MonoBehaviour
     {
         [Header("Float")]
-        [Tooltip("도착할 월드 Y 좌표. 시작 높이는 활성화 시점의 위치입니다.")]
+        [Tooltip("Collider/Rigidbody 없는 Visual의 도착 월드 Y 좌표(m)입니다. 시작 높이는 활성화 위치이며 0은 월드 높이 0입니다. 물리 루트에는 사용하지 않습니다. 주황 기즈모가 경로입니다.")]
         [SerializeField] private float targetY = 1.5f;
         [Tooltip("목표 높이까지 편도 이동 시간(초).")]
         [SerializeField, Min(0.02f)] private float travelSeconds = 1.5f;
@@ -22,17 +22,28 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private Vector3 origin;
         private float currentY;
         private Tween floatingTween;
+        private Vector3 authoredLocalPosition;
 
         private void Reset() => targetY = transform.position.y + 0.24f;
         private void Awake()
         {
+            authoredLocalPosition = transform.localPosition;
             motion = GetComponent<KinematicPlatformMotion>();
             body = GetComponent<Rigidbody>();
+        }
+        public void ResetForRetry()
+        {
+            OnDisable();
+            transform.localPosition = authoredLocalPosition;
+            if (isActiveAndEnabled) OnEnable();
         }
 
         private void OnEnable()
         {
             OnValidate();
+            if (motion != null || body != null || GetComponent<Collider>() != null)
+            { Debug.LogError("연속 부유는 Collider/Rigidbody 없는 Visual 자식에만 연결하세요.", this); enabled = false; return; }
+            // T9 removes the legacy platform/native consumers; these old branches are compatibility only.
             if (motion != null)
             {
                 if (!motion.RegisterEffect(this)) { enabled = false; return; }

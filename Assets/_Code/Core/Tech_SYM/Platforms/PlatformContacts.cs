@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,10 +13,14 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private readonly List<Collider> stale = new List<Collider>();
         private BoxCollider surface;
         public BoxCollider Surface => surface;
+        /// <summary>물리 자식에서 루트의 자기 소비자에게 전체 방향 접촉을 전달한다.</summary>
+        public event Action<Collision> ContactReported;
+        public void ResetForRetry() { contacts.Clear(); contactVelocities.Clear(); stale.Clear(); }
+        public bool IsTopContact(Collider other) => other != null && contacts.Contains(other);
 
         private void Awake() => surface = GetComponent<BoxCollider>();
-        private void OnCollisionEnter(Collision collision) => Collect(collision);
-        private void OnCollisionStay(Collision collision) => Collect(collision);
+        private void OnCollisionEnter(Collision collision) { Collect(collision); ContactReported?.Invoke(collision); }
+        private void OnCollisionStay(Collision collision) { Collect(collision); ContactReported?.Invoke(collision); }
         private void OnCollisionExit(Collision collision)
         {
             if (collision != null && collision.collider != null) RemoveContact(collision.collider);
@@ -77,6 +82,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         public static GameObject Actor(Collider collider) => collider == null ? null :
             collider.attachedRigidbody != null ? collider.attachedRigidbody.gameObject : collider.gameObject;
-        private void OnDisable() { contacts.Clear(); contactVelocities.Clear(); }
+        private void OnDisable() => ResetForRetry();
     }
 }
