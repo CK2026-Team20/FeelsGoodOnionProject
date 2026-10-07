@@ -106,10 +106,12 @@ namespace Cooked.Integration.Editor
         {
             if (output == null || output.activeInHierarchy) throw new InvalidOperationException("Configure the inactive App output before Awake.");
             if (output.GetComponent<Camera>() == null) throw new InvalidOperationException("App output requires Camera.");
-            var brain = output.GetComponent<CinemachineBrain>() ?? output.AddComponent<CinemachineBrain>();
+            var brain = output.GetComponent<CinemachineBrain>();
+            if(brain==null) brain = output.AddComponent<CinemachineBrain>();
             brain.IgnoreTimeScale = false;
             brain.DefaultBlend = new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.EaseInOut, .6f);
-            var controller = output.GetComponent<PlayerCameraController>() ?? output.AddComponent<PlayerCameraController>();
+            var controller = output.GetComponent<PlayerCameraController>();
+            if(controller==null) controller = output.AddComponent<PlayerCameraController>();
             var data = new SerializedObject(controller); data.FindProperty("useSeparatedRig").boolValue = true;
             // Runtime T3 Bind supplies the current Actor modes/Anchor/Body and these Core cameras.
             data.ApplyModifiedPropertiesWithoutUndo();

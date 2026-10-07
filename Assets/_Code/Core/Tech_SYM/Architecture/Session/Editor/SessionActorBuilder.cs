@@ -40,11 +40,13 @@ namespace Cooked.Session.Editor
                 PlayerCameraController source=null;
                 foreach(var item in reference.GetRootGameObjects()) if((source=item.GetComponentInChildren<PlayerCameraController>(true))!=null) break;
                 if(source==null) throw new InvalidOperationException("HMS independent camera reference is missing.");
-                var mode=facade.GetComponent<PlayerMovementModeController>() ?? facade.gameObject.AddComponent<PlayerMovementModeController>();
+                var mode=facade.GetComponent<PlayerMovementModeController>();
+                if(mode==null) mode=facade.gameObject.AddComponent<PlayerMovementModeController>();
                 var modeFields=new SerializedObject(mode);
                 foreach(string field in new[]{"sideMoveSpeed","quarterMoveSpeed","backMoveSpeed"}) modeFields.FindProperty(field).floatValue=5f;
                 modeFields.ApplyModifiedPropertiesWithoutUndo();
-                var presentation=facade.GetComponent<PlayerVisualController>() ?? facade.gameObject.AddComponent<PlayerVisualController>();
+                var presentation=facade.GetComponent<PlayerVisualController>();
+                if(presentation==null) presentation=facade.gameObject.AddComponent<PlayerVisualController>();
                 var presentationFields=new SerializedObject(presentation);presentationFields.FindProperty("playerVisualRoot").objectReferenceValue=visual;presentationFields.ApplyModifiedPropertiesWithoutUndo();
                 rig=new GameObject("IndependentCameraRig");rig.SetActive(false);rig.transform.SetParent(owner.transform,false);
                 var sourceFields=new SerializedObject(source);var names=new[]{"sideCamera","quarterCamera","backCamera","backFixedCamera"};
@@ -171,14 +173,17 @@ namespace Cooked.Session.Editor
         // PlayerRoot is empty logic; Visual owns renderers/Animator only. T9 handles existing FX transfers.
         public static void ConfigureActorPresentation(PlayerFacade actor, Transform visual)
         {
-            var modes = actor.GetComponent<PlayerMovementModeController>() ?? actor.gameObject.AddComponent<PlayerMovementModeController>();
+            var modes = actor.GetComponent<PlayerMovementModeController>();
+            if(modes==null) modes = actor.gameObject.AddComponent<PlayerMovementModeController>();
             var fields = new SerializedObject(modes);
             fields.FindProperty("sideMoveSpeed").floatValue = 5; fields.FindProperty("quarterMoveSpeed").floatValue = 5;
             fields.ApplyModifiedPropertiesWithoutUndo();
-            var presentation = actor.GetComponent<PlayerVisualController>() ?? actor.gameObject.AddComponent<PlayerVisualController>();
+            var presentation = actor.GetComponent<PlayerVisualController>();
+            if(presentation==null) presentation = actor.gameObject.AddComponent<PlayerVisualController>();
             fields = new SerializedObject(presentation); fields.FindProperty("playerVisualRoot").objectReferenceValue = visual; fields.ApplyModifiedPropertiesWithoutUndo();
             if(actor.GetComponent<PlayerAnimationController>()==null) actor.gameObject.AddComponent<PlayerAnimationController>();
-            var output = actor.GetComponent<PlayerAnimatorOutput>() ?? actor.gameObject.AddComponent<PlayerAnimatorOutput>();
+            var output = actor.GetComponent<PlayerAnimatorOutput>();
+            if(output==null) output = actor.gameObject.AddComponent<PlayerAnimatorOutput>();
             string animationPath = AssetRoot + "/PrototypePlayerAnimations.asset";
             var set = AssetDatabase.LoadAssetAtPath<PlayerAnimationSet>(animationPath);
             if (set == null)
@@ -189,7 +194,8 @@ namespace Cooked.Session.Editor
             }
             fields = new SerializedObject(output); fields.FindProperty("animationSet").objectReferenceValue = set; fields.ApplyModifiedPropertiesWithoutUndo();
             // Missing Hit/Dead/Interact/Knockback clips remain missing: existing 0ms fallback, no invented Motion.
-            var damage = actor.GetComponent<PlayerDamagePresentation>() ?? actor.gameObject.AddComponent<PlayerDamagePresentation>();
+            var damage = actor.GetComponent<PlayerDamagePresentation>();
+            if(damage==null) damage = actor.gameObject.AddComponent<PlayerDamagePresentation>();
             fields = new SerializedObject(damage); fields.FindProperty("player").objectReferenceValue = actor;
             var targets = fields.FindProperty("targets"); var renderers = visual.GetComponentsInChildren<Renderer>(true);
             targets.arraySize = renderers.Length;

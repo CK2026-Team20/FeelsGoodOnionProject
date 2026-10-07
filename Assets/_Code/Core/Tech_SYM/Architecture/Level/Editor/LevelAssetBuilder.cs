@@ -50,9 +50,11 @@ namespace Cooked.Level.Editor
         {
             // Existing same-object GetComponent consumers are kept on this physics child, not moved arbitrarily.
             var box=physical.GetComponent<BoxCollider>(); if(box==null) throw new InvalidOperationException("Real BoxCollider required.");
-            var rb=physical.GetComponent<Rigidbody>() ?? physical.AddComponent<Rigidbody>(); rb.isKinematic=true; rb.useGravity=false;
-            var contacts=physical.GetComponent<PlatformContacts>() ?? physical.AddComponent<PlatformContacts>();
-            var motion=physical.GetComponent<KinematicPlatformMotion>() ?? physical.AddComponent<KinematicPlatformMotion>();
+            // Unity == null recognizes missing native-component wrappers; CLR ?? does not.
+            var rb=physical.GetComponent<Rigidbody>(); if(rb==null) rb=physical.AddComponent<Rigidbody>();
+            rb.isKinematic=true; rb.useGravity=false;
+            var contacts=physical.GetComponent<PlatformContacts>(); if(contacts==null) contacts=physical.AddComponent<PlatformContacts>();
+            var motion=physical.GetComponent<KinematicPlatformMotion>(); if(motion==null) motion=physical.AddComponent<KinematicPlatformMotion>();
             Set(motion,"physicsBody",rb); Set(motion,"platformContacts",contacts);
         }
         public static GameObject CreateDevice(string name, Transform parent, Vector3 position, Vector3 size, OvenTrayObject.OperationMode mode, Vector3 offset)
@@ -92,7 +94,8 @@ namespace Cooked.Level.Editor
                 var target=rotation.transform; var data=new SerializedObject(rotation);
                 float speed=data.FindProperty("degreesPerSecond").floatValue;
                 Object.DestroyImmediate(rotation);
-                var rootRotation=instance.GetComponent<ObjectRotation>() ?? instance.AddComponent<ObjectRotation>();
+                var rootRotation=instance.GetComponent<ObjectRotation>();
+                if(rootRotation==null) rootRotation=instance.AddComponent<ObjectRotation>();
                 Set(rootRotation,"rotationTarget",target); Set(rootRotation,"degreesPerSecond",speed);
             }
             // FloatingMotion cannot target a child with the current API; T9 transfers that optional
