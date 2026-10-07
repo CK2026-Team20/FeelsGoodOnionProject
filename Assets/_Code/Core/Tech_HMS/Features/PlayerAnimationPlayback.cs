@@ -11,6 +11,10 @@ public sealed class PlayerAnimationPlayback
     private PlayerAnimationId baseAnimation = PlayerAnimationId.Idle;
     private PlayerAnimationId? activeOneShot;
     private long requestSequence;
+    private long endedRequestId;
+
+    /// <summary>각 유효한 요청에 완료·중단·누락 중 한 결과를 한 번만 알립니다. 결과의 RequestId는 끝난 요청의 값입니다.</summary>
+    public event Action<PlayerAnimationRequest, PlayerAnimationEndReason> PlaybackEnded;
 
     /// <summary>현재 선택된 재생 요청. 실제 재생 여부는 Animator 연결 담당에서 관리합니다.</summary>
     public PlayerAnimationRequest CurrentRequest { get; private set; }
@@ -75,8 +79,24 @@ public sealed class PlayerAnimationPlayback
     public bool TryComplete(long requestId)
     {
         if (!activeOneShot.HasValue || CurrentRequest.RequestId != requestId) return false;
-        activeOneShot = null;
-        SelectAnimation(baseAnimation, false);
+        return TryReportResult(requestId, PlayerAnimationEndReason.Completed);
+    }
+
+    /// <summary>실제 출력의 완료·누락 또는 외부 중단을 보고합니다. 오래된 ID와 이미 종료된 ID는 거절합니다.</summary>
+    /// <remarks>일회성은 최신 기본 표현으로 돌아갑니다. 기본 표현의 결과는 현재 상태를 유지하므로 넉백 시간·사망 판정은 변경되지 않습니다.</remarks>
+    public bool TryReportResult(long requestId, PlayerAnimationEndReason reason)
+    {
+        if (requestId != CurrentRequest.RequestId || endedRequestId == requestId) return false;
+        if (reason != PlayerAnimationEndReason.Completed && reason != PlayerAnimationEndReason.Interrupted &&
+            reason != PlayerAnimationEndReason.Missing) throw new ArgumentOutOfRangeException(nameof(reason));
+        PlayerAnimationRequest ended = CurrentRequest;
+        endedRequestId = requestId;
+        if (activeOneShot.HasValue)
+        {
+            activeOneShot = null;
+            SelectAnimation(baseAnimation, false);
+        }
+        NotifyPlaybackEnded(ended, reason);
         return true;
     }
 
@@ -92,7 +112,24 @@ public sealed class PlayerAnimationPlayback
     /// <param name="isOneShot">일회성 표현 여부</param>
     private void SelectAnimation(PlayerAnimationId animation, bool isOneShot)
     {
+        PlayerAnimationRequest previous = CurrentRequest;
         CurrentRequest = new PlayerAnimationRequest(++requestSequence, animation, isOneShot);
+        if (previous.RequestId > 0 && endedRequestId != previous.RequestId)
+        {
+            endedRequestId = previous.RequestId;
+            NotifyPlaybackEnded(previous, PlayerAnimationEndReason.Interrupted);
+        }
+    }
+
+    private void NotifyPlaybackEnded(PlayerAnimationRequest request, PlayerAnimationEndReason reason)
+    {
+        var observers = PlaybackEnded;
+        if (observers == null) return;
+        foreach (Action<PlayerAnimationRequest, PlayerAnimationEndReason> observer in observers.GetInvocationList())
+        {
+            try { observer(request, reason); }
+            catch (Exception exception) { UnityEngine.Debug.LogException(exception); }
+        }
     }
 
     /// <summary>일회성 표현의 우선순위를 반환합니다. 큰 값이 우선합니다.</summary>
@@ -105,6 +142,7 @@ public sealed class PlayerAnimationPlayback
         {
             case PlayerAnimationId.Land: return 1;
             case PlayerAnimationId.Shrink:
+            case PlayerAnimationId.Interact:
             case PlayerAnimationId.RestoreForm: return 2;
             case PlayerAnimationId.Tear: return 3;
             default: throw new ArgumentOutOfRangeException(nameof(animation));

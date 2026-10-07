@@ -8,6 +8,36 @@ public sealed class PlayerInputReader : MonoBehaviour
     private InputAction moveAction;
     private InputAction jumpAction;
     private InputAction formChangeAction;
+    private string tearSkillBinding = "<Keyboard>/f";
+
+    /// <summary>현재 눈물 입력의 바인딩 경로. 독립 구성의 기본값은 F입니다.</summary>
+    public string TearSkillBinding => tearSkillBinding;
+
+    /// <summary>외부 조립에서 눈물 키를 명시적으로 선택합니다. Awake 이전 호출도 보존합니다.</summary>
+    /// <param name="bindingPath">Input System 경로. E는 &lt;Keyboard&gt;/e, 기존 F는 &lt;Keyboard&gt;/f입니다.</param>
+    /// <remarks>자신이 생성한 눈물 액션만 변경하며 이동·점프·Q 입력은 유지합니다.</remarks>
+    public void SetTearSkillBinding(string bindingPath)
+    {
+        if (string.IsNullOrWhiteSpace(bindingPath)) throw new ArgumentException("눈물 입력 경로가 필요합니다.", nameof(bindingPath));
+        if (bindingPath == tearSkillBinding) return;
+        if (tearSkillAction == null)
+        {
+            tearSkillBinding = bindingPath;
+            return;
+        }
+
+        bool wasEnabled = tearSkillAction.enabled;
+        tearSkillAction.Disable();
+        try
+        {
+            tearSkillAction.ApplyBindingOverride(0, bindingPath);
+            tearSkillBinding = bindingPath;
+        }
+        finally
+        {
+            if (wasEnabled) tearSkillAction.Enable();
+        }
+    }
 
     public event Action InputDisabled;
     public bool CanReadInput => isActiveAndEnabled && moveAction != null && jumpAction != null && moveAction.enabled && jumpAction.enabled;
@@ -91,7 +121,7 @@ public sealed class PlayerInputReader : MonoBehaviour
     private void CreateTearSkillAction()
     {
         tearSkillAction = new InputAction( "TearSkill", InputActionType.Button);
-        tearSkillAction.AddBinding("<Keyboard>/f");
+        tearSkillAction.AddBinding(tearSkillBinding);
     }
     
     private void CreateFormChangeAction()

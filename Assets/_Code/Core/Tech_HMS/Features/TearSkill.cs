@@ -8,6 +8,21 @@ public class TearSkill : PlayerSkill
     private readonly TearSkillDefinition definition;
     private readonly PlayerModel model;
     private readonly Transform owner;
+    private Transform effectRoot;
+    private Func<Vector3, Collider, IStunnable, bool> targetValidator;
+
+    /// <summary>외부 조립이 루트 중심과 후보/직접 피격 정책을 선택합니다. 기본 구성은 기존 범위 스턴을 유지합니다.</summary>
+    /// <param name="root">3D 구의 중심이며 자기 Collider를 제외할 플레이어 루트. 해제 시 null입니다.</param>
+    /// <param name="validator">중심·후보 Collider·대상을 받아 직접 피격이 유효할 때만 true를 반환합니다. 해제 시 null입니다.</param>
+    /// <remarks>후보 타입·센서 제외·벽 차단 Raycast는 주입자가 책임집니다. 실행 중 교체는 금지하며 해제 전 Cancel을 호출합니다. 빌린 객체는 해제하지 않습니다.</remarks>
+    public void SetTargetValidation(Transform root, Func<Vector3, Collider, IStunnable, bool> validator)
+    {
+        if (IsInUse) throw new InvalidOperationException("진행 중인 눈물 스킬의 검증 정책은 교체할 수 없습니다.");
+        if (validator != null && root == null) throw new ArgumentNullException(nameof(root));
+        if (validator == null && root != null) throw new ArgumentException("루트와 검증 함수를 함께 연결하거나 함께 해제해야 합니다.", nameof(validator));
+        effectRoot = root;
+        targetValidator = validator;
+    }
 
     private float remainingPreparationTime;
     
@@ -79,6 +94,7 @@ public class TearSkill : PlayerSkill
     private PlayerSkillBlockReason CheckActivationConditions()
     {
         if (owner == null || !owner.gameObject.activeInHierarchy) return PlayerSkillBlockReason.Unavailable;
+        if (targetValidator != null && (effectRoot == null || !effectRoot.gameObject.activeInHierarchy)) return PlayerSkillBlockReason.Unavailable;
         if (model.CurrentSkillFragment < definition.RequiredFragments) return PlayerSkillBlockReason.InsufficientFragments;
 
         return PlayerSkillBlockReason.None;
@@ -96,7 +112,7 @@ public class TearSkill : PlayerSkill
         }
 
         // 실제 발동 순간의 위치를 사용
-        Vector3 center = owner.position;
+        Vector3 center = targetValidator != null ? effectRoot.position : owner.position;
         Phase = PlayerSkillPhase.Executing;
 
         try
@@ -142,6 +158,7 @@ public class TearSkill : PlayerSkill
             if (targetCollider == null) continue;
             // PC 자신과 자식 Collider를 제외
             if (targetCollider.transform.IsChildOf(owner)) continue;
+            if (effectRoot != null && targetCollider.transform.IsChildOf(effectRoot)) continue;
 
             // Collider가 자식에 있고 처리 컴포넌트가 부모에 있는 경우
             IStunnable target = targetCollider.GetComponentInParent<IStunnable>();
@@ -149,6 +166,9 @@ public class TearSkill : PlayerSkill
             if (target == null) continue;
             // 찾아낸 처리 컴포넌트도 자기 자신에 속하는지 확인
             if (target is Component targetComponent && targetComponent.transform.IsChildOf(owner)) continue;
+            if (target is Component rootTarget && effectRoot != null && rootTarget.transform.IsChildOf(effectRoot)) continue;
+            // 센서가 먼저 열거되어도 같은 적의 유효한 몸체 후보를 버리지 않도록 검증 후 중복을 제거합니다.
+            if (targetValidator != null && !targetValidator(center, targetCollider, target)) continue;
             if (!processedTargets.Add(target)) continue;
 
             target.TryStun(stunMilliseconds);
