@@ -5,11 +5,11 @@ namespace Cooked.Level
     {
         [Tooltip("이 체크포인트의 고유 ID입니다. 같은 스테이지에서 중복하지 않으며 트리거와 초기 진입 설정의 ID가 일치해야 합니다.")]
         [SerializeField] private string checkpointId;
-        [Tooltip("켜면 이 체크포인트 도달 시 Q 상태 전환과 자동 껍질 회수 능력을 함께 해금합니다.")]
+        [Tooltip("이전 배치의 Q 해금 표시입니다. 새 배치에서는 별도 능력 해금 트리거를 사용하며 체크포인트는 시작과 끝 위치 저장만 담당합니다.")]
         [SerializeField] private bool unlockForm;
-        [Tooltip("켜면 이 체크포인트 도달 시 F 눈물 능력을 해금합니다. 사용에는 눈물 조각 5개가 필요합니다.")]
+        [Tooltip("이전 배치의 눈물 능력 해금 표시입니다. 새 배치에서는 E 눈물 해금 트리거로 이관하고 체크포인트 중간 저장을 만들지 않습니다.")]
         [SerializeField] private bool unlockTear;
-        [Tooltip("이 체크포인트 복원 시 사용할 카메라 구간입니다. 정렬 위치는 이 표식 자신의 로컬 XYZ 이동량이며 스폰용 Body Offset과 별개입니다. 초기 즉시 적용은 플레이어 위치를 바꾸지 않습니다.")]
+        [Tooltip("안전한 초기 배치의 카메라 구간입니다. 복귀 모드는 실제 저장 위치를 포함하는 CameraZoneTrigger에서 먼저 조회하세요. 구간이 없는 안전 초기 위치에서만 이 배치 설정을 사용합니다. 정렬점은 표식 로컬 좌표이며 Body Offset과 별개이고 초기 적용은 위치를 바꾸지 않습니다.")]
         [SerializeField] private CameraZoneData cameraZone;
         public bool UnlockForm => unlockForm;
         public bool UnlockTear => unlockTear;
