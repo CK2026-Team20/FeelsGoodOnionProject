@@ -11,15 +11,26 @@ namespace Cooked.UI.Editor
 {
     public static class ContentAssetBuilder
     {
+        public static void ValidateDialogueJson(string json)
+        {
+            // The independently approved T6 table is authoritative: no invented Code/Is... aliases.
+            new Cooked.Dialogue.DialogueTableService("authoring-dialogue").LoadJson(json);
+            foreach (var row in (JArray)JObject.Parse(json)["Rows"])
+                foreach (string field in new[] { "Dialogue_Code", "Name", "Context" })
+                {
+                    string text = (string)row[field];
+                    if (text != text.Trim()) throw new FormatException("Dialogue " + field + " must not have surrounding whitespace.");
+                }
+        }
         [MenuItem("Cooked/Content/Build All Content Assets")]
         public static void BuildAll()
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Edit Mode required.");
+            Cooked.Integration.Editor.AuthoringOutputScope.RequireEditMode();
             var font = UiPrefabBuilder.BuildFont();
             // Dynamic fonts clear on Editor shutdown. Warm from the actual shipped strings before assertions.
             string corpus = "게임 종료 어니와 포포의 주방 탈출 전체 음량 음악 효과음 체력 눈물 조각 체크포인트 재시도 타이틀로 닫기 이동 점프 상호작용 형태 전환 껍질 회수 트레이 움직이기 옵션 건너뛰기 자동 이전 기록 아직 출력된 대화가 없습니다 ▼ ESC WASD Q R E F Space OVEN_SAFE 0123456789 /—·%!";
             string json = File.ReadAllText("Assets/_Scenes/Tech_SYM/Architecture/Dialogue/Data/DialogueTable.json");
-            new Cooked.Dialogue.DialogueTableService("font-validation").LoadJson(json);
+            ValidateDialogueJson(json);
             foreach (var row in (JArray)JObject.Parse(json)["Rows"])
                 corpus += " " + (string)row["Name"] + " " + (string)row["Context"];
             corpus = new string(corpus.Where(c => !char.IsControl(c)).Distinct().ToArray());
@@ -29,10 +40,12 @@ namespace Cooked.UI.Editor
             UiPrefabBuilder.BuildAll();
             Cooked.Dialogue.Editor.DialoguePrefabBuilder.Build(font);
             Cooked.Cinematics.Editor.CinematicAssetBuilder.BuildAll(font);
-            Cooked.Audio.Editor.AudioPrefabBuilder.Build();
-            Cooked.Background.Editor.KitchenContentBackdropBuilder.Build();
-            AssetDatabase.SaveAssets();
-            Debug.Log("Content authored: HUD, Dialogue, 2 Timelines/8 artwork, 16 audio clips, 14 backdrop model wrappers.");
+            if (!Cooked.Integration.Editor.AuthoringOutputScope.IsTemporary)
+                Cooked.Audio.Editor.AudioPrefabBuilder.Build();
+            if (!Cooked.Integration.Editor.AuthoringOutputScope.IsTemporary)
+                Cooked.Background.Editor.KitchenContentBackdropBuilder.Build();
+            Cooked.Integration.Editor.AuthoringOutputScope.SaveOwnedAssets();
+            Debug.Log("Content authored: HUD, Dialogue, ordered artwork cuts, 16 audio clips, 14 backdrop model wrappers.");
         }
     }
 }

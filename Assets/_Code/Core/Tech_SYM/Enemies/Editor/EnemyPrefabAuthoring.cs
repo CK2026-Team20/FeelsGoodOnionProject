@@ -19,6 +19,80 @@ namespace FeelsGoodOnion.TechSYM.Enemies.Editor
         private const string DummyPath = "Assets/_Prefabs/Characters/Enemy/Enemy_Dummy.prefab";
         private const string EffectPath = "Assets/_Prefabs/Characters/Enemy/StunEffect_Dummy.prefab";
 
+        public static string ProfileRoot => Cooked.Integration.Editor.AuthoringOutputScope.Map("Assets/_Scenes/Tech_SYM/Enemies");
+        public static string[] ProfilePaths => new[] { ProfileRoot + "/Prefabs/IdleEnemy.prefab", ProfileRoot + "/Prefabs/PatrolXEnemy.prefab", ProfileRoot + "/Prefabs/PatrolYEnemy.prefab" };
+        [MenuItem("Cooked/Enemies/Build Finalized Profiles")]
+        public static void BuildProfiles()
+        {
+            using (Cooked.Integration.Editor.AuthoringOutputScope.BeginScene())
+            {
+                Cooked.Integration.Editor.AuthoringOutputScope.RequireEditMode();
+                var model = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Art/Characters/Models/ch_monster.fbx");
+                var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Art/Characters/Materials/monster_default.mat");
+                var dummy = AssetDatabase.LoadAssetAtPath<GameObject>(DummyPath);
+                var effect = AssetDatabase.LoadAssetAtPath<GameObject>(EffectPath);
+                var stunTemplate = dummy != null ? dummy.GetComponentInChildren<EnemyStunVisual>(true) : null;
+                Require(model != null && material != null && stunTemplate != null && effect != null, "Actual enemy artwork/stun references are required.");
+                Require(effect.GetComponentsInChildren<Collider>(true).Length == 0, "Stun VFX must be physics-free.");
+                var templateFields = new SerializedObject(stunTemplate);
+                var stunnedTexture = templateFields.FindProperty("stunnedTexture").objectReferenceValue;
+                Require(stunnedTexture != null, "Actual stunned texture is required.");
+                Cooked.Integration.Editor.AuthoringOutputScope.EnsureFolder(ProfileRoot + "/Prefabs");
+                Cooked.Integration.Editor.AuthoringOutputScope.EnsureFolder(ProfileRoot + "/Data");
+                string[] names = { "IdleEnemy", "PatrolXEnemy", "PatrolYEnemy" };
+                for (int i = 0; i < names.Length; i++)
+                {
+                    string definitionPath = ProfileRoot + "/Data/" + names[i] + ".asset";
+                    var definition = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(definitionPath);
+                    if (definition == null) { definition = ScriptableObject.CreateInstance<EnemyDefinition>(); AssetDatabase.CreateAsset(definition, definitionPath); }
+                    var fields = new SerializedObject(definition);
+                    fields.FindProperty("kind").intValue = i == 0 ? (int)EnemyKind.Stationary : (int)EnemyKind.Patrol;
+                    fields.FindProperty("speed").floatValue = 2f; fields.FindProperty("initialIdle").floatValue = .5f;
+                    fields.FindProperty("knockbackSpeed").floatValue = 10f; fields.ApplyModifiedPropertiesWithoutUndo();
+                    var owner = new GameObject(names[i]); owner.SetActive(false);
+                    try
+                    {
+                        var actor = owner.AddComponent<EnemyActor>();
+                        var body = new GameObject("Body"); body.transform.SetParent(owner.transform, false);
+                        var collider = body.AddComponent<BoxCollider>(); collider.isTrigger = true; collider.size = new Vector3(1, 1.4f, 1);
+                        var sensor = body.AddComponent<EnemyContactSensor>();
+                        fields = new SerializedObject(sensor); fields.FindProperty("owner").objectReferenceValue = actor; fields.ApplyModifiedPropertiesWithoutUndo();
+                        fields = new SerializedObject(actor); fields.FindProperty("definition").objectReferenceValue = definition;
+                        fields.FindProperty("body").objectReferenceValue = collider;
+                        fields.FindProperty("initialDirection").intValue = i == 2 ? (int)PatrolDirection.Up : (int)PatrolDirection.Right;
+                        fields.FindProperty("terrainMask").intValue = 1; fields.ApplyModifiedPropertiesWithoutUndo();
+                        var visual = new GameObject("Visual"); visual.transform.SetParent(body.transform, false);
+                        var instance = (GameObject)PrefabUtility.InstantiatePrefab(model); instance.transform.SetParent(visual.transform, false);
+                        Require(instance.GetComponentsInChildren<MonoBehaviour>(true).Length == 0 && instance.GetComponentsInChildren<Collider>(true).Length == 0 &&
+                            instance.GetComponentsInChildren<Rigidbody>(true).Length == 0, "Enemy Visual must contain only actual artwork/rendering.");
+                        var renderers = instance.GetComponentsInChildren<Renderer>(true); Require(renderers.Length == 1, "Explicit single enemy Renderer is required.");
+                        var renderer = renderers[0]; var slots = renderer.sharedMaterials;
+                        for (int slot = 0; slot < slots.Length; slot++) slots[slot] = material; renderer.sharedMaterials = slots;
+                        Require(renderer.bounds.size.y > .0001f, "Invalid actual enemy mesh bounds.");
+                        instance.transform.localScale *= collider.size.y / renderer.bounds.size.y;
+                        instance.transform.position += body.transform.position - renderer.bounds.center;
+                        var fx = (GameObject)PrefabUtility.InstantiatePrefab(effect, body.transform); fx.name = "StunEffect";
+                        fx.transform.localPosition = Vector3.up * (collider.size.y * .5f + .5f); fx.SetActive(false);
+                        var stun = owner.AddComponent<EnemyStunVisual>(); fields = new SerializedObject(stun);
+                        fields.FindProperty("stunEffect").objectReferenceValue = fx; fields.FindProperty("targetRenderer").objectReferenceValue = renderer;
+                        string property = TextureProperty(renderer, names[i]);
+                        fields.FindProperty("normalTexture").objectReferenceValue = material.GetTexture(property) ?? templateFields.FindProperty("normalTexture").objectReferenceValue;
+                        fields.FindProperty("stunnedTexture").objectReferenceValue = stunnedTexture;
+                        fields.FindProperty("materialIndex").intValue = 0; fields.FindProperty("texturePropertyName").stringValue = property;
+                        var extra = fields.FindProperty("additionalTexturePropertyNames"); var shades = ShadeProperties(material); extra.arraySize = shades.Count;
+                        for (int slot = 0; slot < shades.Count; slot++) extra.GetArrayElementAtIndex(slot).stringValue = shades[slot];
+                        fields.ApplyModifiedPropertiesWithoutUndo();
+                        // EnemyActor validation requires unit/nonrotated root/body and no Rigidbody anywhere.
+                        Require(owner.GetComponentsInChildren<Rigidbody>(true).Length == 0, "Enemies cannot own Rigidbody.");
+                        owner.SetActive(true); Validate(owner, names[i]);
+                        Require(PrefabUtility.SaveAsPrefabAsset(owner, ProfilePaths[i]) != null, "Enemy profile save failed.");
+                        EditorUtility.SetDirty(definition); AssetDatabase.SaveAssetIfDirty(definition);
+                    }
+                    finally { Object.DestroyImmediate(owner); }
+                }
+            }
+        }
+
         [MenuItem("Cooked/Enemies/Apply R14 R19 To Three Prefabs")]
         public static void Apply()
         {
@@ -135,7 +209,12 @@ namespace FeelsGoodOnion.TechSYM.Enemies.Editor
                 return selected;
             }
             Transform shape = body.transform.Find("Visual");
-            var renderer = shape != null ? shape.GetComponent<Renderer>() : null;
+            Renderer renderer = null;
+            if (shape != null) foreach (var candidate in shape.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!candidate.enabled || !ActiveUnder(candidate.transform, body.transform)) continue;
+                Require(renderer == null, context + ": Visual에 활성 Renderer가 복수입니다."); renderer = candidate;
+            }
             Require(renderer != null && renderer.enabled && ActiveUnder(shape, body.transform),
                 context + ": 활성 외형 Renderer가 없습니다. 숨겨진 Body/Visual에는 연결하지 않습니다.");
             return renderer;

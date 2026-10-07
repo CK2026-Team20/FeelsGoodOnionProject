@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Cooked.Level;
+using Cooked.Integration.Editor;
 using FeelsGoodOnion.TechSYM.Enemies;
 using FeelsGoodOnion.TechSYM.Features;
 using FeelsGoodOnion.TechSYM.Interaction;
 using FeelsGoodOnion.TechSYM.OvenTray;
 using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEditor;
+using Unity.Cinemachine;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.ProBuilder;
@@ -17,11 +19,11 @@ using Object = UnityEngine.Object;
 
 namespace Cooked.Level.Editor
 {
-    /// <summary>Only authors Level assets and three additive Stage scenes. Core remains integration-owned.</summary>
+    /// <summary>Authors Level assets and the two registered non-prototype Stage scenes. Core remains integration-owned.</summary>
     public static class LevelAssetBuilder
     {
-        public const string AssetRoot = "Assets/_Scenes/Tech_SYM/Architecture/Level";
-        public const string StageRoot = "Assets/_Scenes/Tech_SYM/Architecture/Stages";
+        public static string AssetRoot => AuthoringOutputScope.Map("Assets/_Scenes/Tech_SYM/Architecture/Level");
+        public static string StageRoot => AuthoringOutputScope.Map("Assets/_Scenes/Tech_SYM/Architecture/Stages");
         private static Material floorMaterial, accentMaterial, wallMaterial;
         private static string meshPrefix;
         private static readonly List<CheckpointMarker> checkpoints = new List<CheckpointMarker>();
@@ -29,16 +31,84 @@ namespace Cooked.Level.Editor
         private static StageService stage;
         private static Transform root;
 
+        // The old POPO token is an authored compatibility value only. Main/T9 must supply a
+        // real final dialogue code and table rows before Play; the current table has no final group.
+        public static string FinalDialogueCode { get; set; } = "POPO";
+        public static GameObject CreatePhysicalRoot(string name, Transform parent, Vector3 position, Vector3 size)
+        {
+            var owner = Empty(name,parent,position); owner.SetActive(false);
+            var body = Empty("PhysicsBody",owner.transform,position); body.AddComponent<BoxCollider>().size=size;
+            var rb = body.AddComponent<Rigidbody>(); rb.isKinematic=true; rb.useGravity=false;
+            var contacts = body.AddComponent<PlatformContacts>();
+            var motion = owner.AddComponent<KinematicPlatformMotion>();
+            Set(motion,"physicsBody",rb); Set(motion,"platformContacts",contacts);
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Cube); visual.name="Visual";
+            Object.DestroyImmediate(visual.GetComponent<Collider>()); visual.transform.SetParent(body.transform,false); visual.transform.localScale=size;
+            return owner; // caller configures controller refs, then activates after every serialized dependency exists
+        }
+        public static void BindLegacyPhysics(GameObject physical)
+        {
+            // Existing same-object GetComponent consumers are kept on this physics child, not moved arbitrarily.
+            var box=physical.GetComponent<BoxCollider>(); if(box==null) throw new InvalidOperationException("Real BoxCollider required.");
+            var rb=physical.GetComponent<Rigidbody>() ?? physical.AddComponent<Rigidbody>(); rb.isKinematic=true; rb.useGravity=false;
+            var contacts=physical.GetComponent<PlatformContacts>() ?? physical.AddComponent<PlatformContacts>();
+            var motion=physical.GetComponent<KinematicPlatformMotion>() ?? physical.AddComponent<KinematicPlatformMotion>();
+            Set(motion,"physicsBody",rb); Set(motion,"platformContacts",contacts);
+        }
+        public static GameObject CreateDevice(string name, Transform parent, Vector3 position, Vector3 size, OvenTrayObject.OperationMode mode, Vector3 offset)
+        {
+            var owner=CreatePhysicalRoot(name,parent,position,size);
+            var physical=owner.transform.Find("PhysicsBody").gameObject;
+            // Device self GetComponent/moving prompt contract: controller + mover + anchor share
+            // this physics child under the empty wrapper. No retired OvenHandle relay is needed.
+            Object.DestroyImmediate(owner.GetComponent<KinematicPlatformMotion>());
+            BindLegacyPhysics(physical);
+            var controller=physical.AddComponent<OvenTrayObject>(); Set(controller,"operationMode",(int)mode);
+            Set(controller,"travelOffset",offset); Set(controller,"hingeEulerOffset",new Vector3(0,90,0)); Set(controller,"moveDuration",.8f);
+            // Hinge body pivots at its edge; mover owns rotation and every body/handle follows it.
+            if(mode==OvenTrayObject.OperationMode.Hinge)
+            { owner.transform.Find("PhysicsBody").GetComponent<BoxCollider>().center=Vector3.forward*size.z*.5f;
+              owner.transform.Find("PhysicsBody/Visual").localPosition=Vector3.forward*size.z*.5f; }
+            var handle=new GameObject("Handle"); handle.transform.SetParent(owner.transform.Find("PhysicsBody"),false);
+            handle.transform.localPosition=new Vector3(0,size.y*.5f,-size.z*.5f);
+            handle.AddComponent<BoxCollider>().size=new Vector3(.4f,.4f,.4f);
+            var prompt=physical.GetComponent<InteractionPromptAnchor>();
+            Set(prompt,"interactionLocalOffset",handle.transform.localPosition);
+            Set(prompt,"localOffset",handle.transform.localPosition+Vector3.up*.5f);
+            owner.SetActive(true); return owner;
+        }
+        public static void ConfigureFragment(GameObject instance)
+        {
+            bool wasActive=instance.activeSelf; instance.SetActive(false);
+            foreach(var old in instance.GetComponentsInChildren<MonoBehaviour>(true))
+                if(old.GetType().Name=="LevelTearFragment") Object.DestroyImmediate(old);
+            var pickups=instance.GetComponentsInChildren<TearFragment>(true);
+            if(pickups.Length!=1) throw new InvalidOperationException("One original reusable TearFragment sensor is required.");
+            Set(pickups[0],"pickupRoot",instance); pickups[0].enabled=true;
+            // Move rotation responsibility to the item's logic root while retaining its actual Visual target.
+            foreach(var rotation in instance.GetComponentsInChildren<ObjectRotation>(true))
+            {
+                if(rotation.gameObject==instance) continue;
+                var target=rotation.transform; var data=new SerializedObject(rotation);
+                float speed=data.FindProperty("degreesPerSecond").floatValue;
+                Object.DestroyImmediate(rotation);
+                var rootRotation=instance.GetComponent<ObjectRotation>() ?? instance.AddComponent<ObjectRotation>();
+                Set(rootRotation,"rotationTarget",target); Set(rootRotation,"degreesPerSecond",speed);
+            }
+            // FloatingMotion cannot target a child with the current API; T9 transfers that optional
+            // display-only bob before deleting legacy sources. Never leave scripts under Visual.
+            foreach(var bob in instance.GetComponentsInChildren<MonoBehaviour>(true))
+                if(bob.GetType().Name=="FloatingMotion") Object.DestroyImmediate(bob);
+            foreach(var visual in instance.GetComponentsInChildren<Transform>(true))
+                if(visual.name=="Visual" || visual.name=="VisualRoot")
+                    if(visual.GetComponentsInChildren<MonoBehaviour>(true).Length!=0) throw new InvalidOperationException("Fragment Visual still contains scripts requiring explicit transfer.");
+            instance.SetActive(wasActive);
+        }
         [MenuItem("Cooked/Level/Build Approved Prototype Assets")]
         public static void Build()
         {
-            if (Application.isPlaying) throw new InvalidOperationException("Exit Play Mode before Level authoring.");
-            // Do not close or implicitly save anybody's dirty scenes.
-            for (int i = 0; i < SceneManager.sceneCount; i++)
-                if (SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save your own scene before Level authoring.");
-            // Batch startup has an untitled empty scene; open an existing saved scene read-only before additive authoring.
-            if (string.IsNullOrEmpty(SceneManager.GetActiveScene().path))
-                EditorSceneManager.OpenScene("Assets/_Scenes/Tech_SYM/03_InGame.unity", OpenSceneMode.Single);
+            AuthoringOutputScope.RequireEditMode();
+            // RequireEditMode protects external dirty scenes; an owned unsaved authoring scratch is allowed.
             EnsureFolder(AssetRoot + "/Prefabs"); EnsureFolder(AssetRoot + "/Meshes");
             EnsureFolder(AssetRoot + "/Materials"); EnsureFolder(StageRoot);
             floorMaterial = MaterialAsset("WarmCounter", new Color(.71f,.45f,.24f));
@@ -52,8 +122,9 @@ namespace Cooked.Level.Editor
                 BuildVisualPrefabs(); BuildCameraPrefab(); // Backdrop is authored by Content Dev.
             }
             finally { EditorSceneManager.CloseScene(scratch, true); if (previous.IsValid()) SceneManager.SetActiveScene(previous); }
-            for (int number = 1; number <= 3; number++) BuildStage(number);
-            AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+            // Catalog uses Prototype/1_Stage plus these two Stages. Existing 03_1 is independent and is not overwritten.
+            for (int number = 2; number <= 3; number++) BuildStage(number);
+            Cooked.Integration.Editor.AuthoringOutputScope.SaveOwnedAssets(); AssetDatabase.Refresh();
             ValidateSavedAssets();
             Debug.Log("[Cooked.Level] Authoring completed. Runtime traversal remains a separate mandatory gate.");
         }
@@ -97,6 +168,7 @@ namespace Cooked.Level.Editor
                     }
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }
+                foreach (var enemy in enemies) enemy.transform.rotation = Quaternion.identity;
                 stage.RebuildRegistry();
                 if (!EditorSceneManager.SaveScene(scene, StageRoot + "/" + root.name + ".unity")) throw new IOException("Stage save failed.");
             }
@@ -116,16 +188,11 @@ namespace Cooked.Level.Editor
             // Leave 1.5m clear run-up: the small capsule must clear the roof before its 3m jump.
             Tunnel("SmallTunnel",15,17,0,4);
             Block("SmallHighStep",new Vector3(20,1.15f,0),new Vector3(3,2.3f,4));
-            Checkpoint("S1_SKILL",new Vector3(20,2.3f,0));
+            Checkpoint("S1_END",new Vector3(33,0,0));
             Trigger("TearUnlock",StageTriggerKind.UnlockTear,"",new Vector3(21,3.3f,0),new Vector3(2,4,4));
             Pickup(new Vector3(22,.6f,0)); Pickup(new Vector3(23,.6f,0)); Pickup(new Vector3(24,.6f,0));
-            var enemy = Enemy(new Vector3(27,1.2f,0));
-            var door = Block("TearBarrier",new Vector3(29,4,0),new Vector3(.6f,8,4));
-            // The low canopy prevents killing the tutorial enemy by a stomp before required tear use.
-            Block("StunArenaCanopy",new Vector3(26.5f,3.7f,0),new Vector3(5,3,4));
-            var gate = Empty("RealTearPuzzle",root,Vector3.zero).AddComponent<TearStunGate>();
-            Set(gate,"enemy",enemy); Set(gate,"barrier",door);
-            Sign("TEAR",new Vector3(24,0,0),"E 눈물: 실제 적을 기절시키면 문이 열립니다. 조각 부족 시 체크포인트 재시도");
+            Enemy(new Vector3(27,1.2f,0));
+            Sign("TEAR",new Vector3(24,0,0),"E 눈물 · 조각 5개 · 반경 3m · 일반 적 기절 2초");
             Fall(0,36,4);
         }
         private static void StageTwo()
@@ -141,7 +208,7 @@ namespace Cooked.Level.Editor
             ShellPuzzle("Shell2",43,45,-3.5f,4);
             Tunnel("ExplorationTunnel",46,48,-3.5f,4);
             Block("ExploreStep",new Vector3(49,.4f,-1),new Vector3(2,.8f,2));
-            Checkpoint("S2_OVEN",new Vector3(51,0,0));
+            Checkpoint("S2_END",new Vector3(64,0,0));
             BuildOven();
             // Centre the Actor before the last corner; leave the last 3m open to turn into Stage 3.
             ExitFunnel("ExitFunnelFront",new Vector3(62.5f,4,-3.3f));
@@ -234,7 +301,7 @@ namespace Cooked.Level.Editor
                 throw new InvalidOperationException("Stable Edit Mode required.");
             for(int i=0;i<SceneManager.sceneCount;i++)
                 if(SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Dirty scene must be saved by its owner first.");
-            const string scenePath=StageRoot+"/03_2_Stage.unity";
+            string scenePath=StageRoot+"/03_2_Stage.unity";
             var report=new FunnelRepairEvidence { utc=DateTime.UtcNow.ToString("O"),scenePath=scenePath,
                 changedAssets=new[]{scenePath,AssetRoot+"/Meshes/S2_ExitFunnelFront.asset",AssetRoot+"/Meshes/S2_ExitFunnelBack.asset"} };
             var previous=SceneManager.GetActiveScene(); var scene=SceneManager.GetSceneByPath(scenePath);
@@ -295,8 +362,8 @@ namespace Cooked.Level.Editor
             {
                 if(opened && scene.IsValid() && scene.isLoaded) EditorSceneManager.CloseScene(scene,true);
                 if(previous.IsValid() && previous.isLoaded) SceneManager.SetActiveScene(previous);
-                Directory.CreateDirectory("output/Tech_SYM/level/evidence");
-                File.WriteAllText("output/Tech_SYM/level/evidence/exit-funnel-visual-repair.json",JsonUtility.ToJson(report,true));
+                Directory.CreateDirectory("output/Tech_SYM/verification/system-v11-T8/native-level");
+                File.WriteAllText("output/Tech_SYM/verification/system-v11-T8/native-level/exit-funnel-visual-repair.json",JsonUtility.ToJson(report,true));
             }
         }
 
@@ -308,18 +375,29 @@ namespace Cooked.Level.Editor
             Trigger("Enter",StageTriggerKind.Enter,"SIDE_3",new Vector3(88,4,0),new Vector3(44,8,4),false);
             ShellPuzzle("Shell3",71,73,0,4); Tunnel("ComboTunnel",74,77,0,4);
             Block("ComboStep",new Vector3(79,.5f,0),new Vector3(2,1,4));
-            Checkpoint("S3_CHASE",new Vector3(82,0,0));
+            Checkpoint("S3_END",new Vector3(104,0,0));
             BuildRetreatGate();
             Trigger("StartChase",StageTriggerKind.Chase,"CHASE_3",new Vector3(95.5f,4,0),new Vector3(23,8,4));
             Sign("CHASE",new Vector3(82,0,0),"앞으로 탈출! 점프와 작은 형태로 통과하세요");
             Tunnel("ChaseTunnel",99,102,0,4);
             var popo = PrefabInstance("PopoVisual",root,new Vector3(105,0,0));
-            popo.name = "PopoRescue";
-            Trigger("Rescue",StageTriggerKind.Rescue,"POPO",new Vector3(105,1.5f,0),new Vector3(2,3,4));
-            Trigger("Escape",StageTriggerKind.Escape,"POPO",new Vector3(107,1.5f,0),new Vector3(2,3,4));
+            popo.name = "Poppo";
+            ConfigurePoppoExit(popo,stage,FinalDialogueCode,new Vector3(0,1.5f,0),new Vector3(2,3,4));
             Fall(66,110,4);
         }
 
+        public static void ConfigurePoppoExit(GameObject poppo, StageService owningStage, string dialogueCode, Vector3 localCentre, Vector3 size)
+        {
+            if(poppo==null || owningStage==null || string.IsNullOrWhiteSpace(dialogueCode))
+                throw new ArgumentException("Poppo exit requires its own object, Stage and final dialogue code.");
+            if(poppo.transform.Find("FinishTrigger")!=null) throw new InvalidOperationException("Poppo finish trigger already exists.");
+            var sensor=new GameObject("FinishTrigger");sensor.SetActive(false);sensor.transform.SetParent(poppo.transform,false);
+            sensor.transform.localPosition=localCentre;
+            var box=sensor.AddComponent<BoxCollider>();box.isTrigger=true;box.size=size;
+            var trigger=sensor.AddComponent<StageTrigger>();Set(trigger,"stage",owningStage);
+            Set(trigger,"kind",(int)StageTriggerKind.Escape);Set(trigger,"value",dialogueCode);Set(trigger,"once",true);
+            sensor.SetActive(true);
+        }
         private static void BuildRetreatGate()
         {
             var gateRoot=Empty("ChaseRetreatGate",root,Vector3.zero);
@@ -330,94 +408,39 @@ namespace Cooked.Level.Editor
             Set(gate,"blocker",collider); Set(stage,"chaseRetreatGate",gate); Set(stage,"chaseStartProgress",18f);
             blockerObject.SetActive(false);
         }
-        // Targeted repair: checkpoint offsets only in every Stage, plus approved Stage3 chase changes.
-        public static void UpdateChaseAssets()
-        {
-            if(Application.isPlaying) throw new InvalidOperationException("Exit Play Mode before authoring.");
-            for(int i=0;i<SceneManager.sceneCount;i++) if(SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save your own dirty scene before authoring.");
-            UpdateCheckpointSpawnPoses();
-            var scene=EditorSceneManager.OpenScene(StageRoot+"/03_3_Stage.unity",OpenSceneMode.Single);
-            root=scene.GetRootGameObjects().Single(go=>go.GetComponent<StageService>()!=null).transform;
-            stage=root.GetComponent<StageService>(); meshPrefix="S3";
-            accentMaterial=AssetDatabase.LoadAssetAtPath<Material>(AssetRoot+"/Materials/MintInteractable.mat");
-            if(root.GetComponentInChildren<ChaseRetreatGate>(true)==null) BuildRetreatGate();
-            Set(stage,"chaseRetreatGate",root.GetComponentInChildren<ChaseRetreatGate>(true));
-            Set(stage,"chaseStartProgress",18f);
-            foreach(var trigger in root.GetComponentsInChildren<StageTrigger>(true))
-            {
-                if(trigger.Kind==StageTriggerKind.Chase)
-                { trigger.transform.position=new Vector3(95.5f,4,0); trigger.GetComponent<BoxCollider>().size=new Vector3(23,8,4); }
-                if(trigger.Kind==StageTriggerKind.Checkpoint && trigger.Value=="S3_CHASE")
-                { trigger.transform.position=new Vector3(82,4,0); trigger.GetComponent<BoxCollider>().size=new Vector3(1.5f,8,4); }
-            }
-            if(!EditorSceneManager.SaveScene(scene)) throw new IOException("Stage3 chase repair save failed.");
-            AssetDatabase.SaveAssets();
-        }
-        private static void UpdateCheckpointSpawnPoses()
-        {
-            for(int number=1;number<=3;number++)
-            {
-                var scene=EditorSceneManager.OpenScene(StageRoot+"/03_"+number+"_Stage.unity",OpenSceneMode.Single);
-                var markers=scene.GetRootGameObjects().SelectMany(go=>go.GetComponentsInChildren<CheckpointMarker>(true)).ToArray();
-                if(markers.Length!=2) throw new InvalidOperationException("Expected two checkpoint markers: "+scene.path);
-                foreach(var marker in markers)
-                {
-                    // Only this serialized field changes. Marker, beacon and trigger transforms are untouched.
-                    Set(marker,"bodyOffset",new Vector3(0f,1.03f,0f));
-                }
-                EditorSceneManager.MarkSceneDirty(scene);
-                if(!EditorSceneManager.SaveScene(scene)) throw new IOException("Checkpoint offset save failed: "+scene.path);
-            }
-        }
+        [Obsolete("Existing asset migration belongs to main/T9; primary authoring has final checkpoints.")]
+        public static void UpdateChaseAssets() => throw new InvalidOperationException("Use explicit main/T9 native migration; do not regenerate historical checkpoints.");
         private static void BuildOven()
         {
-            var oven = PrefabInstance("KitchenOven",root,new Vector3(56,0,-9));
-            oven.name = "OvenWithIndependentTray";
-            var trayRoot = Empty("FunctionalOvenTray",root,Vector3.zero);
-            var body = Empty("PhysicsBody",trayRoot.transform,new Vector3(56,0,8));
-            body.AddComponent<BoxCollider>().size = new Vector3(6,.4f,3);
-            body.AddComponent<KinematicPlatformMotion>();
-            var tray = body.AddComponent<OvenTrayObject>();
-            Set(tray,"travelOffset",new Vector3(0,0,-8)); Set(tray,"moveDuration",1.2f);
-            Geometry("Tray",body.transform,Vector3.zero,new Vector3(6,.4f,3),accentMaterial);
-            var handleRoot = Empty("TrayHandle",root,new Vector3(51.8f,.7f,0));
-            var handle = handleRoot.AddComponent<OvenHandle>(); Set(handle,"tray",tray);
-            handleRoot.AddComponent<InteractionPromptAnchor>();
-            var shape = Empty("Collider",handleRoot.transform,Vector3.zero); shape.transform.localPosition=Vector3.zero;
-            shape.AddComponent<BoxCollider>().size=new Vector3(.4f,1,.4f);
-            Geometry("Handle",handleRoot.transform,Vector3.zero,new Vector3(.3f,.8f,.3f),accentMaterial);
-            // The existing tray anchor moves with its body; disable it so only the fixed handle is offered.
-            body.GetComponent<InteractionPromptAnchor>().enabled=false;
+            var oven = PrefabInstance("KitchenOven",root,new Vector3(56,0,-9)); oven.name = "Oven";
+            CreateDevice("OvenDoor",root,new Vector3(53,1,0),new Vector3(.3f,2.5f,3),OvenTrayObject.OperationMode.Hinge,Vector3.zero);
+            CreateDevice("OvenTray",root,new Vector3(56,.5f,0),new Vector3(6,.4f,3),OvenTrayObject.OperationMode.Move,new Vector3(0,0,-3));
+            for (int i=0;i<3;i++) CreateDevice("Drawer"+(i+1),root,new Vector3(49+i*2,.4f+i*.5f,-3),new Vector3(1.8f,.3f,2),OvenTrayObject.OperationMode.Move,new Vector3(0,0,-1.5f));
         }
         private static void ShellPuzzle(string name,float plateX,float doorX,float z,float width)
         {
             var puzzle = Empty(name,root,Vector3.zero);
             var plateBody = Empty("PlatePhysics",puzzle.transform,new Vector3(plateX,.1f,z));
             var plateCollider = plateBody.AddComponent<BoxCollider>(); plateCollider.size=new Vector3(1.8f,.2f,1.8f);
+            BindLegacyPhysics(plateBody);
             var plate = plateBody.AddComponent<PressurePlatePlatform>();
             Set(plate,"travelSeconds",.5f); Set(plate,"pressDepth",.08f);
             Geometry(name+"Plate",plateBody.transform,Vector3.zero,plateCollider.size,accentMaterial);
             var gateBody = Empty("GatePhysics",puzzle.transform,new Vector3(doorX,4,z));
             gateBody.AddComponent<BoxCollider>().size=new Vector3(.5f,8,width);
+            BindLegacyPhysics(gateBody);
             var linked = gateBody.AddComponent<PressureLinkedPlatform>();
             Set(linked,"pressurePlate",plate); Set(linked,"travelOffset",new Vector3(0,8,0)); Set(linked,"returnSpeed",4f);
             Set(plate,"linkedPlatform",linked);
             Geometry(name+"Door",gateBody.transform,Vector3.zero,new Vector3(.5f,8,width),accentMaterial);
-            var latch = puzzle.AddComponent<ShellPressureLatch>();
-            Set(latch,"plate",plate); Set(latch,"plateSurface",plateCollider); Set(latch,"raisedGate",gateBody); Set(latch,"stage",stage); Set(latch,"crossingProgress",doorX+.7f-(meshPrefix=="S1"?0:meshPrefix=="S2"?36:66));
-            Sign(name+"Guide",new Vector3(plateX-1,0,z),"압력판에서 작은 형태로! 껍질을 남기고 문을 통과한 뒤 되돌아와 Q 회수");
-            // After latching the same unobstructed floor returns to plate centre. Recovery is possible at distance 0..1m.
+            Sign(name+"Guide",new Vector3(plateX-1,0,z),"Q 크기 전환 · 압력판 위 껍질 유지 · F 장치 조작");
         }
         private static EnemyActor Enemy(Vector3 position)
         {
-            var prefab=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Scenes/Tech_SYM/Enemies/Prefabs/StationaryEnemy.prefab");
+            var prefab=AssetDatabase.LoadAssetAtPath<GameObject>(FeelsGoodOnion.TechSYM.Enemies.Editor.EnemyPrefabAuthoring.ProfilePaths[0]);
             if(prefab==null) throw new InvalidOperationException("Missing original enemy prefab.");
             var go=(GameObject)PrefabUtility.InstantiatePrefab(prefab); go.transform.SetParent(root,false); go.transform.position=position;
-            var actor=go.GetComponent<EnemyActor>(); Set(actor,"initiallyInvincible",true);
-            // Reuse the existing sensors; replace only this instance's dummy visual.
-            var body=new SerializedObject(actor).FindProperty("body").objectReferenceValue as BoxCollider;
-            var old=body.transform.Find("Visual"); if(old!=null) old.gameObject.SetActive(false);
-            PrefabInstance("MonsterVisual",body.transform,body.transform.position-Vector3.up*.4f);
+            var actor=go.GetComponent<EnemyActor>();
             enemies.Add(actor); return actor;
         }
         private static void Pickup(Vector3 position)
@@ -425,16 +448,11 @@ namespace Cooked.Level.Editor
             var prefab=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Scenes/Tech_SYM/Prefabs/TearFragment.prefab");
             if(prefab==null) throw new InvalidOperationException("Missing TearFragment prefab.");
             var instance=(GameObject)PrefabUtility.InstantiatePrefab(prefab); instance.transform.SetParent(root,false); instance.transform.position=position;
-            foreach(var legacy in instance.GetComponentsInChildren<TearFragment>(true))
-            {
-                legacy.enabled=false;
-                var pickup=legacy.gameObject.AddComponent<LevelTearFragment>();
-                Set(pickup,"pickupRoot",instance);
-            }
+            ConfigureFragment(instance);
         }
         private static void Checkpoint(string id,Vector3 foot)
         {
-            var go=Empty(id,root,foot); var point=go.AddComponent<CheckpointMarker>(); Set(point,"checkpointId",id); Set(point,"bodyOffset",new Vector3(0f,1.03f,0f)); checkpoints.Add(point);
+            var go=Empty(id,root,foot); var point=go.AddComponent<CheckpointMarker>(); Set(point,"checkpointId",id); Set(point,"bodyOffset",Cooked.Session.Editor.SessionActorBuilder.AuthoredBodyOffset()); checkpoints.Add(point);
             Geometry(id+"Beacon",go.transform,new Vector3(0,.06f,0),new Vector3(1.5f,.12f,1.5f),accentMaterial);
             float height=id=="S3_CHASE" ? 8f : 2f;
             float depth=id=="S3_CHASE" ? 4f : 1.5f;
@@ -446,9 +464,7 @@ namespace Cooked.Level.Editor
             var trigger=go.AddComponent<StageTrigger>(); Set(trigger,"stage",stage); Set(trigger,"kind",(int)kind); Set(trigger,"value",value); Set(trigger,"once",once);
         }
         private static void Sign(string name,Vector3 position,string text)
-        {
-            var sign=Empty(name+"Instruction",root,position).AddComponent<LevelInstruction>(); Set(sign,"text",text);
-        }
+        { /* Retired Instruction output removed. Q/E HUD and authored ability/dialogue triggers provide guidance. */ }
         private static void Floor(float from,float to,float z,float width) => Block("Floor"+from,new Vector3((from+to)/2,-.5f,z),new Vector3(to-from,1,width));
         private static void SideWalls(float from,float to,float z)
         {
@@ -501,13 +517,44 @@ namespace Cooked.Level.Editor
             }
             finally { Object.DestroyImmediate(rootObject); }
         }
+        public static CinemachineCamera[] CreateCoreCameras(Transform parent)
+        {
+            var reference = EditorSceneManager.OpenPreviewScene(Cooked.Session.Editor.SessionActorBuilder.HmsReferenceScene);
+            var created = new System.Collections.Generic.List<GameObject>();
+            try
+            {
+                PlayerCameraController source = null;
+                foreach (var go in reference.GetRootGameObjects())
+                    if ((source = go.GetComponentInChildren<PlayerCameraController>(true)) != null) break;
+                if (source == null) throw new InvalidOperationException("HMS reference scene has no controller.");
+                var data = new SerializedObject(source); var result = new CinemachineCamera[2];
+                var fields = new[] { "sideCamera", "quarterCamera" };
+                for (int i = 0; i < result.Length; i++)
+                {
+                    var template = data.FindProperty(fields[i]).objectReferenceValue as CinemachineCamera;
+                    if (template == null) throw new InvalidOperationException("HMS reference missing: " + fields[i]);
+                    var clone = Object.Instantiate(template.gameObject, parent); created.Add(clone);
+                    clone.name = i == 0 ? "Side" : "Quarter";
+                    result[i] = clone.GetComponent<CinemachineCamera>();
+                    result[i].Follow = null; result[i].LookAt = null;
+                    if (clone.GetComponentsInChildren<Camera>(true).Length != 0 || clone.GetComponentsInChildren<CinemachineBrain>(true).Length != 0 ||
+                        clone.GetComponentsInChildren<AudioListener>(true).Length != 0 || clone.GetComponentsInChildren<PlayerCameraController>(true).Length != 0)
+                        throw new InvalidOperationException("Core VCam template contains an output/controller; review the reference.");
+                }
+                return result;
+            }
+            catch { foreach (var go in created) Object.DestroyImmediate(go); throw; }
+            finally { EditorSceneManager.ClosePreviewScene(reference); }
+        }
         private static void BuildCameraPrefab()
         {
             var go=Empty("CoreLevelCamera",null,Vector3.zero);
             try
             {
-                // The output Camera/Brain and HMS cameras belong to the spawned Actor.
+                go.SetActive(false);
                 go.AddComponent<LevelCameraService>();
+                CreateCoreCameras(go.transform);
+                go.SetActive(true);
                 SavePrefab(go,"CoreLevelCamera");
             }
             finally { Object.DestroyImmediate(go); }
@@ -594,7 +641,7 @@ namespace Cooked.Level.Editor
         {
             var report=new List<string> { "Stage authoring validation (not runtime traversal)",DateTime.UtcNow.ToString("O") };
             Scene previous=SceneManager.GetActiveScene();
-            for(int i=1;i<=3;i++)
+            for(int i=2;i<=3;i++)
             {
                 string path=StageRoot+"/03_"+i+"_Stage.unity";
                 Scene scene=EditorSceneManager.OpenScene(path,OpenSceneMode.Additive);
@@ -613,8 +660,8 @@ namespace Cooked.Level.Editor
                 finally { EditorSceneManager.CloseScene(scene,true); }
             }
             if(previous.IsValid()) SceneManager.SetActiveScene(previous);
-            Directory.CreateDirectory("output/Tech_SYM/level/evidence");
-            File.WriteAllLines("output/Tech_SYM/level/evidence/asset-validation.txt",report);
+            Directory.CreateDirectory("output/Tech_SYM/verification/system-v11-T8/native-level");
+            File.WriteAllLines("output/Tech_SYM/verification/system-v11-T8/native-level/asset-validation.txt",report);
         }
     }
 }

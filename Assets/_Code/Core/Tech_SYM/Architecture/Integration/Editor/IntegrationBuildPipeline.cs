@@ -30,7 +30,10 @@ namespace Cooked.Integration.Editor
             if (installation == null) throw new InvalidOperationException("Architecture installation is not authored yet.");
             var catalog = installation.CreateCatalog();
             var scenes = new[] { catalog.BootstrapPath, catalog.TitlePath, catalog.CorePath }.Concat(catalog.StagePaths).ToArray();
-            if (scenes.Length != 6) throw new InvalidOperationException("The approved prototype requires six scenes.");
+            var approved = IntegrationSceneBuilder.Catalog;
+            var expected = new[] { approved.BootstrapPath, approved.TitlePath, approved.CorePath }.Concat(approved.StagePaths).ToArray();
+            if (scenes.Length != 6 || !scenes.SequenceEqual(expected, StringComparer.Ordinal))
+                throw new InvalidOperationException("Build requires the exact approved six canonical scene paths in order.");
             foreach (var path in scenes)
             {
                 if (!path.StartsWith("Assets/_Scenes/Tech_SYM/Architecture/", StringComparison.Ordinal) ||
