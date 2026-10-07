@@ -86,3 +86,9 @@ T3 `cd85a52`의 카메라 요청 소스17관찰, T4 `915e5e9`의 발판·장치�
 이 결과는 엔진 대역을 포함한 소스/API 계약과 실제 Editor 컴파일 증거다. Stage/Core hook·App 출력/Core 리그·native 참조 이관·PhysX/실제 입력/새 빌드는 T9/T10에서 연결·실행한다. 공개 Bind/Reset/Release 계약은 각 작업 `output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T*-evidence`의 인계·proof를 따른다. 완료한 네 worktree의 ignored 소스/검증 로그는 main에 SHA 동일 복사 후 recoverable archive했다. T6는 이 메인 HEAD의 별도 worktree에서 구현 중이다.
 
 최신 기능 Excel39케이스는 V01..V34 전체에 연결했고 실제 빌드 판정39개는 모두 미실행이다. 읽기 전용 Excel PDF18쪽에서 조건/조작/기대 텍스트 전체 확인·렌더 배치 검토를 수행했다. FunQA 원본/작성양식 hash는 그대로다. 지정 삭제32개는 아직 보존 중이며 현재 native23개 자산/코드99참조의 이관 준비표가 있다. 소유 범위 밖 native GUID 참조0은 삭제의 충분조건이 아니므로 실제 기능/메뉴/호출/참조 이관을 마친 뒤 T9에서만 삭제한다.
+
+## T6/T7 통합과 실제 API 경계 — 2026-10-08
+
+T6 `31e8f0b`, T7 `6e7829e`는 독립 승인 후 메인에 통합했고 실제 Editor 재컴파일 오류0이다. T6의 ForceCloseOverlays/CancelOperations와 Dialogue.ForgetCompletedCodes/ResetRound, T7의 Catalog.Configure/Host.Configure/단일 컷 View 계약을 T8 작성 도구와 T9 수명 연결에서 소비한다. T6의 설치된 대화 Table JSON20관찰, T7의 설치된 서비스 시계/자기 제어권9관찰이 통과했다. 기존 원화 Texture2D 참조와 Time.timeScale 계약 검사이며 실제 화면 렌더링·InputSystem·전체 동선 통과는 아니다.
+
+T4 침범 경계의 실제 Unity ComputePenetration8관찰도 통과했다. 경사진 얕은 상단 접촉의 단순 AABB 높이 오판을 재현했으며 preview 씬을 닫고 기존 scene setup/dirty를 보존했다. 실제 주기 발판의 Materialize/ForceDeath/Tween·Stage retry 통합 검증은 T10이다. source/계약 결과를 수동 QA39판정에 덮어쓰지 않았고 FunQA 두 DOCX hash도 동일하다. T8은 `6e7829e` 기반 managed worktree에서 작성 도구 소스만 구현 중이며 메인만 live Editor/native 자산을 수정한다. 기존 32개 지정 소스와 자산 참조는 아직 보존한다.
