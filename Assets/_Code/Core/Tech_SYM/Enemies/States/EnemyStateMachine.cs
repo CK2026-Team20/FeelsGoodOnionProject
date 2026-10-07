@@ -1,85 +1,57 @@
+using System;
 using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
+    public enum EnemyState { IDLE = 0, PATROL = 1, STUNNED = 2 }
+
+    /// <summary>Idle/순찰 방향과 ADD 기절 시간의 유일한 상태 소유자입니다.</summary>
     public sealed class EnemyStateMachine
     {
         private readonly EnemyActor actor;
-        private readonly IState[] states;
-        private IState current;
         private float idleRemaining;
         private EnemyState resumeState;
-        private bool towardEnd = true;
-        public EnemyState Current => current.Kind;
-        public bool TowardEnd => towardEnd;
+        private double stunMilliseconds;
+        public EnemyState Current { get; private set; } = EnemyState.IDLE;
+        public bool TowardEnd { get; private set; } = true;
+        public bool IsStunned => Current == EnemyState.STUNNED;
+        public double StunRemainingSeconds => stunMilliseconds / 1000.0;
 
         public EnemyStateMachine(EnemyActor actor)
         {
-            this.actor = actor;
-            states = new IState[] { new Idle(this), new Patrol(this), new Stunned(this) };
-            Change(EnemyState.IDLE);
+            this.actor = actor ?? throw new ArgumentNullException(nameof(actor));
+            idleRemaining = actor.Definition.InitialIdle;
         }
-        public void Tick(float delta) => current.Tick(delta);
-        private void Change(EnemyState state)
+        public int TryStun(int milliseconds)
         {
-            if (current != null && current.Kind == state) return;
-            current?.Exit(); current = states[(int)state]; current.Enter();
+            if (milliseconds <= 0) return 0;
+            if (!IsStunned) resumeState = Current;
+            stunMilliseconds += milliseconds;
+            Current = EnemyState.STUNNED;
+            return milliseconds;
         }
-        public void Stun()
+        public void Tick(float delta)
         {
-            if (Current == EnemyState.STUNNED) return;
-            resumeState = Current;
-            Change(EnemyState.STUNNED);
-        }
-        private void Resume()
-        {
-            // Resume the paused idle timer or patrol direction without re-entering/resetting it.
-            current.Exit();
-            current = states[(int)resumeState];
-        }
-        private sealed class Idle : IState
-        {
-            private readonly EnemyStateMachine f;
-            public Idle(EnemyStateMachine f) => this.f = f;
-            public EnemyState Kind => EnemyState.IDLE;
-            public void Enter() => f.idleRemaining = f.actor.Definition.InitialIdle;
-            public void Exit() { }
-            public void Tick(float delta)
+            if (!float.IsFinite(delta) || delta <= 0f) return;
+            if (IsStunned)
             {
-                f.idleRemaining -= delta;
-                if (f.idleRemaining <= 0) f.Change(EnemyState.PATROL);
+                stunMilliseconds = Math.Max(0, stunMilliseconds - delta * 1000.0);
+                if (stunMilliseconds <= .001)
+                { stunMilliseconds = 0; Current = resumeState; }
+                return;
             }
-        }
-        private sealed class Patrol : IState
-        {
-            private readonly EnemyStateMachine f;
-            public Patrol(EnemyStateMachine f) => this.f = f;
-            public EnemyState Kind => EnemyState.PATROL;
-            public void Enter() { }
-            public void Exit() { }
-            public void Tick(float delta)
+            if (Current == EnemyState.IDLE)
             {
-                var m = f.actor.Motor;
-                Vector3 target = f.towardEnd ? m.End : m.Origin;
-                bool blocked = m.MoveBase(target, f.actor.Definition.Speed * delta);
-                if (Vector3.Distance(m.BasePosition, target) < .005f)
-                {
-                    f.towardEnd = !f.towardEnd;
-                }
-                else if (blocked) f.towardEnd = !f.towardEnd;
+                if (actor.Definition.Kind == EnemyKind.Stationary) return;
+                idleRemaining -= delta;
+                if (idleRemaining <= 0f) Current = EnemyState.PATROL;
+                return;
             }
-        }
-        private sealed class Stunned : IState
-        {
-            private readonly EnemyStateMachine f;
-            public Stunned(EnemyStateMachine f) => this.f = f;
-            public EnemyState Kind => EnemyState.STUNNED;
-            public void Enter() { }
-            public void Exit() { }
-            public void Tick(float delta)
-            {
-                if (!f.actor.IsStunned) f.Resume();
-            }
+            var motor = actor.Motor;
+            Vector3 target = TowardEnd ? motor.End : motor.Origin;
+            bool blocked = motor.MoveBase(target, actor.Definition.Speed * delta);
+            if (Vector3.Distance(motor.BasePosition, target) < .005f || blocked)
+                TowardEnd = !TowardEnd;
         }
     }
 }

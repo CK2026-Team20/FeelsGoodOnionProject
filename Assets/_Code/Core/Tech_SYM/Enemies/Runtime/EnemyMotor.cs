@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
-    /// <summary>축 정렬 Box 몸체의 기준 위치와 부유 위치를 합성한다. 플랫폼 운동을 전달받지 않는다.</summary>
+    /// <summary>월드 X/Y 축 정렬 몸체를 지형에 제한하며 루트 위치만 작성합니다. 물리 부유와 플랫폼 속도 상속은 없습니다.</summary>
     public sealed class EnemyMotor
     {
         private const float Skin = .002f;
@@ -99,7 +99,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             physical = nextPhysical;
             return (requested - BasePosition).sqrMagnitude > .000001f;
         }
-        public void ApplyFloat(float offset)
+        public void ApplyPosition()
         {
             // Moving terrain can enter a static Trigger. Resolve only overlap, never platform velocity.
             Vector3 corrected = physical;
@@ -131,12 +131,12 @@ namespace FeelsGoodOnion.TechSYM.Enemies
                 reportedBlocked = false;
                 if (bounded) BasePosition += corrected - physical;
                 physical = corrected;
-                Vector3 desired = BasePosition + Vector3.up * offset;
+                Vector3 desired = BasePosition;
                 desired.y = Mathf.Clamp(desired.y, MinimumY, MaximumY);
                 physical = Sweep(physical, desired);
             }
-            root.position = BasePosition;
-            body.transform.position = physical;
+            BasePosition = physical;
+            root.position = physical;
         }
     }
 }
