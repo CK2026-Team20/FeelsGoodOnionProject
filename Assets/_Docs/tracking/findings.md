@@ -14,6 +14,8 @@
 | F09 | 보호 HMS 기준 씬의 PlatformManager Missing Script1 | native16씬·65프리팹 재검사에서 확인. 파일 `Assets/_Scenes/Tech_HMS/01_PlayerMovementTest.unity`의 해당 객체 원본 수정은 권한 밖이므로 HMS 소유자가 연결된 Script GUID/삭제 이력을 확인하고 복구해야 한다. SYM 소유 Missing은0이며 실제 독립3씬·통합 입력 검증과 분리한다. |
 | F10 | 전체 Domain Reload 시 Unity Hierarchy UI Assertion4 | Unity6000.6.0f1에서 startScene/Reload matrix 진행 중 manager!=NULL, Unity.Hierarchy.HierarchyViewModel.SetState stack으로 재현. Cooked/HMS stack 없음. Hook teardown 예외는 수정 후0, matrix 기능은 통과했으나 엔진 창의 전체 오류0으로 주장하지 않는다. 엔진/패키지 변경은 이번 권한 밖이므로 Editor 소유자가 동일 버전·Hierarchy 상태의 엔진 재현을 확인해야 한다. 증거 `output/Tech_SYM/verification/editor-entry-hms-2026-10-06/matrix-console-after-fix.json`. |
 
+| F12 | 최신 원본 단일 출력/피격·사망·표현 완료에 필요한 HMS 공개 API 미구현·최소9파일 새 예외 미승인(기존8+눈물 직접 피격 TearSkill.cs) | [변경 요청](ready-system-v11-refactor-2026-10-06/보호 원본 변경 요청.md). ready에서 보호 소스를 수정하지 않았고 실제 구현은 파일 허가/담당자 구현 뒤 검증해야 함. 추가13개 정리 후보도 별도 미승인 |
+
 ## 종결된 항목
 
 EntrySettings 배열 이상 의심은 소유 자산 native 재조회와 실제 Stage2/3 직접 Play의 이전 통과로 종결했다. 이 항목 때문에 종전11개 진입 검증을 새 요구로 재개하지 않는다. 세부 과거 증거는 보관본에 유지한다.

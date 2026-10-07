@@ -1,17 +1,11 @@
 # 붕괴·수집 기능
 
-## 책임과 경계
+2026-10-06 최신 목표는 Assets/_Docs/planning-index.md와 ready-system-v11-refactor-2026-10-06 명세를 따른다. 이 문서는 구현 완료 기록이 아니다. 기존 지침의 다른 동작을 새 목표로 승계하지 않는다. 보호 원본/메타/아트 수정은 파일별 허가가 필요하다.
 
-ShatteredPlatform·PlatformPresentation, HeavyState와 기존 TearFragment를 소유한다. Architecture 전용 Level 수집 정책이나 플레이어 폼 원본을 소유하지 않는다.
+ShatteredPlatform은 기본 상태 플레이어의 윗면만 판정하며 작은 폼/껍질/옆면/밑면은 발동하지 않는다. 경고1초 종료 즉시 지지 Collider 해제·붕괴 표현, 이탈 취소/자동 복구 없음이다. HeavyState는 압력판 무게에 남고 붕괴의 기본 폼 판정과 같지 않다. 자동 복구 필드/분기와 IBrokenable은 참조 이관 후 제거한다.
 
-## 유지할 계약
+PlatformPresentation은 자기 경고/Animator/Visual을 소유하고 지지 Collider 판정은 로직이 한다. 실제 클립이 없으면 경고와 물리 후처리로 끝내고 실제 재생 성공이라고 쓰지 않는다. 기존 Controller/아트 원본은 참조하며 새 연결은 소유 자산에서 한다. 새 Root 로직/자식 Physics·Visual 참조를 코드와 함께 이관한다.
 
-붕괴 표시 자식에는 Collider를 두지 않고 현재 지원 Collider 계약을 유지한다. ShatteredPlatform은 접촉 판정·붕괴 단계·자기 코루틴을, PlatformPresentation은 자기 경고 Tween·Visual Animator·외형 복원을 소유한다. 경고 완료 후 지원 Collider를 끄고 실제 Collapse 클립의 완료를 기다린다. 클립 미연결 시 한 실행에 경고 한 번을 남기고 외형을 숨겨 물리 붕괴와 후처리를 유지한다. 비활성화·파괴는 자기 작업을 취소하고 빌린 Animator를 임의 수정하지 않는다.
+TearFragment는 LevelTearFragment의 성공 후 소비를 흡수한 단일 수집자다.1개가 실제 추가되면 자신의 Root만 비활성화하고 최대5에서는 남는다. 회전/상하 운동은 수집물 Visual에만 적용하고 재활성 수명을 맞춘다. 기존 두 소비 정책을 의도된 영구 차이로 남기지 않는다.
 
-Controller는 Ready·Collapse·Completed 상태와 Collapse Trigger를 사용한다. Ready/Completed의 Motion은 비우며 실제 자산 클립은 Collapse에 연결한다. 연결 절차는 Assets/_Docs/tracking/ready-platform-hms-cleanup-2026-10-06/붕괴 애니메이션 연결 가이드.md를 따른다. 수명 정리와 스테이지 재준비를 붕괴 후 자동 복구로 해석하지 않는다. 신규 Prototype 발판은 canRegenerate=false 계약을 유지하며 기존 독립 자산의 재생성 설정을 일괄 덮어쓰지 않는다. 기존 TearFragment는 획득 시 해당 아이템 pickupRoot만 비활성화한다.
-
-같은 오브젝트 Collider 요구는 기존 구현의 배치 예외다. 일반 루트 분리 원칙만으로 옮기지 않는다. HeavyState를 임의의 전역 플레이어 상태로 바꾸지 않는다.
-
-## 검증
-
-무게·접촉 방향, 중복 붕괴, 재생성·파괴, 중간 비활성화, 풀 재활성화, OnTriggerStay 수집, 인벤토리 상한에서도 기존 소비 동작을 확인한다.
+검증은 기본/작은/껍질과 접촉 방향·중간 이탈·경고1초 종료·자동 복구 없음·실제/누락 clip, 수집 최대치·중복 Collider/Stay·재활성화를 확인한다. 체크포인트에는 이 기능 상태를 저장하지 않는다. 동일 시도의 자동 복구와 별개로, Stage retry는 기존 조각 객체의 활성·Collider·소비 플래그·표현과 붕괴 발판의 초기 배치를 기능 소유자의 명시적 reset으로 복구한다. 씬 재로드나 월드 저장 등록자를 사용하지 않는다.

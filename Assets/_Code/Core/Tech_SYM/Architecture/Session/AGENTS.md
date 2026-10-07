@@ -1,17 +1,13 @@
 # 세션과 플레이어 연결
 
-## 책임과 경계
+최신 기준은 Assets/_Docs/planning-index.md와 ready-system-v11-refactor-2026-10-06의 확정안 적용 명세다. 구현/검증 상태는 별도 기록한다.
 
-GameSessionService는 체크포인트·해금을, PlayerBridgeService는 HMS 공개 API 연결을, ActorHost는 플레이어 생성·반환을 소유한다. HMS 원본의 이동·폼·스킬 규칙을 복제하지 않는다.
+GameSessionService는 한 판의 능력 출처와 Position/Fragments 정확히 두 값 체크포인트를 소유한다. PlayerBridgeService는 HMS 공개 API의 명령/모델/표현 연결, SessionActorHost는 Actor 생성/제거를 소유한다. ID/HP/폼/능력/대화/적/장치/필드/시간을 저장payload나 별도snapshot에 추가하지 않는다. 유한XYZ와 조각0..5를 원자 검증하며 실패 시 이전 두값을 유지한다. Marker Pose는 초기 진입구성이고 실제 CP접촉 캡처는 플레이어루트 현재월드위치다.
 
-## 유지할 계약
+Core/모든Stage 씬을 최초로드 후 유지한다. retry에는 같은Stage 초기재준비와 소비조각 객체복구 후 Position/Fragments만 새Normal Actor/HP최대/껍질0/속도·피격·무적 초기값에 복원한다. 현재Stage 획득능력/연결안내 완료만 다시 잠그고 트리거 재접촉으로 해금하며 이전Stage능력은 유지한다. 능력 출처는 런타임 소유상태다. CP는 시작/끝 두곳, 중간해금/추격 새캡처 없음이다.
 
-PlayerRoot는 비활성 프리팹으로 보관하고 의존성이 갖춰진 뒤 활성화한다. PlayerInputReader·GameplayInputRouter는 하나씩이며 기존 PlayerController·CheckInteract·테스트 입력을 함께 넣지 않는다.
+새 플레이어는 비활성prefab으로 Awake전에 실제 의존을 갖춘다. 플레이어 종속 스크립트는 실제Player루트에 둔다. HMS Facade/Movement/Form/Rigidbody/Collider의 물리동거는 GetComponent/attachedRigidbody 계약 예외이며 Visual/Animator·CameraAnchor는 자식이다. 루트스케일은 유지한다. Reader/Router 각1개, E눈물/F상호작용/Q변신. PlayerController/CheckInteract/Temporary 중복입력은 제외한다. Q의 실제성공한 크기전환 사이1초이며 실패/표현완료에 종속하지 않는다.
 
-빈 PlayerRoot 아래 ActorBody에 Facade·물리 컴포넌트를 함께 두는 현행 경계를 유지한다. Scene과 Actor의 임시 참조는 제거 통지 후 정리한다. 자기 차단 토큰만 해제한다.
+App 출력1/Core Side·Quarter 리그는 Actor와 분리한다. ActorRemoving 전에 borrowed 목표/모드/검증함수와 자기구독을 해제한다. 한Knockback clip길이를 공통ms로 전달하고 기존 시간제한 기능/Dead HeavyState·외력을 유지한다. 일반/포획 사망은 현재Actor의 실제Dead 완료/누락 뒤Retry 한 번, 데드존만 HP/무적무시·표현생략이다. 낡은RequestId/Actor/중단 후콜백을 거절한다.
 
-HMS Mode/Visual과 Actor 소유 CameraRig의 출력 Brain·HMS CameraController·네 카메라 참조는 첫 Awake 전에 직렬화로 조립한다. TrySetMode는 Start의 IsInitialized 이후 사용하고 Bridge는 CharacterMovement의 공개 축 상태를 소비하며 별도 축 원본을 두지 않는다. 보호 HMS 원본 수정이나 런타임 private 필드 주입으로 초기화 순서를 우회하지 않는다. 자기 소유 Inspector·배치 override 조립은 참조 허용에 포함한다.
-
-## 검증
-
-같은 체크포인트 재진입, 능력 해금 유지, 조각 복원, 준비 취소, 재진입 중 종료 오류, 중복 Dispose, Actor와 임시 객체 잔존 여부를 검증한다.
+메모는 자기 월드정지·입력 제한, 대화 자체는 입력 제한, 옵션은 월드+표시 정지다. 자기토큰만 해제한다. 같은Core에서 정상세션 종료→다음판 재연결을 허용하며 세션해제를 앱영구shutdown과 혼동하지 않는다. DTO/실제위치·현Stage재잠금/이전Stage보존·사망예외·준비/종료실패·Dispose후호출0·단일구독을 기능으로 검증한다.

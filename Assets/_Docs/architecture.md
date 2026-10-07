@@ -1,40 +1,43 @@
-# 시스템 구성
+# 시스템 책임과 현재/목표 구조
 
-Cooked의 실행 구조는 앱 전체, 한 판의 세션, 다시 불러오는 스테이지의 세 수명으로 나뉜다. 플레이어와 월드 자산을 다시 생성하더라도 앱 설정과 현재 세션을 같은 수명으로 취급하지 않는다.
+> 2026-10-07 사용자 확정안과 추가 답변을 적용한다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)가 이전 초안의 충돌 문구를 대체한다. 구현/실행 완료는 [상태](tracking/status.md)와 실제 검증 증거로 판단한다.
 
-| 경계 | 소유 책임 | 연결 방향 |
+2026-10-06 최신 지정 원본을 반영했다. 아래의 **목표**는 새 리팩터링의 설계이며 현재 코드로 완료했다는 뜻이 아니다. 코드/자산 사실은 [구조 검토](<tracking/ready-system-v11-refactor-2026-10-06/원본 대조 및 구조 검토.md>), 파일별 필요성은 [스크립트 명세](<tracking/ready-system-v11-refactor-2026-10-06/스크립트 필요성 및 정리 명세.md>)를 따른다.
+
+| 수명/경계 | 상태의 단일 소유자와 필요한 책임 | 목표 변경 |
 |---|---|---|
-| Foundation | 부팅, 씬 전환, 작업 결과, 앱 서비스 등록과 이벤트 전달 | Contracts를 통해 장면·페이드·실행 서비스 호출 |
-| Integration | 앱 및 Core 조립, 월드·UI 연결, 스테이지 등록, 종료 조정 | 구체적인 Foundation·Session·UI·Level·Audio·Chase·Dialogue·Cinematics 조립 |
-| Session | 체크포인트·능력 해금, 입력 차단, 플레이어 연결, 임시 객체 수명 | 공용 계약과 Tech_HMS 플레이어 공개 API 사용 |
-| Tech_HMS | 체력·조각 원본, 이동·폼·스킬·애니메이션·플레이어 물리 | PlayerFacade와 읽기 전용 모델을 소비; 수정 예외는 security.md의 파일별 승인 범위만 적용 |
-| Level / Chase | 스테이지 체크포인트 위치·기믹·구출·탈출 / 추격 진행 | 스테이지 이벤트를 세션과 흐름으로 전달; 추격 성공 응답 후 문 닫기 |
-| UI / Dialogue / Cinematics | 화면용 상태·명령 / 대화 진행 / Timeline 연출 | View는 ViewModel에 연결; 서비스가 업무 규칙과 수명을 소유 |
-| Audio | 앱 수명의 재생 정책·채널·음량 | 드라이버가 Unity AudioSource 및 DOTween 실행 |
-| Enemies / Platforms / Features / Interaction / OvenTray | 적 전투, 이동 발판, 붕괴·수집, 메모·프롬프트, 트레이 | PlayerFacade·공용 인터페이스를 통해 플레이어와 협업 |
+| 앱 | AppComposition·GameFlowService·SceneService·음량/AudioService | Output Camera/Brain/Listener 각1개를 앱 수명으로 유지 |
+| Core/한 판 | CoreComposition·GameSessionRuntime·GameSessionService | 체크포인트/독립 능력/완료 대화 장부, Core 리그2개와 UI 유지 |
+| Stage | StageService·각 기믹 상태 소유자 | 배치/트리거와 실행 중 상태만 소유; retry에는 초기 재준비, 월드 상태 저장 없음 |
+| Actor | SessionActorHost·HMS Facade/Model/Form/Movement | 생성/파괴와 원본 HP/조각/폼/속도; 카메라를 자식에서 제거 |
+| 카메라 구간 | LevelCameraService + HMS PlayerCameraController + Brain | 전환/정렬 조정, 단일 우선순위 작성자, 실제 출력 Transform 작성자 구분 |
+| 입력/제한 | HMS Reader + GameplayInputRouter + GameplayControlService | E/F/Q 단일 소비, 메모/대화 입력 제한과 옵션 전체 정지를 각 토큰으로 집계 |
+| 적 | EnemyActor·StateMachine·Motor·Combat | X/Y 순찰/Idle/기절, 지형 물리, 피해원; 적 HP/사망/Float 모델 제거 |
+| 발판/장치 | 기능 컨트롤러·KinematicPlatformMotion·PlatformContacts | 진행 목적/상태, 단일 물리 이동, 접촉 경계를 유지하고 같은 문/트레이/서랍을 설정 조립 |
+| 화면 | Service/Model → ViewModel → View | View는 명령/표시만, VM은 View 참조 없음; 중복 Prompt/Instruction 제거 |
+| 대화/연출 | DialogueService / CinematicService | 행/완료 장부와 단일 컷 시계, 취소/완료/Skip 구분, Cancel만 하는 Driver/Timeline 호환 계층 제거 |
+| 외부 실행 | Audio/Scene/Settings/DOTween/Animator 어댑터 | 실제 자원 소유·해제 경계만 유지, 구현마다 새 서비스/인터페이스를 추가하지 않음 |
 
-## 한 판의 진입과 종료
+## 카메라 구조의 변화와 이유
 
-제목 화면 입력 → ViewModel의 새 게임 명령 → GameFlowService → 제목 씬 해제 → Core 추가 로드 및 활성 씬 지정 → 세션 초기화 → 선택한 스테이지 하나만 추가 로드 → 체크포인트 위치에 플레이어 생성 → HMS Start 준비와 초기 카메라 선택 완료 → 오프닝 → 플레이 화면 표시 순서다. UI가 직접 씬을 로드하지 않는다.
+현재 카메라 리그는 PlayerRoot 아래 ActorBody의 형제이며, 출력 Camera/Brain/HMS 컨트롤러와 네 가상 카메라를 포함한다. HMS Awake의 네 참조 검사와 재연결 API 부재 때문에 비활성 Actor 안에서 먼저 조립하고 같이 재생성했다. 이 구조는 당시 활성화/해제 안전성의 선택이며 Cinemachine의 부모 계층 조건이 아니다. App의 대기 Camera/Listener와 Actor 출력은 실제 준비 상태에 따라 교대한다. CoreLevelCamera는 출력 Camera가 아니라 LevelCameraService 객체다.
 
-플레이어와 출력 Camera·CinemachineBrain·HMS 카메라 네 개는 같은 Actor 수명에 속한다. Core의 카메라 서비스는 구간 요청·입력 차단·물리 정렬을 조정하고 출력 Transform은 Brain이 갱신한다. HMS 이동 모드가 속도·축을 소유하고 UI는 Core의 상태 구독을 유지한 채 새 Actor의 카메라를 받는다. 재시도에서 이전 Actor의 카메라·월드 참조를 먼저 해제하고 새 Actor의 초기 화면을 준비한다.
+새 목표는 App Output 하나와 Core Side/Quarter 두 가상 카메라다. HMS 컨트롤러에 명시적 Bind/Unbind/Preview/Commit 계약을 마련한 뒤 ActorCameraRig·출력 교대 구독·Back/Corridor 경로를 제거한다. retry에는 이전 목표를 먼저 해제하고 새 Actor의 HMS Start 준비/실제 Brain 완료 후 입력을 연다. 단일 출력은 유지하며 준비 중 월드 표시만 가린다. 이 API는 이번 명세 1회에 허용된 HMS 최소 확장으로 작성하며 실제 컴파일/조립 검증 상태는 별도 기록한다.
 
-앱의 BootstrapCamera·AudioListener는 AppComposition 소유이며 부트·제목·연출·Actor 준비 중의 화면을 담당한다. GameRuntimeService는 세션의 GameplayVisible 및 ActorViewReady에서 실제 플레이 출력 여부를 도출해 통지한다. 준비된 Actor 출력이 나오면 앱 출력을 함께 끄고, ActorRemoving에서 이전 Actor 출력을 먼저 해제한 뒤 앱 출력을 복구한다. 재시도는 표시 요청이 계속 true여도 새 Actor 준비 완료를 다시 통지한다. 앱 구독은 다음 판까지 유지하고 이전 세션의 구독만 종료한다. 별도 전역 표시 상태나 Actor Camera Transform 작성자를 추가하지 않는다.
+## 생성·재시도·종료
 
-재시도는 대화를 취소하고 플레이어와 임시 객체를 정리한 뒤 스테이지를 재로드한다. Core와 그 세션·UI는 유지한다. 체크포인트의 식별자·조각 수는 세션 소유이며 실제 위치는 새로 로드된 스테이지에서 다시 조회한다. 제목 복귀는 Core와 세션까지 종료한다. 앱 수명의 객체에 세션 연출이나 파괴된 플레이어 참조를 보관하지 않는다.
+Title 명령 → Flow 전환 → Core1회 로드/등록Stage 전부 최초 additive 로드/활성Stage 초기 준비 → Actor 생성/현재 저장 Position·Fragments 두 값 복원 → 카메라 목표 연결/초기 모드 준비 → Opening 또는 Play 순서다. 준비 중 입력을 허용하지 않는다. 새 게임은 체크포인트/능력/완료 대화 장부를 비우고 Editor 직접 진입은 명시된 EntrySettings를 사용한다. 해금/대화 장부는 한 판의 실행 상태이며 checkpoint 저장 필드가 아니다.
 
-## 이동·카메라·붕괴의 책임
+retry에는 대화/메모/미완료 Actor 동작을 취소하고 빌린 카메라/월드 참조를 해제한다. Actor/껍질과 Stage를 초기 재준비한 뒤 플레이어 위치와 조각만 저장값으로 복원한다. 적/장치/필드 진행은 복원하지 않는다. Core/Session/VM과 App Output은 유지한다. Title 복귀에는 한 판의 Session/바인딩을 종료하고 CoreComposition 참조를 비운다. Core/모든Stage 씬과 음량/App Output은 유지하며 다음 판에 새 세션 범위를 연결한다. 비활성Stage의 Actor/트리거/추격/외부Tween은 중단한다. 외부 관찰자 예외가 다음 Dispose를 막지 않도록 종료 오류를 집계한다.
 
-LinearShuttlePlatform은 부모 로컬 경로·왕복 진행을 계산하고 KinematicPlatformMotion 한 개에 물리 이동을 전달한다. PlatformContacts가 실제 탑승자를 관리하며 HMS 플레이어 이동은 공개 축·접촉 계약으로 결합된다. 같은 물체에 두 이동 구현을 연결하지 않는다.
+## 계층과 물리 예외
 
-CameraZoneTrigger와 CheckpointMarker가 자기 Transform 기준의 CameraZoneData를 월드 CameraZoneRequest로 변환한다. LevelCameraService는 정렬과 전환 차단을 소유하고 ActorCameraRig를 통해 HMS 카메라를 선택한다. 실제 Brain 완료와 물리 정렬이 모두 끝난 뒤 HMS가 이동 모드·축을 확정한다. 화면 Camera Transform을 SYM 서비스가 직접 갱신하지 않는다.
+새 SYM 자원은 빈 Root 아래 Visual/Physics/VFX/SFX를 명시적으로 연결한다. 움직이는 발판의 로직은 Root, 물리 콜백은 실제 Body 자식이다. 필요한 소유 SYM 코드는 주입 참조로 바꾸며 과거 RequireComponent가 Root에 물리를 자동 추가하는 경로를 제거한다.
 
-ShatteredPlatform은 접촉·붕괴 상태와 코루틴을 소유하고 PlatformPresentation에 경고·Animator 관찰·외형 숨김·복원을 맡긴다. 지지 Collider는 게임 판정 측에서 해제하며 애니메이션은 Collider가 없는 Visual만 표현한다. 표현이 종료되거나 미연결로 대체 처리된 뒤 발판이 제거/복구 정책을 실행한다. 각 소유자가 자기 작업과 참조를 수명 종료 시 정리한다.
+HMS 플레이어는 Facade·Movement·Form·Rigidbody·Collider가 같은 ActorBody에 있어야 하는 공개 계약이 있다. 이를 단순 계층 예시만으로 분리하지 않고 실제 Player 루트에 동거하는 물리 예외로 명세한다. CameraAnchor는 실제 움직이는 ActorBody의 자식이다. Trigger 센서와 EnemyContactSensor 역시 물리 콜백 자식의 이유를 명세하며 단지 Root를 맞추려고 전달자 파일을 늘리지 않는다. 전체 연결은 [프리팹 가이드](<tracking/ready-system-v11-refactor-2026-10-06/미래 프리팹 연결 가이드.md>)에 있다.
 
-## 자산과 구현 경계
+## 조립과 정리 원칙
 
-실행 씬 묶음은 Assets/_Scenes/Tech_SYM/Architecture/Configuration/ArchitectureInstallation.asset에 저장된 Bootstrapper·Title·InGameCore와 Stage 1~3이다. 첫 스테이지는 Architecture/Prototype/1_Stage.unity다. 설치에 명시한 정확한 여섯 경로만 Editor 부트 진입 대상이다. 기존 03_1_Stage 및 다른 개별 기능 씬은 독립 Play 대상이며 보존한다. 씬 파일이 남아 있다는 이유로 별개의 최종 게임 흐름으로 단정하지 않는다.
+전체206개 코드의 근거를 검토했고 SYM160개 중32개는 대체/참조 이관 후 삭제 계획이다. 보호46개는 읽기만 했다. 필요한 코드 안에서도 적 HP/사망·붕괴 자동 복구·옵션 Retry·Recover 카드·거리 Instruction·구출/래치 조건·4패널/scale·Actor 자식 카메라 탐색을 제거한다. 타인 독립 씬의 실제 소비 계약까지 이름만으로 삭제하지 않는다.
 
-Assets/_Code/Core/Interfaces는 직군 간 공용 전투·상호작용 계약이다. Tech_HMS와 이 공용 폴더는 현재 작업자의 수정 영역이 아니다. 해당 경계의 지역 지침은 루트에서 관리하며 그 안에 새 문서를 추가하지 않는다.
-
-_Art의 모델·이펙트·애니메이션은 참조 원본이며 Tech_SYM 소유 씬·프리팹에서 조합한다. 외부 패키지와 플러그인은 기능 모듈로 재작성하지 않는다. URP는 렌더링, Input System은 입력, Timeline은 연출, DOTween은 전환·이동·표시 보간에 연결되어 있다. 현재 서버나 네트워크 서비스는 필요하지 않다.
+기능/상태/물리/표시 소유가 같은 중복은 합치고, 실제 자원 수명/외부 실행/여러 소비자를 구분하는 경계는 유지한다. _Art/공용/Packages/ProjectSettings를 변경하거나 Timeline 패키지를 삭제하는 계획이 아니다. 현재 서버/네트워크/앱 재시작 후 이어하기는 없다.

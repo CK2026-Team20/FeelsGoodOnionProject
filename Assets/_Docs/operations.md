@@ -40,7 +40,7 @@ unity pipeline list --format json
 
 끝난 뒤 임시 입력·오브젝트·이벤트·정지 차단을 정리하고 Stop한다. 안정된 Edit Mode에서 원래 scene setup와 startScene 복원, clean 상태, 새 컴파일, Console와 보호 파일 diff를 확인한다. 자동 저장 변경은 원인·전후 diff를 기록하여 커밋에 포함한다. 일회성 스크립트는 제거하고 명령·실행 시각·결과 JSON·케이스·소스 해시·실패 원인은 보존한다.
 
-현재 기능 케이스와 실행 결과는 tracking/ready-platform-hms-cleanup-2026-10-06/테스트 및 검증 항목.md에 기록한다. 제어된 서비스 요청·런타임 위치 이동 검사, 실제 InputSystem 전체 동선, Windows 빌드, 팀 실제 실행과 FunQA를 따로 판정한다. 이전 editor-entry-hms 및 T9 결과와 캡처는 당시 실행 이력이다.
+최신 시스템의 준비 케이스/실행 상태는 tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md에서 추적한다. ready-platform-hms-cleanup의 결과는 이전 실행 이력이다. 제어된 서비스 요청·런타임 위치 이동 검사, 실제 InputSystem 전체 동선, Windows 빌드, 팀 실제 실행과 FunQA를 따로 판정한다. 이전 editor-entry-hms 및 T9 결과와 캡처는 당시 실행 이력이다.
 
 ## 팀 검증 인계
 
@@ -60,9 +60,9 @@ unity pipeline list --format json
 
 현재 서버 배포·네트워크 환경 변수·운영 계정은 필요하지 않다. 음량은 Cooked.TechSYM.UI.v1. 접두사의 Master·Music·Sfx 로컬 설정으로 저장한다. 사용자 설정 초기화를 테스트의 자동 전제로 삼지 않는다.
 
-## 현재 승인 검증 범위
+## 새 목표 검증 범위와 준비 상태
 
-새 Prototype/1_Stage 실제씬에서 InputSystem 입력 동선을 검증한다. 서비스 직접 호출·teleport·EditMode API 검사는 별도 근거이며 전체 사용자 동선 통과를 대체하지 않는다. 시작 전 모든 로드 씬의 path/isDirty/isLoaded/rootcount와 active/setup/startScene을 기록하고 dirty가 하나라도 있으면 Play/build를 보류한다. 미저장 씬을 임의 저장·폐기하지 않고 원래 setup과 startScene을 복원한다. Unity·Editor 자동 저장은 감사하여 보존·커밋한다. 기존 03_1_Stage를 재생성하지 않는다.
+최신 ready는 문서/구조 검토 단계이며 새 코드·Play·빌드는 미실행이다. 명세 승인/필요 권한 확인 뒤 새 구현이 연결된 Prototype/1_Stage 실제씬에서 InputSystem 입력 동선을 검증한다. 서비스 직접 호출·teleport·EditMode API 검사는 별도 근거이며 전체 사용자 동선 통과를 대체하지 않는다. 시작 전 모든 로드 씬의 path/isDirty/isLoaded/rootcount와 active/setup/startScene을 기록하고 dirty가 하나라도 있으면 Play/build를 보류한다. 미저장 씬을 임의 저장·폐기하지 않고 원래 setup과 startScene을 복원한다. Unity·Editor 자동 저장은 감사하여 보존·커밋한다. 기존 03_1_Stage를 재생성하지 않는다.
 
 
 ### Windows 빌드 설정 감사 주의 (2026-10-05 T9의 과거 관찰)

@@ -15,3 +15,7 @@ PlayerRoot의 저장 상태는 비활성이다. Scene의 체크포인트 Pose는
 자산 생성 도구는 이미 저장된 프리팹·씬을 다시 작성할 수 있다. 읽기 검증과 생성·수정 메뉴를 구분한다. 변경 후 Missing Script·GUID 참조·필수 직렬화 필드·실제 기존 씬 동작·저장 상태를 확인한다. .meta를 다른 사람 파일에서 복사하거나 새 GUID로 원본 참조를 끊지 않는다.
 
 기존 씬 동작의 자동 기능 검증과 실제 빌드의 팀 검증 인계는 Assets/_Docs/standards.md의 기능 테스트와 QA 인계를 따른다. 이 확인 규칙은 에이전트의 Computer Use 직접 플레이를 상시 의무로 두지 않는다. 요청된 실제 씬·빌드와 검증 범위를 명시하고 팀 확인 대기인 항목을 통과로 기록하지 않는다.
+
+## 최신 카메라 목표와 이전 구현의 관계
+
+2026-10-06 새 준비 명세는 App 출력 Camera/Brain/Listener 각1개와 Core Side/Quarter 리그, Actor 목표의 명시적 재연결을 선택했다. 위의 Actor 자식 네카메라·App/Actor 출력 교대·독립 구형 입력 설명은 변경 전 구현 사실이며 새 제작 지시로 쓰지 않는다. Core/Actor/Stage 수명 및 정확한 여섯 경로·미저장 보호는 유지한다. 기존 prefab 일괄 제거는 사용자 직접이며 이번 ready는 구현/자산제작 완료가 아니다. 새 연결은 Assets/_Docs/tracking/ready-system-v11-refactor-2026-10-06/미래 프리팹 연결 가이드.md를 따른다.
