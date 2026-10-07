@@ -30,7 +30,6 @@ namespace Cooked.Dialogue
         public long RowId => service.RowId;
         public IReadOnlyList<DialogueRow> History => service.History;
         public void Advance(int frameId) { if (!disposed) service.Advance(frameId); }
-        public void SkipAll() { if (!disposed) service.SkipAll(); }
         public void ToggleAuto() { if (!disposed) service.SetAuto(!service.AutoEnabled); }
         public void OpenLog() { if (!disposed) service.OpenLog(); }
         public void CloseLog() { if (!disposed) service.CloseLog(); }

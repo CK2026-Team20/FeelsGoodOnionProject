@@ -6,9 +6,9 @@ namespace Cooked.Contracts
     {
         public DialogueRow(string dialogueCode, int sequence, string name, string context, float contextRevealDuration)
         {
-            if (string.IsNullOrWhiteSpace(dialogueCode)) throw new ArgumentException("Dialogue code required.", nameof(dialogueCode));
+            if (string.IsNullOrWhiteSpace(dialogueCode) || dialogueCode != dialogueCode.Trim()) throw new ArgumentException("Dialogue code without surrounding whitespace required.", nameof(dialogueCode));
             if (sequence < 1) throw new ArgumentOutOfRangeException(nameof(sequence));
-            if (name == null) throw new ArgumentNullException(nameof(name));
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name required.", nameof(name));
             if (string.IsNullOrWhiteSpace(context)) throw new ArgumentException("Context required.", nameof(context));
             if (float.IsNaN(contextRevealDuration) || float.IsInfinity(contextRevealDuration) || contextRevealDuration < 0) throw new ArgumentOutOfRangeException(nameof(contextRevealDuration));
             Dialogue_Code = dialogueCode; Sequence = sequence; Name = name; Context = context; ContextRevealDuration = contextRevealDuration;
@@ -29,5 +29,8 @@ namespace Cooked.Contracts
         bool IsActive { get; }
         bool TryStart(string dialogueCode);
         void Cancel();
+        // Runtime ledger only. Integration supplies codes for abilities actually removed on retry.
+        void ForgetCompletedCodes(IEnumerable<string> dialogueCodes);
+        void ResetRound();
     }
 }

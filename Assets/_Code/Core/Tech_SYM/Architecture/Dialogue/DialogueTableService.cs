@@ -20,7 +20,6 @@ namespace Cooked.Dialogue
 
         public void LoadJson(string json)
         {
-            if (IsLoaded) throw new InvalidOperationException("Dialogue table is immutable after initialization.");
             if (string.IsNullOrWhiteSpace(json)) throw Error("JSON", "Document is empty.");
             try
             {
@@ -59,7 +58,17 @@ namespace Cooked.Dialogue
                     group.Add((int)sequence, new DialogueRow(code, (int)sequence, name, context, (float)duration));
                 }
                 var validated = new Dictionary<string, IReadOnlyList<DialogueRow>>(StringComparer.Ordinal);
-                foreach (var group in groups) validated.Add(group.Key, Array.AsReadOnly(group.Value.Values.ToArray()));
+                foreach (var group in groups)
+                {
+                    int expected = 1;
+                    foreach (var pair in group.Value)
+                    {
+                        if (pair.Key != expected)
+                            throw Error("Rows (" + group.Key + ").Sequence", "Expected continuous 1..N; missing " + expected + ".");
+                        expected++;
+                    }
+                    validated.Add(group.Key, Array.AsReadOnly(group.Value.Values.ToArray()));
+                }
                 table = validated;
             }
             catch (JsonException exception) { throw Error("JSON", exception.Message, exception); }

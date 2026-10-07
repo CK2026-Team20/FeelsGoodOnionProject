@@ -6,8 +6,6 @@ using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.EventSystems;
-using System.Collections.Generic;
 
 namespace Cooked.Dialogue
 {
@@ -34,7 +32,7 @@ namespace Cooked.Dialogue
         [SerializeField] private UnityEngine.UI.Button autoButton;
         [Tooltip("현재 대화의 지난 문장 로그를 여는 버튼입니다.")]
         [SerializeField] private UnityEngine.UI.Button historyButton;
-        [Tooltip("현재 대화 시퀀스를 건너뛰는 버튼입니다.")]
+        [Tooltip("이전 대화 건너뛰기 버튼 참조입니다. 제품에서는 숨깁니다. T9 자산 이관 후 제거합니다.")]
         [SerializeField] private UnityEngine.UI.Button skipButton;
         [Tooltip("대화 로그만 닫고 본문으로 돌아가는 버튼입니다. 메모 닫기 기능과는 다릅니다.")]
         [SerializeField] private UnityEngine.UI.Button logCloseButton;
@@ -73,54 +71,30 @@ namespace Cooked.Dialogue
             panelButton.onClick.AddListener(OnAdvance);
             autoButton.onClick.AddListener(OnAuto);
             historyButton.onClick.AddListener(OnHistory);
-            skipButton.onClick.AddListener(OnSkip);
+            if (skipButton != null) skipButton.gameObject.SetActive(false);
             logCloseButton.onClick.AddListener(OnLogClose);
             Present();
         }
         private void Awake() { if (rootGroup != null) SetGroup(rootGroup, false); }
         private void OnChanged(object sender, PropertyChangedEventArgs args) { Present(); }
-        private void OnAdvance() { consumedFrame = Time.frameCount; model?.Advance(Time.frameCount); }
-        private void OnAuto() { consumedFrame = Time.frameCount; model?.ToggleAuto(); }
-        private void OnHistory() { consumedFrame = Time.frameCount; model?.OpenLog(); }
-        private void OnSkip() { consumedFrame = Time.frameCount; model?.SkipAll(); }
-        private void OnLogClose() { consumedFrame = Time.frameCount; model?.CloseLog(); }
+        private void OnAdvance()
+        {
+            if (model == null || !model.CanAdvance || consumedFrame == Time.frameCount) return;
+            consumedFrame = Time.frameCount; model.Advance(Time.frameCount);
+        }
+        // Enter belongs to dialogue advancement even if UGUI submits a selected auxiliary button.
+        private bool AuxiliaryInputAllowed => consumedFrame != Time.frameCount &&
+            (Keyboard.current == null || !Keyboard.current.enterKey.wasPressedThisFrame);
+        private void OnAuto() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.ToggleAuto(); }
+        private void OnHistory() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.OpenLog(); }
+        private void OnLogClose() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.CloseLog(); }
 
         private void LateUpdate()
         {
             if (model == null || !model.CanAdvance || model.LogOpen || consumedFrame == Time.frameCount) return;
-            // Escape belongs to the options command even on the frame that options closes.
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) return;
-            bool key = HasNewKeyPress(keyboard);
-            bool click = Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame;
-            if (!key && !click) return;
-            if (EventSystem.current != null)
-            {
-                if (key && EventSystem.current.currentSelectedGameObject != null &&
-                    EventSystem.current.currentSelectedGameObject.GetComponentInParent<UnityEngine.UI.Selectable>() != null &&
-                    (keyboard.enterKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame)) return;
-                if (click)
-                {
-                    var hits = new List<RaycastResult>();
-                    EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = Mouse.current.position.ReadValue() }, hits);
-                    if (hits.Count > 0)
-                    {
-                        var selectable = hits[0].gameObject.GetComponentInParent<UnityEngine.UI.Selectable>();
-                        // Buttons own their release/submit command, including the dialogue panel.
-                        if (selectable != null) return;
-                    }
-                }
-            }
-            consumedFrame = Time.frameCount;
-            model.Advance(Time.frameCount);
-        }
-        // anyKey is an aggregate button: a second key while the first stays held is not a 0->1 edge.
-        public static bool HasNewKeyPress(Keyboard keyboard)
-        {
-            if (keyboard == null) return false;
-            foreach (var key in keyboard.allKeys)
-                if (key.wasPressedThisFrame) return true;
-            return false;
+            if (keyboard == null || keyboard.escapeKey.wasPressedThisFrame || !keyboard.enterKey.wasPressedThisFrame) return;
+            OnAdvance();
         }
 
         private void Present()
@@ -170,7 +144,7 @@ namespace Cooked.Dialogue
             panelButton.interactable = model.CanAdvance;
             autoButton.interactable = !model.OptionsPaused && !model.LogOpen;
             historyButton.interactable = !model.OptionsPaused && !model.LogOpen;
-            skipButton.interactable = !model.OptionsPaused && !model.LogOpen;
+            if (skipButton != null) skipButton.gameObject.SetActive(false);
             logCloseButton.interactable = !model.OptionsPaused;
             autoLabel.text = model.AutoEnabled ? "자동 ON" : "자동 OFF";
             nextMarker.SetActive(model.State == DialogueState.AwaitingAdvance && !model.LogOpen);
@@ -211,7 +185,6 @@ namespace Cooked.Dialogue
             if (panelButton != null) panelButton.onClick.RemoveListener(OnAdvance);
             if (autoButton != null) autoButton.onClick.RemoveListener(OnAuto);
             if (historyButton != null) historyButton.onClick.RemoveListener(OnHistory);
-            if (skipButton != null) skipButton.onClick.RemoveListener(OnSkip);
             if (logCloseButton != null) logCloseButton.onClick.RemoveListener(OnLogClose);
             shownSession = shownRow = -1; shownHistory = null;
             if (rootGroup != null) SetGroup(rootGroup, false);
@@ -221,7 +194,7 @@ namespace Cooked.Dialogue
         private void ValidateReferences()
         {
             if (rootGroup == null || logGroup == null || speaker == null || body == null || autoLabel == null || history == null || nextMarker == null ||
-                panelButton == null || autoButton == null || historyButton == null || skipButton == null || logCloseButton == null || logScroll == null)
+                panelButton == null || autoButton == null || historyButton == null || logCloseButton == null || logScroll == null)
                 throw new InvalidOperationException("DialogueView prefab references are incomplete.");
         }
         private void OnDisable() { Unbind(); }

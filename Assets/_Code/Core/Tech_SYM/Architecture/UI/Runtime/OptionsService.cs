@@ -29,7 +29,7 @@ namespace Cooked.UI
             this.reportError = reportError ?? (message => UnityEngine.Debug.LogError(message));
             flow.Changed += OnFlow;
         }
-        public void Toggle() { if (IsOpen) Close(); else Open(); }
+        public void Toggle() { if (disposed) return; if (IsOpen) Close(); else Open(); }
         public void Open()
         {
             if (changing || IsOpen || !CanOpen) return;
@@ -38,7 +38,9 @@ namespace Cooked.UI
             {
                 // 모든 스크린 모달은 같은 정지 계약을 따른다. 타이틀도 예외가 아니다.
                 inputLease = control.BlockGameplay("Options");
+                if (!CanOpen) { ReleaseLeases(); return; }
                 worldLease = control.PauseWorld("Options");
+                if (!CanOpen) { ReleaseLeases(); return; }
                 presentationLease = control.PausePresentation("Options");
                 // 제어 상태 통지 중 전환/폐기가 발생했으면 새 모달을 게시하지 않는다.
                 if (!CanOpen) { ReleaseLeases(); return; }
@@ -55,14 +57,14 @@ namespace Cooked.UI
         }
         public void Close()
         {
-            if (changing || !IsOpen) return;
+            if (disposed || changing || !IsOpen) return;
             changing = true;
             IsOpen = false;
             var errors = new List<Exception>();
             try
             {
                 SessionCleanup.Attempt(errors, ReleaseLeases);
-                try { settings.Save(); Error = null; }
+                try { if (!disposed) { settings.Save(); Error = null; } }
                 catch (Exception e)
                 {
                     Error = "설정을 저장하지 못했습니다: " + e.Message;
@@ -86,12 +88,14 @@ namespace Cooked.UI
         }
         public void Navigate(FlowCommand command)
         {
-            if (!CanNavigate || (command != FlowCommand.RetryCheckpoint && command != FlowCommand.ReturnToTitle)) return;
+            if (!IsOpen || !CanNavigate || command != FlowCommand.ReturnToTitle) return;
             Close();
+            if (disposed || !CanNavigate) return;
             if (!flow.Request(new FlowRequest(command))) { Error = "현재 전환 요청을 처리할 수 없습니다."; Changed?.Invoke(); }
         }
         private void OnFlow(FlowSnapshot snapshot)
         {
+            if (disposed) return;
             if (!CanOpenAt(snapshot)) Close(); // Synchronous: do not leave pause leases through loading.
             Changed?.Invoke();
         }
@@ -103,7 +107,6 @@ namespace Cooked.UI
             var errors = new List<Exception>();
             try
             {
-                SessionCleanup.Attempt(errors, Close);
                 SessionCleanup.Attempt(errors, ReleaseLeases);
             }
             finally { IsOpen = false; Changed = null; }

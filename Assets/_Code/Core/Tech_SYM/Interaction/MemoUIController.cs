@@ -8,11 +8,11 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     /// <summary>씬 안의 화면 메모 생성·연결·해제 담당. 월드 프롬프트와는 무관하다.</summary>
     public sealed class MemoUIController : MonoBehaviour, IInteractionOverlay
     {
-        [Tooltip("메모 열기 전에 입력 가능한 상태인지 확인할 플레이어 참조입니다. 비워 두면 이 추가 검사를 생략합니다. 메모 표시 중 입력·월드 정지는 별도로 주입된 제어 서비스가 관리합니다.")]
+        [Tooltip("이전 플레이어 연결 참조입니다. 현재 입력 판정은 PlayerInteractionService가 담당하므로 사용하지 않습니다. T9 자산 이관 후 제거합니다.")]
         [SerializeField] private PlayerFacade player;
         [Tooltip("메모 본문을 생성할 스크린 공간 Canvas 안의 RectTransform입니다. World Space Canvas는 사용할 수 없습니다.")]
         [SerializeField] private RectTransform screenRoot;
-        [Tooltip("메모 본문 화면 프리팹입니다. 이미지·크기 표현을 연결하며 마우스 닫기 버튼 없이 E로만 닫습니다.")]
+        [Tooltip("메모 본문 화면 프리팹입니다. 이미지·크기 표현을 연결하며 마우스 닫기 버튼 없이 F로만 닫습니다.")]
         [SerializeField] private MemoView viewPrefab;
         private readonly Dictionary<int, MemoObject> owners = new Dictionary<int, MemoObject>();
         private MemoView view;
@@ -41,7 +41,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         }
         private void OnControlChanged(ControlState state)
         {
-            // 옵션이 닫히는 프레임의 E/클릭이 아래 메모까지 이어지지 않는다.
+            // 옵션이 닫히는 프레임의 F/클릭이 아래 메모까지 이어지지 않는다.
             suppressInputThroughFrame = Time.frameCount;
             model?.SetSuspended(state.PresentationPaused);
         }
@@ -84,8 +84,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
                 Debug.LogError("메모 본문은 월드 프롬프트와 별도 스크린 공간 Canvas가 필요합니다.", this);
                 return false;
             }
-            if (control.State.GameplayBlocked || control.State.WorldPaused || control.State.PresentationPaused ||
-                (player != null && !player.CanReceiveInput)) return false;
+            if (control.State.GameplayBlocked || control.State.WorldPaused || control.State.PresentationPaused) return false;
             if (!Register(owner)) return false;
             try
             {
@@ -109,11 +108,12 @@ namespace FeelsGoodOnion.TechSYM.Interaction
                 return false;
             }
         }
-        // E 라우터는 게임 입력 차단 검사보다 먼저 이 명령을 호출하고 해당 E를 소비한다.
+        // F 라우터는 게임 입력 차단 검사보다 먼저 이 명령을 호출하고 해당 F를 소비한다.
         public void RequestClose()
         {
             if (Time.frameCount > suppressInputThroughFrame) model?.RequestClose();
         }
+        public void ForceClose() => ReleaseView();
         private void OnStateChanged(MemoDisplayState state)
         {
             if (state == MemoDisplayState.Closed) ReleaseView();

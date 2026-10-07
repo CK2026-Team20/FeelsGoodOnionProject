@@ -27,7 +27,6 @@ namespace Cooked.UI
         public void Toggle() { if (!IsDisposed) options.Toggle(); }
         public void Open() { if (!IsDisposed) options.Open(); }
         public void Close() { if (!IsDisposed) options.Close(); }
-        public void Retry() { if (!IsDisposed) options.Navigate(FlowCommand.RetryCheckpoint); }
         public void ReturnToTitle() { if (!IsDisposed) options.Navigate(FlowCommand.ReturnToTitle); }
         public void SetMaster(float value) { if (!IsDisposed) settings.SetVolumes(value, Music, Sfx); }
         public void SetMusic(float value) { if (!IsDisposed) settings.SetVolumes(Master, value, Sfx); }
@@ -58,12 +57,9 @@ namespace Cooked.UI
         }
         public bool FormUnlocked => session.IsActive && session.IsUnlocked(AbilityId.FormChange);
         public bool TearUnlocked => session.IsActive && session.IsUnlocked(AbilityId.Tear);
-        public bool RecoverUnlocked => session.IsActive && session.IsUnlocked(AbilityId.RecoverShell);
-        // T6 removes the legacy CP label binding after its View migration.
-        public string Checkpoint => "";
-        public string Abilities => "이동 방향키 · 점프 Space · 상호작용 E" +
+        public string Abilities => "이동 방향키 · 점프 Space · 상호작용 F" +
             (session.IsUnlocked(AbilityId.FormChange) ? " · 형태 전환 Q" : "") +
-            (session.IsUnlocked(AbilityId.Tear) ? " · 눈물 F" : "");
+            (session.IsUnlocked(AbilityId.Tear) ? " · 눈물 E" : "");
         public HudViewModel(IPlayerBridgeService bridge, IGameSessionService session)
         { this.bridge = bridge; this.session = session; bridge.Changed += OnPlayer; session.Changed += OnSession; }
         public void SetVisible(bool value) { if (IsDisposed || Visible == value) return; Visible = value; Notify(); }
@@ -78,7 +74,7 @@ namespace Cooked.UI
         public Quaternion Facing { get; private set; } = Quaternion.identity;
         public string Label { get; private set; } = "";
         public void SetPrompt(bool visible, Vector3 position, Quaternion facing, string label)
-        { if (IsDisposed) return; targetVisible = visible; Position = position; Facing = facing; Label = "E  " + (label ?? "상호작용"); Notify(); }
+        { if (IsDisposed) return; targetVisible = visible; Position = position; Facing = facing; Label = "F  " + (label ?? "상호작용"); Notify(); }
         public void SetGameplayVisible(bool value) { if (IsDisposed) return; gameplayVisible = value; Notify(); }
         public void Clear() => SetPrompt(false, Vector3.zero, Quaternion.identity, "");
     }

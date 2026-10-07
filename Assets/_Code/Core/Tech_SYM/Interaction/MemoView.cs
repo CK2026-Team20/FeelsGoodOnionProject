@@ -6,7 +6,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     {
         [Tooltip("메모 데이터의 Sprite를 표시할 본문 Image입니다. 클릭으로 메모를 닫지 않습니다.")]
         [SerializeField] private UnityEngine.UI.Image memoImage;
-        [Tooltip("E 열기·닫기 때 크기 표현을 재생할 담당입니다. 옵션 중에는 멈추며 완료 후 화면 상태를 갱신합니다.")]
+        [Tooltip("F 열기·닫기 때 크기 표현을 재생할 담당입니다. 옵션 중에는 멈추며 완료 후 화면 상태를 갱신합니다.")]
         [SerializeField] private UIScaleTween scaleTween;
         private MemoViewModel model;
         private int bindingVersion;
@@ -58,7 +58,8 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         {
             var boundModel = model;
             Unbind();
-            boundModel?.Dispose();
+            // The controller owns the VM; disappearing presentation reports cancellation only.
+            boundModel?.CancelPresentation();
         }
         private void OnDestroy() => OnDisable();
     }

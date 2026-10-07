@@ -43,6 +43,10 @@ namespace FeelsGoodOnion.TechSYM.Interaction
             SuspensionChanged?.Invoke(value);
         }
         // 비활성화/반환/세션 종료는 애니메이션 완료를 기다리지 않는 취소 경로다.
+        public void CancelPresentation()
+        {
+            if (!disposed && State != MemoDisplayState.Closed) SetState(MemoDisplayState.Closed);
+        }
         public void Dispose()
         {
             if (disposed) return;

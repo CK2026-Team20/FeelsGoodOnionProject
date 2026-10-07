@@ -7,7 +7,7 @@ namespace Cooked.UI
         public event PropertyChangedEventHandler PropertyChanged;
         public bool IsDisposed { get; private set; }
         protected void Notify(string name = "") { if (!IsDisposed) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name)); }
-        public void Dispose() { if (IsDisposed) return; IsDisposed = true; Release(); PropertyChanged = null; }
+        public void Dispose() { if (IsDisposed) return; IsDisposed = true; try { Release(); } finally { PropertyChanged = null; } }
         protected virtual void Release() { }
     }
 }

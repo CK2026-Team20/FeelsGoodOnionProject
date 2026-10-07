@@ -12,10 +12,11 @@ namespace Cooked.Dialogue
         private readonly DialogueSettings settings;
         private readonly IDialogueDelayScheduler scheduler;
         private readonly List<DialogueRow> history = new List<DialogueRow>();
+        private readonly HashSet<string> completedCodes = new HashSet<string>(StringComparer.Ordinal);
         private readonly IReadOnlyList<DialogueRow> historyView;
         private IReadOnlyList<DialogueRow> rows;
-        private IDisposable inputLease, worldLease;
-        private bool starting;
+        private IDisposable inputLease;
+        private bool starting, resettingRound;
         private int rowIndex;
         private int lastProgressFrame = -1;
         private IDialogueDelayHandle cooldown;
@@ -24,6 +25,7 @@ namespace Cooked.Dialogue
         private long autoRevision;
         private bool disposed;
         private bool optionsPaused;
+        private long lifecycleRevision;
 
         public DialogueService(IDialogueTableService table, IGameplayControlService control, IDialogueDelayScheduler scheduler, DialogueSettings settings = null)
         {
@@ -54,25 +56,25 @@ namespace Cooked.Dialogue
 
         public bool TryStart(string dialogueCode)
         {
-            if (disposed || starting || IsActive || optionsPaused || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
+            if (disposed || starting || resettingRound || IsActive || optionsPaused || dialogueCode == null || completedCodes.Contains(dialogueCode) || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
             // Acquire before publishing a visible conversation; failure cannot strand an active UI.
             starting = true;
+            long revision = lifecycleRevision;
             try
             {
                 inputLease = control.BlockGameplay("Dialogue");
-                worldLease = control.PauseWorld("Dialogue");
-                if (disposed || optionsPaused) { ReleaseLeases(); return false; }
-            rows = found;
-            rowIndex = 0;
-            SessionId++;
-            Outcome = DialogueOutcome.None;
-            history.Clear();
-            AutoEnabled = false;
-            LogOpen = false;
-            CancelCooldown();
-            lastProgressFrame = -1;
-            BeginRow();
-            return true;
+                if (disposed || optionsPaused || revision != lifecycleRevision) { ReleaseLeases(); return false; }
+                rows = found;
+                rowIndex = 0;
+                SessionId++;
+                Outcome = DialogueOutcome.None;
+                history.Clear();
+                AutoEnabled = false;
+                LogOpen = false;
+                CancelCooldown();
+                lastProgressFrame = -1;
+                BeginRow();
+                return true;
             }
             catch (Exception startError)
             {
@@ -131,7 +133,33 @@ namespace Cooked.Dialogue
         {
             if (!disposed && IsActive && !optionsPaused) Finish(DialogueOutcome.Skipped);
         }
-        public void Cancel() { if (!disposed && IsActive) Finish(DialogueOutcome.Cancelled); }
+        public void Cancel()
+        {
+            if (disposed) return;
+            lifecycleRevision++;
+            if (IsActive) Finish(DialogueOutcome.Cancelled);
+        }
+        public void ForgetCompletedCodes(IEnumerable<string> dialogueCodes)
+        {
+            if (disposed) return;
+            if (dialogueCodes == null) throw new ArgumentNullException(nameof(dialogueCodes));
+            var validated = new List<string>();
+            foreach (var code in dialogueCodes)
+            {
+                if (string.IsNullOrWhiteSpace(code) || code != code.Trim())
+                    throw new ArgumentException("Notice code without surrounding whitespace required.", nameof(dialogueCodes));
+                validated.Add(code);
+            }
+            foreach (var code in validated) completedCodes.Remove(code);
+        }
+        // Resident Core can begin another round without retaining a previous round's ledger.
+        public void ResetRound()
+        {
+            if (disposed || resettingRound) return;
+            resettingRound = true;
+            try { Cancel(); }
+            finally { completedCodes.Clear(); history.Clear(); Outcome = DialogueOutcome.None; resettingRound = false; }
+        }
         private void BeginRow()
         {
             RowId++;
@@ -155,6 +183,8 @@ namespace Cooked.Dialogue
         }
         private void Finish(DialogueOutcome result)
         {
+            if (result == DialogueOutcome.Completed && rows != null)
+                completedCodes.Add(rows[0].Dialogue_Code);
             State = DialogueState.Closed;
             Outcome = result;
             AutoEnabled = false;
@@ -171,11 +201,10 @@ namespace Cooked.Dialogue
         }
         private void ReleaseLeases()
         {
-            var input = inputLease; var world = worldLease;
-            inputLease = worldLease = null;
+            var input = inputLease;
+            inputLease = null;
             var errors = new List<Exception>();
             try { input?.Dispose(); } catch (Exception e) { errors.Add(e); }
-            try { world?.Dispose(); } catch (Exception e) { errors.Add(e); }
             if (errors.Count > 0) throw new AggregateException("Dialogue leases could not be released cleanly.", errors);
         }
         private void OnControlChanged(ControlState state)
@@ -237,6 +266,7 @@ namespace Cooked.Dialogue
                 control.Changed -= OnControlChanged;
                 Changed = null;
                 Ended = null;
+                completedCodes.Clear();
             }
         }
     }

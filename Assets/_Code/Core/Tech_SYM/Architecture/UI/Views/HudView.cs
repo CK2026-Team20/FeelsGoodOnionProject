@@ -10,7 +10,7 @@ namespace Cooked.UI
         [SerializeField] private TMP_Text health;
         [Tooltip("조각 수를 표시할 기존 TMP 텍스트입니다.")]
         [SerializeField] private TMP_Text fragments;
-        [Tooltip("현재 체크포인트 안내를 표시할 TMP 텍스트입니다.")]
+        [Tooltip("이전 체크포인트 안내 참조입니다. 제품에서는 숨깁니다. T9 자산 이관 후 제거합니다.")]
         [SerializeField] private TMP_Text checkpoint;
         [Tooltip("해금 능력 안내를 표시할 기존 TMP 텍스트입니다.")]
         [SerializeField] private TMP_Text abilities;
@@ -18,7 +18,7 @@ namespace Cooked.UI
         [SerializeField] private HudIconGraphic[] hearts;
         [Tooltip("Q 상태 전환 해금 여부를 표시할 카드 그룹입니다.")]
         [SerializeField] private CanvasGroup formCard;
-        [Tooltip("F 눈물 해금 여부를 표시할 카드 그룹입니다.")]
+        [Tooltip("E 눈물 해금 여부를 표시할 카드 그룹입니다.")]
         [SerializeField] private CanvasGroup tearCard;
         [Tooltip("이전 회수 카드 참조입니다. 현재 별도 회수키 안내를 숨기며 회수는 Q 상태 전환에 포함됩니다.")]
         [SerializeField] private CanvasGroup recoverCard;
@@ -31,17 +31,17 @@ namespace Cooked.UI
         {
             if (group == null) return; group.alpha = Model != null && Model.Visible ? 1 : 0; group.blocksRaycasts = false;
             if (Model == null) return;
-            // Compatibility until the next Editor builder run replaces the old serialized HUD.
+            // T9 removes retired serialized CP/Recover references after native asset migration.
             if (health != null) health.text = Model.Health;
             if (fragments != null) fragments.text = Model.Fragments;
-            if (checkpoint != null) checkpoint.text = Model.Checkpoint;
+            if (checkpoint != null) { checkpoint.text = ""; checkpoint.gameObject.SetActive(false); }
             if (abilities != null) abilities.text = Model.Abilities;
             if (fragmentCount != null) fragmentCount.text = Model.FragmentCount;
             if (hearts != null) for (int i = 0; i < hearts.Length && i < 3; i++)
                 if (hearts[i] != null) hearts[i].FillAmount = Model.HeartFill(i);
             if (formCard != null) formCard.alpha = Model.FormUnlocked ? 1 : .3f;
             if (tearCard != null) tearCard.alpha = Model.TearUnlocked ? 1 : .3f;
-            if (recoverCard != null) recoverCard.alpha = Model.RecoverUnlocked ? 1 : .3f;
+            if (recoverCard != null) recoverCard.gameObject.SetActive(false);
         }
     }
 }

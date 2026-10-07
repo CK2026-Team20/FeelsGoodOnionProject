@@ -2,16 +2,15 @@ using System;
 using UnityEngine;
 namespace Cooked.Dialogue
 {
-    /// <summary>Lifetime guard owned by InGameCore composition; DOTween owns delay updates. Service ownership stays with composition.</summary>
+    /// <summary>T9 removes native consumers; Core lifetime owner must call DialogueService.Cancel directly.</summary>
+    [Obsolete("T9: transfer cancellation to Core lifetime owner and remove this retired component.")]
     public sealed class DialogueDriver : MonoBehaviour
     {
-        private DialogueService service;
         public void Initialize(DialogueService dialogueService)
         {
-            if (service != null && !ReferenceEquals(service, dialogueService)) throw new InvalidOperationException("DialogueDriver is already initialized.");
-            service = dialogueService ?? throw new ArgumentNullException(nameof(dialogueService));
+            if (dialogueService == null) throw new ArgumentNullException(nameof(dialogueService));
+            enabled = false;
         }
-        private void OnDisable() { service?.Cancel(); }
-        public void Detach() { service?.Cancel(); service = null; }
+        public void Detach() { }
     }
 }
