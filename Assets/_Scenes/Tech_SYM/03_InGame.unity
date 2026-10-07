@@ -375,17 +375,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5504410607903121794, guid: a71136a613dc72848a79a0a329d176c2, type: 3}
   m_PrefabInstance: {fileID: 1218996928}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1366671815 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 6888599220152782159, guid: bbb9f5dbb7ac653468cf2340ec97222d, type: 3}
-  m_PrefabInstance: {fileID: 2835645553822244132}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0cdddaf84a5f35242843a13f1534617b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Interaction.InteractionPromptView
 --- !u!224 &1434793770 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5192314282590215503, guid: 79d3de5d43a1d0a48bc7273b1a665b37, type: 3}
@@ -548,7 +537,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2256454908842267139, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
       propertyPath: maxHP
-      value: 20
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 2256454908842267139, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
       propertyPath: currentHP
@@ -614,6 +603,10 @@ PrefabInstance:
       propertyPath: m_LocalRotation.z
       value: -0
       objectReference: {fileID: 0}
+    - target: {fileID: 6836509387007962065, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -635,7 +628,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerFacade
 --- !u!20 &1748932368 stripped
 Camera:
-  m_CorrespondingSourceObject: {fileID: 9184215579819016800, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
+  m_CorrespondingSourceObject: {fileID: 3785641752780292420, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
   m_PrefabInstance: {fileID: 1748932366}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &1807971855 stripped
@@ -784,11 +777,11 @@ PrefabInstance:
     - target: {fileID: 4658469946401886817, guid: 465d8da203844014a80bde55c18b6a43, type: 3}
       propertyPath: promptView
       value: 
-      objectReference: {fileID: 1366671815}
+      objectReference: {fileID: 0}
     - target: {fileID: 4658469946401886817, guid: 465d8da203844014a80bde55c18b6a43, type: 3}
       propertyPath: viewCamera
       value: 
-      objectReference: {fileID: 1748932368}
+      objectReference: {fileID: 0}
     - target: {fileID: 4658469946401886817, guid: 465d8da203844014a80bde55c18b6a43, type: 3}
       propertyPath: overlaySource
       value: 

@@ -11,7 +11,7 @@ namespace Cooked.Chase
         private readonly IPlayerBridgeService bridge;
         private readonly IGameplayControlService control;
         private readonly IGameFlowService flow;
-        private readonly IGameEventBus eventBus;
+        private readonly Func<Vector3, int> forceDeath;
         private readonly ChaseModel model;
         private IChaseActor actor;
         private long lastFrame = -1;
@@ -22,12 +22,13 @@ namespace Cooked.Chase
         public event Action<ChaseSnapshot> Changed;
 
         public ChaseService(IPlayerBridgeService bridge, IGameplayControlService control,
-            IGameFlowService flow, IGameEventBus eventBus, ChaseSettings settings)
+            IGameFlowService flow, IGameEventBus eventBus, ChaseSettings settings, Func<Vector3, int> forceDeath = null)
         {
             this.bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
             this.control = control ?? throw new ArgumentNullException(nameof(control));
             this.flow = flow ?? throw new ArgumentNullException(nameof(flow));
-            this.eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+            if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
+            this.forceDeath = forceDeath ?? throw new ArgumentNullException(nameof(forceDeath), "Capture must use the current Actor's common death presentation.");
             model = new ChaseModel(settings);
             flow.Changed += OnFlowChanged;
         }
@@ -69,23 +70,18 @@ namespace Cooked.Chase
                 Fault("Chase tick failed: " + error.Message);
                 throw;
             }
-            if (!disposed) Changed?.Invoke(Snapshot);
-        }
-
-        public bool CaptureFromFrontTrigger()
-        {
-            if (disposed || control.State.WorldPaused || flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy ||
-                !bridge.HasActor || bridge.Snapshot.IsDead || actor == null || !actor.IsAlive || !model.Capture()) return false;
-            // Terminal state precedes dispatch; multiple colliders cannot request a second retry.
-            try
+            // Terminal state precedes external callbacks: a death observer can synchronously release this attempt.
+            if (model.Capture())
             {
-                eventBus.Publish(new FlowRequestedEvent(new FlowRequest(FlowCommand.RetryCheckpoint)));
-                if (flow.Snapshot.State != FlowState.Retrying || !flow.Snapshot.IsBusy)
-                    Fault("Front-trigger retry was not accepted by GameFlow.");
+                try
+                {
+                    if (forceDeath(Vector3.zero) <= 0 && !disposed)
+                        throw new InvalidOperationException("Chase capture did not accept common Actor death.");
+                }
+                catch (Exception error)
+                { if (!disposed) Fault("Common death failed: " + error.Message); throw; }
             }
-            catch (Exception error) { Fault("Capture dispatch failed: " + error.Message); throw; }
             if (!disposed) Changed?.Invoke(Snapshot);
-            return true;
         }
 
         public void Stop(ChaseStopReason reason)

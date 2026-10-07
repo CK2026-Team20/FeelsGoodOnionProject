@@ -24,7 +24,6 @@ namespace Cooked.Session
         private PlayerSkill observedTear;
         private CharacterMovement movement;
         private PlayerMovementModeController movementMode;
-        private Vector3 inputRight = Vector3.right, inputForward = Vector3.forward;
         private bool deathReported, disposed, detaching, pendingTear, pendingForm;
         private bool deathPending, deathReady, deathInterrupted, skipDeathPresentation;
         private int deathFrame;
@@ -168,20 +167,10 @@ namespace Cooked.Session
             else if (delta < 0 && !actor.TryConsumeSkillFragments(-delta)) throw new InvalidOperationException("Fragment restore rejected.");
             if (model.CurrentSkillFragment != fragments) throw new InvalidOperationException("Fragment restore mismatch.");
         }
-        public void SetDepthMovementAllowed(bool allowed) => SetWorldMovementAxes(true, allowed);
-        public void SetInputBasis(Vector3 right, Vector3 forward)
-        {
-            right.y = forward.y = 0;
-            if (right.sqrMagnitude < .001f || forward.sqrMagnitude < .001f) return;
-            inputRight = right.normalized; inputForward = forward.normalized;
-        }
-        public void SetWorldMovementAxes(bool x, bool z)
+        public void SetDepthMovementAllowed(bool allowed)
         {
             RequireActor();
-            if (!x && !z) throw new ArgumentException("An active movement mode requires at least one axis.");
-            SetInputBasis(Vector3.right, Vector3.forward);
-            if (movementMode == null || !movementMode.TrySetMode(!x ? PlayerMovementMode.BackFixed :
-                z ? PlayerMovementMode.Quarter : PlayerMovementMode.Side))
+            if (movementMode == null || !movementMode.TrySetMode(allowed ? PlayerMovementMode.Quarter : PlayerMovementMode.Side))
                 throw new InvalidOperationException("HMS movement mode is not ready.");
             ClearInput();
         }
@@ -190,8 +179,7 @@ namespace Cooked.Session
             if (!CanAct) { ClearInput(); return; }
             input.x = movement.AllowHorizontalMovement ? input.x : 0;
             input.z = movement.AllowDepthMovement ? input.z : 0;
-            Vector3 world = inputRight * input.x + inputForward * input.z;
-            if (!actor.AllowDepthMovement) world = Vector3.right * Mathf.Sign(inputRight.x) * input.x;
+            Vector3 world = new Vector3(input.x, 0, actor.AllowDepthMovement ? input.z : 0);
             actor.SetMoveInput(Vector3.ClampMagnitude(world, 1));
         }
         public void ClearInput() { if (actor != null) actor.ClearInput(); }
@@ -357,15 +345,7 @@ namespace Cooked.Session
         private Collider ResolveHurtCollider(EnemyActor enemy)
         {
             if (hurtColliderResolver != null) return hurtColliderResolver(enemy);
-            Collider found = null;
-            foreach (var shape in enemy.GetComponentsInChildren<BoxCollider>(true))
-            {
-                if (shape.transform.parent != enemy.transform || !shape.isTrigger ||
-                    (shape.transform.position - enemy.BodyPosition).sqrMagnitude > .000001f) continue;
-                if (found != null) throw new InvalidOperationException("Ambiguous Enemy body. T5/T9 must supply the exact HurtCollider resolver.");
-                found = shape;
-            }
-            return found;
+            return enemy == null ? null : enemy.HurtCollider;
         }
         private bool IsSelfCollider(Collider shape)
             => shape.transform.IsChildOf(actor.transform) ||

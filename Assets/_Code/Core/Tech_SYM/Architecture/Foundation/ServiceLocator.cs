@@ -10,6 +10,8 @@ namespace Cooked.Foundation
         private readonly List<object> owned = new List<object>();
         private readonly List<ServiceLocator> children = new List<ServiceLocator>();
         private bool disposed;
+        /// <summary>True once this scope starts disposal; consumers cannot acquire services afterward.</summary>
+        public bool IsDisposed => disposed;
         public ServiceLocator(ServiceLocator parent = null)
         {
             this.parent = parent;

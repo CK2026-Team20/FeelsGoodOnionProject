@@ -5,14 +5,13 @@ using Unity.Cinemachine;
 using UnityEngine;
 namespace Cooked.Level
 {
-    // T9 removes Corridor after the explicit native migration. Never execute it as BackFixed.
-    public enum CameraMovementMode { Side = 1, Corridor = 2, Quarter = 3 }
+    public enum CameraMovementMode { Side = 1, Quarter = 3 }
     [Serializable]
     public struct CameraZoneData
     {
         [Tooltip("카메라 구간의 고유 이름입니다. 같은 이름의 구간으로 다시 진입하면 전환을 반복하지 않으므로 서로 다른 구간은 이름을 구분하세요.")]
         public string Id;
-        [Tooltip("이 구간의 이동 방식입니다. Side(1)는 월드 X 이동과 Z 정렬, Quarter(3)는 X/Z 이동이며 위치 정렬이 없습니다. Corridor(2)는 이전 배치 이관용이며 실행할 수 없습니다.")]
+        [Tooltip("이 구간의 이동 방식입니다. Side(1)는 월드 X 이동과 Z 정렬, Quarter(3)는 X/Z 이동이며 위치 정렬이 없습니다.")]
         public CameraMovementMode Movement;
         [Tooltip("플레이어 정렬점까지 트리거 자신의 로컬 XYZ 이동량입니다(월드 단위). 이동·회전·크기를 반영한 점을 파란 기즈모 구로 표시합니다. 모두 0이면 트리거 중심입니다. Side는 이 점의 월드 Z에만 정렬하며 Quarter와 초기 위치 복원은 위치를 바꾸지 않습니다.")]
         public Vector3 AlignmentOffset;
@@ -46,10 +45,11 @@ namespace Cooked.Level
         private CinemachineCamera side, quarter, requestedCamera;
         private Transform target, body;
         private IDisposable inputLease;
-        private bool transitioning, alignmentComplete, viewCommitted, ownsBinding;
+        private bool transitioning, alignmentComplete, viewCommitted, ownsBinding, initialSelection;
         private bool previousIgnoreTimeScale;
         private CinemachineBlendDefinition previousBlend, ownedBlend;
         private bool ownsBlend;
+        private bool initialBrainResetPending;
         private float alignmentStartZ, alignmentEndZ, alignmentElapsed;
         private long requestGeneration;
         private PlayerMovementMode requestedMode;
@@ -58,14 +58,6 @@ namespace Cooked.Level
             modes.isActiveAndEnabled && modes.CurrentMode == requestedMode && SelectionComplete;
         public Exception TransitionFailure { get; private set; }
         public string CurrentZoneId { get; private set; }
-
-        // T9 removes this throwing overload after CoreWorldBinding stops supplying ActorCameraRig.
-        // They keep existing consumers compiling without silently restoring the old camera writer.
-        [Obsolete("T9: remove ActorCameraRig binding after native transfer.")]
-        public void Bind(IPlayerBridgeService bridge, IGameplayControlService gameplayControl, ActorCameraRig actorRig)
-            => throw LegacyBinding();
-        private static Exception LegacyBinding() => new InvalidOperationException(
-            "Camera binding requires explicit App HMS controller/Brain, Core Side/Quarter and Actor target/body. T9 must migrate the caller.");
 
         /// <summary>Borrow App output, Core cameras and the current Actor; never discover an Actor rig.</summary>
         public void Bind(IPlayerBridgeService bridge, IGameplayControlService gameplayControl,
@@ -100,7 +92,7 @@ namespace Cooked.Level
         {
             CameraMovementMode.Side => PlayerMovementMode.Side,
             CameraMovementMode.Quarter => PlayerMovementMode.Quarter,
-            _ => throw new ArgumentOutOfRangeException(nameof(zone), "Only Side(1) and Quarter(3) are executable; migrate Corridor(2) in T9.")
+            _ => throw new ArgumentOutOfRangeException(nameof(zone), "Only Side(1) and Quarter(3) are executable.")
         };
         private bool HasBinding => player != null && player.HasActor && modes != null && controller != null &&
             controller.IsBound && controller.isActiveAndEnabled && brain != null && body != null && target != null &&
@@ -130,6 +122,8 @@ namespace Cooked.Level
             transitioning = true;
             viewCommitted = false;
             alignmentComplete = true;
+            initialSelection = snap;
+            initialBrainResetPending = snap;
             try
             {
                 var lease = control.BlockGameplay("Camera transition");
@@ -159,10 +153,22 @@ namespace Cooked.Level
         private void LateUpdate()
         {
             if (!HasBinding) { Unbind(); return; }
-            if (!transitioning || Paused || !modes.IsInitialized || !modes.isActiveAndEnabled) return;
+            // GameFlow keeps its world-pause lease until this initial Cut is ready. This path
+            // advances no time or position; Options presentation pause still defers physical commit.
+            bool initialSetup = initialSelection && control.State.WorldPaused && !control.State.PresentationPaused;
+            if (!transitioning || (Paused && !initialSetup) || !modes.IsInitialized || !modes.isActiveAndEnabled) return;
             long generation = requestGeneration;
             try
             {
+                if (initialBrainResetPending)
+                {
+                    initialBrainResetPending = false;
+                    // DefaultBlend=Cut does not interrupt an already running/custom blend.
+                    // Reset the borrowed Brain's root selection once after Preview, then let
+                    // its normal update select the requested camera before checking readiness.
+                    brain.ResetState();
+                    return;
+                }
                 // This owner advances only Side Z. No external tween survives a pause, replacement or unbind.
                 if (!alignmentComplete)
                 {
@@ -179,7 +185,6 @@ namespace Cooked.Level
                 // ModeChanged listeners can release the Actor or request a newer zone during Commit.
                 if (generation != requestGeneration || !HasBinding) return;
                 if (!committed) throw new InvalidOperationException("HMS mode commit was rejected.");
-                if (player is PlayerBridgeService actor) actor.SetInputBasis(Vector3.right, Vector3.forward);
                 transitioning = false;
                 viewCommitted = true;
                 ReleaseLease();
@@ -202,6 +207,8 @@ namespace Cooked.Level
             if (transitioning && controller != null && controller.IsBound && modes != null)
                 controller.Preview(modes.CurrentMode);
             transitioning = false; alignmentComplete = false;
+            initialSelection = false;
+            initialBrainResetPending = false;
             viewCommitted = false; requestedCamera = null;
             ReleaseLease();
         }
@@ -211,6 +218,8 @@ namespace Cooked.Level
         {
             requestGeneration++;
             transitioning = false; alignmentComplete = false; viewCommitted = false; requestedCamera = null;
+            initialSelection = false;
+            initialBrainResetPending = false;
             var lease = inputLease; inputLease = null;
             try
             {

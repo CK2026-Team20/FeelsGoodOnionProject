@@ -124,6 +124,7 @@ GameObject:
   - component: {fileID: 5057979671531337536}
   - component: {fileID: 5155477896370594363}
   - component: {fileID: 4511020373370372613}
+  - component: {fileID: 1789884838752029796}
   m_Layer: 0
   m_Name: ShatteredPlatform
   m_TagString: Untagged
@@ -183,10 +184,19 @@ MonoBehaviour:
   visual: {fileID: 8084077480822937354}
   supportCollider: {fileID: 5155477896370594363}
   collapseAnimator: {fileID: 5449978033573604114}
+  physicalContacts: {fileID: 1789884838752029796}
   warningEndSeconds: 1
   shakeAngleDegrees: 10
   shakeFrequency: 8
-  canRegenerate: 1
-  collapsedHoldSeconds: 0.5
-  regenerationSeconds: 3
-  blinkIntervalSeconds: 0.2
+--- !u!114 &1789884838752029796
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8995724270021319167}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67128e709f098e24e836e7cb99380c7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PlatformContacts

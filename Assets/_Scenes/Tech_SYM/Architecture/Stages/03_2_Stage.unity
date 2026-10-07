@@ -1527,6 +1527,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5d6076745717874cae442cea974fa60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.KinematicPlatformMotion
+  physicsBody: {fileID: 155493699}
+  platformContacts: {fileID: 155493698}
 --- !u!114 &155493698
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2040,8 +2042,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 394539335}
-  - component: {fileID: 394539337}
-  - component: {fileID: 394539336}
   m_Layer: 0
   m_Name: TrayHandle
   m_TagString: Untagged
@@ -2066,33 +2066,6 @@ Transform:
   - {fileID: 1645806462}
   m_Father: {fileID: 2109316082}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &394539336
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 394539334}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: df6118f38d7b92848850148e11205019, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Interaction.InteractionPromptAnchor
-  localOffset: {x: 0, y: 0.8, z: 0}
-  interactionLocalOffset: {x: 0, y: 0, z: 0}
---- !u!114 &394539337
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 394539334}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 420b8f944d6c1cf4294281cf3ca5149c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.OvenHandle
-  tray: {fileID: 1026345505}
 --- !u!1 &431948783
 GameObject:
   m_ObjectHideFlags: 0
@@ -2102,7 +2075,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 431948784}
-  - component: {fileID: 431948785}
   m_Layer: 0
   m_Name: Shell2GuideInstruction
   m_TagString: Untagged
@@ -2125,19 +2097,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2109316082}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &431948785
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 431948783}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd7b01566d49a8a44bf54784416a26a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelInstruction
-  text: "\uC555\uB825\uD310\uC5D0\uC11C \uC791\uC740 \uD615\uD0DC\uB85C! \uAECD\uC9C8\uC744 \uB0A8\uAE30\uACE0 \uBB38\uC744 \uD1B5\uACFC\uD55C \uB4A4 \uB418\uB3CC\uC544\uC640 Q \uD68C\uC218"
 --- !u!43 &489919937
 Mesh:
   m_ObjectHideFlags: 0
@@ -6195,7 +6154,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 921524922}
-  - component: {fileID: 921524923}
   m_Layer: 0
   m_Name: OVENInstruction
   m_TagString: Untagged
@@ -6218,19 +6176,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2109316082}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &921524923
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 921524921}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd7b01566d49a8a44bf54784416a26a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelInstruction
-  text: "F \uD2B8\uB808\uC774 \uC190\uC7A1\uC774 \uC870\uC791 \xB7 \uD2B8\uB808\uC774\uB97C \uD3BC\uCE58\uACE0 \uAC74\uB108\uC138\uC694"
 --- !u!1 &948667589
 GameObject:
   m_ObjectHideFlags: 0
@@ -6601,7 +6546,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 975038573}
-  - component: {fileID: 975038574}
   m_Layer: 0
   m_Name: Shell2
   m_TagString: Untagged
@@ -6626,23 +6570,6 @@ Transform:
   - {fileID: 155493695}
   m_Father: {fileID: 2109316082}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &975038574
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 975038572}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fb8fd829917bec14092f05862d08cab8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.ShellPressureLatch
-  plate: {fileID: 1753575299}
-  plateSurface: {fileID: 1753575303}
-  raisedGate: {fileID: 155493694}
-  crossingProgress: 9.7
-  stage: {fileID: 2109316081}
 --- !u!1 &978602362
 GameObject:
   m_ObjectHideFlags: 0
@@ -7283,12 +7210,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S2_ENTRY
-  unlockForm: 0
-  unlockTear: 0
   cameraZone:
-    Id: 
-    Movement: 1
-    AlignmentOffset: {x: -1.9999962, y: 0, z: 36.000004}
+    Id: 03_2_Stage_S2_ENTRY
+    Movement: 3
+    AlignmentOffset: {x: 0, y: 0, z: 0}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &1024930371
 Transform:
@@ -7340,8 +7265,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d57eba296d1f7a64a8976cbab625d9a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.OvenTray.OvenTrayObject
+  operationMode: 0
   travelOffset: {x: 0, y: 0, z: -8}
-  moveDuration: 1.2
+  hingeEulerOffset: {x: 0, y: 90, z: 0}
+  moveDuration: 0.5
 --- !u!114 &1026345506
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7354,8 +7281,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df6118f38d7b92848850148e11205019, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Interaction.InteractionPromptAnchor
-  localOffset: {x: 0, y: 0.8, z: 0}
-  interactionLocalOffset: {x: 0, y: 0, z: 0}
+  localOffset: {x: -4.199997, y: 1.2, z: -8.000002}
+  interactionLocalOffset: {x: -4.199997, y: 0.7, z: -8.000002}
 --- !u!114 &1026345507
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7368,6 +7295,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5d6076745717874cae442cea974fa60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.KinematicPlatformMotion
+  physicsBody: {fileID: 1026345509}
+  platformContacts: {fileID: 1026345508}
 --- !u!114 &1026345508
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9569,6 +9498,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5d6076745717874cae442cea974fa60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.KinematicPlatformMotion
+  physicsBody: {fileID: 1753575302}
+  platformContacts: {fileID: 1753575301}
 --- !u!114 &1753575301
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9958,7 +9889,7 @@ GameObject:
   - component: {fileID: 1868384416}
   - component: {fileID: 1868384415}
   m_Layer: 0
-  m_Name: S2_OVEN
+  m_Name: S2_END
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9976,13 +9907,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2254035091c0ec84fac5c87775bf15e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
-  checkpointId: S2_OVEN
-  unlockForm: 0
-  unlockTear: 0
+  checkpointId: S2_END
   cameraZone:
-    Id: 
-    Movement: 1
-    AlignmentOffset: {x: -14.999996, y: 0, z: 36.000004}
+    Id: 03_2_Stage_S2_END
+    Movement: 3
+    AlignmentOffset: {x: 0, y: 0, z: 0}
   bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &1868384416
 Transform:
@@ -9993,7 +9922,7 @@ Transform:
   m_GameObject: {fileID: 1868384414}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 15, y: 0, z: 0}
+  m_LocalPosition: {x: 28.000008, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10027,7 +9956,7 @@ Transform:
   m_GameObject: {fileID: 1872443217}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 15, y: 1, z: 0}
+  m_LocalPosition: {x: 28.000015, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10047,7 +9976,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageTrigger
   stage: {fileID: 2109316081}
   kind: 1
-  value: S2_OVEN
+  value: S2_END
   once: 1
 --- !u!65 &1872443220
 BoxCollider:
@@ -14024,7 +13953,6 @@ MonoBehaviour:
   chaseWaypoints: []
   chaseRetreatGate: {fileID: 0}
   chaseStartProgress: 18
-  chaseCheckpointId: S3_CHASE
   progressWaypoints: []
 --- !u!4 &2109316082
 Transform:

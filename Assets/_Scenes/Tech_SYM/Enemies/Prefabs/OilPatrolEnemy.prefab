@@ -293,7 +293,6 @@ GameObject:
   m_Component:
   - component: {fileID: 6688023650793018220}
   - component: {fileID: 3282784276264430833}
-  - component: {fileID: 6765345931699783716}
   - component: {fileID: 3646050129072965113}
   m_Layer: 0
   m_Name: OilPatrolEnemy
@@ -333,7 +332,6 @@ MonoBehaviour:
   definition: {fileID: 11400000, guid: d8411a4d443c344408422eaa22f2f33b, type: 2}
   body: {fileID: 6179175670916592674}
   target: {fileID: 0}
-  initiallyInvincible: 0
   initialDirection: 0
   patrolDistance: 3
   terrainMask:
@@ -343,26 +341,6 @@ MonoBehaviour:
   surfaceClearance: 0.15
   manualLowerDistance: 2
   manualUpperDistance: 3
---- !u!114 &6765345931699783716
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8243761468201082374}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 104ac5bc177153d4e97ea3d802ed61c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyOilOnDeath
-  spawnOilOnDeath: 1
-  oilPrefab: {fileID: 5780718231355088433, guid: 04a9efd5bafb07c408a4f57f7b96b759, type: 3}
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 1
-  searchDistance: 10
-  size: {x: 2, y: 1.5}
-  lifetime: 0
 --- !u!114 &3646050129072965113
 MonoBehaviour:
   m_ObjectHideFlags: 0

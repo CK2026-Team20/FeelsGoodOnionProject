@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Cooked.Contracts
 {
-    // RecoverShell is source compatibility only; T6/T9 remove its last consumers.
-    public enum AbilityId { FormChange, Tear, RecoverShell }
+    public enum AbilityId { FormChange = 0, Tear = 1 }
     public readonly struct CheckpointSnapshot
     {
         public CheckpointSnapshot(Vector3 position, int fragments)

@@ -92,8 +92,8 @@ namespace Cooked.Integration.Editor
             var entries=GetOrCreate<IntegrationEntrySettings>(EntriesPath);
             entries.Configure(new[]{
                 new IntegrationEntrySettings.Entry("1_Stage","P_START",0),
-                new IntegrationEntrySettings.Entry("03_2_Stage","S2_ENTRY",5,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear),
-                new IntegrationEntrySettings.Entry("03_3_Stage","S3_ENTRY",5,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear)
+                new IntegrationEntrySettings.Entry("03_2_Stage","S2_ENTRY",5,AbilityId.FormChange,AbilityId.Tear),
+                new IntegrationEntrySettings.Entry("03_3_Stage","S3_ENTRY",5,AbilityId.FormChange,AbilityId.Tear)
             });
             EditorUtility.SetDirty(entries);
             Author(AuthoredCatalog.BootstrapPath,()=>BuildBootstrap(installation));
@@ -105,7 +105,11 @@ namespace Cooked.Integration.Editor
         public static void ConfigureAppOutput(GameObject output)
         {
             if (output == null || output.activeInHierarchy) throw new InvalidOperationException("Configure the inactive App output before Awake.");
-            if (output.GetComponent<Camera>() == null) throw new InvalidOperationException("App output requires Camera.");
+            var camera = output.GetComponent<Camera>();
+            if (camera == null) throw new InvalidOperationException("App output requires Camera.");
+            camera.cullingMask = ~0;
+            camera.depth = 0;
+            output.tag = "MainCamera";
             var brain = output.GetComponent<CinemachineBrain>();
             if(brain==null) brain = output.AddComponent<CinemachineBrain>();
             brain.IgnoreTimeScale = false;
@@ -133,7 +137,7 @@ namespace Cooked.Integration.Editor
             var cameraRoot=new GameObject("AppOutputCamera");
             cameraRoot.SetActive(false);
             cameraRoot.transform.SetParent(root.transform,false);
-            var camera=cameraRoot.AddComponent<Camera>(); camera.cullingMask=~0; camera.depth=0; cameraRoot.tag="MainCamera";
+            var camera=cameraRoot.AddComponent<Camera>();
             camera.clearFlags=CameraClearFlags.SolidColor; camera.backgroundColor=Color.black;
             ConfigureAppOutput(cameraRoot);
             cameraRoot.SetActive(true);
@@ -150,16 +154,17 @@ namespace Cooked.Integration.Editor
             cameraRoot.transform.SetParent(root.transform,false);
             var cameraService=cameraRoot.GetComponent<LevelCameraService>();
             var dialogue=Instantiate(Cooked.Dialogue.Editor.DialoguePrefabBuilder.PrefabPath,ui.DialogueMount).GetComponent<DialogueView>();
-            // Temporary T9 API compatibility: Configure still takes DialogueDriver; pass null, never author a retired driver.
             var cinematic=Instantiate(Cooked.Cinematics.Editor.CinematicAssetBuilder.PrefabPath,ui.CinematicMount).GetComponent<CinematicHost>();
             var chase=Instantiate(Cooked.Chase.Editor.ChaseAssetBuilder.PrefabPath).GetComponent<ChaseRuntimeDriver>();
             chase.transform.SetParent(root.transform,false);
             Instantiate(Cooked.Background.Editor.KitchenContentBackdropBuilder.PrefabPath).transform.SetParent(root.transform,false);
             var binding=root.AddComponent<CoreUiBinding>();
             ui.CinematicMount.SetAsLastSibling();
-            // Temporary T9 API compatibility: CoreUiBinding still accepts InstructionView; no retired view is created.
-            binding.Configure(ui,null);
-            root.AddComponent<CoreComposition>().Configure(host,null,dialogue,cinematic,entries,binding,cameraService,chase);
+            binding.Configure(ui);
+            var side = cameraRoot.transform.Find("Side")?.GetComponent<Unity.Cinemachine.CinemachineCamera>();
+            var quarter = cameraRoot.transform.Find("Quarter")?.GetComponent<Unity.Cinemachine.CinemachineCamera>();
+            if (side == null || quarter == null) throw new InvalidOperationException("Core requires authored Side/Quarter rigs.");
+            root.AddComponent<CoreComposition>().Configure(host,dialogue,cinematic,entries,binding,cameraService,chase,side,quarter);
             var lightRoot=new GameObject("KitchenLight"); lightRoot.transform.SetParent(root.transform,false);
             var light=lightRoot.AddComponent<Light>(); light.type=LightType.Directional; light.intensity=1.5f;
             light.color=new Color(1,.92f,.8f); lightRoot.transform.rotation=Quaternion.Euler(48,-25,0);

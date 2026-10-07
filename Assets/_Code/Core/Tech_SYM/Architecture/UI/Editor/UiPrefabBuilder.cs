@@ -113,11 +113,10 @@ namespace Cooked.UI.Editor
             Text(Box("Heading", panel, new Vector2(.5f,.5f), new Vector2(0,320), new Vector2(600,70)), font, "옵션", 48, Ink);
             var master = Slider("Master", panel, font, "전체 음량", 220); var music = Slider("Music", panel, font, "음악", 130); var sfx = Slider("Sfx", panel, font, "효과음", 40);
             var values = Text(Box("Values", panel, new Vector2(.5f,.5f), new Vector2(0,-40), new Vector2(720,45)), font, "", 24, Ink);
-            // No Retry/Resume/continue command is authored. T6 obsolete retry argument is explicitly null.
             var title = Button("ReturnToTitle", panel, font, "타이틀로", new Vector2(0,-205), new Vector2(600,62));
             var close = Button("Close", panel, font, "X", new Vector2(-20,-20), new Vector2(48,48), Vector2.one);
             var error = Text(Box("Error", panel, new Vector2(.5f,.5f), new Vector2(0,-350), new Vector2(750,45)), font, "", 20, new Color(.65f,.12f,.08f));
-            options.Configure(group, close, null, title, master, music, sfx, values, error);
+            options.Configure(group, close, title, master, music, sfx, values, error);
             var fadeCanvas = Canvas("FadeCanvas", root.transform, 300); var cover = Fill("BlackCover", fadeCanvas.transform); Image(cover, Color.black, true);
             var coverGroup = cover.gameObject.AddComponent<CanvasGroup>(); coverGroup.alpha = 1; coverGroup.blocksRaycasts = true;
             fade.Configure(coverGroup); composition.Configure(options, fade); return root;
@@ -146,14 +145,13 @@ namespace Cooked.UI.Editor
             var countShadow = count.gameObject.AddComponent<UnityEngine.UI.Shadow>(); countShadow.effectColor = new Color(0,0,0,.65f); countShadow.effectDistance = new Vector2(2,-2);
             var form = AbilityCard(h,font,"Form",HudIconGraphic.Symbol.Form,"Q",30);
             var tear = AbilityCard(h,font,"Tear",HudIconGraphic.Symbol.Tear,"E",146);
-            CanvasGroup recover = null;
             var dialogue = Fill("DialogueMount", screen.transform); var cinematic = Fill("CinematicMount", screen.transform); cinematic.SetAsLastSibling();
             var worldRect = Fill("WorldCanvas", root.transform); var world = worldRect.gameObject.AddComponent<Canvas>(); world.renderMode = RenderMode.WorldSpace;
             worldRect.sizeDelta = new Vector2(1000,1000); worldRect.localScale = Vector3.one;
             var anchor = Box("PromptAnchor", worldRect, new Vector2(.5f,.5f), Vector2.zero, new Vector2(420,80)); anchor.localScale = Vector3.one * .004f;
             Image(anchor, new Color(.1f,.15f,.12f,.9f)); var pg = anchor.gameObject.AddComponent<CanvasGroup>(); pg.alpha = 0; pg.blocksRaycasts = false;
             var label = Text(Fill("Label", anchor), font, "F  상호작용", 30, Color.white);
-            hud.ConfigureIcons(group, hearts, count, form, tear, recover); prompt.Configure(pg, anchor, label);
+            hud.ConfigureIcons(group, hearts, count, form, tear); prompt.Configure(pg, anchor, label);
             composition.Configure(hud, prompt, world, dialogue, cinematic); return root;
         }
         private static HudIconGraphic Icon(RectTransform rect, HudIconGraphic.Symbol symbol)

@@ -53,6 +53,7 @@ namespace Cooked.Dialogue
         public IReadOnlyList<DialogueRow> History => historyView;
         public float AutoRemaining => autoDelay?.Remaining ?? 0;
         public float CooldownRemaining => cooldown?.Remaining ?? 0;
+        public bool IsCompleted(string code) => !disposed && code != null && completedCodes.Contains(code);
 
         public bool TryStart(string dialogueCode)
         {

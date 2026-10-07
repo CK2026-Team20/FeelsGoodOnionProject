@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
+using Cooked.Session;
 using UnityEngine;
 
 namespace Cooked.Chase
@@ -27,7 +28,8 @@ namespace Cooked.Chase
             Shutdown();
             if (definition == null || presentation == null) throw new InvalidOperationException("Chase prefab bindings are missing.");
             bridge = playerBridge ?? throw new ArgumentNullException(nameof(playerBridge));
-            Service = new ChaseService(bridge, control, flow, eventBus, definition.CreateSettings());
+            if (!(bridge is PlayerBridgeService owner)) throw new ArgumentException("Chase needs the current session death owner.");
+            Service = new ChaseService(bridge, control, flow, eventBus, definition.CreateSettings(), velocity => owner.ForceDeath(velocity));
             reportedFailure = null;
             LastRejection = null;
             try { presentation.Bind(Service, control); }
@@ -53,7 +55,6 @@ namespace Cooked.Chase
             return accepted;
         }
 
-        public bool ReportFrontContact(PlayerFacade candidate) => candidate != null && candidate == actor && Service != null && Service.CaptureFromFrontTrigger();
 
         private void LateUpdate()
         {
@@ -74,10 +75,11 @@ namespace Cooked.Chase
 
         public void Shutdown()
         {
-            if (presentation != null) presentation.Unbind();
-            Service?.Dispose();
-            Service = null;
-            bridge = null; actor = null; route = null;
+            var errors = new List<Exception>();
+            if (presentation != null) SessionCleanup.Attempt(errors, presentation.Unbind);
+            if (Service != null) SessionCleanup.Attempt(errors, Service.Dispose);
+            if (errors.Count == 0) { Service = null; bridge = null; actor = null; route = null; }
+            SessionCleanup.ThrowIfAny(errors, "Chase release failed.");
         }
         private bool Reject(string message) { LastRejection = message; return false; }
         private void OnDisable() => Shutdown();

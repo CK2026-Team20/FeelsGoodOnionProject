@@ -5,6 +5,8 @@ using Cooked.Contracts;
 using FeelsGoodOnion.TechSYM.Interaction;
 using UnityEngine;
 using Cooked.Level;
+using Cooked.Foundation;
+using Cooked.Integration;
 
 namespace Cooked.Session
 {
@@ -13,29 +15,49 @@ namespace Cooked.Session
     {
         [Tooltip("세션에 생성할 플레이어 루트 프리팹입니다. 병합 PlayerFacade·물리·외형 연결이 준비된 프리팹을 지정하세요.")]
         [SerializeField] private GameObject actorPrefab;
-        [Tooltip("플레이어 껍질·일회성 객체를 세션 종료 때 정리할 소유 범위입니다.")]
-        [SerializeField] private SessionTransientScope transientScope;
+        [Tooltip("여섯 통합 씬 밖에서 직접 Play할 기존 플레이어 루트입니다. 비워 두면 통합 세션이 프리팹을 생성합니다.")]
+        [SerializeField] private GameObject independentActor;
+        [Tooltip("독립 씬의 한 월드 F 안내를 표시할 CoreUiBinding입니다. 기존 플레이어를 연결할 때 지정합니다.")]
+        [SerializeField] private CoreUiBinding independentUi;
+        [Tooltip("독립 씬에서 F로 열고 닫을 메모 담당 목록입니다. 각 담당의 자기 제한만 해제합니다.")]
+        [SerializeField] private MemoUIController[] independentMemos = Array.Empty<MemoUIController>();
+        [Tooltip("독립 HMS 카메라 리그의 출력 Camera입니다. 이 씬의 기존 단일 출력을 연결하며 App 출력으로 바꾸지 않습니다.")]
+        [SerializeField] private Camera independentCamera;
+        private GameSessionService independentSession;
+        private GameplayControlService independentControl;
+        private GameEventBus independentBus;
+        private bool started;
+        private bool ownsIndependentServices;
+        public void Configure(GameObject prefab) { actorPrefab = prefab; }
+        public void ConfigureIndependent(GameObject existingActor, CoreUiBinding uiBinding, MemoUIController[] memos, Camera outputCamera)
+        {
+            independentActor = existingActor; independentUi = uiBinding;
+            independentMemos = memos ?? Array.Empty<MemoUIController>(); independentCamera = outputCamera;
+        }
         private PlayerBridgeService bridge;
         private IGameplayControlService control;
-        private SessionTransientService transients;
         private GameObject actorRoot;
         private bool releasing, shutdown, spawning;
         public GameObject ActorRoot => actorRoot;
-        // T9 removes this compatibility dependency when Core's separated rig is connected.
-        public ActorCameraRig CameraRig => actorRoot != null ? actorRoot.GetComponentInChildren<ActorCameraRig>(true) : null;
+        public bool ActorModesReady
+        {
+            get
+            {
+                var modes = actorRoot != null ? actorRoot.GetComponentInChildren<PlayerMovementModeController>(true) : null;
+                return modes != null && modes.isActiveAndEnabled && modes.IsInitialized;
+            }
+        }
         public PlayerInteractionService Interaction { get; private set; }
         public event Action<PlayerInteractionService> InteractionChanged;
 
-        public void Initialize(PlayerBridgeService bridge, IGameplayControlService control, SessionTransientService transients)
+        public void Initialize(PlayerBridgeService bridge, IGameplayControlService control)
         {
             if (shutdown) throw new ObjectDisposedException(nameof(SessionActorHost));
             if (this.bridge != null) throw new InvalidOperationException("Actor host already initialized.");
-            if (actorPrefab == null || transientScope == null) throw new InvalidOperationException("Actor host requires actor prefab and transient scope.");
+            if (actorPrefab == null) throw new InvalidOperationException("Actor host requires actor prefab.");
             if (bridge == null) throw new ArgumentNullException(nameof(bridge));
             if (control == null) throw new ArgumentNullException(nameof(control));
-            if (transients == null) throw new ArgumentNullException(nameof(transients));
-            transientScope.Bind(transients);
-            this.bridge = bridge; this.control = control; this.transients = transients;
+            this.bridge = bridge; this.control = control;
         }
         /// <summary>Pose is ActorBody center: default capsule center 0,height 2 => floorY + 1.03.</summary>
         public void Spawn(Pose pose, int fragments)
@@ -53,13 +75,15 @@ namespace Cooked.Session
                 ValidateInputOwnership(actorRoot);
                 var actor = actorRoot.GetComponentInChildren<PlayerFacade>(true);
                 var reader = actorRoot.GetComponentInChildren<PlayerInputReader>(true);
-                var router = actorRoot.GetComponent<GameplayInputRouter>();
+                var router = actorRoot.GetComponentInChildren<GameplayInputRouter>(true);
                 if (actor == null || reader == null || router == null) throw new InvalidOperationException("Actor prefab dependencies missing.");
                 reader.SetTearSkillBinding("<Keyboard>/e");
                 actor.transform.SetPositionAndRotation(pose.position, pose.rotation);
-                var camera = CameraRig;
-                if (camera == null) throw new InvalidOperationException("Actor prefab requires the authored HMS Cinemachine rig.");
-                camera.ValidateConfiguration();
+                if (actorRoot.GetComponentsInChildren<Camera>(true).Length != 0 ||
+                    actorRoot.GetComponentsInChildren<Unity.Cinemachine.CinemachineBrain>(true).Length != 0 ||
+                    actorRoot.GetComponentsInChildren<AudioListener>(true).Length != 0 ||
+                    actorRoot.GetComponentsInChildren<PlayerCameraController>(true).Length != 0)
+                    throw new InvalidOperationException("Integrated Actor must not contain an output camera/controller.");
                 // All HMS serialized dependencies were authored before first activation.
                 actorRoot.SetActive(true);
                 var forms = actor.GetComponent<PlayerFormController>();
@@ -99,7 +123,6 @@ namespace Cooked.Session
             var oldRoot = actorRoot;
             var oldInteraction = Interaction;
             var oldBridge = bridge;
-            var oldTransients = transients;
             actorRoot = null;
             Interaction = null;
             try
@@ -110,7 +133,7 @@ namespace Cooked.Session
                 if (oldInteraction != null) SessionCleanup.Attempt(errors, oldInteraction.Dispose);
                 if (oldRoot != null)
                 {
-                    SessionCleanup.Attempt(errors, () => oldRoot.GetComponent<GameplayInputRouter>()?.Unbind());
+                    SessionCleanup.Attempt(errors, () => oldRoot.GetComponentInChildren<GameplayInputRouter>(true)?.Unbind());
                     SessionCleanup.Attempt(errors, () =>
                     {
                         var form = oldRoot.GetComponentInChildren<PlayerFormController>(true);
@@ -120,23 +143,69 @@ namespace Cooked.Session
                 if (oldBridge != null) SessionCleanup.Attempt(errors, oldBridge.Detach);
                 if (oldRoot != null)
                 {
-                    SessionCleanup.Attempt(errors, () => oldRoot.SetActive(false));
-                    SessionCleanup.Attempt(errors, () => Destroy(oldRoot));
+                    if (!ownsIndependentServices)
+                    {
+                        SessionCleanup.Attempt(errors, () => oldRoot.SetActive(false));
+                        SessionCleanup.Attempt(errors, () => Destroy(oldRoot));
+                    }
                 }
-                if (oldTransients != null) SessionCleanup.Attempt(errors, oldTransients.Clear);
             }
             finally { releasing = false; }
             SessionCleanup.ThrowIfAny(errors, "Actor release completed with teardown failures.");
         }
         public static void ValidateInputOwnership(GameObject root)
         {
-            if (root.GetComponentsInChildren<PlayerController>(true).Length != 0 || root.GetComponentsInChildren<CheckInteract>(true).Length != 0)
+            if (root.GetComponentsInChildren<PlayerController>(true).Length != 0)
                 throw new InvalidOperationException("Legacy input controllers must not be installed in the architecture actor.");
             if (root.GetComponentsInChildren<PlayerInputReader>(true).Length != 1 || root.GetComponentsInChildren<GameplayInputRouter>(true).Length != 1)
                 throw new InvalidOperationException("Actor requires one input reader and one gameplay router.");
             foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
                 if (behaviour != null && (behaviour.GetType().Name == "TestPlayerFunc" || behaviour.GetType().Name == "PlayerSkillHUD" || behaviour.GetType().Name == "TestPlayerMovementMode"))
                     throw new InvalidOperationException("Legacy debug input component found in actor.");
+        }
+        private void Start()
+        { started = true; StartIndependent(); }
+        private void OnEnable()
+        { if (started && !shutdown && independentActor != null && bridge == null) StartIndependent(); }
+        private void OnDisable()
+        { if (ownsIndependentServices) ReleaseSession(); }
+        private void StartIndependent()
+        {
+            if (independentActor == null) return;
+            if (bridge != null || independentUi == null || independentCamera == null)
+                throw new InvalidOperationException("Independent Play requires an unbound host, UI and output Camera.");
+            ownsIndependentServices = true;
+            try
+            {
+                ValidateInputOwnership(independentActor);
+                var facade = independentActor.GetComponentInChildren<PlayerFacade>(true);
+                var reader = independentActor.GetComponentInChildren<PlayerInputReader>(true);
+                var router = independentActor.GetComponentInChildren<GameplayInputRouter>(true);
+                if (facade == null || reader == null || router == null) throw new InvalidOperationException("Independent Actor dependencies missing.");
+                independentControl = new GameplayControlService(); control = independentControl;
+                independentSession = new GameSessionService();
+                independentSession.Begin(new CheckpointSnapshot(facade.transform.position, facade.Model.CurrentSkillFragment));
+                independentSession.Unlock(AbilityId.FormChange, "Independent"); independentSession.Unlock(AbilityId.Tear, "Independent");
+                independentBus = new GameEventBus();
+                bridge = new PlayerBridgeService(control, independentSession, independentBus);
+                bridge.SetEnemyHurtColliderResolver(enemy => enemy.HurtCollider);
+                reader.SetTearSkillBinding("<Keyboard>/e");
+                actorRoot = independentActor;
+                bridge.Attach(facade); bridge.Dying += OnIndependentDying;
+                Interaction = new PlayerInteractionService(bridge);
+                foreach (var memo in independentMemos) if (memo != null) memo.Initialize(control);
+                Interaction.BindOverlays(independentMemos);
+                router.Initialize(reader, bridge, Interaction, control);
+                independentUi.BindIndependent(bridge, Interaction, independentCamera);
+            }
+            catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, ReleaseSession); }
+        }
+        private void OnIndependentDying()
+        {
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => Interaction?.ForceCloseOverlays());
+            SessionCleanup.Attempt(errors, () => Interaction?.CancelOperations());
+            SessionCleanup.ThrowIfAny(errors, "Independent death cleanup failed.");
         }
         public void Shutdown()
         {
@@ -146,18 +215,26 @@ namespace Cooked.Session
             InteractionChanged = null;
         }
         // Normal session release is reusable; only OnDestroy/Shutdown permanently closes the host.
-        // T9 removes transientScope/transients after all shell consumers have migrated.
         public void ReleaseSession()
         {
             var errors = new List<Exception>();
             try
             {
                 SessionCleanup.Attempt(errors, ReleaseNow);
-                SessionCleanup.Attempt(errors, () => { if (transientScope != null) transientScope.Unbind(transients); });
+                if (ownsIndependentServices)
+                {
+                    SessionCleanup.Attempt(errors, () => { if (independentUi != null) independentUi.Unbind(); });
+                    foreach (var memo in independentMemos) if (memo != null) SessionCleanup.Attempt(errors, memo.Unbind);
+                    if (bridge != null) bridge.Dying -= OnIndependentDying;
+                    SessionCleanup.Attempt(errors, () => bridge?.Dispose());
+                    SessionCleanup.Attempt(errors, () => independentSession?.Dispose());
+                    SessionCleanup.Attempt(errors, () => independentControl?.Dispose());
+                    SessionCleanup.Attempt(errors, () => independentBus?.Dispose());
+                }
             }
             finally
             {
-                bridge = null; control = null; transients = null;
+                bridge = null; control = null; independentSession = null; independentControl = null; independentBus = null; ownsIndependentServices = false;
             }
             SessionCleanup.ThrowIfAny(errors, "Actor host shutdown completed with teardown failures.");
         }
@@ -168,5 +245,4 @@ namespace Cooked.Session
         }
     }
 }
-
 

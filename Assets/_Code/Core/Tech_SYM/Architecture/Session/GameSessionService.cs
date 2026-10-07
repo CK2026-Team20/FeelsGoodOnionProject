@@ -37,7 +37,7 @@ namespace Cooked.Session
             RequireActive();
             if (!Enum.IsDefined(typeof(AbilityId), ability)) throw new ArgumentOutOfRangeException(nameof(ability));
             RequireStageId(grantingStageId);
-            if (ability == AbilityId.RecoverShell || unlocked.ContainsKey(ability)) return;
+            if (unlocked.ContainsKey(ability)) return;
             unlocked.Add(ability, grantingStageId);
             Changed?.Invoke();
         }

@@ -202,7 +202,6 @@ GameObject:
   m_Component:
   - component: {fileID: 5881409410592295280}
   - component: {fileID: 539021330437851003}
-  - component: {fileID: 7572243449294451415}
   m_Layer: 0
   m_Name: FrontContact
   m_TagString: Untagged
@@ -246,19 +245,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.8, y: 2, z: 4}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7572243449294451415
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7816131767906460572}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: deb74ce4b4840cf438509bed6a4fc965, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Chase.ChaseFrontContact
-  driver: {fileID: 5951774556474226546}
 --- !u!1 &8354821037397460824
 GameObject:
   m_ObjectHideFlags: 0

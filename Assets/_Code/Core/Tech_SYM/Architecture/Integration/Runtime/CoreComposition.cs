@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cooked.Audio;
 using Cooked.Chase;
 using Cooked.Cinematics;
@@ -7,44 +8,58 @@ using Cooked.Dialogue;
 using Cooked.Foundation;
 using Cooked.Level;
 using Cooked.Session;
+using Unity.Cinemachine;
 using UnityEngine;
 namespace Cooked.Integration
 {
     public sealed class CoreComposition : MonoBehaviour
     {
-        [Tooltip("세션 플레이어를 생성·복원·제거할 SessionActorHost입니다. 씬에 직접 배치한 중복 플레이어 대신 이 담당을 사용합니다.")]
+        [Tooltip("통합 플레이어 프리팹을 생성·복원·제거할 Core의 SessionActorHost입니다.")]
         [SerializeField] private SessionActorHost actor;
-        [Tooltip("대화 문장 진행을 갱신하는 담당입니다. 해당 Core의 DialogueDriver를 연결하세요.")]
-        [SerializeField] private DialogueDriver dialogueDriver;
-        [Tooltip("현재 대화와 로그를 보여 줄 화면입니다. 해당 Core의 DialogueView를 연결하세요.")]
+        [Tooltip("현재 대화와 로그를 표시할 Core의 DialogueView입니다.")]
         [SerializeField] private DialogueView dialogueView;
-        [Tooltip("오프닝·엔딩 재생을 담당하는 CinematicHost입니다.")]
+        [Tooltip("오프닝·엔딩의 한 원화와 문구 재생을 담당할 CinematicHost입니다.")]
         [SerializeField] private CinematicHost cinematic;
-        [Tooltip("직접 씬 진입 때 사용할 체크포인트·조각·해금 능력 설정 자산입니다.")]
+        [Tooltip("직접 Stage 진입의 시작 지점·조각·이전 진행 능력을 지정한 설정 자산입니다. 저장 데이터가 아닙니다.")]
         [SerializeField] private IntegrationEntrySettings entries;
-        [Tooltip("Core HUD와 월드 안내를 세션 상태에 연결하는 담당입니다.")]
+        [Tooltip("Core HUD와 한 월드 F 안내를 세션 상태에 연결할 담당입니다.")]
         [SerializeField] private CoreUiBinding ui;
-        [Tooltip("트리거 구간별 카메라와 이동축 전환을 담당하는 컴포넌트입니다.")]
+        [Tooltip("구간 요청과 실제 Brain 완료를 확인할 Core의 LevelCameraService입니다.")]
         [SerializeField] private LevelCameraService cameraService;
-        [Tooltip("마지막 구간의 추격 무리를 갱신하고 포획을 전달할 담당입니다.")]
+        [Tooltip("추격 무리와 실제 포획을 갱신할 Core의 ChaseRuntimeDriver입니다.")]
         [SerializeField] private ChaseRuntimeDriver chase;
+        [Tooltip("Core에 유지할 Side 가상 카메라입니다. App 출력의 HMS 담당이 우선순위를 결정합니다.")]
+        [SerializeField] private CinemachineCamera sideCamera;
+        [Tooltip("Core에 유지할 Quarter 가상 카메라입니다. Side와 다른 가상 카메라를 연결하세요.")]
+        [SerializeField] private CinemachineCamera quarterCamera;
         private GameSessionRuntime runtime;
         private CoreWorldBinding world;
-        public void Configure(SessionActorHost actorHost, DialogueDriver driver, DialogueView dialogue,
-            CinematicHost cinematicHost, IntegrationEntrySettings entrySettings, CoreUiBinding uiBinding,
-            LevelCameraService levelCamera, ChaseRuntimeDriver chaseDriver)
-        { actor=actorHost; dialogueDriver=driver; dialogueView=dialogue; cinematic=cinematicHost; entries=entrySettings;
-          ui=uiBinding; cameraService=levelCamera; chase=chaseDriver; }
-        public GameSessionRuntime CreateSession(ServiceLocator app, SceneCatalog catalog, AudioFlowBinding audioFlow)
+        private bool releasing;
+        public void Configure(SessionActorHost actorHost, DialogueView dialogue, CinematicHost cinematicHost,
+            IntegrationEntrySettings entrySettings, CoreUiBinding uiBinding, LevelCameraService levelCamera,
+            ChaseRuntimeDriver chaseDriver, CinemachineCamera side, CinemachineCamera quarter)
         {
-            if (runtime != null) throw new InvalidOperationException("Core already owns a session.");
+            actor = actorHost; dialogueView = dialogue; cinematic = cinematicHost; entries = entrySettings;
+            ui = uiBinding; cameraService = levelCamera; chase = chaseDriver; sideCamera = side; quarterCamera = quarter;
+        }
+        public GameSessionRuntime CreateSession(ServiceLocator app, SceneCatalog catalog, AudioFlowBinding audioFlow,
+            Camera output, CinemachineBrain brain, PlayerCameraController controller)
+        {
+            if (runtime != null || world != null || releasing) throw new InvalidOperationException("Core still owns a session or unfinished release.");
+            if (actor == null || dialogueView == null || cinematic == null || entries == null || ui == null ||
+                cameraService == null || chase == null || sideCamera == null || quarterCamera == null || sideCamera == quarterCamera)
+                throw new InvalidOperationException("Core composition references are incomplete.");
             try
             {
                 var cinematics = cinematic.Initialize(app.Get<IGameplayControlService>());
-                runtime = new GameSessionRuntime(app, catalog, actor, dialogueDriver, dialogueView, cinematics, entries);
+                runtime = new GameSessionRuntime(app, catalog, actor, dialogueView, cinematics, entries);
                 ui.Bind(runtime);
                 world = new CoreWorldBinding(runtime, cameraService, chase, ui, app.Get<IGameFlowService>(),
-                    app.Get<IGameplayControlService>(), app.Get<IGameEventBus>(), app.Get<IAudioService>(), audioFlow);
+                    app.Get<IGameplayControlService>(), app.Get<IGameEventBus>(), app.Get<IAudioService>(), audioFlow,
+                    app.Get<ISceneService>(), output, brain, controller, sideCamera, quarterCamera);
+                runtime.BindStageLifecycle(world.PrepareStage, world.ResetAbilityNotices);
+                runtime.BindCheckpointPair(id => ((StageService)runtime.Stages.Require(id)).CheckpointPair);
+                runtime.BindActorViewReadiness(() => cameraService.IsViewReady);
                 return runtime;
             }
             catch (Exception error)
@@ -53,16 +68,29 @@ namespace Cooked.Integration
                 throw;
             }
         }
+        // May be retried with the same disposed runtime after partial cleanup fails.
+        public void ReleaseSession(GameSessionRuntime expected)
+        {
+            if (expected == null) throw new ArgumentNullException(nameof(expected));
+            if (runtime != null && !ReferenceEquals(runtime, expected)) throw new InvalidOperationException("Cannot release another Core session.");
+            Cleanup();
+        }
         private void Cleanup()
         {
-            var errors = new System.Collections.Generic.List<Exception>();
-            void Attempt(Action action) { try { action(); } catch (Exception e) { errors.Add(e); } }
-            Attempt(() => world?.Dispose()); world=null;
-            Attempt(() => { if (ui != null) ui.Unbind(); });
-            Attempt(() => runtime?.Dispose()); runtime=null;
-            Attempt(() => { if (cinematic != null) cinematic.Shutdown(); });
-            if (errors.Count > 0) throw new AggregateException("Core composition cleanup failed.", errors);
+            if (releasing) throw new InvalidOperationException("Reentrant Core release.");
+            releasing = true; var errors = new List<Exception>();
+            try
+            {
+                SessionCleanup.Attempt(errors, () => { world?.Dispose(); world = null; });
+                SessionCleanup.Attempt(errors, () => { if (ui != null) ui.Unbind(); });
+                SessionCleanup.Attempt(errors, () => runtime?.Dispose());
+                SessionCleanup.Attempt(errors, () => { if (actor != null) actor.ReleaseSession(); });
+                SessionCleanup.Attempt(errors, () => { if (cinematic != null) cinematic.Shutdown(); });
+                if (errors.Count == 0) runtime = null;
+            }
+            finally { releasing = false; }
+            SessionCleanup.ThrowIfAny(errors, "Core composition cleanup failed.");
         }
-        private void OnDestroy() { try { Cleanup(); } catch (Exception e) { Debug.LogException(e, this); } }
+        private void OnDestroy() { try { Cleanup(); } catch (Exception error) { Debug.LogException(error, this); } }
     }
 }

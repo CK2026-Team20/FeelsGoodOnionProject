@@ -8,8 +8,6 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     /// <summary>씬 안의 화면 메모 생성·연결·해제 담당. 월드 프롬프트와는 무관하다.</summary>
     public sealed class MemoUIController : MonoBehaviour, IInteractionOverlay
     {
-        [Tooltip("이전 플레이어 연결 참조입니다. 현재 입력 판정은 PlayerInteractionService가 담당하므로 사용하지 않습니다. T9 자산 이관 후 제거합니다.")]
-        [SerializeField] private PlayerFacade player;
         [Tooltip("메모 본문을 생성할 스크린 공간 Canvas 안의 RectTransform입니다. World Space Canvas는 사용할 수 없습니다.")]
         [SerializeField] private RectTransform screenRoot;
         [Tooltip("메모 본문 화면 프리팹입니다. 이미지·크기 표현을 연결하며 마우스 닫기 버튼 없이 F로만 닫습니다.")]

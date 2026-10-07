@@ -20,8 +20,8 @@ MonoBehaviour:
   - stageId: 03_2_Stage
     checkpointId: S2_ENTRY
     fragments: 5
-    abilities: 000000000200000001000000i
+    abilities: 0000000001000000i
   - stageId: 03_3_Stage
     checkpointId: S3_ENTRY
     fragments: 5
-    abilities: 000000000200000001000000i
+    abilities: 0000000001000000i

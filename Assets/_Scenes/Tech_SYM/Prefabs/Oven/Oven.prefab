@@ -538,6 +538,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6336109792527560963, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: physicsBody
+      value: 
+      objectReference: {fileID: 3411879919405098741}
+    - target: {fileID: 6336109792527560963, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: platformContacts
+      value: 
+      objectReference: {fileID: 6621987438402697881}
+    - target: {fileID: 8114601354635943753, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: moveDuration
+      value: 0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 8114601354635943753, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
       propertyPath: travelOffset.z
       value: -2
@@ -547,11 +559,27 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+--- !u!54 &3411879919405098741 stripped
+Rigidbody:
+  m_CorrespondingSourceObject: {fileID: 3460294647755023750, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+  m_PrefabInstance: {fileID: 2259682296933270387}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6155454920699124969 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5345931845672492954, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
   m_PrefabInstance: {fileID: 2259682296933270387}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &6621987438402697881 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4952278909961189866, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+  m_PrefabInstance: {fileID: 2259682296933270387}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67128e709f098e24e836e7cb99380c7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PlatformContacts
 --- !u!1001 &2621250931516422095
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -604,6 +632,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6336109792527560963, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: physicsBody
+      value: 
+      objectReference: {fileID: 1469829839131054665}
+    - target: {fileID: 6336109792527560963, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: platformContacts
+      value: 
+      objectReference: {fileID: 6979043111428656677}
+    - target: {fileID: 8114601354635943753, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: moveDuration
+      value: 0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 8114601354635943753, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
       propertyPath: travelOffset.z
       value: -1
@@ -613,6 +653,22 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+--- !u!54 &1469829839131054665 stripped
+Rigidbody:
+  m_CorrespondingSourceObject: {fileID: 3460294647755023750, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+  m_PrefabInstance: {fileID: 2621250931516422095}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6979043111428656677 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4952278909961189866, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+  m_PrefabInstance: {fileID: 2621250931516422095}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67128e709f098e24e836e7cb99380c7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PlatformContacts
 --- !u!4 &7948885662457096277 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5345931845672492954, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
@@ -670,6 +726,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6336109792527560963, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: physicsBody
+      value: 
+      objectReference: {fileID: 9195416915604872536}
+    - target: {fileID: 6336109792527560963, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: platformContacts
+      value: 
+      objectReference: {fileID: 802703132911305012}
+    - target: {fileID: 8114601354635943753, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+      propertyPath: moveDuration
+      value: 0.5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -678,5 +746,21 @@ PrefabInstance:
 --- !u!4 &407947271274063684 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5345931845672492954, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+  m_PrefabInstance: {fileID: 5735828154902165726}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &802703132911305012 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4952278909961189866, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
+  m_PrefabInstance: {fileID: 5735828154902165726}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67128e709f098e24e836e7cb99380c7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PlatformContacts
+--- !u!54 &9195416915604872536 stripped
+Rigidbody:
+  m_CorrespondingSourceObject: {fileID: 3460294647755023750, guid: 7c351f9fbd926ca40b5ec12389f04674, type: 3}
   m_PrefabInstance: {fileID: 5735828154902165726}
   m_PrefabAsset: {fileID: 0}

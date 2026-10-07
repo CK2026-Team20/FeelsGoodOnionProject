@@ -13,7 +13,7 @@ namespace Cooked.Audio.Editor
         private static readonly string[] Music = { AudioCueIds.Title, AudioCueIds.Opening, AudioCueIds.Stage1,
             AudioCueIds.Stage2, AudioCueIds.Stage3, AudioCueIds.Chase, AudioCueIds.Ending };
         private static readonly string[] Sfx = { AudioCueIds.Click, AudioCueIds.Pickup, AudioCueIds.Form,
-            AudioCueIds.Tear, AudioCueIds.Shell, AudioCueIds.Checkpoint, AudioCueIds.Unlock, AudioCueIds.Death, AudioCueIds.Escape };
+            AudioCueIds.Tear, AudioCueIds.Checkpoint, AudioCueIds.Unlock, AudioCueIds.Death };
 
         [MenuItem("Cooked/Audio/Build Prototype Audio Assets")]
         public static void Build()
@@ -27,7 +27,7 @@ namespace Cooked.Audio.Editor
             {
                 string id = Sfx[i];
                 var kind = id == AudioCueIds.Click ? AudioCueKind.UI :
-                    id == AudioCueIds.Death || id == AudioCueIds.Escape ? AudioCueKind.Transition : AudioCueKind.World;
+                    id == AudioCueIds.Death ? AudioCueKind.Transition : AudioCueKind.World;
                 entries[Music.Length + i] = Load(id, kind, kind == AudioCueKind.World ? 0.35f : 0.5f);
             }
             EnsureFolder(AssetRoot + "/Data"); EnsureFolder(AssetRoot + "/Prefabs");
@@ -57,7 +57,7 @@ namespace Cooked.Audio.Editor
                 host.ConfigureForAuthoring(catalog, sources);
                 PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
                 AssetDatabase.SaveAssets();
-                Debug.Log("Cooked Audio built: 16 clips, 10 sources, no AudioListener. " + PrefabPath);
+                Debug.Log("Cooked Audio built: " + entries.Length + " cues, 10 sources, no AudioListener. " + PrefabPath);
             }
             finally { UnityEngine.Object.DestroyImmediate(root); }
         }

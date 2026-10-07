@@ -95,10 +95,15 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             CancelMotion();
             if (body == null) return;
-            body.position = body.transform.parent != null
+            Vector3 restoredPosition = body.transform.parent != null
                 ? body.transform.parent.TransformPoint(authoredLocalPosition) : authoredLocalPosition;
-            body.rotation = body.transform.parent != null
+            Quaternion restoredRotation = body.transform.parent != null
                 ? body.transform.parent.rotation * authoredLocalRotation : authoredLocalRotation;
+            // Interpolation can retain the old render Transform after a Rigidbody teleport.
+            // Stage reactivation/SyncTransforms must see the same restored pose immediately.
+            body.transform.SetPositionAndRotation(restoredPosition, restoredRotation);
+            body.position = restoredPosition;
+            body.rotation = restoredRotation;
             effectOrigin = body.position;
             contacts?.ResetForRetry();
         }

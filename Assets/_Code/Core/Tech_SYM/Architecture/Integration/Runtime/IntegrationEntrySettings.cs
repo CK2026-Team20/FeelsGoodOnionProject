@@ -18,7 +18,7 @@ namespace Cooked.Integration
             [SerializeField] private string checkpointId;
             [Tooltip("직접 진입 시 보유할 눈물 조각 수입니다(0~5개). 0은 조각 없음이며 5개를 모아야 눈물을 사용할 수 있습니다.")]
             [SerializeField, Range(0, 5)] private int fragments;
-            [Tooltip("직접 진입 시 이미 해금할 능력 목록입니다. 출처는 진입 Stage이며 사망 시 다시 잠깁니다. 비어 있으면 해금 트리거 접촉까지 잠깁니다.")]
+            [Tooltip("직접 진입 시 이미 해금할 능력 목록입니다. 출처는 등록 Stage 순서에서 실제 해금 구간을 가진 이전 Stage로 정하며 이전 진행은 사망에도 유지됩니다. 비어 있으면 해금 트리거 접촉까지 잠깁니다.")]
             [SerializeField] private AbilityId[] abilities = Array.Empty<AbilityId>();
             public string StageId => stageId;
             public string CheckpointId => checkpointId;
@@ -37,7 +37,7 @@ namespace Cooked.Integration
                 if (fragments < 0 || fragments > 5) throw new InvalidOperationException("Tear fragments must be between zero and five.");
                 if (abilities == null) throw new InvalidOperationException("Entry abilities must be specified.");
                 foreach (var ability in abilities)
-                    if (!Enum.IsDefined(typeof(AbilityId), ability)) throw new InvalidOperationException("Invalid entry ability.");
+                    if (ability != AbilityId.FormChange && ability != AbilityId.Tear) throw new InvalidOperationException("Invalid entry ability.");
             }
         }
         [Tooltip("스테이지 직접 진입용 초기 설정 목록입니다. 각 Stage Id는 중복 없이 한 번만 등록해야 합니다.")]

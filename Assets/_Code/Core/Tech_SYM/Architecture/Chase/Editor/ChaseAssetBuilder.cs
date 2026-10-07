@@ -94,10 +94,6 @@ namespace Cooked.Chase.Editor
             }
         }
 
-        [Obsolete("Path-gap capture is connected by T9; legacy FrontContact is not authored.")]
-        public static void ConfigureFront(GameObject root) => throw new InvalidOperationException("Do not author legacy FrontContact; use T9 path-gap capture.");
-        [Obsolete("No second correction pass is required.")]
-        public static void ApplyFront() => throw new InvalidOperationException("Do not apply legacy FrontContact to current assets.");
         private static GameObject Child(Transform parent, string name)
         { var child = new GameObject(name); child.transform.SetParent(parent, false); return child; }
         private static Bounds CombinedBounds(Renderer[] renderers)

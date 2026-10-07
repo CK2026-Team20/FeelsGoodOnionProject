@@ -4,19 +4,6 @@ using UnityEngine;
 
 namespace Cooked.Cinematics
 {
-    // INERT compile declarations only: ArtworkTrack/Mixer and FrameBridge remain until T9
-    // transfers native consumers and deletes those sources. No runtime data or publication.
-    [Obsolete("Inert Timeline compile declaration. Remove with ArtworkTrack/FrameBridge in T9.")]
-    public readonly struct CinematicPanel
-    {
-        public CinematicPanel(Texture2D artwork, float scale, float opacity) { }
-    }
-    [Obsolete("Inert Timeline compile declaration. Remove with ArtworkTrack/FrameBridge in T9.")]
-    public readonly struct CinematicFrame
-    {
-        public CinematicFrame(CinematicPanel a, CinematicPanel b, CinematicPanel c, CinematicPanel d) { }
-    }
-
     // Atomic service projection. No playback clock or independent progression.
     public sealed class CinematicPresentationState
     {
@@ -27,8 +14,6 @@ namespace Cooked.Cinematics
         public bool CanSkip { get; private set; }
         internal long Version { get; private set; }
         public event Action Changed;
-        [Obsolete("Inert FrameBridge sink. Remove with the retired sources in T9.")]
-        internal void SetFrame(CinematicFrame frame) { }
 
         internal void Publish(CinematicCut cut, int index, bool visible, bool canSkip)
         {

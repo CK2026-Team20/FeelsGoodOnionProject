@@ -125,8 +125,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eaacfa6dad0856e40958c6d41ece5d12, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PeriodicPlatform
+  supportCollider: {fileID: 8330936707150099550}
   lifetime: 5
   hiddenSeconds: 2
   warningSeconds: 3
+  initialPhaseSeconds: 0
   blinkCount: 8
   blinkAcceleration: 2

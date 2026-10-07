@@ -31,8 +31,7 @@ namespace Cooked.Level.Editor
         private static StageService stage;
         private static Transform root;
 
-        // The old POPO token is an authored compatibility value only. Main/T9 must supply a
-        // real final dialogue code and table rows before Play; the current table has no final group.
+        // The final group is supplied by main's approved dialogue table import.
         public static string FinalDialogueCode { get; set; } = "POPO";
         public static GameObject CreatePhysicalRoot(string name, Transform parent, Vector3 position, Vector3 size)
         {
@@ -81,31 +80,41 @@ namespace Cooked.Level.Editor
         }
         public static void ConfigureFragment(GameObject instance)
         {
-            bool wasActive=instance.activeSelf; instance.SetActive(false);
-            foreach(var old in instance.GetComponentsInChildren<MonoBehaviour>(true))
-                if(old.GetType().Name=="LevelTearFragment") Object.DestroyImmediate(old);
-            var pickups=instance.GetComponentsInChildren<TearFragment>(true);
-            if(pickups.Length!=1) throw new InvalidOperationException("One original reusable TearFragment sensor is required.");
-            Set(pickups[0],"pickupRoot",instance); pickups[0].enabled=true;
-            // Move rotation responsibility to the item's logic root while retaining its actual Visual target.
-            foreach(var rotation in instance.GetComponentsInChildren<ObjectRotation>(true))
-            {
-                if(rotation.gameObject==instance) continue;
-                var target=rotation.transform; var data=new SerializedObject(rotation);
-                float speed=data.FindProperty("degreesPerSecond").floatValue;
-                Object.DestroyImmediate(rotation);
-                var rootRotation=instance.GetComponent<ObjectRotation>();
-                if(rootRotation==null) rootRotation=instance.AddComponent<ObjectRotation>();
-                Set(rootRotation,"rotationTarget",target); Set(rootRotation,"degreesPerSecond",speed);
-            }
-            // FloatingMotion cannot target a child with the current API; T9 transfers that optional
-            // display-only bob before deleting legacy sources. Never leave scripts under Visual.
-            foreach(var bob in instance.GetComponentsInChildren<MonoBehaviour>(true))
-                if(bob.GetType().Name=="FloatingMotion") Object.DestroyImmediate(bob);
-            foreach(var visual in instance.GetComponentsInChildren<Transform>(true))
-                if(visual.name=="Visual" || visual.name=="VisualRoot")
-                    if(visual.GetComponentsInChildren<MonoBehaviour>(true).Length!=0) throw new InvalidOperationException("Fragment Visual still contains scripts requiring explicit transfer.");
-            instance.SetActive(wasActive);
+            AuthoringOutputScope.RequireEditMode();
+            ConfigureFragmentContents(instance);
+        }
+        // Outer Build entry has already protected pre-existing dirty scenes. A newly authored
+        // scene becomes dirty as its objects are created; it must not re-enter that outer gate.
+        internal static void ConfigureAuthoredFragment(GameObject instance, Scene authoredScene)
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating)
+                throw new InvalidOperationException("Stable Edit mode is required for authoring.");
+            if (instance == null || !authoredScene.IsValid() || !authoredScene.isLoaded || instance.scene != authoredScene)
+                throw new InvalidOperationException("Fragment must belong to the caller's in-progress authored scene.");
+            ConfigureFragmentContents(instance);
+        }
+        private static void ConfigureFragmentContents(GameObject instance)
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            var pickups = instance.GetComponentsInChildren<TearFragment>(true);
+            if (pickups.Length != 1) throw new InvalidOperationException("One retained TearFragment sensor is required.");
+            var visual = instance.transform.Find("Render") ?? instance.transform.Find("Visual") ?? instance.transform.Find("VisualRoot");
+            if (visual == null) throw new InvalidOperationException("Explicit fragment Render/Visual child missing.");
+            foreach (var script in instance.GetComponentsInChildren<MonoBehaviour>(true))
+                if (script == null) throw new InvalidOperationException("Fragment contains Missing Script.");
+            if (visual.GetComponentsInChildren<Collider>(true).Length != 0 || visual.GetComponentsInChildren<Rigidbody>(true).Length != 0)
+                throw new InvalidOperationException("Fragment visual must remain physics-free.");
+            if (visual.GetComponentsInChildren<MonoBehaviour>(true).Length != 0)
+                throw new InvalidOperationException("Fragment visual must remain script-free.");
+            // Preserve the settings on the migrated source sensor, including authored .48m bob.
+            var data = new SerializedObject(pickups[0]);
+            float rotationSpeed = data.FindProperty("rotationDegreesPerSecond").floatValue;
+            float height = data.FindProperty("bobHeight").floatValue;
+            float seconds = data.FindProperty("bobSeconds").floatValue;
+            if (!float.IsFinite(rotationSpeed) || rotationSpeed < 0 || !float.IsFinite(height) || !float.IsFinite(seconds) || seconds < .02f)
+                throw new InvalidOperationException("Fragment display settings are invalid.");
+            pickups[0].Configure(instance, visual, rotationSpeed, height, seconds);
+            pickups[0].enabled = true;
         }
         [MenuItem("Cooked/Level/Build Approved Prototype Assets")]
         public static void Build()
@@ -407,8 +416,6 @@ namespace Cooked.Level.Editor
             Set(gate,"blocker",collider); Set(stage,"chaseRetreatGate",gate); Set(stage,"chaseStartProgress",18f);
             blockerObject.SetActive(false);
         }
-        [Obsolete("Existing asset migration belongs to main/T9; primary authoring has final checkpoints.")]
-        public static void UpdateChaseAssets() => throw new InvalidOperationException("Use explicit main/T9 native migration; do not regenerate historical checkpoints.");
         private static void BuildOven()
         {
             var oven = PrefabInstance("KitchenOven",root,new Vector3(56,0,-9)); oven.name = "Oven";
@@ -447,7 +454,7 @@ namespace Cooked.Level.Editor
             var prefab=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Scenes/Tech_SYM/Prefabs/TearFragment.prefab");
             if(prefab==null) throw new InvalidOperationException("Missing TearFragment prefab.");
             var instance=(GameObject)PrefabUtility.InstantiatePrefab(prefab); instance.transform.SetParent(root,false); instance.transform.position=position;
-            ConfigureFragment(instance);
+            ConfigureAuthoredFragment(instance, root.gameObject.scene);
         }
         private static void Checkpoint(string id,Vector3 foot)
         {

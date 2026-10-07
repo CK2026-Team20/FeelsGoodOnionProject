@@ -33,7 +33,6 @@ namespace Cooked.Dialogue.Editor
                     // Separate this row from Bootstrap's global Options at the top-right.
                     var auto = LabeledButton("Auto", root.transform, font, new Vector2(0.50f, 0.84f), new Vector2(0.64f, 0.905f), "자동 OFF", out var autoLabel);
                     var history = LabeledButton("History", root.transform, font, new Vector2(0.66f, 0.84f), new Vector2(0.80f, 0.905f), "이전 기록", out _);
-                    // T6 obsolete skip argument remains null until T9 removes the signature slot.
                     GameObject log = Rect("HistoryOverlay", root.transform, Vector2.zero, Vector2.one);
                     var logGroup = log.AddComponent<CanvasGroup>();
                     var background = log.AddComponent<UnityEngine.UI.Image>();
@@ -67,7 +66,7 @@ namespace Cooked.Dialogue.Editor
                     scroll.viewport = (RectTransform)viewport.transform;
                     scroll.content = contentRect;
                     view.Configure(group, logGroup, name, body, autoLabel, historyText, next.gameObject,
-                        panel, auto, history, null, close, scroll);
+                        panel, auto, history, close, scroll);
                     group.alpha = 0; group.blocksRaycasts = group.interactable = false;
                     logGroup.alpha = 0; logGroup.blocksRaycasts = logGroup.interactable = false;
                     GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);

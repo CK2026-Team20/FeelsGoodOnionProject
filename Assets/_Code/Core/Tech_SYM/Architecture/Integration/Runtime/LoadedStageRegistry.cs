@@ -47,6 +47,26 @@ namespace Cooked.Integration
             if (stage is UnityEngine.Object obj && obj == null) throw new InvalidOperationException("Stage registry contains a destroyed component: " + stageId);
             return stage;
         }
+        // Presets mean progression, not a second saved origin. Resolve from authored unlocks
+        // in catalog order so direct Stage2/3 preserve prior progress on retry.
+        public string ResolvePresetOrigin(string entryId, AbilityId ability)
+        {
+            foreach (string path in catalog.StagePaths)
+            {
+                string id = Path.GetFileNameWithoutExtension(path);
+                var stage = Require(id) as Cooked.Level.StageService;
+                if (stage == null) throw new InvalidOperationException("Unexpected Stage implementation.");
+                if (stage.HasAbilityUnlock(ability)) return id;
+                if (id == entryId) break;
+            }
+            throw new InvalidOperationException("Preset has no reachable authored progression origin: " + entryId + "/" + ability);
+        }
+        public string ScenePath(string stageId)
+        {
+            foreach (string path in catalog.StagePaths)
+                if (Path.GetFileNameWithoutExtension(path) == stageId) return path;
+            throw new InvalidOperationException("Unregistered Stage: " + stageId);
+        }
         public void Clear() => stages.Clear();
     }
 }

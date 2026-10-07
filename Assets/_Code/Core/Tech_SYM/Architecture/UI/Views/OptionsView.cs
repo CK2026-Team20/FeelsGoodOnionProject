@@ -10,8 +10,6 @@ namespace Cooked.UI
         private InputAction escapeAction;
         [Tooltip("옵션을 닫는 버튼입니다. 메모 닫기 버튼이 아닙니다.")]
         [SerializeField] private UnityEngine.UI.Button close;
-        [Tooltip("이전 다시하기 버튼 참조입니다. 제품에서는 숨깁니다. T9 자산 이관 후 제거합니다.")]
-        [SerializeField] private UnityEngine.UI.Button retry;
         [Tooltip("현재 세션을 종료하고 타이틀로 이동할 버튼입니다.")]
         [SerializeField] private UnityEngine.UI.Button title;
         [Tooltip("전체 음량을 조절할 Slider입니다. 값 0~1을 사용하며 0은 무음입니다.")]
@@ -25,9 +23,9 @@ namespace Cooked.UI
         [Tooltip("설정 저장 실패 등 옵션 오류를 표시할 TMP 텍스트입니다.")]
         [SerializeField] private TMP_Text error;
         public void Configure(CanvasGroup group, UnityEngine.UI.Button closeButton,
-            UnityEngine.UI.Button retryButton, UnityEngine.UI.Button titleButton, UnityEngine.UI.Slider masterSlider,
+            UnityEngine.UI.Button titleButton, UnityEngine.UI.Slider masterSlider,
             UnityEngine.UI.Slider musicSlider, UnityEngine.UI.Slider sfxSlider, TMP_Text volumeText, TMP_Text errorText)
-        { modal = group; close = closeButton; retry = retryButton; title = titleButton;
+        { modal = group; close = closeButton; title = titleButton;
           master = masterSlider; music = musicSlider; sfx = sfxSlider; values = volumeText; error = errorText; }
         protected override void ConnectInputs()
         {
@@ -51,7 +49,6 @@ namespace Cooked.UI
         {
             if (modal == null) return; bool visible = Model != null && Model.IsOpen;
             modal.alpha = visible ? 1 : 0; modal.interactable = visible; modal.blocksRaycasts = visible;
-            if (retry != null) retry.gameObject.SetActive(false);
             if (title != null) title.gameObject.SetActive(visible && Model.CanNavigate);
             if (Model == null) return;
             master.SetValueWithoutNotify(Model.Master); music.SetValueWithoutNotify(Model.Music); sfx.SetValueWithoutNotify(Model.Sfx);

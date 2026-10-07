@@ -118,6 +118,7 @@ namespace Cooked.Foundation
         }
         private IEnumerator CompleteSequence(Func<CancellationToken, IEnumerator> sequence, CancellationToken token, OperationResult result)
         {
+            token.ThrowIfCancellationRequested();
             yield return sequence(token);
             token.ThrowIfCancellationRequested();
             result.Succeed();
@@ -245,7 +246,9 @@ namespace Cooked.Foundation
             foreach (string path in catalog.StagePaths)
             {
                 if (!scenes.IsLoaded(path)) yield return Step(r => scenes.LoadAdditive(path, token, r), token);
-                scenes.SetRootsActive(path, path == selectedStagePath);
+                // Resident geometry may still be from the previous round. PrepareStage resets
+                // inactive owners; CoreWorldBinding enables only the prepared selected Stage.
+                scenes.SetRootsActive(path, false);
             }
         }
         private void HidePersistentScenes()
@@ -286,6 +289,7 @@ namespace Cooked.Foundation
         }
         private void Publish(FlowState state, bool busy, string error)
         {
+            if (disposed) return;
             Snapshot = new FlowSnapshot(state, busy, revision, error);
             log($"Flow revision {revision}: {state}, busy={busy}" + (error == null ? "" : $", error={error}"));
             var listeners = Changed;

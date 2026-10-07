@@ -336,7 +336,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1121413730285781510}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0.3
   m_Interactable: 0
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
@@ -494,7 +494,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: F
+  m_text: E
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: b9b2146d344d4ea44b4c9d159868f715, type: 2}
   m_sharedMaterial: {fileID: -3535775680346082586, guid: b9b2146d344d4ea44b4c9d159868f715, type: 2}
@@ -756,7 +756,6 @@ MonoBehaviour:
   group: {fileID: 2321623918734234898}
   health: {fileID: 0}
   fragments: {fileID: 0}
-  checkpoint: {fileID: 0}
   abilities: {fileID: 0}
   hearts:
   - {fileID: 7744607675494385696}
@@ -764,7 +763,6 @@ MonoBehaviour:
   - {fileID: 9004163343407192870}
   formCard: {fileID: 7905041712406693900}
   tearCard: {fileID: 2788430000230319437}
-  recoverCard: {fileID: 0}
   fragmentCount: {fileID: 5128762306435252830}
 --- !u!114 &3139531993888988413
 MonoBehaviour:
@@ -979,7 +977,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5095938334580924934}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0.3
   m_Interactable: 0
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0

@@ -57,7 +57,7 @@ namespace Cooked.Integration
             var current = RequireSession();
             current.SpawnActorAtCheckpoint();
             float deadline = Time.realtimeSinceStartup + 10;
-            while (current.ActorHost.CameraRig != null && !current.ActorHost.CameraRig.IsReady)
+            while (!current.ActorHost.ActorModesReady)
             {
                 token.ThrowIfCancellationRequested();
                 if (Time.realtimeSinceStartup > deadline) throw new TimeoutException("HMS Actor initialization timed out.");
@@ -72,7 +72,6 @@ namespace Cooked.Integration
                 yield return null;
             }
             token.ThrowIfCancellationRequested();
-            current.ActorHost.CameraRig.SetOutputVisible(current.GameplayVisible);
             // Retry retains GameplayVisible=true, so no visibility-change event is required to fire.
             PublishGameplayOutput();
             result.Succeed();
@@ -124,15 +123,11 @@ namespace Cooked.Integration
         }
         private void OnGameplayVisibilityChanged(bool visible)
         {
-            // A requested view cannot become actual output before HMS and Brain initialization finish.
-            if (visible && session != null && !session.ActorViewReady)
-                session.ActorHost.CameraRig?.SetOutputVisible(false);
             PublishGameplayOutput();
         }
         private void OnActorRemoving()
         {
-            // Hide the old output before fallback resumes, including the nested despawn iterator gap.
-            session?.ActorHost.CameraRig?.SetOutputVisible(false);
+            // Output remains App-owned; this event reports only gameplay readiness.
             GameplayOutputChanged?.Invoke(false);
         }
         private void PublishGameplayOutput()

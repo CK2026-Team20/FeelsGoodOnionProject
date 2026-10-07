@@ -167,6 +167,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5d6076745717874cae442cea974fa60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.KinematicPlatformMotion
+  physicsBody: {fileID: 8266936439394539928}
+  platformContacts: {fileID: 357815046757884504}
 --- !u!114 &4627283599053478486
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Cooked.Chase
 {
     public enum ChaseState { Ready, Running, Caught, Stopped, Faulted, Disposed }
-    public enum ChaseStopReason { None, FlowTransition, ActorUnavailable, OwnerDisabled, OwnerDisposed, Error }
+    public enum ChaseStopReason { None, FlowTransition, ActorUnavailable, OwnerDisabled, OwnerDisposed, Error, Arrival }
 
     public readonly struct ChaseSnapshot
     {
@@ -51,13 +51,13 @@ namespace Cooked.Chase
             float playerProgress = path.Project(actorPosition);
             // Analytical integration of constant speed: consumes the entire dt, no discarded hitch time.
             swarmProgress = Math.Min(path.Length, swarmProgress + (double)settings.Speed * deltaTime);
-            // Beyond the route end is not a substitute for Level's rescue/escape acceptance.
+            // Reaching the route end cannot substitute for the Level's own Poppo arrival contact.
             playerProgress = Math.Min(path.Length, playerProgress);
             SetSnapshot(ChaseState.Running, ChaseStopReason.None, playerProgress);
         }
         public bool Capture()
         {
-            if (Snapshot.State != ChaseState.Running) return false;
+            if (Snapshot.State != ChaseState.Running || Snapshot.Gap > settings.CaptureGap) return false;
             Snapshot = new ChaseSnapshot(ChaseState.Caught, ChaseStopReason.None, Snapshot.Gap, Snapshot.SwarmProgress, Snapshot.SwarmPosition);
             return true;
         }

@@ -8,6 +8,7 @@ using Cooked.Session;
 using Cooked.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Cinemachine;
 namespace Cooked.Integration
 {
     [DefaultExecutionOrder(-29000)]
@@ -21,17 +22,22 @@ namespace Cooked.Integration
         [SerializeField] private GlobalUiRoot ui;
         [Tooltip("앱의 음악·효과음을 재생할 AudioRuntimeHost입니다.")]
         [SerializeField] private AudioRuntimeHost audio;
-        [Tooltip("부트·타이틀·연출 화면을 출력할 앱의 Camera입니다. 이 루트 아래 BootstrapCamera를 연결하고 같은 오브젝트에 AudioListener 하나를 두세요. 준비된 플레이어 화면이 나오면 이 Camera와 AudioListener를 함께 끕니다.")]
+        [Tooltip("모든 화면을 출력하는 앱의 단일 Camera입니다. 같은 오브젝트의 Brain·AudioListener·분리 리그 HMS 카메라 담당을 연결하고 앱 종료까지 켜 둡니다.")]
         [SerializeField] private Camera presentationCamera;
         private ServiceLocator services;
         private SceneCatalog catalog;
         private OptionsService options;
         private GameRuntimeService runtime;
+        private CoreComposition loadedCore;
+        private bool cleaning;
         private AudioListener presentationListener;
         private bool subscribed;
         public ServiceLocator Services => services;
-        public void Configure(Bootstrapper bootstrapper, ArchitectureInstallation config, GlobalUiRoot globalUi, AudioRuntimeHost sound, Camera fallbackCamera)
-        { bootstrap = bootstrapper; installation = config; ui = globalUi; audio = sound; presentationCamera = fallbackCamera; }
+        public Camera OutputCamera => presentationCamera;
+        public CinemachineBrain OutputBrain { get; private set; }
+        public PlayerCameraController OutputController { get; private set; }
+        public void Configure(Bootstrapper bootstrapper, ArchitectureInstallation config, GlobalUiRoot globalUi, AudioRuntimeHost sound, Camera outputCamera)
+        { bootstrap = bootstrapper; installation = config; ui = globalUi; audio = sound; presentationCamera = outputCamera; }
         private void Awake()
         {
             try
@@ -44,6 +50,10 @@ namespace Cooked.Integration
                 if (listeners.Length != 1)
                     throw new InvalidOperationException("App presentation Camera requires one AudioListener on the same object.");
                 presentationListener = listeners[0];
+                OutputBrain = presentationCamera.GetComponent<CinemachineBrain>();
+                OutputController = presentationCamera.GetComponent<PlayerCameraController>();
+                if (OutputBrain == null || OutputController == null)
+                    throw new InvalidOperationException("App output requires Brain and separated HMS controller.");
                 SetPresentationOutput(true);
                 catalog = installation.CreateCatalog();
                 services = new ServiceLocator();
@@ -59,9 +69,22 @@ namespace Cooked.Integration
                 var settings = new SettingsService(new PlayerPrefsSettingsStore(), sound);
                 services.Register<SettingsService>(settings);
                 runtime = new GameRuntimeService(() =>
-                    SceneComponentLookup.RequireSingle<CoreComposition>(catalog.CorePath).CreateSession(services, catalog, audio.Binding));
+                {
+                    loadedCore = SceneComponentLookup.RequireSingle<CoreComposition>(catalog.CorePath);
+                    return loadedCore.CreateSession(services, catalog, audio.Binding, OutputCamera, OutputBrain, OutputController);
+                });
+                runtime.BindSessionRelease(old =>
+                {
+                    // Core owns its own destruction cleanup. App destruction may run after
+                    // Unity has removed that scene, so do not search an unloaded scene here.
+                    if (loadedCore == null)
+                    {
+                        if (cleaning || (services != null && services.IsDisposed)) return;
+                        throw new InvalidOperationException("Loaded Core is unavailable for session release.");
+                    }
+                    loadedCore.ReleaseSession(old);
+                });
                 services.Register<IGameRuntimeService>(runtime);
-                runtime.GameplayOutputChanged += OnGameplayOutputChanged;
                 SceneManager.sceneLoaded += SceneLoaded; subscribed = true;
                 bootstrap.Initialize(services, catalog, new BootRoute(false, null));
                 var flow = services.Get<IGameFlowService>();
@@ -83,13 +106,14 @@ namespace Cooked.Integration
                 throw;
             }
         }
-        private void OnGameplayOutputChanged(bool gameplayOutput) => SetPresentationOutput(!gameplayOutput);
         private void SetPresentationOutput(bool visible)
         {
-            // Only this root's fallback output is owned here; ActorCameraRig owns the player output.
+            // App owns the single output. Gameplay visibility belongs to UI/rig readiness.
             if (presentationCamera == null || !presentationCamera.transform.IsChildOf(transform)) return;
             presentationCamera.enabled = visible;
             if (presentationListener != null) presentationListener.enabled = visible;
+            if (OutputBrain != null) OutputBrain.enabled = visible;
+            if (OutputController != null) OutputController.enabled = visible;
         }
         private void SceneLoaded(Scene scene, LoadSceneMode mode)
         {
@@ -99,11 +123,11 @@ namespace Cooked.Integration
         }
         private void Cleanup()
         {
+            cleaning = true;
             var errors = new List<Exception>();
             void Attempt(Action action) { try { action(); } catch (Exception error) { errors.Add(error); } }
             if (subscribed) SceneManager.sceneLoaded -= SceneLoaded;
             subscribed = false;
-            if (runtime != null) runtime.GameplayOutputChanged -= OnGameplayOutputChanged;
             runtime = null;
             Attempt(() => SetPresentationOutput(false));
             Attempt(() => { if (ui != null) ui.Unbind(); });

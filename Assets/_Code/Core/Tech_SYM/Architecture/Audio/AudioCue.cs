@@ -45,7 +45,7 @@ namespace Cooked.Audio
         public const string Title = "music.title", Opening = "music.opening", Stage1 = "music.stage1",
             Stage2 = "music.stage2", Stage3 = "music.stage3", Chase = "music.chase", Ending = "music.ending";
         public const string Click = "sfx.ui.click", Pickup = "sfx.pickup", Form = "sfx.form",
-            Tear = "sfx.tear", Shell = "sfx.shell", Checkpoint = "sfx.checkpoint", Unlock = "sfx.unlock",
-            Death = "sfx.death", Escape = "sfx.escape";
+            Tear = "sfx.tear", Checkpoint = "sfx.checkpoint", Unlock = "sfx.unlock",
+            Death = "sfx.death";
     }
 }

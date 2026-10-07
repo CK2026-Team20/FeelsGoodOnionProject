@@ -16,8 +16,6 @@ namespace Cooked.Session.Editor
         public static string AssetRoot => AuthoringOutputScope.Map(SourceRoot);
         public static string ActorPath => AssetRoot + "/PlayerRoot.prefab";
         public static string HostPath => AssetRoot + "/SessionActorHost.prefab";
-        public static string OilPath => AssetRoot + "/SessionOil.prefab";
-        public static string ScopePath => AssetRoot + "/SessionTransientScope.asset";
         private const string OnionPath = "Assets/_Art/Characters/Models/ch_onion.fbx";
         private const string OnionMaterialPath = "Assets/_Art/Characters/Materials/Ch_onion_default.mat";
 
@@ -96,9 +94,6 @@ namespace Cooked.Session.Editor
                 float smallHeight = sourceFormFields.FindProperty("smallHeight").floatValue;
                 float smallRadius = sourceFormFields.FindProperty("smallRadius").floatValue;
                 EnsureFolder(AssetRoot);
-                // Explicit temporary compatibility until T9 removes Host.transientScope. Do not create
-                // a retired Scope/Lifetime/Oil asset or depend on their runtime types in authoring.
-                var scope = AssetDatabase.LoadMainAssetAtPath(SourceRoot + "/SessionTransientScope.asset");
                 var tear = GetOrCreate<TearSkillDefinition>(AssetRoot + "/TearSkill.asset");
                 var shrink = GetOrCreate<ShrinkSkillDefinition>(AssetRoot + "/ShrinkSkill.asset");
                 var restore = GetOrCreate<RestoreFormSkillDefinition>(AssetRoot + "/RestoreSkill.asset");
@@ -154,15 +149,7 @@ namespace Cooked.Session.Editor
                 var host = new GameObject("SessionActorHost");
                 try
                 {
-                    var serialized = new SerializedObject(host.AddComponent<SessionActorHost>());
-                    serialized.FindProperty("actorPrefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>(ActorPath);
-                    var compatibilityScope=serialized.FindProperty("transientScope");
-                    if(compatibilityScope!=null)
-                    {
-                        if(scope==null) throw new InvalidOperationException("The pre-T9 Host still requires its existing scope reference.");
-                        compatibilityScope.objectReferenceValue=scope;
-                    } // remove this optional field compatibility when T9's Host transfer is integrated
-                    serialized.ApplyModifiedPropertiesWithoutUndo();
+                    host.AddComponent<SessionActorHost>().Configure(AssetDatabase.LoadAssetAtPath<GameObject>(ActorPath));
                     PrefabUtility.SaveAsPrefabAsset(host, HostPath);
                 }
                 finally { UnityEngine.Object.DestroyImmediate(host); }

@@ -101,8 +101,6 @@ GameObject:
   - component: {fileID: 1301872716943984209}
   - component: {fileID: 7786704330703376650}
   - component: {fileID: 6479242322084391794}
-  - component: {fileID: 3344582230526794071}
-  - component: {fileID: 8242357214273312498}
   m_Layer: 0
   m_Name: SessionOil
   m_TagString: Untagged
@@ -160,28 +158,3 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OilSurface
   effectDuration: 3
---- !u!114 &3344582230526794071
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8387816868961560847}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98849b93dcd0a83488f5f49a3a63eb4c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyOilLifetime
---- !u!114 &8242357214273312498
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8387816868961560847}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 74049c73ac4640de9a7840afc0b1d7e4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.SessionTransientLifetime
-  scope: {fileID: 11400000, guid: b25c0571de5ffd84ea41f97301ec7513, type: 2}

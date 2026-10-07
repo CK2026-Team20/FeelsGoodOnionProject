@@ -128,7 +128,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 35559846}
-  - component: {fileID: 35559847}
   m_Layer: 0
   m_Name: TEARInstruction
   m_TagString: Untagged
@@ -151,19 +150,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1612306505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &35559847
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 35559845}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd7b01566d49a8a44bf54784416a26a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelInstruction
-  text: "E \uB208\uBB3C: \uC2E4\uC81C \uC801\uC744 \uAE30\uC808\uC2DC\uD0A4\uBA74 \uBB38\uC774 \uC5F4\uB9BD\uB2C8\uB2E4. \uC870\uAC01 \uBD80\uC871 \uC2DC \uCCB4\uD06C\uD3EC\uC778\uD2B8 \uC7AC\uC2DC\uB3C4"
 --- !u!43 &95342575
 Mesh:
   m_ObjectHideFlags: 0
@@ -1228,8 +1214,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S1_SKILL
-  unlockForm: 0
-  unlockTear: 0
   cameraZone:
     Id: 
     Movement: 1
@@ -1260,7 +1244,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 493226695}
-  - component: {fileID: 493226696}
   m_Layer: 0
   m_Name: MOVEInstruction
   m_TagString: Untagged
@@ -1283,19 +1266,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1612306505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &493226696
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 493226694}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd7b01566d49a8a44bf54784416a26a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelInstruction
-  text: "\uC774\uB3D9 \xB7 Space \uC810\uD504 / \uC791\uC740 \uD2C8\uC744 \uAC74\uB108\uC138\uC694"
 --- !u!1 &516101053
 GameObject:
   m_ObjectHideFlags: 0
@@ -1845,7 +1815,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 646529101}
-  - component: {fileID: 646529102}
   m_Layer: 0
   m_Name: Shell1GuideInstruction
   m_TagString: Untagged
@@ -1868,19 +1837,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1612306505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &646529102
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 646529100}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd7b01566d49a8a44bf54784416a26a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelInstruction
-  text: "\uC555\uB825\uD310\uC5D0\uC11C \uC791\uC740 \uD615\uD0DC\uB85C! \uAECD\uC9C8\uC744 \uB0A8\uAE30\uACE0 \uBB38\uC744 \uD1B5\uACFC\uD55C \uB4A4 \uB418\uB3CC\uC544\uC640 Q \uD68C\uC218"
 --- !u!43 &703206243
 Mesh:
   m_ObjectHideFlags: 0
@@ -2670,45 +2626,23 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6842469324218890371, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
+      propertyPath: bobHeight
+      value: -0.72
+      objectReference: {fileID: 0}
+    - target: {fileID: 6842469324218890371, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4144467383258874550, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 786059240}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
 --- !u!4 &786059237 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 721688784582498277, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
   m_PrefabInstance: {fileID: 786059236}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &786059238 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4144467383258874550, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-  m_PrefabInstance: {fileID: 786059236}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &786059239 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 68382689422125815, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-  m_PrefabInstance: {fileID: 786059236}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &786059240
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 786059238}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0c6d08a421f094a48a70e08f1ac4dd52, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelTearFragment
-  pickupRoot: {fileID: 786059239}
 --- !u!1 &793068587
 GameObject:
   m_ObjectHideFlags: 0
@@ -2757,6 +2691,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5d6076745717874cae442cea974fa60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.KinematicPlatformMotion
+  physicsBody: {fileID: 793068591}
+  platformContacts: {fileID: 793068590}
 --- !u!114 &793068590
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3011,8 +2947,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   checkpointId: S1_START
-  unlockForm: 0
-  unlockTear: 0
   cameraZone:
     Id: 
     Movement: 1
@@ -4552,6 +4486,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5d6076745717874cae442cea974fa60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.KinematicPlatformMotion
+  physicsBody: {fileID: 1134753592}
+  platformContacts: {fileID: 1134753591}
 --- !u!114 &1134753591
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4621,7 +4557,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1156048113}
-  - component: {fileID: 1156048114}
   m_Layer: 0
   m_Name: RealTearPuzzle
   m_TagString: Untagged
@@ -4644,20 +4579,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1612306505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1156048114
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1156048112}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 397cceb7b30895049a1bd2c35a028ba1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.TearStunGate
-  enemy: {fileID: 123034037}
-  barrier: {fileID: 927304244}
 --- !u!1 &1288742331
 GameObject:
   m_ObjectHideFlags: 0
@@ -4744,45 +4665,23 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6842469324218890371, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
+      propertyPath: bobHeight
+      value: -0.72
+      objectReference: {fileID: 0}
+    - target: {fileID: 6842469324218890371, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4144467383258874550, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1294774451}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
 --- !u!4 &1294774448 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 721688784582498277, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
   m_PrefabInstance: {fileID: 1294774447}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1294774449 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4144467383258874550, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-  m_PrefabInstance: {fileID: 1294774447}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &1294774450 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 68382689422125815, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-  m_PrefabInstance: {fileID: 1294774447}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1294774451
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1294774449}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0c6d08a421f094a48a70e08f1ac4dd52, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelTearFragment
-  pickupRoot: {fileID: 1294774450}
 --- !u!1 &1345932992
 GameObject:
   m_ObjectHideFlags: 0
@@ -6316,7 +6215,6 @@ MonoBehaviour:
   chaseWaypoints: []
   chaseRetreatGate: {fileID: 0}
   chaseStartProgress: 18
-  chaseCheckpointId: S3_CHASE
   progressWaypoints: []
 --- !u!4 &1612306505
 Transform:
@@ -6412,45 +6310,23 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6842469324218890371, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
+      propertyPath: bobHeight
+      value: -0.72
+      objectReference: {fileID: 0}
+    - target: {fileID: 6842469324218890371, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4144467383258874550, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1642679848}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
 --- !u!4 &1642679845 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 721688784582498277, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
   m_PrefabInstance: {fileID: 1642679844}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1642679846 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4144467383258874550, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-  m_PrefabInstance: {fileID: 1642679844}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &1642679847 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 68382689422125815, guid: eb5457444ac0a6f478f6359a5b98ce42, type: 3}
-  m_PrefabInstance: {fileID: 1642679844}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1642679848
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1642679846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0c6d08a421f094a48a70e08f1ac4dd52, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelTearFragment
-  pickupRoot: {fileID: 1642679847}
 --- !u!1 &1754605995
 GameObject:
   m_ObjectHideFlags: 0
@@ -7534,7 +7410,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2060905421}
-  - component: {fileID: 2060905422}
   m_Layer: 0
   m_Name: Shell1
   m_TagString: Untagged
@@ -7559,23 +7434,6 @@ Transform:
   - {fileID: 1134753588}
   m_Father: {fileID: 1612306505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2060905422
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2060905420}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fb8fd829917bec14092f05862d08cab8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.ShellPressureLatch
-  plate: {fileID: 793068588}
-  plateSurface: {fileID: 793068592}
-  raisedGate: {fileID: 1134753587}
-  crossingProgress: 14.7
-  stage: {fileID: 1612306504}
 --- !u!1 &2124066434
 GameObject:
   m_ObjectHideFlags: 0

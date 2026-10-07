@@ -9,6 +9,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 38c14101ae604b55b6ea370dec4c10cb, type: 3}
-  m_Name: SessionTransientScope
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.SessionTransientScope
+  m_Script: {fileID: 11500000, guid: 79ee9294d8d0a3740acc7d97f983ca60, type: 3}
+  m_Name: PatrolXEnemy
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyDefinition
+  kind: 1
+  speed: 2
+  initialIdle: 0.5
+  knockbackSpeed: 10

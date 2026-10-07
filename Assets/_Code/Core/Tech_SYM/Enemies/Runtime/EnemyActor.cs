@@ -33,6 +33,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private EnemyStateMachine states;
         private EnemyCombat combat;
         private bool initialPlacementCaptured;
+        private bool setupFailed;
         private Vector3 initialPosition;
         private bool publishedStunState;
         public EnemyDefinition Definition => definition;
@@ -43,9 +44,6 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         public bool TowardEnd => states == null || states.TowardEnd;
         public Vector3 BodyPosition => body != null ? body.transform.position : transform.position;
         public BoxCollider HurtCollider => body;
-        // T9 removes EnemyOilOnDeath and this inert compile contract together; no kill/oil execution.
-        [Obsolete("T9: remove with EnemyOilOnDeath native/source transfer. General enemies cannot die.")]
-        public event Action<EnemyActor> Died { add { } remove { } }
         /// <summary>스턴 상태가 변경되면 알립니다. true는 적용, false는 해제입니다.</summary>
         public event Action<bool> StunStateChanged;
 
@@ -58,6 +56,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             catch (Exception exception)
             {
                 Debug.LogError($"Enemy setup failed ({name}): {exception.Message}", this);
+                setupFailed = true;
                 enabled = false;
             }
             if (isActiveAndEnabled) PublishStunStateChanged();
@@ -133,11 +132,18 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             }
             transform.position = initialPosition;
             ValidateSetup();
+            // OnEnable must query the restored active support poses, not stale PhysX bounds.
+            if (gameObject.activeInHierarchy) Physics.SyncTransforms();
             var motor = new EnemyMotor(this, body, terrainMask, EnemyDefinition.Direction(initialDirection),
                 patrolDistance, heightSearchDistance, surfaceClearance, manualLowerDistance, manualUpperDistance);
             Motor = motor;
             states = new EnemyStateMachine(this);
             if (isActiveAndEnabled) combat = new EnemyCombat(this, body, target);
+            // Only recover a disable owned by failed setup, and only after full validation.
+            // Authored/manual disabled components remain disabled; invalid setups still throw.
+            bool recoverFailedSetup = setupFailed;
+            setupFailed = false;
+            if (recoverFailedSetup) enabled = true;
             PublishStunStateChanged();
         }
         public int TryStun(int stunDur)

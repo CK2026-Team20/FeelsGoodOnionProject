@@ -60,7 +60,7 @@ namespace Cooked.Integration.Editor
                 // Low side rails on passages guide entry without constraining quarter-view arenas.
                 foreach(float x in new[]{39.8f,44.2f}) Box("PassageRailA",new Vector3(x,.5f,9),new Vector3(.3f,1,13));
                 foreach(float x in new[]{75.8f,80.2f}) Box("PassageRailB",new Vector3(x,.5f,27),new Vector3(.3f,1,13));
-                var checkpoints=new[]{Checkpoint("P_START",new Vector3(1,0,0),side,false,false),Checkpoint("P_END",new Vector3(122,0,36),final,false,false)};
+                var checkpoints=new[]{Checkpoint("P_START",new Vector3(1,0,0),side),Checkpoint("P_END",new Vector3(122,0,36),final)};
                 Trigger("P_FORM",StageTriggerKind.UnlockForm,"",new Vector3(7,2,0),new Vector3(2,5,4));
                 Trigger("P_TEAR",StageTriggerKind.UnlockTear,"",new Vector3(47,2,18),new Vector3(2,5,5));
                 Set(stage,"checkpoints",checkpoints);
@@ -97,14 +97,14 @@ namespace Cooked.Integration.Editor
                 for(int i=0;i<8;i++)
                 {
                     var fragment=Instance(Sym+"Prefabs/TearFragment.prefab",new Vector3(46+i*.8f,1.1f,18));
-                    LevelAssetBuilder.ConfigureFragment(fragment);
+                    LevelAssetBuilder.ConfigureAuthoredFragment(fragment, scene);
                 }
                 BuildMemo();
                 Trigger("Dialogue",StageTriggerKind.Dialogue,"EXPLORE_OVEN_01",new Vector3(72,2,18),new Vector3(2,5,6));
                 var gateRoot=Child("RetreatGate",root);var retreat=gateRoot.AddComponent<ChaseRetreatGate>();
                 var blocker=Box("ClosedBarrier",new Vector3(101,2,36),new Vector3(.5f,4,8));
                 blocker.transform.SetParent(gateRoot.transform,true); Set(retreat,"blocker",blocker.GetComponent<BoxCollider>());blocker.SetActive(false);
-                Set(stage,"chaseRetreatGate",retreat);Set(stage,"chaseCheckpointId","P_START"); // temporary old Stage API; T9 removes its capture/ID coupling
+                Set(stage,"chaseRetreatGate",retreat);
                 Set(stage,"chaseStartProgress",140f); // polyline progress at x104: 42+18+36+18+26
                 Set(stage,"chaseWaypoints",new[]{new Vector3(92,0,36),new Vector3(132,0,36)});
                 Trigger("Chase",StageTriggerKind.Chase,"",new Vector3(105,2,36),new Vector3(3,5,6));
@@ -128,9 +128,12 @@ namespace Cooked.Integration.Editor
             var installation=AssetDatabase.LoadAssetAtPath<ArchitectureInstallation>(AuthoringOutputScope.Map(ArchitectureInstallation.AssetPath));
             var entries=AssetDatabase.LoadAssetAtPath<IntegrationEntrySettings>(IntegrationSceneBuilder.EntriesPath);
             if(installation==null || entries==null) throw new InvalidOperationException("Existing installation assets required.");
-            installation.Configure(IntegrationSceneBuilder.AuthoredCatalog);EditorUtility.SetDirty(installation);AssetDatabase.SaveAssetIfDirty(installation);
-            entries.Configure(new[]{new IntegrationEntrySettings.Entry("1_Stage","P_START",0),new IntegrationEntrySettings.Entry("03_2_Stage","S2_ENTRY",5,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear),new IntegrationEntrySettings.Entry("03_3_Stage","S3_ENTRY",5,AbilityId.FormChange,AbilityId.RecoverShell,AbilityId.Tear)});
-            EditorUtility.SetDirty(entries);AssetDatabase.SaveAssetIfDirty(entries);
+            // Validate the complete preset set before changing or saving installation configuration.
+            var presets = new[]{new IntegrationEntrySettings.Entry("1_Stage","P_START",0),new IntegrationEntrySettings.Entry("03_2_Stage","S2_ENTRY",5,AbilityId.FormChange,AbilityId.Tear),new IntegrationEntrySettings.Entry("03_3_Stage","S3_ENTRY",5,AbilityId.FormChange,AbilityId.Tear)};
+            entries.Configure(presets);
+            installation.Configure(IntegrationSceneBuilder.AuthoredCatalog);
+            EditorUtility.SetDirty(installation);EditorUtility.SetDirty(entries);
+            AssetDatabase.SaveAssetIfDirty(installation);AssetDatabase.SaveAssetIfDirty(entries);
         }
         private static void BuildMemo()
         {
@@ -152,10 +155,10 @@ namespace Cooked.Integration.Editor
             plateRoot.SetActive(true);gateRoot.SetActive(true);
             Box("SmallTunnelRoof",new Vector3(18,1.55f,0),new Vector3(3,1,4));
         }
-        private static CheckpointMarker Checkpoint(string id,Vector3 position,CameraZoneRequest zone,bool form,bool tear)
+        private static CheckpointMarker Checkpoint(string id,Vector3 position,CameraZoneRequest zone)
         {
             var marker=Child(id,root);marker.transform.position=position;var c=marker.AddComponent<CheckpointMarker>();
-            Set(c,"checkpointId",id);Set(c,"cameraZone",LocalZone(zone,marker.transform));Set(c,"unlockForm",false);Set(c,"unlockTear",false);Set(c,"bodyOffset",Cooked.Session.Editor.SessionActorBuilder.AuthoredBodyOffset());
+            Set(c,"checkpointId",id);Set(c,"cameraZone",LocalZone(zone,marker.transform));Set(c,"bodyOffset",Cooked.Session.Editor.SessionActorBuilder.AuthoredBodyOffset());
             Trigger(id+"_Contact",StageTriggerKind.Checkpoint,id,position+Vector3.up*2,new Vector3(2,5,5));return c;
         }
         private static CameraZoneRequest Zone(string id,CameraMovementMode movement,Vector3 alignmentPosition)

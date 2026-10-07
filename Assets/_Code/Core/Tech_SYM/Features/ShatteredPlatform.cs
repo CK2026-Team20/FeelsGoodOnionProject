@@ -6,10 +6,9 @@ using UnityEngine.Serialization;
 namespace FeelsGoodOnion.TechSYM.Features
 {
     [DisallowMultipleComponent]
-    public sealed class ShatteredPlatform : MonoBehaviour, IBrokenable
+    public sealed class ShatteredPlatform : MonoBehaviour
     {
-        // Legacy enum numbers stay stable until T9 migrates native consumers.
-        public enum CollapsePhase { Ready, Wiggling, Collapsed, Regenerating, DestroyScheduled, Animating }
+        public enum CollapsePhase { Ready = 0, Wiggling = 1, Collapsed = 2, Animating = 5 }
         [Tooltip("붕괴 표시를 담당하는 Collider 없는 Visual 자식입니다. 원래 위치·회전·크기는 재시도에만 복원합니다.")]
         [SerializeField] private Transform visual;
         [Tooltip("PhysicsBody 자식 또는 기존 같은 객체의 지지 BoxCollider입니다. 경고 1초 끝에 즉시 꺼집니다.")]
@@ -34,7 +33,6 @@ namespace FeelsGoodOnion.TechSYM.Features
         private float warningElapsed;
         private int version;
         public CollapsePhase Phase { get; private set; } = CollapsePhase.Ready;
-        public bool CanRegenerate => false;
         private void Awake()
         {
             OnValidate();

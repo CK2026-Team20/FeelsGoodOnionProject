@@ -1,13 +1,19 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using Cooked.Audio;
 using Cooked.Chase;
 using Cooked.Contracts;
 using Cooked.Level;
+using Cooked.Session;
+using FeelsGoodOnion.TechSYM.Interaction;
+using FeelsGoodOnion.TechSYM.Platforms;
+using Unity.Cinemachine;
 using UnityEngine;
 namespace Cooked.Integration
 {
-    /// <summary>Session-owned connections. World/Actor references are released before retry destroys them.</summary>
+    /// <summary>One round's borrowed connections; releases Actor before resetting resident Stage owners.</summary>
     public sealed class CoreWorldBinding : IDisposable
     {
         private readonly GameSessionRuntime runtime;
@@ -19,129 +25,189 @@ namespace Cooked.Integration
         private readonly IGameEventBus bus;
         private readonly IAudioService audio;
         private readonly AudioFlowBinding audioFlow;
+        private readonly ISceneService scenes;
+        private readonly Camera output;
+        private readonly CinemachineBrain brain;
+        private readonly PlayerCameraController controller;
+        private readonly CinemachineCamera side, quarter;
         private readonly IDisposable stageSubscription;
-        private readonly List<StageService> stages = new List<StageService>();
-        private readonly List<FeelsGoodOnion.TechSYM.Interaction.MemoUIController> memos = new List<FeelsGoodOnion.TechSYM.Interaction.MemoUIController>();
+        private StageService stage;
+        private readonly List<MemoUIController> memos = new List<MemoUIController>();
         private CheckpointSnapshot checkpoint;
         private readonly HashSet<AbilityId> unlocked = new HashSet<AbilityId>();
         private int fragments;
-        private bool observing, disposed;
+        private bool observing, subscriptionsDetached, disposed;
         public CoreWorldBinding(GameSessionRuntime runtime, LevelCameraService camera, ChaseRuntimeDriver chase,
             CoreUiBinding ui, IGameFlowService flow, IGameplayControlService control, IGameEventBus bus,
-            IAudioService audio, AudioFlowBinding audioFlow)
+            IAudioService audio, AudioFlowBinding audioFlow, ISceneService scenes, Camera output,
+            CinemachineBrain brain, PlayerCameraController controller, CinemachineCamera side, CinemachineCamera quarter)
         {
-            this.runtime=runtime; this.camera=camera; this.chase=chase; this.ui=ui; this.flow=flow;
-            this.control=control; this.bus=bus; this.audio=audio; this.audioFlow=audioFlow;
-            stageSubscription=bus.Subscribe<StageEnteredEvent>(OnStage);
-            runtime.ActorReady+=BindActor; runtime.ActorRemoving+=UnbindActor;
-            runtime.Player.AbilitySucceeded+=OnAbility;
-            flow.Changed+=OnFlow;
+            this.runtime = runtime; this.camera = camera; this.chase = chase; this.ui = ui; this.flow = flow;
+            this.control = control; this.bus = bus; this.audio = audio; this.audioFlow = audioFlow; this.scenes = scenes;
+            this.output = output; this.brain = brain; this.controller = controller; this.side = side; this.quarter = quarter;
+            if (output == null || brain == null || controller == null || output.gameObject != brain.gameObject ||
+                output.gameObject != controller.gameObject || side == null || quarter == null || side == quarter)
+                throw new ArgumentException("World requires explicit App output and distinct Core rigs.");
+            stageSubscription = bus.Subscribe<StageEnteredEvent>(OnStage);
+            runtime.ActorReady += BindActor; runtime.ActorRemoving += UnbindActor;
+            runtime.Player.AbilitySucceeded += OnAbility; runtime.Player.AbilityRejected += OnAbilityRejected;
+        }
+        public IEnumerator PrepareStage(string stageId, CancellationToken token, OperationResult result)
+        {
+            token.ThrowIfCancellationRequested();
+            if (runtime.Player.HasActor) { result.Fail("Release Actor before Stage reset."); yield break; }
+            var item = runtime.Stages.Require(stageId) as StageService;
+            if (item == null) { result.Fail("Unexpected Stage implementation."); yield break; }
+            var path = runtime.Stages.ScenePath(stageId);
+            try
+            {
+                // Warm authored owners only once in this persistent Stage's component lifetime.
+                // Reactivating an old retry world first would validate enemies against moved supports.
+                if (!item.IsInitialPreparationComplete)
+                {
+                    scenes.SetRootsActive(path, true);
+                    foreach (var pickup in item.GetComponentsInChildren<FeelsGoodOnion.TechSYM.Features.TearFragment>(true)) pickup.PrepareSource();
+                    yield return null;
+                }
+                token.ThrowIfCancellationRequested();
+                scenes.SetRootsActive(path, false);
+                item.ResetForRetry();
+                result.Succeed();
+            }
+            finally { scenes.SetRootsActive(path, false); }
+        }
+        public void ResetAbilityNotices(string id, IReadOnlyList<AbilityId> relocked)
+        {
+            var item = (StageService)runtime.Stages.Require(id);
+            runtime.Dialogue.ForgetCompletedCodes(item.AbilityNoticeCodes(relocked));
         }
         private void BindActor()
         {
-            var actor=runtime.ActorHost.ActorRoot.GetComponentInChildren<PlayerFacade>(true);
-            if (actor == null) throw new InvalidOperationException("Spawned Actor has no facade.");
-            chase.Initialize(runtime.Player,control,flow,bus);
-            var prompts=new List<CoreUiBinding.InstructionSource>();
-            // T9 owns full Stage assembly. Minimal active-stage consumer migration: all-loaded
-            // is an inventory, never a request to bind every Stage to the current Actor.
-            foreach(var item in new[] { runtime.ActiveStage })
+            if (stage != null || observing) throw new InvalidOperationException("Old world bindings remain.");
+            var actor = runtime.Player.Actor;
+            if (actor == null) throw new InvalidOperationException("Spawned Actor missing.");
+            stage = (StageService)runtime.ActiveStage;
+            try
             {
-                var stage=item as StageService;
-                if(stage==null) throw new InvalidOperationException("Unexpected Stage implementation.");
-                stages.Add(stage);
-                stage.Initialize(bus,flow,actor,code=>runtime.TryStartSafeDialogue(stage.StageId,code),runtime.Session);
-                stage.BindChaseStart(s=>chase.TryStart(s.StageId,s.ChaseWaypoints,s.Actor));
-                stage.ChaseStarted+=OnChaseStarted;
-                foreach(var memo in stage.GetComponentsInChildren<FeelsGoodOnion.TechSYM.Interaction.MemoUIController>(true))
+                foreach (var item in runtime.Stages.Stages) scenes.SetRootsActive(runtime.Stages.ScenePath(item.StageId), item.StageId == runtime.ActiveStageId);
+                chase.Initialize(runtime.Player, control, flow, bus);
+                stage.Initialize(bus, flow, actor, code => runtime.TryStartSafeDialogue(stage.StageId, code), runtime.Session);
+                var active = stage;
+                stage.BindRequests(runtime.Player, control, runtime.Dialogue,
+                    (id, source) => runtime.TryCaptureCheckpoint(active.StageId, id, source),
+                    (ability, code) => Unlock(active, ability, code), StopChase);
+                stage.BindChaseStart(s => chase.TryStart(s.StageId, s.ChaseWaypoints, s.Actor));
+                stage.ChaseStarted += OnChaseStarted;
+                foreach (var memo in stage.GetComponentsInChildren<MemoUIController>(true))
                 { memo.Initialize(control); memos.Add(memo); }
-                foreach(var instruction in stage.GetComponentsInChildren<LevelInstruction>(true))
-                    prompts.Add(new CoreUiBinding.InstructionSource(instruction.transform,instruction.Text));
+                runtime.ActorHost.Interaction.BindOverlays(memos);
+                foreach (var periodic in stage.GetComponentsInChildren<PeriodicPlatform>(true))
+                    periodic.BindMaterialization(runtime.Player, ResolveBodyVisual);
+                camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), controller,
+                    brain, side, quarter, runtime.Player.CameraTarget, runtime.Player.BodyTransform);
+                ui.SetActorCamera(output);
+                CameraZoneRequest? resolved = null;
+                foreach (var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true))
+                {
+                    zone.Bind(camera, actor);
+                    if (zone.TryResolveAtPosition(actor.transform.position, out var request))
+                    {
+                        // Hierarchy order is deterministic; the last authored overlapping volume wins.
+                        resolved = request;
+                    }
+                }
+                if (!resolved.HasValue)
+                {
+                    // Safe unzoned entry uses authored default configuration only, not saved IDs.
+                    var initial = stage.GetCheckpoint(stage.InitialCheckpointId);
+                    var fallback = initial.CameraZone;
+                    if (string.IsNullOrWhiteSpace(fallback.Id))
+                        throw new InvalidOperationException("Actual Actor position is outside camera volumes and Stage has no authored entry mode.");
+                    resolved = fallback;
+                }
+                camera.EnterZone(resolved.Value, true);
+                audioFlow.SetStage(stage.StageId);
+                checkpoint = runtime.Session.Checkpoint; fragments = runtime.Player.Snapshot.Fragments;
+                unlocked.Clear();
+                foreach (var ability in new[] { AbilityId.FormChange, AbilityId.Tear }) if (runtime.Session.IsUnlocked(ability)) unlocked.Add(ability);
+                runtime.Session.Changed += OnSession; runtime.Player.Changed += OnPlayer; observing = true;
             }
-            ui.SetInstructions(prompts);
-            runtime.ActorHost.Interaction.BindOverlays(memos);
-            camera.Bind(runtime.Player, control, runtime.ActorHost.CameraRig);
-            ui.SetActorCamera(runtime.ActorHost.CameraRig.OutputCamera);
-            foreach(var stage in stages)
-                foreach(var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true)) zone.Bind(camera,actor);
-            // T9 replaces authoring-marker camera selection with a zone query at actual Position.
-            var initialStage = (StageService)runtime.Stages.Require(runtime.ActiveStageId);
-            var initialPoint = initialStage.GetCheckpoint(runtime.InitialCheckpointId);
-            var initialZone = initialPoint.CameraZone;
-            if(string.IsNullOrWhiteSpace(initialZone.Id))
-                initialZone = new CameraZoneRequest(initialStage.StageId + "_Entry",
-                    initialStage.StageId == "03_2_Stage" ? CameraMovementMode.Quarter : CameraMovementMode.Side,
-                    initialPoint.transform.position);
-            camera.EnterZone(initialZone,true);
-            audioFlow.SetStage(runtime.ActiveStageId);
-            checkpoint=runtime.Session.Checkpoint; fragments=runtime.Player.Snapshot.Fragments;
-            unlocked.Clear();
-            foreach(AbilityId ability in Enum.GetValues(typeof(AbilityId)))
-                if(runtime.Session.IsUnlocked(ability)) unlocked.Add(ability);
-            runtime.Session.Changed+=OnSession;
-            runtime.Player.Changed+=OnPlayer;
-            observing=true;
+            catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, UnbindActor); }
         }
-        private void OnStage(StageEnteredEvent value)
+        private bool Unlock(StageService owner, AbilityId ability, string code)
         {
-            if(flow.Snapshot.State!=FlowState.Playing || flow.Snapshot.IsBusy || !runtime.Player.HasActor) return;
-            runtime.Stages.Require(value.StageId);
-            audioFlow.SetStage(value.StageId);
+            if (owner != stage || owner.Actor != runtime.Player.Actor || owner.Actor == null || owner.Actor.IsDead ||
+                flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy) return false;
+            runtime.Session.Unlock(ability, owner.StageId);
+            // A busy notice does not undo an already accepted ability; contact remains eligible to present it.
+            return string.IsNullOrWhiteSpace(code) || runtime.Dialogue.IsCompleted(code) || runtime.TryStartSafeDialogue(owner.StageId, code);
         }
-        private void OnChaseStarted(StageService stage) => audioFlow.SetChaseActive(true);
+        private static Transform ResolveBodyVisual(Transform body)
+        {
+            if (body == null) return null;
+            return body.Find("VisualRoot") ?? body.Find("Visual");
+        }
+        private void StopChase()
+        { chase.Service?.Stop(ChaseStopReason.Arrival); audioFlow.SetChaseActive(false); }
+        private void OnStage(StageEnteredEvent message)
+        { if (stage != null && message.StageId == stage.StageId && observing) audioFlow.SetStage(stage.StageId); }
+        private void OnChaseStarted(StageService value) => audioFlow.SetChaseActive(true);
         private void OnAbility(AbilityId ability)
         {
-            if(!observing || !runtime.Player.HasActor) return;
-            audio.PlaySfx(ability==AbilityId.Tear?AudioCueIds.Tear:ability==AbilityId.FormChange?AudioCueIds.Form:AudioCueIds.Shell);
+            if (!observing || !runtime.Player.HasActor) return;
+            if (ability == AbilityId.Tear) audio.PlaySfx(AudioCueIds.Tear);
+            else if (ability == AbilityId.FormChange) audio.PlaySfx(AudioCueIds.Form);
         }
+        private void OnAbilityRejected(AbilityId ability, PlayerSkillBlockReason reason)
+        { if (observing && ability == AbilityId.FormChange && reason == PlayerSkillBlockReason.NotEnoughSpace) audio.PlaySfx(AudioCueIds.Click); }
         private void OnPlayer(PlayerSnapshot value)
-        {
-            if(observing && value.Fragments>fragments) audio.PlaySfx(AudioCueIds.Pickup);
-            fragments=value.Fragments;
-        }
+        { if (observing && value.Fragments > fragments) audio.PlaySfx(AudioCueIds.Pickup); fragments = value.Fragments; }
         private void OnSession()
         {
-            if(!observing || !runtime.Session.IsActive) return;
-            var next=runtime.Session.Checkpoint;
-            if(!next.Equals(checkpoint))
-                audio.PlaySfx(AudioCueIds.Checkpoint);
-            checkpoint=next;
-            bool newlyUnlocked=false;
-            foreach(AbilityId ability in Enum.GetValues(typeof(AbilityId)))
-                if(runtime.Session.IsUnlocked(ability) && unlocked.Add(ability)) newlyUnlocked=true;
-            if(newlyUnlocked) audio.PlaySfx(AudioCueIds.Unlock);
-        }
-        private void OnFlow(FlowSnapshot state)
-        {
-            if(state.State==FlowState.Ending && state.IsBusy) audio.PlaySfx(AudioCueIds.Escape);
+            if (!observing || !runtime.Session.IsActive) return;
+            var next = runtime.Session.Checkpoint;
+            if (!next.Equals(checkpoint)) audio.PlaySfx(AudioCueIds.Checkpoint);
+            checkpoint = next;
+            bool added = false;
+            foreach (var ability in new[] { AbilityId.FormChange, AbilityId.Tear })
+                if (runtime.Session.IsUnlocked(ability) && unlocked.Add(ability)) added = true;
+            if (added) audio.PlaySfx(AudioCueIds.Unlock);
         }
         private void UnbindActor()
         {
-            observing=false;
-            runtime.Session.Changed-=OnSession; runtime.Player.Changed-=OnPlayer;
-            var errors=new List<Exception>();
-            foreach(var memo in memos)
-                if(memo != null) { try { memo.Unbind(); } catch(Exception e) { errors.Add(e); } }
+            observing = false;
+            runtime.Session.Changed -= OnSession; runtime.Player.Changed -= OnPlayer;
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.ForceCloseOverlays());
+            SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.CancelOperations());
+            SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.BindOverlays(null));
+            foreach (var memo in memos) if (memo != null) SessionCleanup.Attempt(errors, memo.Unbind);
             memos.Clear();
-            foreach(var stage in stages)
+            if (stage != null)
             {
-                if(stage==null) continue;
-                foreach (var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true)) zone.Bind(null,null);
-                stage.ChaseStarted-=OnChaseStarted;
-                try { stage.Dispose(); } catch(Exception e) { errors.Add(e); }
+                foreach (var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true)) zone.ResetForRetry();
+                foreach (var periodic in stage.GetComponentsInChildren<PeriodicPlatform>(true)) periodic.BindMaterialization(null, null);
+                stage.ChaseStarted -= OnChaseStarted;
+                SessionCleanup.Attempt(errors, stage.Dispose);
             }
-            stages.Clear();
-            try { chase.Shutdown(); } catch(Exception e) { errors.Add(e); }
-            try { camera.Dispose(); } catch(Exception e) { errors.Add(e); }
-            if(errors.Count>0) throw new AggregateException("World release failed.",errors);
+            stage = null;
+            SessionCleanup.Attempt(errors, chase.Shutdown); SessionCleanup.Attempt(errors, camera.Unbind);
+            SessionCleanup.ThrowIfAny(errors, "World release failed.");
         }
         public void Dispose()
         {
-            if(disposed) return; disposed=true;
-            stageSubscription.Dispose();
-            runtime.ActorReady-=BindActor; runtime.ActorRemoving-=UnbindActor;
-            runtime.Player.AbilitySucceeded-=OnAbility; flow.Changed-=OnFlow;
-            UnbindActor();
+            if (disposed) return;
+            var errors = new List<Exception>();
+            if (!subscriptionsDetached)
+            {
+                SessionCleanup.Attempt(errors, stageSubscription.Dispose);
+                runtime.ActorReady -= BindActor; runtime.ActorRemoving -= UnbindActor;
+                runtime.Player.AbilitySucceeded -= OnAbility; runtime.Player.AbilityRejected -= OnAbilityRejected;
+                subscriptionsDetached = true;
+            }
+            SessionCleanup.Attempt(errors, UnbindActor);
+            if (errors.Count == 0) disposed = true;
+            SessionCleanup.ThrowIfAny(errors, "World dispose failed.");
         }
     }
 }

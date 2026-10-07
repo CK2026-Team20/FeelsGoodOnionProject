@@ -113,7 +113,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4995431480892894955}
   - component: {fileID: 2492422943514009054}
-  - component: {fileID: 7858945187973195197}
   - component: {fileID: 2679581048087728334}
   m_Layer: 0
   m_Name: StationaryEnemy
@@ -153,7 +152,6 @@ MonoBehaviour:
   definition: {fileID: 11400000, guid: 3a9285a127d6dca4f9c13f15abc844a9, type: 2}
   body: {fileID: 7053960110188820071}
   target: {fileID: 0}
-  initiallyInvincible: 0
   initialDirection: 0
   patrolDistance: 3
   terrainMask:
@@ -163,26 +161,6 @@ MonoBehaviour:
   surfaceClearance: 0.15
   manualLowerDistance: 2
   manualUpperDistance: 3
---- !u!114 &7858945187973195197
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3382561748497290519}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 104ac5bc177153d4e97ea3d802ed61c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyOilOnDeath
-  spawnOilOnDeath: 0
-  oilPrefab: {fileID: 5780718231355088433, guid: 04a9efd5bafb07c408a4f57f7b96b759, type: 3}
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 1
-  searchDistance: 10
-  size: {x: 2, y: 1.5}
-  lifetime: 0
 --- !u!114 &2679581048087728334
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -45,4 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.SessionActorHost
   actorPrefab: {fileID: 3440022693776916199, guid: f63b1116f12cac947925c823cd90b78a, type: 3}
-  transientScope: {fileID: 11400000, guid: b25c0571de5ffd84ea41f97301ec7513, type: 2}
+  independentActor: {fileID: 0}
+  independentUi: {fileID: 0}
+  independentMemos: []
+  independentCamera: {fileID: 0}

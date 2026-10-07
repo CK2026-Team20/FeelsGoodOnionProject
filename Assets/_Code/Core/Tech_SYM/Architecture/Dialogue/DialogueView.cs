@@ -32,8 +32,6 @@ namespace Cooked.Dialogue
         [SerializeField] private UnityEngine.UI.Button autoButton;
         [Tooltip("현재 대화의 지난 문장 로그를 여는 버튼입니다.")]
         [SerializeField] private UnityEngine.UI.Button historyButton;
-        [Tooltip("이전 대화 건너뛰기 버튼 참조입니다. 제품에서는 숨깁니다. T9 자산 이관 후 제거합니다.")]
-        [SerializeField] private UnityEngine.UI.Button skipButton;
         [Tooltip("대화 로그만 닫고 본문으로 돌아가는 버튼입니다. 메모 닫기 기능과는 다릅니다.")]
         [SerializeField] private UnityEngine.UI.Button logCloseButton;
         [Tooltip("긴 대화 로그를 스크롤할 ScrollRect입니다. 로그 화면의 스크롤 영역을 연결하세요.")]
@@ -51,12 +49,12 @@ namespace Cooked.Dialogue
         // Called by the editor builder; field references are serialized into the independent prefab.
         public void Configure(CanvasGroup root, CanvasGroup log, TMP_Text speakerText, TMP_Text contextText,
             TMP_Text autoText, TMP_Text historyText, GameObject marker, UnityEngine.UI.Button panel,
-            UnityEngine.UI.Button auto, UnityEngine.UI.Button historyOpen, UnityEngine.UI.Button skip,
+            UnityEngine.UI.Button auto, UnityEngine.UI.Button historyOpen,
             UnityEngine.UI.Button logClose, UnityEngine.UI.ScrollRect scroll)
         {
             rootGroup = root; logGroup = log; speaker = speakerText; body = contextText;
             autoLabel = autoText; history = historyText; nextMarker = marker;
-            panelButton = panel; autoButton = auto; historyButton = historyOpen; skipButton = skip;
+            panelButton = panel; autoButton = auto; historyButton = historyOpen;
             logCloseButton = logClose; logScroll = scroll;
         }
         public void Bind(DialogueViewModel viewModel)
@@ -71,7 +69,6 @@ namespace Cooked.Dialogue
             panelButton.onClick.AddListener(OnAdvance);
             autoButton.onClick.AddListener(OnAuto);
             historyButton.onClick.AddListener(OnHistory);
-            if (skipButton != null) skipButton.gameObject.SetActive(false);
             logCloseButton.onClick.AddListener(OnLogClose);
             Present();
         }
@@ -144,7 +141,6 @@ namespace Cooked.Dialogue
             panelButton.interactable = model.CanAdvance;
             autoButton.interactable = !model.OptionsPaused && !model.LogOpen;
             historyButton.interactable = !model.OptionsPaused && !model.LogOpen;
-            if (skipButton != null) skipButton.gameObject.SetActive(false);
             logCloseButton.interactable = !model.OptionsPaused;
             autoLabel.text = model.AutoEnabled ? "자동 ON" : "자동 OFF";
             nextMarker.SetActive(model.State == DialogueState.AwaitingAdvance && !model.LogOpen);

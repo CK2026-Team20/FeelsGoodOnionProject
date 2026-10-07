@@ -6,6 +6,7 @@ using Cooked.Contracts;
 using Cooked.Dialogue;
 using Cooked.Foundation;
 using Cooked.Session;
+using Cooked.UI;
 using UnityEngine;
 
 namespace Cooked.Integration
@@ -15,14 +16,17 @@ namespace Cooked.Integration
     {
         private readonly ServiceLocator scope;
         private readonly SessionActorHost host;
-        private readonly DialogueDriver dialogueDriver;
         private readonly DialogueView dialogueView;
         private readonly DialogueViewModel dialogueModel;
         private readonly IntegrationEntrySettings entries;
         private readonly IGameFlowService flow;
+        private readonly OptionsService options;
         private readonly List<IDisposable> eventSubscriptions = new List<IDisposable>();
         private bool disposed, visibilityInitialized;
         private bool actorBindingsReady;
+        private Func<bool> actorViewReady;
+        public void BindActorViewReadiness(Func<bool> ready)
+        { ThrowIfDisposed(); actorViewReady = ready ?? throw new ArgumentNullException(nameof(ready)); }
         private string lastContactCheckpointId;
         private Func<string, CancellationToken, OperationResult, IEnumerator> prepareStage;
         private Action<string, IReadOnlyList<AbilityId>> resetAbilityNotices;
@@ -99,17 +103,17 @@ namespace Cooked.Integration
         public event Action<bool> GameplayVisibilityChanged;
 
         public GameSessionRuntime(ServiceLocator app, SceneCatalog catalog, SessionActorHost host,
-            DialogueDriver dialogueDriver, DialogueView dialogueView, ICinematicService cinematics,
+            DialogueView dialogueView, ICinematicService cinematics,
             IntegrationEntrySettings entries)
         {
             if (app == null) throw new ArgumentNullException(nameof(app));
             this.host = host != null ? host : throw new ArgumentNullException(nameof(host));
-            this.dialogueDriver = dialogueDriver != null ? dialogueDriver : throw new ArgumentNullException(nameof(dialogueDriver));
             this.dialogueView = dialogueView != null ? dialogueView : throw new ArgumentNullException(nameof(dialogueView));
             this.entries = entries != null ? entries : throw new ArgumentNullException(nameof(entries));
             Cinematics = cinematics ?? throw new ArgumentNullException(nameof(cinematics));
             Stages = new LoadedStageRegistry(catalog);
             flow = app.Get<IGameFlowService>();
+            options = app.Get<OptionsService>();
             var control = app.Get<IGameplayControlService>();
             var bus = app.Get<IGameEventBus>();
             scope = new ServiceLocator(app);
@@ -120,18 +124,15 @@ namespace Cooked.Integration
                 Player = new PlayerBridgeService(control, Session, bus);
                 scope.Register<IPlayerBridgeService>(Player);
                 Player.Dying += OnActorDying;
-                var transients = new SessionTransientService();
-                scope.Register<SessionTransientService>(transients);
                 Dialogue = new DialogueService(app.Get<IDialogueTableService>(), control, new DOTweenDialogueDelayScheduler(), new DialogueSettings(.3f, 3f));
                 scope.Register<IDialogueService>(Dialogue);
                 scope.Register<ICinematicService>(Cinematics);
                 dialogueModel = new DialogueViewModel(Dialogue);
-                dialogueDriver.Initialize(Dialogue);
                 dialogueView.Bind(dialogueModel);
-                host.Initialize(Player, control, transients);
+                host.Initialize(Player, control);
+                Player.SetEnemyHurtColliderResolver(enemy => enemy.HurtCollider);
                 // CheckpointReachedEvent has no Actor attribution. T9 migrates actual contacts
                 // to TryCaptureCheckpoint(stageId, checkpointId, source); anonymous bus capture is rejected.
-                eventSubscriptions.Add(bus.Subscribe<AbilityUnlockedEvent>(Unlock));
             }
             catch (Exception initializationError)
             {
@@ -154,7 +155,8 @@ namespace Cooked.Integration
             InitialCheckpointId = entry.CheckpointId;
             lastContactCheckpointId = null;
             Session.Begin(new CheckpointSnapshot(initialPose.position, entry.Fragments));
-            foreach (var ability in entry.Abilities) Session.Unlock(ability, entryStageId);
+            Dialogue.ResetRound();
+            foreach (var ability in entry.Abilities) Session.Unlock(ability, Stages.ResolvePresetOrigin(entryStageId, ability));
         }
         public void SpawnActorAtCheckpoint()
         {
@@ -184,18 +186,17 @@ namespace Cooked.Integration
         {
             ThrowIfDisposed();
             if (actorBindingsReady) throw new InvalidOperationException("Actor bindings were already completed.");
-            if (host.CameraRig == null || !host.CameraRig.IsReady)
+            if (!host.ActorModesReady)
                 throw new InvalidOperationException("Actor HMS mode has not initialized.");
             ActorReady?.Invoke();
             actorBindingsReady = true;
         }
-        public bool ActorViewReady => actorBindingsReady && host.CameraRig != null &&
-            host.CameraRig.IsReady && host.CameraRig.SelectionComplete;
+        public bool ActorViewReady => actorBindingsReady && host.ActorModesReady && actorViewReady != null && actorViewReady();
         public IEnumerator DespawnActor()
         {
             if (disposed) yield break;
             var errors = new List<Exception>();
-            SessionCleanup.Attempt(errors, CancelDialogue);
+            SessionCleanup.Attempt(errors, CancelWorldOperations);
             // Every observer releases its references even if another presentation observer fails.
             SessionCleanup.Attempt(errors, NotifyActorRemoving);
             yield return host.Despawn();
@@ -225,7 +226,6 @@ namespace Cooked.Integration
             ThrowIfDisposed();
             if (visibilityInitialized && GameplayVisible == value) return;
             GameplayVisible = value; visibilityInitialized = true;
-            if (host.CameraRig != null) host.CameraRig.SetOutputVisible(value);
             GameplayVisibilityChanged?.Invoke(value);
             // UI owns mount activation; rebind only after it has become active again.
             // DialogueView.OnDisable cancels and unbinds when opening/ending hides the mount.
@@ -236,9 +236,21 @@ namespace Cooked.Integration
         private void OnActorDying()
         {
             var errors = new List<Exception>();
+            // Options owns its three pause leases. Release them through that owner before
+            // common death waits for presentation completion; unrelated pause owners remain.
+            SessionCleanup.Attempt(errors, options.Close);
             SessionCleanup.Attempt(errors, CancelDialogue);
-            SessionCleanup.Attempt(errors, () => host.Interaction?.TryCloseOverlay());
+            SessionCleanup.Attempt(errors, () => host.Interaction?.ForceCloseOverlays());
+            SessionCleanup.Attempt(errors, () => host.Interaction?.CancelOperations());
             SessionCleanup.ThrowIfAny(errors, "Death presentation cancellation failed.");
+        }
+        private void CancelWorldOperations()
+        {
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, CancelDialogue);
+            SessionCleanup.Attempt(errors, () => host.Interaction?.ForceCloseOverlays());
+            SessionCleanup.Attempt(errors, () => host.Interaction?.CancelOperations());
+            SessionCleanup.ThrowIfAny(errors, "World operation cancellation failed.");
         }
         public bool TryCaptureCheckpoint(string stageId, string checkpointId, PlayerFacade source)
         {
@@ -258,31 +270,28 @@ namespace Cooked.Integration
             lastContactCheckpointId = checkpointId;
             return true;
         }
-        private void Unlock(AbilityUnlockedEvent message)
-        {
-            if (CanAcceptWorldRequest) Session.Unlock(message.Ability, ActiveStageId);
-        }
+
         public void Dispose()
         {
             if (disposed) return;
-            disposed = true;
             var errors = new List<Exception>();
-            void Attempt(Action action) { try { action(); } catch (Exception error) { errors.Add(error); } }
-            foreach (var subscription in eventSubscriptions) Attempt(subscription.Dispose);
+            // Cancellation runs while the owned dialogue and interaction still accept forced release.
+            SessionCleanup.Attempt(errors, CancelWorldOperations);
+            disposed = true;
+            foreach (var subscription in eventSubscriptions) SessionCleanup.Attempt(errors, subscription.Dispose);
             eventSubscriptions.Clear();
-            Attempt(NotifyActorRemoving);
-            Attempt(() => { if (Player != null) Player.Dying -= OnActorDying; });
-            Attempt(() => { if (dialogueView != null) dialogueView.Unbind(); });
-            Attempt(() => { if (dialogueDriver != null) dialogueDriver.Detach(); });
-            Attempt(() => dialogueModel?.Dispose());
-            Attempt(() => { if (host != null) host.ReleaseSession(); });
-            Attempt(() => { if (Session != null && Session.IsActive) Session.End(); });
-            Attempt(() => scope?.Dispose());
+            SessionCleanup.Attempt(errors, NotifyActorRemoving);
+            SessionCleanup.Attempt(errors, () => { if (Player != null) Player.Dying -= OnActorDying; });
+            SessionCleanup.Attempt(errors, () => { if (dialogueView != null) dialogueView.Unbind(); });
+            SessionCleanup.Attempt(errors, () => dialogueModel?.Dispose());
+            SessionCleanup.Attempt(errors, () => { if (host != null) host.ReleaseSession(); });
+            SessionCleanup.Attempt(errors, () => { if (Session != null && Session.IsActive) Session.End(); });
+            SessionCleanup.Attempt(errors, () => scope?.Dispose());
             Stages.Clear();
             ActiveStageId = null; InitialCheckpointId = null; lastContactCheckpointId = null;
-            prepareStage = null; resetAbilityNotices = null; checkpointPair = null;
+            prepareStage = null; resetAbilityNotices = null; checkpointPair = null; actorViewReady = null;
             ActorReady = null; ActorRemoving = null; GameplayVisibilityChanged = null;
-            if (errors.Count != 0) throw new AggregateException("Core session cleanup failed.", errors);
+            SessionCleanup.ThrowIfAny(errors, "Core session cleanup failed.");
         }
         private void ThrowIfDisposed() { if (disposed) throw new ObjectDisposedException(nameof(GameSessionRuntime)); }
     }
