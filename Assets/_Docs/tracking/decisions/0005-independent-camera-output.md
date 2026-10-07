@@ -4,4 +4,4 @@
 
 이전 구조는 HMS 첫 Awake 참조 검사/재연결 API 부재와 retry 해제 안전성 때문에 채택됐다. 출력 교대·Actor 자식 탐색·중복 우선순위 비용을 줄이려면 HMS 명시적 Bind/Unbind/Preview/Commit을 구현하고 App Output/Core 가상 카메라/Actor 목표 수명을 구분한다. CameraRig라는 이름만 바꾸거나 부모만 옮겨서는 작동하지 않는다. 보호 파일 허가와 실제 세션/retry/옵션/Brain 검증 후 기존 ActorCameraRig를 삭제한다.
 
-상세 근거: [구조 검토](../ready-system-v11-refactor-2026-10-06/원본 대조 및 구조 검토.md). 현재 구현이 변경됐다는 기록이 아니며 준비 단계다.
+2026-10-08 구현 적용: 이번 한정9개HMS 공개 확장과 SYM 자산 이관으로 App 출력1/Core Side·Quarter2/Actor Anchor 구성을 사용한다. 실제9진입·Stop/초기Quarter/여러retry·다음판에서 수명과 Brain 준비를 확인했다. 과거0004와 구조 검토는 당시 선택 이유를 보존하며 현재 연결 규칙은 이 결정이다. 실제 아트 animation clip 재생과 팀 빌드 수락은 별도다.

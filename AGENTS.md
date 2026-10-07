@@ -53,7 +53,9 @@ project-root/
     │           ├── 0001-folder-ownership.md → 폴더 권한 결정
     │           ├── 0002-current-offline-scope.md → 오프라인 범위·이전 결정
     │           ├── 0003-current-authority.md → 현재 명세·문서 운영 기준
-    │           └── 0004-actor-camera-lifetime.md → Actor·Cinemachine 수명
+    │           ├── 0004-actor-camera-lifetime.md → 과거 Actor·카메라 동시 수명
+    │           ├── 0005-independent-camera-output.md → 앱 출력과 Core 리그 분리
+    │           └── 0006-resident-stage-lifetime.md → 씬 유지·초기 재준비·능력 출처
     ├── _Scenes/Tech_SYM/
     │   └── AGENTS.md → 소유 씬·프리팹·설정
     └── _Code/Core/Tech_SYM/
@@ -99,9 +101,9 @@ project-root/
 
 ## 2026-10-06 최신 시스템 갱신의 적용
 
-현재 지정 원본은 Assets/_Docs/Cooked_시스템_기획서_V.1.1.docx다. 파랑·빨강뿐 아니라 취소선도 확인한다. 이전 E상호작용/F눈물·모달 전체 월드 정지·일반 적 추적 금지·Actor 자식 카메라·통로 백뷰 설명은 현재 목표로 승계하지 않는다. 사용자 선택은 E눈물/F상호작용, 메모/대화 월드 진행, 일반 순찰·추적, 앱 단일 출력과 분리 리그·Side/Quarter, 이어하기 추가 없음/옵션 수동 Retry·적 처치 기름·붕괴 자동 복구 제거다. 자세한 규칙은 planning-index.md를 따른다.
+현재 지정 원본은 Assets/_Docs/Cooked_시스템_기획서_V.1.1.docx다. 파랑·빨강·취소선과 최신 직접 결정을 확인한다. 현재 동작은 planning-index.md와 tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md가 정한다. E눈물/F상호작용, 메모 자기WorldPause·대화/로그 자체월드진행, 일반 적Idle/X·Y순찰/Stunned(Chase/Return 없음), 앱출력1/분리Side·Quarter를 적용한다. 이어하기/수동Retry·적처치기름·붕괴자동복구는 제외하며 이전 충돌 문구를 현재 목표로 승계하지 않는다.
 
-현재 ready-system-v11-refactor-2026-10-06 문서는 준비 단계다. 코드/스크립트 삭제·새 prefab 제작 완료로 쓰지 않는다. 기존 prefab 일괄 제거는 사용자가 직접 수행한다. 보호 HMS 공개 API의 새로운 수정 예외는 준비 문서의 파일별 범위로 검토하며 전체 폴더 허가를 가정하지 않는다.
+2026-10-08 소스·저장 자산 이관과 자동 기능/진입/빌드 검증을 반영했다. 실행 범위와 소스·빌드 식별은 검증 기록을 따른다. 실제 전체 수동 동선, QA39/FunQA, 미연결 animation13항목의 재생은 별도 대기다.
 
 2026-10-07 추가 직접 지시: 체크포인트 저장 데이터는 현재 플레이어 월드 위치와 보유 눈물조각 두 항목만 허용한다. 기획서 갱신에 모호성이 있어도 다른 항목은 전부 무시한다. StageId/CheckpointId·적/장치/필드·HP/폼/능력/카메라·시간을 저장 payload에 넣지 않는다. 월드 저장 DTO/등록자/객체별 상태 ID를 만들지 않는다.
 

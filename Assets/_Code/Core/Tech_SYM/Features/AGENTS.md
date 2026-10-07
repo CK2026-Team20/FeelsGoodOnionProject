@@ -2,7 +2,7 @@
 
 2026-10-06 최신 목표는 Assets/_Docs/planning-index.md와 ready-system-v11-refactor-2026-10-06 명세를 따른다. 이 문서는 구현 완료 기록이 아니다. 기존 지침의 다른 동작을 새 목표로 승계하지 않는다. 보호 원본/메타/아트 수정은 파일별 허가가 필요하다.
 
-ShatteredPlatform은 기본 상태 플레이어의 윗면만 판정하며 작은 폼/껍질/옆면/밑면은 발동하지 않는다. 경고1초 종료 즉시 지지 Collider 해제·붕괴 표현, 이탈 취소/자동 복구 없음이다. HeavyState는 압력판 무게에 남고 붕괴의 기본 폼 판정과 같지 않다. 자동 복구 필드/분기와 IBrokenable은 참조 이관 후 제거한다.
+ShatteredPlatform은 기본 상태 플레이어의 윗면만 판정하며 작은 폼/껍질/옆면/밑면은 발동하지 않는다. 경고1초 종료 즉시 지지 Collider 해제·붕괴 표현, 이탈 취소/자동 복구 없음이다. HeavyState는 압력판 무게에 남고 붕괴의 기본 폼 판정과 같지 않다. 자동 복구 필드/분기와 SYM 붕괴의 IBrokenable 소비는 참조 이관 후 제거했다. 보호 공용 계약이나 다른 소비자를 삭제하지 않는다.
 
 PlatformPresentation은 자기 경고/Animator/Visual을 소유하고 지지 Collider 판정은 로직이 한다. 실제 클립이 없으면 경고와 물리 후처리로 끝내고 실제 재생 성공이라고 쓰지 않는다. 기존 Controller/아트 원본은 참조하며 새 연결은 소유 자산에서 한다. 새 Root 로직/자식 Physics·Visual 참조를 코드와 함께 이관한다.
 

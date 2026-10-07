@@ -23,7 +23,7 @@ Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity를 열고 Play한다.
 
 Architecture의 Bootstrapper·Title·Core·Prototype/1_Stage·Stages/03_2_Stage·Stages/03_3_Stage 여섯 경로에만 Bootstrap 시작을 적용한다. 선택한 Stage2/3는 해당 Stage로 도착한다. 그 밖의 저장 씬은 현재 활성 씬에서 직접 시작한다. 역사적 Stages/03_1_Stage는 플레이어를 포함하지 않는 level-only 씬이어서 독립 Play만으로 통합 세션을 만들지는 않는다. 프로그래머가 대상을 바꿀 때 BootstrapEntryRoute의 정확한 경로 목록·설치의 Stage Paths·StageId/직접 진입 설정·생성 코드의 Catalog·실제 진입 검증 목록을 함께 맞춘다.
 
-ArchitectureInstallation.asset이 여섯 씬의 경로를, IntegrationEntrySettings.asset이 직접 진입 시 체크포인트·조각·해금을 제공한다. 각 Stage가 체크포인트의 실제 Pose를 제공한다. 이 세 설정을 혼동해 초기 좌표를 여러 곳에 중복 저장하지 않는다.
+ArchitectureInstallation.asset은 정확한6씬/등록 Stage3개 경로를, IntegrationEntrySettings.asset은 직접 진입 초기 CP/조각/해금 실행 구성을 제공한다. 초기 Pose는 Stage 배치를 조회한다. CP 접촉 뒤 저장 payload는 현재 Body Position/Fragments 두 값뿐이며 설정의 StageId/CheckpointId를 payload로 넣지 않는다. Core1회 뒤 Stage3개를 최초 additive 로드하고 retry·Title·다음 판에 씬을 유지한다. Title 씬 자체는 NewGame 때 언로드할 수 있다. 한 판 ReleaseSession/재연결과 영구 씬 수명을 구분한다.
 
 ## 자동 기능 검증
 
@@ -62,9 +62,10 @@ unity pipeline list --format json
 
 ## 새 목표 검증 범위와 준비 상태
 
-최신 ready는 문서/구조 검토 단계이며 새 코드·Play·빌드는 미실행이다. 명세 승인/필요 권한 확인 뒤 새 구현이 연결된 Prototype/1_Stage 실제씬에서 InputSystem 입력 동선을 검증한다. 서비스 직접 호출·teleport·EditMode API 검사는 별도 근거이며 전체 사용자 동선 통과를 대체하지 않는다. 시작 전 모든 로드 씬의 path/isDirty/isLoaded/rootcount와 active/setup/startScene을 기록하고 dirty가 하나라도 있으면 Play/build를 보류한다. 미저장 씬을 임의 저장·폐기하지 않고 원래 setup과 startScene을 복원한다. Unity·Editor 자동 저장은 감사하여 보존·커밋한다. 기존 03_1_Stage를 재생성하지 않는다.
-
+최신 자동 검증은 tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md와 output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T10-final-verified-snapshot.json에서 명령·시각·소스/빌드 해시·관찰 범위를 확인한다. 입력과 물리 시간을 사용해도 위치 준비·서비스 요청·복제 fixture가 포함된 결과는 원본 전체 수동 동선 판정으로 승계하지 않는다.
 
 ### Windows 빌드 설정 감사 주의 (2026-10-05 T9의 과거 관찰)
 명시 여섯 씬 BuildPipeline.BuildPlayer는 성공했으나 최초 실행에서 Unity 자체가 GraphicsSettings 형식을 정규화하고 InputSystem preloadedAssets 및 UnityConnect m_Enabled를 디스크에 기록했다. 엔진 결과 Succeeded와 ProjectSettings 불변 gate 실패를 분리한다. baseline의 GraphicsSettings 복사본을 native load/save한 바이트는 현재 파일과 동일하므로 형식 변환으로 재현됐다. PlayerSettings.preloadedAssets와 Connect.m_Enabled의 본 검사 부수 변경은 원래 값으로만 native API 복원했다. raw 파일 해시는 줄바꿈/형식 차이 때문에 baseline과 달라 raw 불변 PASS가 아니다. 근거 t9-windows-first-build.json, t9-build-settings-restoration.json.
 Unity singleton wrapper를 SaveToSerializedFileAndForget 또는 SaveAssetIfDirty에 넘긴 첫 시도는 디스크 복원이 되지 않았다. 실제 복사 파일을 InternalEditorUtility.LoadSerializedFileAndForget로 읽은 객체에 SerializedObject로 해당 필드만 원복하고 SaveToSerializedFileAndForget로 저장한 뒤 재조회했다. 전역 SaveAssets/SaveOpenScenes나 원본 씬 저장을 사용하지 않았다. 외부 ProBuilder 변경은 복원 대상에서 제외한다.
+
+마지막 카메라 수정 뒤 전체36시나리오·9진입/종료·원본 합성 입력2판/자연 사망4회와 새 지정6씬 Windows 빌드를 다시 실행했다. 원본 동선의 합성 입력 검증과 위치 준비/복제 fixture 기능 검사는 각각 기록한다. Windows 수동 그래픽·UI/UX·FunQA는 별도 수락이며 활성 DryForge 세 문서는 사용자 결과 수락 전 유지한다.

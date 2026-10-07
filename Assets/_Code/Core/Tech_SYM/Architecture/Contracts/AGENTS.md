@@ -6,7 +6,7 @@ Flow·Session·Control·Dialogue·Operation의 공개 입력·출력과 수명 �
 
 ## 유지할 계약
 
-CheckpointSnapshot은 유효한 ID와 0 이상 조각을 요구한다. OperationResult의 성공·실패·취소를 혼동하지 않는다. 반환 bool의 요청 수락과 실행 완료를 구분한다.
+CheckpointSnapshot은 유한한 플레이어 월드 위치와0~5 보유 눈물조각 두 값만 요구하며 잘못된 입력을 원자적으로 거부한다. StageId/CheckpointId와 HP·폼·능력·월드 객체 상태는 저장 payload에 넣지 않는다. Stage/Marker 식별자는 실행 구성으로만 사용한다. OperationResult의 성공·실패·취소를 혼동하지 않는다. 반환 bool의 요청 수락과 실행 완료를 구분한다.
 
 구체 View·Level·Integration 구현을 계약으로 역참조하지 않는다. 공용 Assets/_Code/Core/Interfaces와 Tech_HMS API는 참조 전용이다.
 

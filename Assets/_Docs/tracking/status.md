@@ -1,27 +1,31 @@
 # 현재 요구와 검증 상태
 
-2026-10-07 최신 직접 지시와 사용자 최종 선택을 적용해 구현 중이다. 확정안 원문은 `C:/Users/acac1/Desktop/시스템 정책 검토 요약.md`이며 SHA-256은 `65e1d74a01071972436764b9697f0f68b56085ef56f019c95374aaa4bca9ac8a`다. #11 원본 기획 문서 정리만 제외하고 HUD 안내 확정안은 적용한다. 이번 명세의 최소 HMS 공개 확장만 1회 허가됐으며 보호 원본 전체 수정 권한은 아니다.
+2026-10-08. 최신 직접 지시와 최종 선택을 구현했고 소스·저장 자산·자동 기능·지정 씬 진입 및 새 Windows 빌드를 확인했다. 원본 정책 SHA256은 `65e1d74a01071972436764b9697f0f68b56085ef56f019c95374aaa4bca9ac8a`다. #11의 원본 기획 문서 정리는 제외하고 HUD 안내 규칙은 적용했다. HMS 최소9소스의 한정 확장 외 보호 원본 수동 수정 권한은 없다.
 
-| 항목 | 현재 확인 | 아직 남은 검증/구현 |
+| 영역 | 현재 확인 | 남은 수락 범위 |
 |---|---|---|
-| 명세/권한 | 최종 선택·두 값 저장·현재 Stage 능력 재잠금·전체 Stage 최초 로드/이후 유지 반영 | 원본 DOCX/PDF 편집 없음 |
-| T1 HMS 최소 확장 | 9개 .cs, 커밋 `5d1770d`; 실제 Editor 컴파일 오류0 및 공개 API/순수 계약10건 통과 | 실제 Interact/Dead/Knockback clip 재생·물리·Brain 완료 증거와 구분 |
-| T2 수명/저장/입력 | 43ada64 통합·독립 검토 승인·메인 Editor 오류0·실제 두 값/원자성/재잠금 계약 PASS | 실제 Stage/접촉/Core callback 연결은 T9; 통합 Play/물리/Brain/빌드는 T10 |
-| T3 카메라 | `cd85a52` 통합·독립 검토 승인·메인 Editor 오류0; 최신 요청/재진입/취소 소스 관찰17개 통과 | 실제 Brain·Side 정렬·초기 위치 모드와 자산 연결은 T9/T10 |
-| T4 발판/장치/조각 | `915e5e9` 통합·독립 검토 승인·메인 Editor 오류0; 실제 소스 관찰82개 통과 | 실제 PhysX 접촉/운반·주기 침범·조각 재등장과 Stage 연결은 T9/T10 |
-| T5 일반 적 | `14e2160` 통합·독립 검토 승인·메인 Editor 오류0; 소스 관찰11개 통과 | 실제 Collider 접촉·순찰 지형·기절 표시와 자산 연결은 T9/T10 |
-| T6 상호작용/화면 | `31e8f0b` 통합·독립 검토 승인·메인 Editor 오류0; 소스135관찰/새 판 수명11관찰, 실제 Editor 대화 JSON 경계20관찰 통과 | 실제 UGUI/InputSystem/메모 강제 취소·Stage/Core 안내 연결은 T9/T10 |
-| T7 연출 | `6e7829e` 통합·독립 검토 승인·메인 Editor 오류0; 단일 컷 소스17관찰/API 컴파일 완료 | 실제 원화/UI/InputSystem과 자산 연결은 T9/T10 |
-| T8 작성 도구 | `55ee8ec`/`6613350`/`d5b1de6` 통합·독립 승인·Editor 오류0; 실제 Unity 두 번 작성37관찰/6씬/64출력/GUID 유지·Missing0 | 임시 작성 자산 검사이며 기존 자산 이관·통합 Play·새 빌드는 T9/T10 |
-| T9 연결/정리 | T8 완료 후 격리 worktree의 단일 source writer와 main-only native 작성으로 실행 중 | 기존 자산 참조 이관·32개 지정 소스 삭제·수명 통합 검증 |
-| PhysX 경계 | 실제 Unity ComputePenetration 8관찰 통과, preview 씬 닫힘·기존 setup/dirty 상태 동일 | Collider 접촉 콜백·Tween·Stage retry 전체 실행과 구분 |
-| Unity 자산 읽기 | 통합6씬과 전체 소유12씬·58프리팹 Missing Script0, 앞선 통합 직렬화682기록; 원래 씬 setup 복구 | 새 구현 Play/Windows 빌드 통과를 뜻하지 않음 |
-| 실제 클립/원화 | 기존 Opening/Ending 원화8장 확인; 플레이어 animation clip 슬롯은 미연결 | 임의 FBX Take를 피격/사망 클립으로 지정하지 않음; 제공/연결 후 실제 재생 검증 필요 |
-| QA | 최신 확정안39케이스/V01..V34 전체 연결, 읽기 전용 Excel PDF18쪽 텍스트·배치 검수; 이전 원본 백업/FunQA 원본·작성양식 hash 보존 | 실제 빌드 판정39개·새 통합 기능 실행·새 빌드·팀 플레이·FunQA 평가 미실행 |
+| 저장·재시도 | Position/Fragments 정확히2값, 실제 START/END만 저장, 현재Stage 능력/안내 재잠금·트리거 재접촉, 이전Stage 능력 보존 | 원본 전체 동선의 수동 평가 |
+| 씬·서비스 수명 | Core1회 뒤 Stage3개 최초 additive 로드, 재시도/Title/다음 판에 같은 씬 유지, App locator·한 판 서비스 구분, 소비 조각 동일 객체 복구 | 씬 추가 시 동일 계약 검증 필요 |
+| 카메라 | App 출력1/Core리그2, 초기Quarter ready, 종료guard와 겹친 구간 체류1회 제출·실제4관찰 | 실제 빌드 UI/UX·픽셀 평가 |
+| 입력·상호작용 | 방향키/Space/Q/E/F, Q공간 거절·1초, 직접몸체 E/무환급, F거리/각도/차폐/동거리·메모 정지 | 모든 원본 배치의 수동 동선 |
+| 적·발판·장치 | 실제 PhysX10시나리오238관찰, 적 Idle/X/Y·재기절, 붕괴1초/비복구, 주기5/2/3·운반·압력반전·장치F | 실제 미연결 표현 clip 재생 |
+| 위험·사망 | 실제 피해35/얕은기름26/깊은기름28/강제사망32, 통합 사망·옵션 두경로각10 | 깊은 기름은 fall-plane fixture; 원본 배치수락은 별도 |
+| 추격·포포·대화 | 전신 시작선·새저장없음·포획, 포포 Completed→Ending→Title·취소/사망 우선, Enter/Auto/로그·메모 자기토큰 | 준비 위치·서비스 요청 포함; 수동 원본 동선 별도 |
+| 오프닝·엔딩 | 기존 원화8장/각4컷×4초와 승인 임시 문구, 실제8PNG·옵션/Skip 입력 | 최종 스토리 원고·실제 animation 재생 |
+| 소스·자산 정리 | 지정32소스/소유meta삭제,7호환필드/11자산재저장,12씬/61프리팹 삭제참조0/Missing0/invalid0 | 사용자 기존 prefab 일괄제거는 수행하지 않음 |
+| 작성 도구 | 실제2회/37관찰/64출력·GUID 유지, Temp정리 뒤1991기준점 변화0 | 기존 사용자 자산의 전체 재생성을 수행하지 않음 |
+| 최종 자동 검사 | 현재174소스의36시나리오584관찰,6통합+3직접 Play/Stop, Stage2/3 이전능력각6, 실제 컴파일 실패 없음 | teleport·PositionPrepare·복제/격리fixture를 포함한 범위 |
+| Windows 빌드 | 2026-10-07T22:45:58.9107793Z~2026-10-07T22:46:14.9169095Z 지정6씬 Succeeded/errors0/warnings57, 설정추가변경0/setup동일, 새8초 headless기동 | Windows 수동 그래픽·UI/UX·FunQA 대기 |
+| 보호·자동 변경 | 432기준점/HMS9 exactT1/원본 DOCX·정책 보존, 예상외0. URP EOL과 정확한InputActions preload1개만 자동분류 | 수동 보호원본 수정으로 확대하지 않음 |
+| QA 인계 | Excel 자동근거13행과 마지막 수정3행 추가·39케이스 유지, 스타일·FunQA원본hash 보존 | 수동39결과 미실행/FunQA 평가 대기 |
+| 애니메이션 | 12AnimationClip+controllerTemplate1 참조가 null인 상태와 누락완료대체를 명시 | 13항목 제공·연결 후 실제 재생 필요 |
+| 최종 독립 검토 | 현재 소스·자산·문서·실행 근거 독립 대조, 카메라와 문서 지적 해결 | final-review/REVIEW-RESULT.json 판정·사용자 수락 |
 
-[기능 명세서](ready-system-v11-refactor-2026-10-06/기능 명세서.md) · [확정안 적용 명세](ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md) · [실행 계획](ready-system-v11-refactor-2026-10-06/plan.md) · [검증 항목](ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md). 씬 reload 여부의 두 문제와 대책은 확정안 적용 명세에서 비교한다. checkpoint payload는 Position/Fragments뿐이며 Stage/능력/필드 상태는 저장하지 않는다.
+현재 명세는 ready-system-v11-refactor-2026-10-06의 기능 명세서·확정안 적용 명세를 따른다. 코드 리뷰와 테스트 및 검증 항목에서 기능별 실제 관찰·남은 조건을 구분한다. 원본 DOCX/PDF를 정리하거나 지우지 않았다. source/API·자동 Editor·엔진 빌드·headless 초기기동·팀 수동 플레이·FunQA·실제 clip 재생은 서로 다른 판정이다.
 
-이전 미커밋 PlayerRoot/Ending Timeline/ProjectSettings 변경과 사용자 prefab 삭제를 보존하고 최초 Git diff로 추적한다. 새 실행의 자동 저장도 원인과 diff를 분류한 후 기존 커밋 지시에 포함하며 보호 원본 수동 수정 범위를 확대하지 않는다.
+최종 바이트 식별과 실행 근거는 `output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T10-final-verified-snapshot.json`이다. 최초 빌드의 설정 보존 실패와 후속 성공은 각각 보존한다. 기존 사용자/Unity 자동 변경을 포함한 로컬 커밋은 승인 범위이며 push/PR/원격 병합은 별도다.
+
+원본 전체 입력 검증: 카메라 접촉 수정 뒤 실제 Editor36시나리오584관찰·6통합/3직접 Play와Stop을 다시 통과했다. 원본 동선 두 판은 실제 방향키/Space/Q/E/Enter/Esc와 UGUI 이벤트로 Title→Opening→Play→각 낙사·적 접촉 사망→재접촉 해금→END→POPO→Ending→Title까지 완료했다. 자연 사망4회와 143관찰 모두 통과했으며 Core/3Stage·출력·수집물/적 identity는 유지됐다. 전체 동선 검사는 teleport·복제 fixture·직접 ForceDeath/Flow 요청·능력/조각 상태 쓰기를 사용하지 않았다. Editor 합성 입력이며 Windows 실행 파일의 수동 UI/UX·QA39케이스·FunQA와 실제 미연결13 animation 재생은 별도 대기다.
 
 ## 아래는 새 원본 적용 전 실행 이력
 

@@ -1,13 +1,11 @@
-# 시스템 책임과 현재/목표 구조
+# 시스템 책임과 수명
 
 > 2026-10-07 사용자 확정안과 추가 답변을 적용한다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)가 이전 초안의 충돌 문구를 대체한다. 구현/실행 완료는 [상태](tracking/status.md)와 실제 검증 증거로 판단한다.
 
-2026-10-06 최신 지정 원본을 반영했다. 아래의 **목표**는 새 리팩터링의 설계이며 현재 코드로 완료했다는 뜻이 아니다. 코드/자산 사실은 [구조 검토](<tracking/ready-system-v11-refactor-2026-10-06/원본 대조 및 구조 검토.md>), 파일별 필요성은 [스크립트 명세](<tracking/ready-system-v11-refactor-2026-10-06/스크립트 필요성 및 정리 명세.md>)를 따른다.
-
-| 수명/경계 | 상태의 단일 소유자와 필요한 책임 | 목표 변경 |
+| 수명/경계 | 상태의 단일 소유자와 필요한 책임 | 현재 책임과 종료 계약 |
 |---|---|---|
 | 앱 | AppComposition·GameFlowService·SceneService·음량/AudioService | Output Camera/Brain/Listener 각1개를 앱 수명으로 유지 |
-| Core/한 판 | CoreComposition·GameSessionRuntime·GameSessionService | 체크포인트/독립 능력/완료 대화 장부, Core 리그2개와 UI 유지 |
+| Core 씬/한 판 | CoreComposition·Core 리그2개·UI는 씬 수명; GameSessionRuntime·GameSessionService·CoreWorldBinding은 한 판 수명 | retry에는 같은 서비스 유지, Title에는 한 판 범위/빌린 참조 해제, NewGame에는 같은 씬에 새 범위 연결 |
 | Stage | StageService·각 기믹 상태 소유자 | 배치/트리거와 실행 중 상태만 소유; retry에는 초기 재준비, 월드 상태 저장 없음 |
 | Actor | SessionActorHost·HMS Facade/Model/Form/Movement | 생성/파괴와 원본 HP/조각/폼/속도; 카메라를 자식에서 제거 |
 | 카메라 구간 | LevelCameraService + HMS PlayerCameraController + Brain | 전환/정렬 조정, 단일 우선순위 작성자, 실제 출력 Transform 작성자 구분 |
@@ -20,15 +18,15 @@
 
 ## 카메라 구조의 변화와 이유
 
-현재 카메라 리그는 PlayerRoot 아래 ActorBody의 형제이며, 출력 Camera/Brain/HMS 컨트롤러와 네 가상 카메라를 포함한다. HMS Awake의 네 참조 검사와 재연결 API 부재 때문에 비활성 Actor 안에서 먼저 조립하고 같이 재생성했다. 이 구조는 당시 활성화/해제 안전성의 선택이며 Cinemachine의 부모 계층 조건이 아니다. App의 대기 Camera/Listener와 Actor 출력은 실제 준비 상태에 따라 교대한다. CoreLevelCamera는 출력 Camera가 아니라 LevelCameraService 객체다.
+현재 구성은 App Output Camera/Brain/Listener 각1개와 분리된 Core Side/Quarter 리그를 사용한다. PlayerRoot의 기존 CameraRig는 소유 자산에서 선택적으로 제거했고 실제 몸체/아트와 GUID를 보존했다. Actor 자식 리그·출력 교대 설명은 변경 전 이력이다. CoreLevelCamera는 출력 Camera가 아니라 LevelCameraService 객체다.
 
-새 목표는 App Output 하나와 Core Side/Quarter 두 가상 카메라다. HMS 컨트롤러에 명시적 Bind/Unbind/Preview/Commit 계약을 마련한 뒤 ActorCameraRig·출력 교대 구독·Back/Corridor 경로를 제거한다. retry에는 이전 목표를 먼저 해제하고 새 Actor의 HMS Start 준비/실제 Brain 완료 후 입력을 연다. 단일 출력은 유지하며 준비 중 월드 표시만 가린다. 이 API는 이번 명세 1회에 허용된 HMS 최소 확장으로 작성하며 실제 컴파일/조립 검증 상태는 별도 기록한다.
+HMS PlayerCameraController의 명시적 Bind/Unbind/Preview/Commit으로 App 출력과 Core 리그를 Actor에서 분리한다. HMS는 우선순위, Brain은 출력 Transform, LevelCameraService는 요청·입력 제한·Side Z 정렬과 실제 완료 확인을 소유한다. 초기 Quarter는 실제 Brain 준비 후 입력을 연다.
 
 ## 생성·재시도·종료
 
-Title 명령 → Flow 전환 → Core1회 로드/등록Stage 전부 최초 additive 로드/활성Stage 초기 준비 → Actor 생성/현재 저장 Position·Fragments 두 값 복원 → 카메라 목표 연결/초기 모드 준비 → Opening 또는 Play 순서다. 준비 중 입력을 허용하지 않는다. 새 게임은 체크포인트/능력/완료 대화 장부를 비우고 Editor 직접 진입은 명시된 EntrySettings를 사용한다. 해금/대화 장부는 한 판의 실행 상태이며 checkpoint 저장 필드가 아니다.
+Title 명령 → Core 최초1회 로드 → 등록 Stage3개 전부 최초 additive 로드 → 한 판 서비스 범위 생성/활성 Stage 초기 준비 → Actor 생성/Position·Fragments 복원 → 카메라 연결/초기 모드 준비 → Opening 또는 Play 순서다. 이후 retry·Title 복귀·NewGame에 Core/Stage 씬 인스턴스를 유지하고 활성 Stage 하나만 연결한다. Title 씬 자체는 NewGame 때 언로드할 수 있다. App 로케이터는 유지되며 새 판의 App 부모 Core 범위·능력/완료 대화 장부는 새로 만든다. 이 장부는 checkpoint payload가 아니다.
 
-retry에는 대화/메모/미완료 Actor 동작을 취소하고 빌린 카메라/월드 참조를 해제한다. Actor/껍질과 Stage를 초기 재준비한 뒤 플레이어 위치와 조각만 저장값으로 복원한다. 적/장치/필드 진행은 복원하지 않는다. Core/Session/VM과 App Output은 유지한다. Title 복귀에는 한 판의 Session/바인딩을 종료하고 CoreComposition 참조를 비운다. Core/모든Stage 씬과 음량/App Output은 유지하며 다음 판에 새 세션 범위를 연결한다. 비활성Stage의 Actor/트리거/추격/외부Tween은 중단한다. 외부 관찰자 예외가 다음 Dispose를 막지 않도록 종료 오류를 집계한다.
+retry에는 대화/메모/추격·미완료 Actor 동작을 취소하고 카메라/월드의 빌린 참조·자기 구독·접촉·Tween을 먼저 해제한다. StageService가 발판/장치/적/조각/트리거의 기존 typed 소유자 ResetForRetry를 호출해 초기 배치를 준비한 뒤 Position·Fragments만 복원한다. 소비한 TearFragment는 동일 객체·자식 Visual·Collider·소비 플래그를 복구한다. 현재 Stage가 최초 부여한 능력과 연결 안내 완료만 지우며 이전 Stage 출처는 보존한다. retry에는 Core 서비스/VM·App Output을 유지하고 Title에는 CoreComposition.ReleaseSession/SessionActorHost.ReleaseSession으로 한 판 참조를 정리한 뒤 같은 씬의 다음 판에 재연결한다. 비활성 Stage의 Actor/트리거/추격/외부 작업은 연결하지 않는다. WorldSave DTO·ParticipantRegistry·객체 상태 ID를 추가하지 않으며 종료 실패는 집계하고 성공으로 숨기지 않는다.
 
 ## 계층과 물리 예외
 
@@ -38,6 +36,6 @@ HMS 플레이어는 Facade·Movement·Form·Rigidbody·Collider가 같은 ActorB
 
 ## 조립과 정리 원칙
 
-전체206개 코드의 근거를 검토했고 SYM160개 중32개는 대체/참조 이관 후 삭제 계획이다. 보호46개는 읽기만 했다. 필요한 코드 안에서도 적 HP/사망·붕괴 자동 복구·옵션 Retry·Recover 카드·거리 Instruction·구출/래치 조건·4패널/scale·Actor 자식 카메라 탐색을 제거한다. 타인 독립 씬의 실제 소비 계약까지 이름만으로 삭제하지 않는다.
+32개 지정 소스와 소유 메타는 기능·호출·직렬화 참조를 이관한 뒤 삭제했다. 기존 자산은 선택적으로 이관했으며 원래 GUID와 실제 몸체·아트 배치를 보존했다. HMS의 이번 한정 공개 확장 외 원본 수정 권한은 없다.
 
 기능/상태/물리/표시 소유가 같은 중복은 합치고, 실제 자원 수명/외부 실행/여러 소비자를 구분하는 경계는 유지한다. _Art/공용/Packages/ProjectSettings를 변경하거나 Timeline 패키지를 삭제하는 계획이 아니다. 현재 서버/네트워크/앱 재시작 후 이어하기는 없다.

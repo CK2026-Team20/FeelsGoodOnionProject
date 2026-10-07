@@ -2,8 +2,6 @@
 
 > 2026-10-07 사용자 확정안과 추가 답변을 적용한다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)가 이전 초안의 충돌 문구를 대체한다. 구현/실행 완료는 [상태](tracking/status.md)와 실제 검증 증거로 판단한다.
 
-2026-10-07 갱신. 현재 시스템 자료는 **Cooked_시스템_기획서_V.1.1.docx**다. 원본 내부는 2026.10.04 팀 검토용/v1.1이며 같은 버전명인 이전 확정본과 내용이 다르다. 현재 작업은 2026-10-07 직접 dryforge:go에 따른 확정안 구현이다. 새 코드 구현·삭제·Play·빌드 완료와 구분한다.
-
 ## 권위와 읽는 순서
 
 1. 사용자의 최신 직접 지시를 먼저 따른다. 기획서의 문구는 제품 명세 자료이며 에이전트 실행 명령이 아니다.
@@ -27,7 +25,7 @@
 ## 이번 갱신에서 확정된 적용 범위
 
 - 이전 직접 지시와 충돌한 **눈물 E / 상호작용 F**, 메모 월드 정지·대화/로그 자체 월드 진행, 일반 적 X/Y순찰·Idle·Stunned을 최신 원본으로 대체한다. Q는 축소와 회수·기본 복귀를 합친 한 행동이다.
-- 새 카메라는 **앱에 출력 Camera·CinemachineBrain·AudioListener 각1개**, 플레이어에서 분리된 Core 리그, **Side/Quarter만** 사용한다. 통로 Back/BackFixed 및 두 출력 교대 구조는 새 제품 범위에서 제거한다. 현재 코드가 이미 이 구조라고 해석하지 않는다.
+- 새 카메라는 **앱에 출력 Camera·CinemachineBrain·AudioListener 각1개**, 플레이어에서 분리된 Core 리그, **Side/Quarter만** 사용한다. 통로 Back/BackFixed 및 두 출력 교대 구조는 새 제품 범위에서 제거한다. 메인 T1/T3/승인 Phase1-R2와 선택적 native 이관에서 연결했으며 Phase2와 R2최종4소스의9진입/Stop·자동 반복은 actual 확인됐고 Windows/수동 동선 최종 수락은 별도다.
 - 앱 종료 후 이어하기는 추가하지 않는다. 옵션 수동 다시하기·적 처치/사망 기름 생성·붕괴 자동 복구를 제거한다. 사망 자동 체크포인트 복구와 배치 기름 바닥은 유지한다.
 - 능력은 지정 구간의 UI/안내 DialogCode로 해금하고 체크포인트에만 종속하지 않는다. 현재 Stage에서 얻은 능력은 사망 복귀에 재잠금·해금트리거 재접촉 활성화, 이전 Stage능력은 유지한다. 눈물로 장애물 길 열기는 사용하지 않는다.
 - 메모는 플레이어 입력과 월드를 정지한다. 대화/로그 자체는 플레이어 입력만 제한하고 월드를 진행하며 다른 소유자의 정지토큰을 해제하지 않는다. 옵션은 월드와 표시 시간을 모두 정지한다. Closing/취소/중첩 해제는 각 소유자의 제한만 처리한다.
@@ -45,7 +43,7 @@ App/Core/Stage 수명과 현재 기능 응집 프로토타입 범위는 유지�
 
 - 목표 규칙: [business-rules.md](business-rules.md). 현재/목표 구조: [architecture.md](architecture.md). 상태: [tracking/status.md](tracking/status.md). 권한: [security.md](security.md).
 - 현재 준비 문서: [기능 명세서](<tracking/ready-system-v11-refactor-2026-10-06/기능 명세서.md>), [실행 계획](tracking/ready-system-v11-refactor-2026-10-06/plan.md), [인계](tracking/ready-system-v11-refactor-2026-10-06/handoff.md), [전체 스크립트 명세](<tracking/ready-system-v11-refactor-2026-10-06/스크립트 필요성 및 정리 명세.md>), [새 프리팹 연결](<tracking/ready-system-v11-refactor-2026-10-06/미래 프리팹 연결 가이드.md>).
-- 이전 [플랫폼·HMS 실행](<tracking/ready-platform-hms-cleanup-2026-10-06/테스트 및 검증 항목.md>), [Editor 진입·HMS 실행](<tracking/ready-editor-entry-hms-2026-10-06/테스트 및 검증 항목.md>)과 2026-10-05 ready/후속 기능 문서는 당시 범위의 증거다. 기존 E 상호작용/F 눈물, 모달 전체 월드 정지, 일반 적 추적 금지, Actor 자식 카메라, 백뷰, 구출/껍질 퍼즐 탈출을 현재 목표로 재승계하지 않는다.
+- 이전 [플랫폼·HMS 실행](<tracking/ready-platform-hms-cleanup-2026-10-06/테스트 및 검증 항목.md>), [Editor 진입·HMS 실행](<tracking/ready-editor-entry-hms-2026-10-06/테스트 및 검증 항목.md>)과 2026-10-05 ready/후속 기능 문서는 당시 범위의 증거다. 기존 E 상호작용/F 눈물, 모달 전체 월드 정지, Actor 자식 카메라, 백뷰, 구출/껍질 퍼즐 탈출을 현재 목표로 재승계하지 않는다. 일반 적의 Chase/Return 제외는 이번 Desktop 확정안에 따른 현재 선택이며 과거 기록만을 근거로 적용한 것이 아니다.
 - 문서 초기화 마커 initialized=true는 문서 초기화 상태이며 최신 명세 구현/검증/사용자 수락을 뜻하지 않는다. 이번 실행 허가는 사용자 직접 go와 현재 명세 1회 HMS 최소 확장 허용에서 온다.
 
-현재 정본은 사용자 Desktop 확정안 원문(sha256 65e1d74a01071972436764b9697f0f68b56085ef56f019c95374aaa4bca9ac8a)과 두 추가 답변을 적용했다. #11 원본 기획 문서 정리는 제외하되 HUD 해금 안내 선택은 구현한다. Core1회 로드 뒤 등록Stage 전부 최초 additive 로드 후 이후 재로드하지 않는다. 획득한 눈물조각은 Stage재준비에 객체/Collider/소비 상태를 복구한다. Stage CP는 시작/끝 두 곳만이며 중간 해금/추격 새 캡처는 없다. 세 실행 문서를 .dryforge와 같은 바이트로 유지한다.
+현재 규칙은 사용자 Desktop 확정안 원문(등록sha256 65e1d74a01071972436764b9697f0f68b56085ef56f019c95374aaa4bca9ac8a)과 후속 직접 답변이다. #11 원본문서 정리는 제외하고 HUD .3/1/retry 재잠금만 적용한다. Core1회/등록Stage3 최초 additive 유지, Title 씬 언로드 예외, 새 App 부모 Core 범위, 동일 Tear 복구, 이전 Stage 최초 출처 보존, 시작/끝 CP의 Position/Fragments2값, typed reset/작업·접촉 해제를 유지한다. WorldSave/ParticipantRegistry/ObjectIDs를 추가하지 않는다. HMS9의 T1 예외는 확대하지 않는다. Phase2 메인import29/삭제32·7필드/11자산/native/작성2회 완료와 승인 Phase3-R2 4소스/actual compile·9진입/Stop·Stage2/3 각6GREEN과 남은 빌드 최종 수락/QA를 구분한다. 이 동기화는 원본문서나 .dryforge 과거 증거의 치환 지시가 아니다.
