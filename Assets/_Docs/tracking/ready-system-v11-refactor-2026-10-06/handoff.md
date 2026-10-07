@@ -92,3 +92,9 @@ T3 `cd85a52`의 카메라 요청 소스17관찰, T4 `915e5e9`의 발판·장치�
 T6 `31e8f0b`, T7 `6e7829e`는 독립 승인 후 메인에 통합했고 실제 Editor 재컴파일 오류0이다. T6의 ForceCloseOverlays/CancelOperations와 Dialogue.ForgetCompletedCodes/ResetRound, T7의 Catalog.Configure/Host.Configure/단일 컷 View 계약을 T8 작성 도구와 T9 수명 연결에서 소비한다. T6의 설치된 대화 Table JSON20관찰, T7의 설치된 서비스 시계/자기 제어권9관찰이 통과했다. 기존 원화 Texture2D 참조와 Time.timeScale 계약 검사이며 실제 화면 렌더링·InputSystem·전체 동선 통과는 아니다.
 
 T4 침범 경계의 실제 Unity ComputePenetration8관찰도 통과했다. 경사진 얕은 상단 접촉의 단순 AABB 높이 오판을 재현했으며 preview 씬을 닫고 기존 scene setup/dirty를 보존했다. 실제 주기 발판의 Materialize/ForceDeath/Tween·Stage retry 통합 검증은 T10이다. source/계약 결과를 수동 QA39판정에 덮어쓰지 않았고 FunQA 두 DOCX hash도 동일하다. T8은 `6e7829e` 기반 managed worktree에서 작성 도구 소스만 구현 중이며 메인만 live Editor/native 자산을 수정한다. 기존 32개 지정 소스와 자산 참조는 아직 보존한다.
+
+## T8 완료와 T9 실행 — 2026-10-08
+
+T8 최종 source `d5b1de6`은 독립 승인·실제 Editor 오류0·실제 두 번 임시 작성37관찰 PASS다. 여섯 씬/64개 출력 재작성 GUID와 App1/Core2/Actor0/CP2/Missing0, 현재 Prototype handle30871:5376/startBootstrap/dirtyfalse/build settings 보존, cleanup 뒤1979원본 추가차이0을 확인했다. R1/R2/R3의 실패·보정·승인 근거는 `T8-evidence`와 main native 호출 JSON에 보존한다. R2 소유 TMP 자동 변화는 원인/diff를 감사해 기존 모든 변경 커밋 지시에 포함한다.
+
+T9는 재사용한 격리 managed checkout의 단일 source writer가 retained 소비를 먼저 연결하고, main만 기존 소유 자산을 선택적으로 이관한다.32개 소스는 native GUID/호출/메뉴/반사/기능 참조 이관 전 삭제하지 않는다. 정상 Core 종료/다음 판 재사용·현재 Stage 재잠금/조각 복구·App 출력/Core 리그 연결·직접 Play/추격/포포가 완료 후 실제 통합 검증 대상이다. 전체 prefab 삭제/재생성·보호 원본 수정은 수행하지 않는다. V01..V34·새 빌드·팀QA/FunQA/실제 clip은 별도 대기다.

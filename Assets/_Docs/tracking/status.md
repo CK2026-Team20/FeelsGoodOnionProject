@@ -12,7 +12,8 @@
 | T5 일반 적 | `14e2160` 통합·독립 검토 승인·메인 Editor 오류0; 소스 관찰11개 통과 | 실제 Collider 접촉·순찰 지형·기절 표시와 자산 연결은 T9/T10 |
 | T6 상호작용/화면 | `31e8f0b` 통합·독립 검토 승인·메인 Editor 오류0; 소스135관찰/새 판 수명11관찰, 실제 Editor 대화 JSON 경계20관찰 통과 | 실제 UGUI/InputSystem/메모 강제 취소·Stage/Core 안내 연결은 T9/T10 |
 | T7 연출 | `6e7829e` 통합·독립 검토 승인·메인 Editor 오류0; 단일 컷 소스17관찰/API 컴파일 완료 | 실제 원화/UI/InputSystem과 자산 연결은 T9/T10 |
-| T8~T9 | T8 작성 도구 구현 중, 기존 native/GUID 참조 기준점 보존 | 작성 도구 검토·실제 자산 연결·32개 지정 소스 이관 후 삭제 |
+| T8 작성 도구 | `55ee8ec`/`6613350`/`d5b1de6` 통합·독립 승인·Editor 오류0; 실제 Unity 두 번 작성37관찰/6씬/64출력/GUID 유지·Missing0 | 임시 작성 자산 검사이며 기존 자산 이관·통합 Play·새 빌드는 T9/T10 |
+| T9 연결/정리 | T8 완료 후 격리 worktree의 단일 source writer와 main-only native 작성으로 실행 중 | 기존 자산 참조 이관·32개 지정 소스 삭제·수명 통합 검증 |
 | PhysX 경계 | 실제 Unity ComputePenetration 8관찰 통과, preview 씬 닫힘·기존 setup/dirty 상태 동일 | Collider 접촉 콜백·Tween·Stage retry 전체 실행과 구분 |
 | Unity 자산 읽기 | 통합6씬과 전체 소유12씬·58프리팹 Missing Script0, 앞선 통합 직렬화682기록; 원래 씬 setup 복구 | 새 구현 Play/Windows 빌드 통과를 뜻하지 않음 |
 | 실제 클립/원화 | 기존 Opening/Ending 원화8장 확인; 플레이어 animation clip 슬롯은 미연결 | 임의 FBX Take를 피격/사망 클립으로 지정하지 않음; 제공/연결 후 실제 재생 검증 필요 |
