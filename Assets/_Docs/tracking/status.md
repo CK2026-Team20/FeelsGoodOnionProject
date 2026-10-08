@@ -2,7 +2,7 @@
 
 2026-10-08. 최신 직접 지시와 최종 선택을 구현했고 소스·저장 자산·자동 기능·지정 씬 진입 및 새 Windows 빌드를 확인했다. 원본 정책 SHA256은 `65e1d74a01071972436764b9697f0f68b56085ef56f019c95374aaa4bca9ac8a`다. #11의 원본 기획 문서 정리는 제외하고 HUD 안내 규칙은 적용했다. HMS 최소9소스의 한정 확장 외 보호 원본 수동 수정 권한은 없다.
 
-| 영역 | 현재 확인 | 남은 수락 범위 |
+| 영역 | 현재 확인 | 남은 확인·작업 |
 |---|---|---|
 | 저장·재시도 | Position/Fragments 정확히2값, 실제 START/END만 저장, 현재Stage 능력/안내 재잠금·트리거 재접촉, 이전Stage 능력 보존 | 원본 전체 동선의 수동 평가 |
 | 씬·서비스 수명 | Core1회 뒤 Stage3개 최초 additive 로드, 재시도/Title/다음 판에 같은 씬 유지, App locator·한 판 서비스 구분, 소비 조각 동일 객체 복구 | 씬 추가 시 동일 계약 검증 필요 |
@@ -19,11 +19,13 @@
 | 보호·자동 변경 | 432기준점/HMS9 exactT1/원본 DOCX·정책 보존, 예상외0. URP EOL과 정확한InputActions preload1개만 자동분류 | 수동 보호원본 수정으로 확대하지 않음 |
 | QA 인계 | Excel 자동근거13행과 마지막 수정3행 추가·39케이스 유지, 스타일·FunQA원본hash 보존 | 수동39결과 미실행/FunQA 평가 대기 |
 | 애니메이션 | 12AnimationClip+controllerTemplate1 참조가 null인 상태와 누락완료대체를 명시 | 13항목 제공·연결 후 실제 재생 필요 |
-| 최종 독립 검토 | 현재 소스·자산·문서·실행 근거 독립 대조, 카메라와 문서 지적 해결 | final-review/REVIEW-RESULT.json 판정·사용자 수락 |
+| 최종 독립 검토 | approved·차단0·열린 권고0. 2026-10-08 사용자 지시로 검토 종결 | 애니메이션13·수동QA39·FunQA는 미완료로 유지. [종결 기록](<ready-system-v11-refactor-2026-10-06/코드 리뷰.md>) |
 
 현재 명세는 ready-system-v11-refactor-2026-10-06의 기능 명세서·확정안 적용 명세를 따른다. 코드 리뷰와 테스트 및 검증 항목에서 기능별 실제 관찰·남은 조건을 구분한다. 원본 DOCX/PDF를 정리하거나 지우지 않았다. source/API·자동 Editor·엔진 빌드·headless 초기기동·팀 수동 플레이·FunQA·실제 clip 재생은 서로 다른 판정이다.
 
 최종 바이트 식별과 실행 근거는 `output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T10-final-verified-snapshot.json`이다. 최초 빌드의 설정 보존 실패와 후속 성공은 각각 보존한다. 기존 사용자/Unity 자동 변경을 포함한 로컬 커밋은 승인 범위이며 push/PR/원격 병합은 별도다.
+
+2026-10-08 사용자가 이번 작업의 검토 마무리를 지시했다. 구현·자산 연결·자동 검증 결과의 검토를 종결하고 활성 명세·계획·인계 3문서를 `.dryforge/001/`로 보관했다. 문서 바이트와 기존 `initialized: true` 표시는 보존했으며 `.dryforge/` 루트에 활성 3문서를 남기지 않았다. 검토 종결은 대기 항목의 완료 판정이 아니다. 애니메이션 12개 클립·컨트롤러 템플릿 1개 연결 및 실제 재생, Windows 수동 QA39건과 FunQA 평가는 미완료다. 기존 실행 근거는 보존하며 이번 종결에서는 코드·게임 자산을 변경하거나 기능 검증·빌드를 다시 실행하지 않았다.
 
 원본 전체 입력 검증: 카메라 접촉 수정 뒤 실제 Editor36시나리오584관찰·6통합/3직접 Play와Stop을 다시 통과했다. 원본 동선 두 판은 실제 방향키/Space/Q/E/Enter/Esc와 UGUI 이벤트로 Title→Opening→Play→각 낙사·적 접촉 사망→재접촉 해금→END→POPO→Ending→Title까지 완료했다. 자연 사망4회와 143관찰 모두 통과했으며 Core/3Stage·출력·수집물/적 identity는 유지됐다. 전체 동선 검사는 teleport·복제 fixture·직접 ForceDeath/Flow 요청·능력/조각 상태 쓰기를 사용하지 않았다. Editor 합성 입력이며 Windows 실행 파일의 수동 UI/UX·QA39케이스·FunQA와 실제 미연결13 animation 재생은 별도 대기다.
 
