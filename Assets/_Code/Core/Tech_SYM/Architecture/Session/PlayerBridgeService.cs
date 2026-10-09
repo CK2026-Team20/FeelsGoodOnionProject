@@ -14,18 +14,33 @@ namespace Cooked.Session
         // Current EnemyDefinition/DamageFloor authoring uses 0ms; retain that finite fallback
         // until the actual common Knockback clip is connected. Pending HMS force still runs.
         public const float MissingKnockbackClipFallbackMilliseconds = 0f;
+        public static bool IsDeathComplete(bool presentationReady, bool separationPending, bool paused, bool reported)
+            => presentationReady && !separationPending && !paused && !reported;
+        public static bool MatchesActor(object expected, long expectedGeneration, object current, long currentGeneration)
+            => expected != null && ReferenceEquals(expected, current) && expectedGeneration == currentGeneration;
         private readonly IGameplayControlService control;
         private readonly IGameSessionService session;
-        private readonly IGameEventBus eventBus;
+        private readonly Func<PlayerFacade, long, bool> requestRetry;
+        public float HorizontalKnockbackSpeed { get; }
+        public float UpwardKnockbackSpeed { get; }
         private PlayerFacade actor;
         private IReadOnlyPlayerModel model;
         private PlayerSkillController skills;
         private PlayerFormController form;
         private PlayerSkill observedTear;
         private CharacterMovement movement;
+        private Rigidbody actorBody;
+        private Component separationOwner;
+        private PlayerFacade separationActor;
+        private long separationGeneration;
+        private float separationTargetY, separationRemaining;
+        private float requestedSeparationVelocityY, separationStepLoss;
+        private bool separationPending, issuingMovementCommand;
+        private double lastSeparationPhysicsTime = double.NegativeInfinity;
+        private Action movementHandler;
         private PlayerMovementModeController movementMode;
         private bool deathReported, disposed, detaching, pendingTear, pendingForm;
-        private bool deathPending, deathReady, deathInterrupted, skipDeathPresentation;
+        private bool deathPending, deathReady, deathInterrupted, deathNotified, skipDeathPresentation;
         private int deathFrame;
         private long actorGeneration, deathBaselineRequestId, deathRequestId;
         private float nextFormChangeTime;
@@ -37,6 +52,10 @@ namespace Cooked.Session
         private PlayerForm lastCommittedForm;
         private Func<EnemyActor, Collider> hurtColliderResolver;
         public PlayerFacade Actor => actor;
+        public long ActorGeneration => actorGeneration;
+        public bool SeparationPending => separationPending;
+        public bool PhysicsPaused => control.State.WorldPaused || control.State.PresentationPaused;
+        public Transform VisualRoot { get; private set; }
         public event Action Dying;
         public event Action<AbilityId, PlayerSkillBlockReason> AbilityRejected;
         // T5/T9 may inject EnemyActor.HurtCollider when its read-only public contract is available.
@@ -56,12 +75,27 @@ namespace Cooked.Session
         /// Integration maps these to audio once. Failed observers are logged, not rethrown into HMS execution.</summary>
         public event Action<AbilityId> AbilitySucceeded;
 
-        public PlayerBridgeService(IGameplayControlService control, IGameSessionService session, IGameEventBus eventBus)
+        /// <summary>Retry 요청은 현재 Actor/generation을 확인한 조립자가 수락한다. 독립 모드는 null을 전달한다.
+        /// 두 넉백 속도는 Core/독립 Host가 같은 작성 설정에서 전달한다(m/s).</summary>
+        public PlayerBridgeService(IGameplayControlService control, IGameSessionService session,
+            Func<PlayerFacade, long, bool> requestRetry, float horizontalKnockbackSpeed = 3f, float upwardKnockbackSpeed = 3f)
         {
+            ValidateKnockbackSpeed(horizontalKnockbackSpeed, nameof(horizontalKnockbackSpeed));
+            ValidateKnockbackSpeed(upwardKnockbackSpeed, nameof(upwardKnockbackSpeed));
             this.control = control ?? throw new ArgumentNullException(nameof(control));
             this.session = session ?? throw new ArgumentNullException(nameof(session));
-            this.eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+            this.requestRetry = requestRetry;
+            HorizontalKnockbackSpeed = horizontalKnockbackSpeed;
+            UpwardKnockbackSpeed = upwardKnockbackSpeed;
             control.Changed += OnControlChanged;
+        }
+        // T10 소비 이관 후 T12 제거: 기존 통합 생성자만 위한 임시 호환. 독립 모드에는 사용하지 않는다.
+        public PlayerBridgeService(IGameplayControlService control, IGameSessionService session, IGameEventBus eventBus)
+            : this(control, session, LegacyRetry(eventBus)) { }
+        private static Func<PlayerFacade, long, bool> LegacyRetry(IGameEventBus bus)
+        {
+            if (bus == null) throw new ArgumentNullException(nameof(bus));
+            return (source, generation) => { bus.Publish(new FlowRequestedEvent(new FlowRequest(FlowCommand.RetryCheckpoint))); return true; };
         }
         public void Attach(PlayerFacade value)
         {
@@ -69,17 +103,26 @@ namespace Cooked.Session
             if (detaching) throw new InvalidOperationException("Cannot attach during actor teardown.");
             if (value == null) throw new ArgumentNullException(nameof(value));
             if (actor == value) return;
+            var presentation = value.GetComponent<PlayerDamagePresentation>();
+            if (presentation == null) throw new InvalidOperationException("현재 ActorBody의 PlayerDamagePresentation 참조가 필요합니다.");
+            presentation.ValidateReferences(value);
+            if (value.GetComponent<CharacterMovement>() == null || value.GetComponent<Rigidbody>() == null ||
+                value.GetComponent<CapsuleCollider>() == null || value.GetComponent<PlayerSkillController>() == null ||
+                value.GetComponent<PlayerFormController>() == null)
+                throw new InvalidOperationException("현재 ActorBody의 HMS 이동·물리·스킬·폼 연결이 필요합니다.");
             Detach();
             actor = value;
             model = actor.Model;
             skills = actor.GetComponent<PlayerSkillController>();
             form = actor.GetComponent<PlayerFormController>();
             movement = actor.GetComponent<CharacterMovement>();
+            actorBody = actor.GetComponent<Rigidbody>();
             movementMode = actor.GetComponent<PlayerMovementModeController>();
             observedTear = skills.GetEquippedSkill(TearSlot);
-            CameraTarget = actor.transform.Find("CameraAnchor") ?? actor.transform;
+            CameraTarget = presentation.CameraAnchor;
+            VisualRoot = presentation.VisualRoot;
             deathReported = false; pendingTear = false; pendingForm = false;
-            deathPending = deathReady = deathInterrupted = skipDeathPresentation = false;
+            deathPending = deathReady = deathInterrupted = deathNotified = skipDeathPresentation = false;
             deathRequestId = 0; nextFormChangeTime = 0;
             long generation = ++actorGeneration;
             animation = actor.GetComponent<PlayerAnimationController>();
@@ -93,6 +136,16 @@ namespace Cooked.Session
             {
                 if (actorGeneration == generation && actor == attachedActor) OnPlaybackEnded(request, reason);
             };
+            movementHandler = () =>
+            {
+                if (!issuingMovementCommand && separationPending && IsCurrentActor(attachedActor, generation) && Time.inFixedTimeStep &&
+                    lastSeparationPhysicsTime != Time.fixedTimeAsDouble)
+                {
+                    lastSeparationPhysicsTime = Time.fixedTimeAsDouble;
+                    AdvanceSeparation(Time.fixedDeltaTime);
+                }
+            };
+            movement.MovementUpdated += movementHandler;
             if (animation != null) animation.PlaybackEnded += endedHandler;
             if (observedTear is TearSkill tear) tear.SetTargetValidation(actor.transform, ValidateTearTarget);
             model.HealthChanged += healthHandler;
@@ -116,19 +169,27 @@ namespace Cooked.Session
             var oldForm = form;
             var oldTear = observedTear;
             var oldAnimation = animation;
+            var oldMovement = movement;
+            var oldMovementHandler = movementHandler;
+            bool hadSeparation = separationPending;
             var oldEnded = endedHandler;
             var oldHealth = healthHandler;
             var oldFragments = fragmentsHandler;
             var oldFormHandler = formHandler;
             ++actorGeneration;
-            deathPending = deathReady = deathInterrupted = skipDeathPresentation = false;
+            ClearSeparation();
+            deathPending = deathReady = deathInterrupted = deathNotified = skipDeathPresentation = false;
             animation = null; endedHandler = null;
             healthHandler = null; fragmentsHandler = null; formHandler = null;
             bool hadActor = oldModel != null;
-            actor = null; model = null; skills = null; movement = null; movementMode = null; form = null; observedTear = null; CameraTarget = null;
+            actor = null; model = null; skills = null; movement = null; movementMode = null; form = null; observedTear = null;
+            actorBody = null; movementHandler = null; CameraTarget = null; VisualRoot = null;
             pendingTear = false; pendingForm = false;
             try
             {
+                if (oldMovement != null && oldMovementHandler != null)
+                    SessionCleanup.Attempt(errors, () => oldMovement.MovementUpdated -= oldMovementHandler);
+                if (hadSeparation && oldMovement != null) SessionCleanup.Attempt(errors, () => oldMovement.ResetForRevive(true));
                 if (oldModel != null)
                 {
                     SessionCleanup.Attempt(errors, () => oldModel.HealthChanged -= oldHealth);
@@ -242,6 +303,7 @@ namespace Cooked.Session
             bool blocked = state.GameplayBlocked || state.WorldPaused;
             actor.SetInputBlocked(blocked);
             if (blocked) { pendingTear = false; pendingForm = false; actor.ClearInput(); skills.CancelAll(); }
+            if (separationPending && !state.WorldPaused && !state.PresentationPaused) ScheduleSeparationVelocity();
         }
         private bool RejectAbility(AbilityId ability, PlayerSkillBlockReason reason)
         {
@@ -252,9 +314,54 @@ namespace Cooked.Session
             if (errors.Count > 0) Debug.LogException(new AggregateException("Ability rejection observer failed.", errors));
             return false;
         }
-        // Damage sources keep their existing force calculation and call this boundary (T4/T5/T9).
-        public int Damage(Vector3 knockbackVelocity)
-        { RequireActor(); return actor.Damage(1, knockbackVelocity, GetKnockbackControlLockMilliseconds(actor)); }
+        public bool IsCurrentActor(PlayerFacade expected, long generation)
+            => !disposed && !detaching && session.IsActive && actor != null && actor.isActiveAndEnabled &&
+                MatchesActor(expected, generation, actor, actorGeneration);
+        private bool HasLiveActor => IsCurrentActor(actor, actorGeneration) && !actor.IsDead &&
+            movement != null && movement.isActiveAndEnabled && actorBody != null && !actorBody.isKinematic;
+
+        /// <summary>인자는 피해원의 월드 위치다. 방향/세기는 모든 일반 피해원이 이 한 규칙을 사용한다.</summary>
+        public int Damage(Vector3 sourcePosition)
+        {
+            ThrowIfDisposed();
+            if (!HasLiveActor || PhysicsPaused) return 0;
+            Vector3 velocity = CommonKnockback(sourcePosition, actorBody.position, FacingDirection,
+                movement.AllowHorizontalMovement, movement.AllowDepthMovement, HorizontalKnockbackSpeed, UpwardKnockbackSpeed);
+            PlayerFacade expected = actor;
+            long generation = actorGeneration;
+            bool mayDie = model.CurrentHP == 1;
+            if (mayDie) BeginDeathObservation(false);
+            try { return expected.Damage(1, velocity, GetKnockbackControlLockMilliseconds(expected)); }
+            finally { if (mayDie && IsCurrentActor(expected, generation) && !expected.IsDead) ClearDeathObservation(); }
+        }
+        /// <summary>작성 평면은 HMS 이동 축(X/Z)이다. 동일 위치는 논리 정면 반대, Y는 항상 상향이다.</summary>
+        public static Vector3 CommonKnockback(Vector3 sourcePosition, Vector3 bodyPosition, Vector3 facing,
+            bool horizontalAllowed, bool depthAllowed, float horizontalSpeed = 3f, float upwardSpeed = 3f)
+        {
+            if (!Finite(sourcePosition) || !Finite(bodyPosition) || !Finite(facing)) throw new ArgumentOutOfRangeException(nameof(sourcePosition));
+            ValidateKnockbackSpeed(horizontalSpeed, nameof(horizontalSpeed));
+            ValidateKnockbackSpeed(upwardSpeed, nameof(upwardSpeed));
+            double x = horizontalAllowed ? (double)bodyPosition.x - sourcePosition.x : 0;
+            double z = depthAllowed ? (double)bodyPosition.z - sourcePosition.z : 0;
+            double length = Math.Sqrt(x * x + z * z);
+            if (length < .000001)
+            {
+                x = horizontalAllowed ? -facing.x : 0;
+                z = depthAllowed ? -facing.z : 0;
+                length = Math.Sqrt(x * x + z * z);
+                if (length < .000001)
+                {
+                    x = horizontalAllowed ? -1 : 0;
+                    z = !horizontalAllowed && depthAllowed ? -1 : 0;
+                    length = Math.Sqrt(x * x + z * z);
+                }
+            }
+            return new Vector3(length > 0 ? (float)(x / length * horizontalSpeed) : 0, upwardSpeed,
+                length > 0 ? (float)(z / length * horizontalSpeed) : 0);
+        }
+        private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
+        private static void ValidateKnockbackSpeed(float speed, string name)
+        { if (!float.IsFinite(speed) || speed < 0) throw new ArgumentOutOfRangeException(name); }
         public static float GetKnockbackControlLockMilliseconds(PlayerFacade source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -263,11 +370,180 @@ namespace Cooked.Session
         }
         public int ForceDeath(Vector3 knockbackVelocity, bool skipPresentation = false)
         {
-            RequireActor();
-            if (actor.IsDead) return 0;
+            ThrowIfDisposed();
+            if (!HasLiveActor || PhysicsPaused) return 0;
+            PlayerFacade expected = actor;
+            long generation = actorGeneration;
             skipDeathPresentation = skipPresentation;
-            try { return actor.ForceDeath(knockbackVelocity, GetKnockbackControlLockMilliseconds(actor)); }
-            finally { if (actor != null && !actor.IsDead) skipDeathPresentation = false; }
+            BeginDeathObservation(skipPresentation);
+            issuingMovementCommand = true;
+            try { return expected.ForceDeath(knockbackVelocity, GetKnockbackControlLockMilliseconds(expected)); }
+            finally
+            {
+                issuingMovementCommand = false;
+                if (IsCurrentActor(expected, generation) && !expected.IsDead) ClearDeathObservation();
+            }
+        }
+
+        /// <summary>단발 얕은 보정 또는 HMS 외력으로 깊은 분리를 요청한다. 지속 pose 작성자는 추가하지 않는다.</summary>
+        public bool TryResolvePlatformOverlap(Component owner, PlayerFacade expected, long generation,
+            float liftMetres, float seconds, bool fatal)
+        {
+            ThrowIfDisposed();
+            if (owner == null || !float.IsFinite(liftMetres) || liftMetres <= 0 || !float.IsFinite(seconds) || seconds <= 0)
+                throw new ArgumentOutOfRangeException(nameof(liftMetres), "실제 양수 분리 거리/시간과 요청 소유자가 필요합니다.");
+            if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused || separationPending) return false;
+            if (!fatal)
+            {
+                // HMS의 예약 외력/점프/이전 접지는 공개 명령으로 해제하고 실제 몸체를 한 번 보정한다.
+                // ResetForRevive로 기존 공중 시간/착지 예약까지 지우지 않는다.
+                // 다음 자연 물리 접촉이 접지와 착지를 확정한다. 이 호출은 접지를 꾸미지 않는다.
+                IssueMovementVelocity(Vector3.zero, 0);
+                if (!IsCurrentActor(expected, generation) || !HasLiveActor) return false;
+                actorBody.position += Vector3.up * liftMetres;
+                actorBody.WakeUp();
+                return true;
+            }
+            // ForceDeath 안에서 Missing 종료가 동기로 와도 분리가 먼저 대기 상태여야 한다.
+            separationPending = true;
+            separationOwner = owner;
+            separationActor = expected;
+            separationGeneration = generation;
+            separationTargetY = actorBody.position.y + liftMetres;
+            separationRemaining = seconds;
+            requestedSeparationVelocityY = separationStepLoss = 0;
+            lastSeparationPhysicsTime = double.NegativeInfinity;
+            int applied;
+            try { applied = ForceDeath(Vector3.zero); }
+            catch { CancelSeparation(owner); throw; }
+            if (!IsCurrentActor(expected, generation)) return false;
+            if (applied <= 0 || !expected.IsDead) { CancelSeparation(owner); return false; }
+            ScheduleSeparationVelocity();
+            return true;
+        }
+
+        /// <summary>HMS MovementUpdated의 물리 스텝 끝에서 진행한다. 외부 helper는 중지 Edit Mode에서만 직접 확인한다.</summary>
+        public void AdvanceSeparation(float deltaSeconds)
+        {
+            if (!float.IsFinite(deltaSeconds) || deltaSeconds < 0) throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
+            if (!separationPending || PhysicsPaused || deltaSeconds == 0 ||
+                !IsCurrentActor(separationActor, separationGeneration)) return;
+            if (movement == null || !movement.isActiveAndEnabled || actorBody == null)
+                throw new InvalidOperationException("현재 사망 Actor의 HMS 이동/몸체가 분리 중 해제되었습니다.");
+            // MovementUpdated는 HMS가 이번 스텝 중력/축 제약을 적용한 뒤 온다.
+            // 공개 실제 속도로 손실을 관측하므로 HMS의 private 중력 수치를 복제하지 않는다.
+            separationStepLoss = Mathf.Max(0, requestedSeparationVelocityY - movement.Velocity.y);
+            separationRemaining = Mathf.Max(0, separationRemaining - deltaSeconds);
+            if (separationRemaining <= 0 && actorBody.position.y >= separationTargetY - .001f)
+            {
+                ClearSeparation();
+                IssueMovementVelocity(Vector3.zero, 0);
+            }
+            else ScheduleSeparationVelocity();
+        }
+        private void ScheduleSeparationVelocity()
+        {
+            if (!separationPending || PhysicsPaused || !IsCurrentActor(separationActor, separationGeneration)) return;
+            float distance = Mathf.Max(0, separationTargetY - actorBody.position.y);
+            // 목표까지의 잔여 거리는 매 물리 관측으로 조정한다. clip ms는 시계/거리 계산에 쓰지 않는다.
+            requestedSeparationVelocityY = SeparationVelocity(distance, separationRemaining, Time.fixedDeltaTime, separationStepLoss);
+            IssueMovementVelocity(new Vector3(0, requestedSeparationVelocityY, 0), Mathf.Max(separationRemaining, Time.fixedDeltaTime));
+        }
+        public static float SeparationVelocity(float distance, float remainingSeconds, float stepSeconds, float observedStepLoss)
+        {
+            if (!float.IsFinite(distance) || distance < 0 || !float.IsFinite(remainingSeconds) || remainingSeconds < 0 ||
+                !float.IsFinite(stepSeconds) || stepSeconds <= 0 || !float.IsFinite(observedStepLoss) || observedStepLoss < 0)
+                throw new ArgumentOutOfRangeException(nameof(distance));
+            double velocity = distance / (double)Math.Max(remainingSeconds, stepSeconds) + observedStepLoss;
+            if (velocity > float.MaxValue) throw new ArgumentOutOfRangeException(nameof(distance), "분리 속도가 유한 범위를 벗어났습니다.");
+            return (float)velocity;
+        }
+        private void IssueMovementVelocity(Vector3 velocity, float lockSeconds)
+        {
+            issuingMovementCommand = true;
+            try { movement.ApplyKnockback(velocity, lockSeconds); } // Dead Facade는 외력을 거절하므로 실제 소유자에게 요청한다.
+            finally { issuingMovementCommand = false; }
+        }
+        private void ClearSeparation()
+        {
+            separationPending = false; separationOwner = null; separationActor = null;
+            separationGeneration = 0; separationTargetY = separationRemaining = 0;
+            requestedSeparationVelocityY = separationStepLoss = 0;
+            lastSeparationPhysicsTime = double.NegativeInfinity;
+        }
+        public void CancelSeparation(Component owner)
+        {
+            if (!separationPending || !ReferenceEquals(separationOwner, owner)) return;
+            bool current = IsCurrentActor(separationActor, separationGeneration);
+            ClearSeparation();
+            // 제거/재시도 취소가 완료된 사망으로 바뀌지 않는다.
+            deathInterrupted = true; deathReady = false;
+            if (current && movement != null) movement.ResetForRevive(true);
+        }
+
+        public bool OwnsDebris(PlayerDebris shell)
+            => HasLiveActor && shell != null && shell.isActiveAndEnabled && form != null &&
+                ReferenceEquals(shell.Owner, form) && ReferenceEquals(form.OwnedDebris, shell);
+        public bool TrySeparateOwnedDebris(PlayerDebris shell, Vector3 displacement)
+        {
+            ThrowIfDisposed();
+            if (!Finite(displacement)) throw new ArgumentOutOfRangeException(nameof(displacement));
+            if (!OwnsDebris(shell) || PhysicsPaused) return false;
+            var body = shell.GetComponent<Rigidbody>();
+            var shape = shell.GetComponent<BoxCollider>();
+            if (body == null || body.isKinematic || shape == null || !shape.enabled || shape.isTrigger || shape.attachedRigidbody != body) return false;
+            body.position += displacement;
+            // 안쪽 속도만 제거한다. 질량·무게·Owner·폼·IgnoreCollision은 건드리지 않는다.
+            float length = displacement.magnitude;
+            if (length > 0)
+            {
+                Vector3 normal = displacement / length;
+                float inward = Vector3.Dot(body.linearVelocity, normal);
+                if (inward < 0) body.linearVelocity -= normal * inward;
+            }
+            body.WakeUp();
+            return true;
+        }
+        public bool ReturnOwnedDebris(PlayerDebris shell)
+        {
+            ThrowIfDisposed();
+            if (!OwnsDebris(shell) || PhysicsPaused) return false;
+            var body = shell.GetComponent<Rigidbody>();
+            var shape = shell.GetComponent<BoxCollider>();
+            if (body == null || body.isKinematic || shape == null || !shape.enabled || shape.isTrigger || shape.attachedRigidbody != body) return false;
+            var shellMovement = shell.GetComponent<PlatformRigidbodyMovement>();
+            var passenger = shell.GetComponent<PlatformPassenger>();
+            bool resumeMovement = shellMovement != null && shellMovement.enabled;
+            bool resumePassenger = passenger != null && passenger.enabled;
+            // 공개 enabled 수명으로 오래된 접지/운반 속도를 해제하고 같은 컴포넌트를 복구한다.
+            // 껍질 Root/Collider/HeavyState와 충돌 제외는 그대로 유지한다.
+            try
+            {
+                if (resumeMovement) shellMovement.enabled = false;
+                if (resumePassenger) passenger.enabled = false;
+                body.position = actorBody.position;
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+                body.WakeUp();
+            }
+            finally
+            {
+                if (resumePassenger && passenger != null) passenger.enabled = true;
+                if (resumeMovement && shellMovement != null) shellMovement.enabled = true;
+            }
+            return true;
+        }
+        /// <summary>실제 데드존 Trigger의 전달 Collider 경계. Player와 현재 OwnedDebris를 여기서 구별한다.</summary>
+        public bool HandleDeadzoneContact(Collider other)
+        {
+            ThrowIfDisposed();
+            if (other == null || !other.enabled || !other.gameObject.activeInHierarchy || PhysicsPaused) return false;
+            var body = other.attachedRigidbody;
+            if (body == null) return false;
+            var shell = body.GetComponent<PlayerDebris>();
+            if (shell != null) return ReturnOwnedDebris(shell);
+            var source = body.GetComponent<PlayerFacade>();
+            return IsCurrentActor(source, actorGeneration) && ForceDeath(Vector3.zero, true) > 0;
         }
         private void OnHealthChanged(int current, int maximum)
         {
@@ -275,14 +551,11 @@ namespace Cooked.Session
             long observedGeneration = actorGeneration;
             var errors = new List<Exception>();
             SessionCleanup.Notify(errors, Changed, Snapshot);
-            if (current <= 0 && !deathPending && !deathReported && session.IsActive && actor != null && actor.IsDead &&
+            if (current <= 0 && !deathNotified && !deathReported && session.IsActive && actor != null && actor.IsDead &&
                 actor == observedActor && actorGeneration == observedGeneration)
             {
-                deathPending = true; deathFrame = Time.frameCount;
-                deathRequestId = 0;
-                if (animation != null && animation.CurrentRequest.Animation != PlayerAnimationId.Dead)
-                    deathBaselineRequestId = animation.CurrentRequest.RequestId;
-                deathReady = skipDeathPresentation;
+                if (!deathPending) BeginDeathObservation(skipDeathPresentation);
+                deathNotified = true;
                 pendingTear = pendingForm = false;
                 SessionCleanup.Attempt(errors, () => actor.ClearInput());
                 SessionCleanup.Attempt(errors, skills.CancelAll);
@@ -290,6 +563,17 @@ namespace Cooked.Session
             }
             // Do not dispatch inside HealthChanged: HMS has yet to select Dead/apply fatal knockback.
             if (errors.Count > 0) Debug.LogException(new AggregateException("Player health observer failure.", errors));
+        }
+        private void BeginDeathObservation(bool skipPresentation)
+        {
+            deathPending = true; deathFrame = Time.frameCount;
+            deathRequestId = 0; deathInterrupted = false; deathReady = skipPresentation;
+            deathBaselineRequestId = animation != null ? animation.CurrentRequest.RequestId : 0;
+        }
+        private void ClearDeathObservation()
+        {
+            deathPending = deathReady = deathInterrupted = deathNotified = skipDeathPresentation = false;
+            deathRequestId = 0;
         }
         private void OnPlaybackEnded(PlayerAnimationRequest request, PlayerAnimationEndReason reason)
         {
@@ -338,9 +622,12 @@ namespace Cooked.Session
                         animation.TryReportResult(request.RequestId, PlayerAnimationEndReason.Missing);
                 }
             }
-            if (!deathReady || control.State.PresentationPaused) return;
+            if (!IsDeathComplete(deathReady, separationPending, PhysicsPaused, deathReported)) return;
             deathReported = true; deathPending = false;
-            eventBus.Publish(new FlowRequestedEvent(new FlowRequest(FlowCommand.RetryCheckpoint)));
+            PlayerFacade source = actor;
+            long generation = actorGeneration;
+            if (IsCurrentActor(source, generation) && (requestRetry == null || !requestRetry(source, generation)))
+                Debug.LogWarning("현재 Actor의 사망 종결을 한 번 처리했지만 Retry 소비자가 없거나 요청을 거절했습니다. 독립 모드는 자동 Retry를 추가하지 않습니다.");
         }
         private Collider ResolveHurtCollider(EnemyActor enemy)
         {
