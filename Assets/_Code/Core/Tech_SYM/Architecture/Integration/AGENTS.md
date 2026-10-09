@@ -10,6 +10,6 @@ ActorRemoving은 빌린 카메라 목표/모드/월드/UI 참조를 파괴 전�
 
 Native Editor API로 소유 자산만 연결/저장/재로드한다. 기존 prefab 일괄 제거는 사용자 몫이다. _Art/공용/HMS원본자산/meta/Packages/ProjectSettings 수동수정과 보호prefab Apply 금지다. HMS 두 파일의 명시된 최소 범위만 허용한다. 삭제 후보23개는 호출/GUID/메뉴/동적생성·소유배치가 이관된 후 삭제한다.
 
-빌드는 설치의 정확한6씬을 명시적으로 전달한다. 기존 및 향후 Unity자동저장 변경은 원인/diff를 검토·분류해 커밋한다. 자동변경 포함 지시는 수동보호수정권한을 확대하지 않는다. 비 Play build 전 loaded dirty·원래setup/active/startScene을 보호한다. 실제InputSystem 두판/반복retry·모든Stage scenehandle유지·Actor/출력/입력단일성·실패취소/다음판 재사용을 확인하고 직접서비스/teleport와 실제입력 동선을 구분한다.
+빌드는 설치의 정확한6씬을 명시적으로 전달한다. 기존 및 향후 Unity자동저장 변경은 원인/diff를 검토·분류해 커밋한다. 자동변경 포함 지시는 수동보호수정권한을 확대하지 않는다. 비 Play build 전 loaded dirty·원래setup/active/startScene을 보호한다. 에이전트는 가능한 비 Play 범위에서 씬 유지·Actor/출력/입력단일성·실패취소/해제 계약을 검증한다. 실제InputSystem의 전체 동선·반복retry·다음판 플레이 확인은 사람이 수행하며 이전 Play 이력을 이번 결과로 승계하지 않는다.
 
 현행 지침: Inspector 위치/대상은 실물 참조, 수치는 목적·단위가 명확한 값이다. 씬 월드 객체를 관리자 자식에 묶지 않는다. 에이전트 Play 실행·기존 프리팹 삭제/재생성/Apply·자동 Builder 실행은 금지다. 이전 실행 관찰 수는 당시 증거이고 이번 통과가 아니다.

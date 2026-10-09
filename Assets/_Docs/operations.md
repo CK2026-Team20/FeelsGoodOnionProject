@@ -17,17 +17,17 @@ LFS 복원은 Git LFS 설치와 해당 원격 저장소 읽기 권한이 필요�
 
 Unity Hub에서 위 프로젝트를 지정한 버전으로 열고 import·컴파일이 끝날 때까지 기다린다. 처음부터 Builder를 실행하면 저장된 자산을 다시 만들 수 있으므로 기존 씬·프리팹을 우선 사용한다. 문서 검토 작업에서 이 절차를 실행했다고 간주하지 않는다.
 
-## 플레이
+## 사람이 확인할 플레이
 
-Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity를 열고 Play한다. 제목 → 새 게임 → 오프닝 → Stage 1 진입을 확인한다. Stage 씬에서 직접 Play하는 경우 Editor 진입 라우팅이 적용되며 오프닝이 생략된다. 저장되지 않은 타인 씬을 자동 저장하지 않는다.
+사람이 Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity를 열고 Play한다. 타이틀 → 새 게임 → 오프닝 → 응집형 Prototype Stage → 포포 대화 완료 또는 전체 Skip → 엔딩 → 타이틀의 한 판 흐름을 확인한다. Stage 씬을 선택하여 직접 Play하는 경우 Editor 진입 라우팅이 적용되며 오프닝이 생략된다. 에이전트는 Play 버튼·PlayMode API/CLI/pipeline·batch PlayMode 테스트·직접 플레이를 실행하지 않는다. 저장되지 않은 타인 씬을 자동 저장하지 않는다.
 
 Architecture의 Bootstrapper·Title·Core·Prototype/1_Stage·Stages/03_2_Stage·Stages/03_3_Stage 여섯 경로에만 Bootstrap 시작을 적용한다. 선택한 Stage2/3는 해당 Stage로 도착한다. 그 밖의 저장 씬은 현재 활성 씬에서 직접 시작한다. 역사적 Stages/03_1_Stage는 플레이어를 포함하지 않는 level-only 씬이어서 독립 Play만으로 통합 세션을 만들지는 않는다. 프로그래머가 대상을 바꿀 때 BootstrapEntryRoute의 정확한 경로 목록·설치의 Stage Paths·StageId/직접 진입 설정·생성 코드의 Catalog·실제 진입 검증 목록을 함께 맞춘다.
 
-ArchitectureInstallation.asset은 정확한6씬/등록 Stage3개 경로를, IntegrationEntrySettings.asset은 직접 진입 초기 CP/조각/해금 실행 구성을 제공한다. 초기 Pose는 Stage 배치를 조회한다. CP 접촉 뒤 저장 payload는 현재 Body Position/Fragments 두 값뿐이며 설정의 StageId/CheckpointId를 payload로 넣지 않는다. Core1회 뒤 Stage3개를 최초 additive 로드하고 retry·Title·다음 판에 씬을 유지한다. Title 씬 자체는 NewGame 때 언로드할 수 있다. 한 판 ReleaseSession/재연결과 영구 씬 수명을 구분한다.
+ArchitectureInstallation.asset에는 씬 자산을, IntegrationEntrySettings.asset에는 직접 진입할 Stage 씬과 초기 조각·해금 설정을 연결한다. 초기 Pose는 해당 Stage의 실제 초기 Marker에서 조회한다. 유효 CP 접촉 뒤 저장 payload는 현재 ActorBody의 유한 월드 Position, Fragments 0..5, UnlockedAbilities 마스크 0/1/2/3의 세 항목뿐이다. StageId/CheckpointId·HP·폼·시간·대화 완료를 저장하지 않는다. 첫 저장 전에는 초기 진입 구성을 사용한다. Core1회 뒤 등록 Stage3개를 최초 additive 로드하고 retry·Title·다음 판에 씬을 유지한다. Title 씬 자체는 NewGame 때 언로드할 수 있다. 한 판 ReleaseSession/재연결과 씬 수명을 구분한다. 현재 Prototype 한 판에서 Stage1→2→3 자동 전환은 추가하지 않는다.
 
 ## 자동 기능 검증
 
-검증 전에 해당 프로젝트의 live Editor 연결, 컴파일 완료, Edit Mode와 모든 loaded scene의 path/isDirty를 확인한다. dirty가 하나라도 있으면 먼저 현재 작업의 저장·보존 여부를 확인하고 Play/build를 보류한다. 원래 scene setup·active scene·playModeStartScene과 보호 파일 해시를 기록한다. 씬 연결 검사는 기존 SYM 씬·프리팹을 사용한다.
+검증 전에 해당 프로젝트의 live Editor 연결, 컴파일 완료, Edit Mode와 모든 loaded scene의 path/isDirty를 확인한다. dirty가 하나라도 있으면 해당 씬을 덮어쓰거나 강제 종료하지 않고 저장·보존 상태가 정해질 때까지 씬 이관/build를 보류한다. 원래 scene setup·active scene·playModeStartScene과 보호 파일 해시를 기록한다. 씬 연결 검사는 기존 SYM 씬·프리팹을 사용하며 사람 소유의 prefab 삭제·재생성·Apply와 자동 Builder 실행을 대신하지 않는다.
 
 ```powershell
 unity status --project-path 'F:\CK2026_Project\Project\FeelsGoodOnionProject' --format json
@@ -36,9 +36,9 @@ unity pipeline list --format json
 
 실제 Editor 조회가 성공한 뒤 필요한 검증을 실행한다. 2026-10-06 정리로 기존 테스트 전용 클래스와 Cooked/Verification 등의 시험 메뉴를 제거했다. 현재 배치 생성 도구와 Cooked/Integration/Build Windows Player는 제품 작업 도구로 유지한다. 과거 검증 메뉴 이름을 현재 실행 명령으로 사용하지 않는다.
 
-일회성 C# 검증은 output/Tech_SYM/verification/<기능·날짜>/에 두고 Unity의 run_script로 메모리 컴파일해 기존 Play 환경에서 실행한다. 먼저 dry_run으로 컴파일 진단을 확인하고 Main 실행 결과의 완료 상태·관찰값·실패를 조회한다. 비동기 검사는 요청 수락과 완료를 구분하고 시간 제한·취소·finally 정리를 제공한다. 필요할 때만 작성·실행하며 테스트 소스를 Assets 안에 다시 남기지 않는다.
+일회성 C# 검증은 output/Tech_SYM/ 아래 기능·날짜별 검증 폴더에 두고 Unity의 run_script로 메모리 컴파일하여 Edit Mode에서 실행한다. 실행 스크립트도 Play 중지 조건을 검사한다. 컴파일 진단과 Main의 실제 완료 상태·관찰값·실패를 확인한다. 순수 규칙, 실제 Editor 직렬화/엔진 검사, 사람의 전체 동선·애니메이션 확인은 결과를 구분한다. 비동기 검사는 요청 수락과 완료를 구분하고 시간 제한·취소·finally 정리를 제공한다. 필요한 검증만 작성·실행하며 일회성 테스트 소스를 Assets 안에 남기지 않는다.
 
-끝난 뒤 임시 입력·오브젝트·이벤트·정지 차단을 정리하고 Stop한다. 안정된 Edit Mode에서 원래 scene setup와 startScene 복원, clean 상태, 새 컴파일, Console와 보호 파일 diff를 확인한다. 자동 저장 변경은 원인·전후 diff를 기록하여 커밋에 포함한다. 일회성 스크립트는 제거하고 명령·실행 시각·결과 JSON·케이스·소스 해시·실패 원인은 보존한다.
+끝난 뒤 검증이 소유한 임시 오브젝트·이벤트·정지 차단을 정리한다. Play를 시작하거나 Stop할 필요가 없는 비 Play 검사로 수행한다. 원래 scene setup와 startScene 복원, dirty 상태, 컴파일, Console와 보호 파일 diff를 확인한다. 자동 저장 변경은 원인·전후 diff를 기록하여 커밋에 포함한다. 명령·실행 시각·결과 JSON·케이스·소스 해시·실패 원인은 보존한다.
 
 최신 시스템의 준비 케이스/실행 상태는 tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md에서 추적한다. ready-platform-hms-cleanup의 결과는 이전 실행 이력이다. 제어된 서비스 요청·런타임 위치 이동 검사, 실제 InputSystem 전체 동선, Windows 빌드, 팀 실제 실행과 FunQA를 따로 판정한다. 이전 editor-entry-hms 및 T9 결과와 캡처는 당시 실행 이력이다.
 
