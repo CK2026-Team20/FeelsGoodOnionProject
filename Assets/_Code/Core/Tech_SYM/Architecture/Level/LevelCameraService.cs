@@ -1,22 +1,34 @@
 using System;
+using Cooked.Authoring;
 using Cooked.Contracts;
 using Cooked.Session;
 using Unity.Cinemachine;
 using UnityEngine;
 namespace Cooked.Level
 {
-    public enum CameraMovementMode { Side = 1, Quarter = 3 }
+    public enum CameraMovementMode { [InspectorName("측면")] Side = 1, [InspectorName("쿼터뷰")] Quarter = 3 }
+    /// <summary>Runtime value, not a scene component or an asset. Hidden fields retain pre-T11 serialized data only.</summary>
     [Serializable]
     public struct CameraZoneData
     {
-        [Tooltip("카메라 구간의 고유 이름입니다. 같은 이름의 구간으로 다시 진입하면 전환을 반복하지 않으므로 서로 다른 구간은 이름을 구분하세요.")]
+        [HideInInspector]
         public string Id;
-        [Tooltip("이 구간의 이동 방식입니다. Side(1)는 월드 X 이동과 Z 정렬, Quarter(3)는 X/Z 이동이며 위치 정렬이 없습니다.")]
+        [HideInInspector]
         public CameraMovementMode Movement;
-        [Tooltip("플레이어 정렬점까지 트리거 자신의 로컬 XYZ 이동량입니다(월드 단위). 이동·회전·크기를 반영한 점을 파란 기즈모 구로 표시합니다. 모두 0이면 트리거 중심입니다. Side는 이 점의 월드 Z에만 정렬하며 Quarter와 초기 위치 복원은 위치를 바꾸지 않습니다.")]
+        [HideInInspector]
         public Vector3 AlignmentOffset;
+        [NonSerialized] private Vector3 alignmentPosition;
+        [NonSerialized] private bool resolved;
+        public Vector3 AlignmentPosition => resolved ? alignmentPosition : throw new InvalidOperationException("Legacy local zone must be resolved by its original owner.");
+        public CameraZoneData(CameraMovementMode movement, Vector3 worldPosition)
+        {
+            CameraZoneRequest.Validate(movement, worldPosition);
+            Id = null; Movement = movement; AlignmentOffset = default;
+            alignmentPosition = worldPosition; resolved = true;
+        }
         public CameraZoneRequest Resolve(Transform owner)
         {
+            if (resolved) return new CameraZoneRequest(Movement, alignmentPosition);
             if (owner == null) throw new ArgumentNullException(nameof(owner));
             return new CameraZoneRequest(Id, Movement, owner.TransformPoint(AlignmentOffset));
         }
@@ -26,8 +38,24 @@ namespace Cooked.Level
         public string Id { get; }
         public CameraMovementMode Movement { get; }
         public Vector3 AlignmentPosition { get; }
+        public CameraZoneTrigger Source { get; }
+        public CameraZoneRequest(CameraMovementMode movement, Vector3 alignmentPosition)
+            : this(null, movement, alignmentPosition) { }
+        // Legacy ID remains a runtime compatibility value, never an authored requirement.
         public CameraZoneRequest(string id, CameraMovementMode movement, Vector3 alignmentPosition)
-        { Id = id; Movement = movement; AlignmentPosition = alignmentPosition; }
+        { Validate(movement, alignmentPosition); Id = id; Movement = movement; AlignmentPosition = alignmentPosition; Source = null; }
+        public CameraZoneRequest(CameraZoneTrigger source, CameraZoneData data)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            Validate(data.Movement, data.AlignmentPosition);
+            Source = source; Id = "zone:" + source.GetEntityId(); Movement = data.Movement; AlignmentPosition = data.AlignmentPosition;
+        }
+        internal static void Validate(CameraMovementMode movement, Vector3 alignmentPosition)
+        {
+            if (movement != CameraMovementMode.Side && movement != CameraMovementMode.Quarter)
+                throw new ArgumentOutOfRangeException(nameof(movement), "Only Side(1) and Quarter(3) are executable.");
+            if (!IsFinite(alignmentPosition)) throw new ArgumentException("Camera alignment must contain finite world XYZ values.", nameof(alignmentPosition));
+        }
         internal static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
         internal static bool IsFinite(Vector3 value) => IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
     }
@@ -35,10 +63,10 @@ namespace Cooked.Level
     public sealed class LevelCameraService : MonoBehaviour, IDisposable
     {
         private const float MinimumBlendSeconds = .01f;
-        [Tooltip("Cinemachine 블렌드와 플레이어 평면 정렬 시간입니다(초, 최소 0.01). 실제 두 동작이 끝날 때까지 입력을 잠급니다. 즉시 적용은 Cut으로 전환합니다.")]
-        [SerializeField, Min(MinimumBlendSeconds)] private float blendSeconds = .6f;
+        [SerializeField, InspectorLabel("전환 시간"), Tooltip("카메라 전환과 측면 정렬 시간을 조절합니다(초, 최소 0.01)."), Min(MinimumBlendSeconds)] private float blendSeconds = .6f;
         private IPlayerBridgeService player;
         private IGameplayControlService control;
+        private IGameFlowService flow;
         private PlayerMovementModeController modes;
         private PlayerCameraController controller;
         private CinemachineBrain brain;
@@ -58,12 +86,13 @@ namespace Cooked.Level
             modes.isActiveAndEnabled && modes.CurrentMode == requestedMode && SelectionComplete;
         public Exception TransitionFailure { get; private set; }
         public string CurrentZoneId { get; private set; }
+        public CameraZoneTrigger CurrentZone { get; private set; }
 
         /// <summary>Borrow App output, Core cameras and the current Actor; never discover an Actor rig.</summary>
         public void Bind(IPlayerBridgeService bridge, IGameplayControlService gameplayControl,
             PlayerMovementModeController movementModes, PlayerCameraController hmsController,
             CinemachineBrain outputBrain, CinemachineCamera sideCamera, CinemachineCamera quarterCamera,
-            Transform cameraTarget, Transform actorBody)
+            Transform cameraTarget, Transform actorBody, IGameFlowService flowService = null)
         {
             if (bridge == null) throw new ArgumentNullException(nameof(bridge));
             if (gameplayControl == null) throw new ArgumentNullException(nameof(gameplayControl));
@@ -80,6 +109,7 @@ namespace Cooked.Level
             ownsBinding = true;
             player = bridge;
             control = gameplayControl;
+            flow = flowService;
             modes = movementModes; controller = hmsController; brain = outputBrain;
             side = sideCamera; quarter = quarterCamera; target = cameraTarget; body = actorBody;
             side.Follow = side.LookAt = target;
@@ -102,21 +132,36 @@ namespace Cooked.Level
         private bool Paused => Time.timeScale <= 0 || (control != null &&
             (control.State.WorldPaused || control.State.PresentationPaused));
 
+        public bool TryEnterZone(CameraZoneRequest zone, PlayerFacade candidate)
+        {
+            if (!HasBinding || !(player is PlayerBridgeService current) || candidate == null ||
+                current.Actor != candidate || candidate.IsDead || control.State.WorldPaused ||
+                (zone.Source != null && !zone.Source.IsBoundTo(this, candidate)) ||
+                (flow != null && (flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy))) return false;
+            EnterZone(zone);
+            return HasBinding && current.Actor == candidate && (zone.Source != null ? ReferenceEquals(CurrentZone, zone.Source) : CurrentZoneId == zone.Id);
+        }
+
         /// <param name="snap">Initial spatial selection: Cut, preserving restored Position; readiness still waits for Brain and HMS Start.</param>
         public void EnterZone(CameraZoneRequest zone, bool snap = false)
         {
             // Validate before replacing any running request, including duplicate IDs.
-            if (string.IsNullOrWhiteSpace(zone.Id)) throw new ArgumentException("Camera zone ID required.");
+            CameraZoneRequest.Validate(zone.Movement, zone.AlignmentPosition);
             if (!CameraZoneRequest.IsFinite(zone.AlignmentPosition))
                 throw new ArgumentException($"Camera zone '{zone.Id}' alignment position must contain finite world XYZ values.", nameof(zone));
             if (!CameraZoneRequest.IsFinite(blendSeconds) || blendSeconds < MinimumBlendSeconds)
                 throw new InvalidOperationException($"Camera zone '{zone.Id}' requires a finite blend duration of at least {MinimumBlendSeconds} seconds; configured {blendSeconds}.");
             var mode = ResolveMode(zone);
-            if (!HasBinding || zone.Id == CurrentZoneId) return;
+            if (!HasBinding || player.Snapshot.IsDead || (!snap && (control.State.WorldPaused ||
+                (flow != null && (flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy))))) return;
+            if (!snap && zone.Source != null && !zone.Source.IsBoundTo(this, (player as PlayerBridgeService)?.Actor)) return;
+            if (zone.Source != null ? ReferenceEquals(zone.Source, CurrentZone) :
+                !string.IsNullOrWhiteSpace(zone.Id) && zone.Id == CurrentZoneId) return;
             long generation = requestGeneration + 1;
             CancelTransition();
             if (generation != requestGeneration || !HasBinding) return;
             CurrentZoneId = zone.Id;
+            CurrentZone = zone.Source;
             requestedMode = mode;
             TransitionFailure = null;
             transitioning = true;
@@ -146,7 +191,7 @@ namespace Cooked.Level
             catch (Exception error)
             {
                 if (generation == requestGeneration)
-                { TransitionFailure = error; CurrentZoneId = null; CancelTransition(); }
+                { TransitionFailure = error; CurrentZoneId = null; CurrentZone = null; CancelTransition(); }
                 throw;
             }
         }
@@ -193,7 +238,7 @@ namespace Cooked.Level
             {
                 // Old observers may accept a new request before throwing; only cancel our own generation.
                 if (generation == requestGeneration)
-                { TransitionFailure = error; CurrentZoneId = null; CancelTransition(); }
+                { TransitionFailure = error; CurrentZoneId = null; CurrentZone = null; CancelTransition(); }
                 Debug.LogException(error, this);
             }
         }
@@ -234,8 +279,8 @@ namespace Cooked.Level
             finally
             {
                 ownsBinding = false; ownsBlend = false;
-                player = null; control = null; modes = null; controller = null; brain = null;
-                side = null; quarter = null; target = null; body = null; CurrentZoneId = null;
+                player = null; control = null; flow = null; modes = null; controller = null; brain = null;
+                side = null; quarter = null; target = null; body = null; CurrentZoneId = null; CurrentZone = null;
                 // Finish detach before notifying control observers: failures or rebinds cannot retain old targets.
                 lease?.Dispose();
             }

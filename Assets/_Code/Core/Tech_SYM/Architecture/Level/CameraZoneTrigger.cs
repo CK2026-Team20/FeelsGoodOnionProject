@@ -1,23 +1,47 @@
 using System.Collections.Generic;
+using Cooked.Authoring;
+using Cooked.Integration;
 using UnityEngine;
 namespace Cooked.Level
 {
     [RequireComponent(typeof(BoxCollider))]
     public sealed class CameraZoneTrigger : MonoBehaviour
     {
-        [Tooltip("이 트리거의 카메라 구간입니다. Side(1)는 로컬 정렬점의 월드 Z에 맞추며 Quarter(3)는 위치를 유지합니다. 정렬점은 파란 기즈모 구입니다.")]
-        [SerializeField] private CameraZoneData zone;
+        [SerializeField, InspectorLabel("카메라 방식"), Tooltip("이 구간의 측면 또는 쿼터뷰 방식을 선택하세요.")]
+        private CameraMovementMode mode = CameraMovementMode.Side;
+        [SerializeField, InspectorLabel("정렬 지점"), Tooltip("같은 씬의 고정 Transform을 연결하세요. 측면은 이 지점의 월드 Z에 정렬하며 파란 구로 표시됩니다.")]
+        private Transform alignmentPoint;
+        // T11 resolves the old local offset with the original owner; T12 removes the hidden value after migration.
+        [SerializeField, HideInInspector] private CameraZoneData zone;
         private LevelCameraService cameraService;
         private PlayerFacade actor;
+        private StageService stageOwner;
+        private long bindingRevision;
         private readonly HashSet<Collider> contacts = new HashSet<Collider>();
         private bool requestSubmitted;
-        public CameraZoneData Zone => zone;
-        private CameraZoneRequest ResolvedZone => zone.Resolve(transform);
+        public CameraMovementMode Mode => alignmentPoint != null ? mode : zone.Movement;
+        public Transform AlignmentPoint => alignmentPoint;
+        internal bool IsBoundTo(LevelCameraService camera, PlayerFacade player) => isActiveAndEnabled && player != null &&
+            ReferenceEquals(cameraService, camera) && ReferenceEquals(actor, player) && !player.IsDead &&
+            (stageOwner == null || stageOwner.CanDispatch(player));
+        public CameraZoneData Zone => new CameraZoneData(Mode, ResolveAlignment());
+        public CameraZoneRequest Resolve() => new CameraZoneRequest(this, Zone);
+        private CameraZoneRequest ResolvedZone => Resolve();
         public Vector3 AlignmentPosition => ResolvedZone.AlignmentPosition;
+        private Vector3 ResolveAlignment()
+        {
+            if (alignmentPoint == null) return transform.TransformPoint(zone.AlignmentOffset);
+            SceneComponentLookup.RequireFixedPoint(this, alignmentPoint, "정렬 지점");
+            return alignmentPoint.position;
+        }
         public void Bind(LevelCameraService camera, PlayerFacade player)
         {
             if (ReferenceEquals(cameraService, camera) && ReferenceEquals(actor, player)) return;
-            ResetForRetry(); cameraService = camera; actor = player;
+            ResetForRetry();
+            var owners = SceneComponentLookup.FindAll<StageService>(gameObject.scene);
+            if (owners.Length > 1) throw new System.InvalidOperationException("카메라 구간의 씬에는 StageService가 하나여야 합니다.");
+            stageOwner = owners.Length == 1 ? owners[0] : null;
+            cameraService = camera; actor = player;
         }
         /// <summary>Query authored volume at actual restored Position, never from a saved checkpoint ID.</summary>
         public bool TryResolveAtPosition(Vector3 position, out CameraZoneRequest request)
@@ -44,23 +68,35 @@ namespace Cooked.Level
         {
             return actor != null && other != null && other.enabled && other.gameObject.activeInHierarchy && other.attachedRigidbody != null &&
                 other.attachedRigidbody.GetComponent<PlayerDebris>() == null &&
-                other.attachedRigidbody.GetComponentInParent<PlayerFacade>() == actor;
+                other.attachedRigidbody.GetComponent<PlayerFacade>() == actor;
         }
         private void Contact(Collider other)
         {
             if (!isActiveAndEnabled || cameraService == null || !cameraService.isActiveAndEnabled ||
-                actor == null || actor.IsDead || !IsActorContact(other)) return;
+                actor == null || actor.IsDead || !IsActorContact(other) || (stageOwner != null && !stageOwner.CanDispatch(actor))) return;
             contacts.RemoveWhere(contact => !IsActorContact(contact));
             if (contacts.Count == 0) requestSubmitted = false;
             contacts.Add(other);
             if (requestSubmitted) return;
             // 요청 중 Reset/Bind가 재진입해도 과거 접촉 상태를 다시 기록하지 않습니다.
+            var owner = cameraService;
+            var current = actor;
+            long revision = bindingRevision;
             requestSubmitted = true;
-            cameraService.EnterZone(ResolvedZone);
+            try
+            {
+                bool accepted = owner.TryEnterZone(ResolvedZone, current);
+                if (!accepted && revision == bindingRevision) requestSubmitted = false;
+            }
+            catch
+            {
+                if (revision == bindingRevision) requestSubmitted = false;
+                throw;
+            }
         }
         public void ResetForRetry()
         {
-            contacts.Clear(); requestSubmitted = false; cameraService = null; actor = null;
+            bindingRevision++; contacts.Clear(); requestSubmitted = false; cameraService = null; actor = null; stageOwner = null;
         }
         private void OnDisable() => ResetForRetry();
         private void OnDestroy() => ResetForRetry();
@@ -72,12 +108,14 @@ namespace Cooked.Level
             {
                 Gizmos.color = Color.blue;
                 Gizmos.matrix = Matrix4x4.identity;
-                var position = AlignmentPosition;
+                // Unmigrated/unfinished authoring must not throw on every Scene view repaint.
+                if (alignmentPoint == null && zone.Movement != CameraMovementMode.Side && zone.Movement != CameraMovementMode.Quarter) return;
+                var position = alignmentPoint != null ? alignmentPoint.position : transform.TransformPoint(zone.AlignmentOffset);
                 if (!CameraZoneRequest.IsFinite(position)) return;
                 Gizmos.DrawSphere(position, .2f);
                 Gizmos.DrawLine(transform.position, position);
                 const float extent = 2f;
-                if (zone.Movement == CameraMovementMode.Side)
+                if (Mode == CameraMovementMode.Side)
                 {
                     Gizmos.DrawLine(position - Vector3.forward * extent, position + Vector3.forward * extent);
                     Gizmos.DrawWireCube(position, new Vector3(extent * 2f, extent * 2f, 0f));
