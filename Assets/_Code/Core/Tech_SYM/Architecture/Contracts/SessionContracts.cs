@@ -45,6 +45,7 @@ namespace Cooked.Contracts
         /// <summary>완료된 저장이 없으면 InvalidOperationException을 발생시킵니다.</summary>
         CheckpointSnapshot Checkpoint { get; }
         AbilityMask UnlockedAbilities { get; }
+        /// <summary>반영된 상태를 각 관찰자에게 통지합니다. 관찰자 오류는 문맥을 담아 Unity 로그에 기록하며 다른 통지와 완료 결과를 막지 않습니다.</summary>
         event Action Changed;
         void Begin(CheckpointSnapshot initialConfiguration);
         /// <summary>완료된 저장만 반환합니다. 저장 전·End·Dispose 후에는 false입니다.</summary>

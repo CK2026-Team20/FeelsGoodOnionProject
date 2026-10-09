@@ -35,7 +35,7 @@ namespace Cooked.Session
             checkpoint = null;
             unlockedAbilities = initial.UnlockedAbilities;
             IsActive = true;
-            Changed?.Invoke();
+            NotifyChanged(nameof(Begin));
         }
         public bool TryGetCheckpoint(out CheckpointSnapshot snapshot)
         {
@@ -52,7 +52,7 @@ namespace Cooked.Session
             cancellationToken.ThrowIfCancellationRequested();
             // 완료 경계 이전에는 원본을 건드리지 않으며 관찰자는 세 항목이 완성된 상태를 읽습니다.
             checkpoint = next;
-            Changed?.Invoke();
+            NotifyChanged(nameof(CaptureCheckpoint));
             return next;
         }
         public CheckpointSnapshot RestoreCheckpoint()
@@ -62,7 +62,7 @@ namespace Cooked.Session
             if (unlockedAbilities != restored.UnlockedAbilities)
             {
                 unlockedAbilities = restored.UnlockedAbilities;
-                Changed?.Invoke();
+                NotifyChanged(nameof(RestoreCheckpoint));
             }
             return restored;
         }
@@ -89,29 +89,44 @@ namespace Cooked.Session
             var next = unlockedAbilities | granted;
             if (next == unlockedAbilities) return;
             unlockedAbilities = next;
-            Changed?.Invoke();
+            NotifyChanged(nameof(Unlock));
         }
         public void End()
         {
             ThrowIfDisposed();
-            ClearSession();
+            ClearSession(nameof(End));
         }
         public void Dispose()
         {
             if (disposed) return;
             // 종료 통지 중 Begin/변경이 재진입해도 폐기된 세션을 되살릴 수 없습니다.
             disposed = true;
-            try { ClearSession(); }
+            try { ClearSession(nameof(Dispose)); }
             finally { Changed = null; }
         }
-        private void ClearSession()
+        private void ClearSession(string operation)
         {
             var wasActive = IsActive;
             IsActive = false;
             initialConfiguration = default;
             checkpoint = null;
             unlockedAbilities = AbilityMask.None;
-            if (wasActive) Changed?.Invoke();
+            if (wasActive) NotifyChanged(operation);
+        }
+        private void NotifyChanged(string operation)
+        {
+            var observers = Changed;
+            if (observers == null) return;
+            // 기존 다중 델리게이트처럼 통지 시작 시의 목록을 사용합니다. 자기 해제는 다음 통지부터 반영됩니다.
+            foreach (Action observer in observers.GetInvocationList())
+            {
+                try { observer(); }
+                catch (Exception error)
+                {
+                    Debug.LogException(new InvalidOperationException(
+                        $"GameSessionService.{operation} Changed 관찰자 {observer.Method.DeclaringType?.FullName}.{observer.Method.Name} 통지 실패. 반영된 상태는 유지됩니다. 원인: {error.GetType().Name}: {error.Message}", error));
+                }
+            }
         }
         private static CheckpointSnapshot Validate(CheckpointSnapshot value) => new CheckpointSnapshot(value.Position, value.Fragments, value.UnlockedAbilities);
         private void RequireActive() { ThrowIfDisposed(); if (!IsActive) throw new InvalidOperationException("세션이 활성화되지 않았습니다."); }
