@@ -129,7 +129,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
     }
 
     /// <summary>장치 담당이 상호작용 표현을 한 번 요청합니다. 장치 실행·판정은 변경하지 않습니다.</summary>
-    /// <remarks>형태 전환과 같은 우선순위이며 눈물보다 낮고 착지보다 높습니다. 거절된 요청은 보관하지 않습니다.</remarks>
+    /// <remarks>사망·넉백보다 낮고 눈물·형태 전환·착지보다 높은 우선순위입니다. 중단·거절된 요청은 재개하지 않으며 이동·점프 실행 제한과는 별개입니다.</remarks>
     public bool TryRequestInteract()
     {
         if (!isActiveAndEnabled) return false;
