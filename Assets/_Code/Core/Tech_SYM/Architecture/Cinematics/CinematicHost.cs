@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
+using Cooked.Authoring;
 using UnityEngine;
 
 namespace Cooked.Cinematics
@@ -9,20 +10,14 @@ namespace Cooked.Cinematics
     public sealed class CinematicHost : MonoBehaviour
     {
         [Tooltip("오프닝·엔딩 컷을 표시 순서대로 지정한 CinematicCatalog 자산입니다. 기존 원화·하단 문구·표시 시간(초)을 각 컷에 연결하세요.")]
-        [SerializeField] private CinematicCatalog catalog;
+        [SerializeField, InspectorLabel("연출 목록")] private CinematicCatalog catalog;
         [Tooltip("원화 한 장·하단 문구·전체 Skip 버튼을 표시하는 CinematicView입니다. 이 연출의 화면을 연결하세요.")]
-        [SerializeField] private CinematicView view;
+        [SerializeField, InspectorLabel("연출 화면")] private CinematicView view;
         private CinematicService service;
         private CinematicViewModel viewModel;
         private bool changingLifetime;
         public ICinematicService Service => service ?? throw new InvalidOperationException("Initialize CinematicHost first.");
 
-        public void Configure(CinematicCatalog catalog, CinematicView view)
-        {
-            if (changingLifetime || service != null) throw new InvalidOperationException("Shutdown CinematicHost before reconfiguring it.");
-            this.catalog = catalog != null ? catalog : throw new ArgumentNullException(nameof(catalog));
-            this.view = view != null ? view : throw new ArgumentNullException(nameof(view));
-        }
         public ICinematicService Initialize(IGameplayControlService control)
         {
             if (changingLifetime || service != null) throw new InvalidOperationException("CinematicHost is already initialized or changing lifetime.");
@@ -31,7 +26,7 @@ namespace Cooked.Cinematics
             try
             {
                 service = new CinematicService(catalog, control);
-                viewModel = new CinematicViewModel(service, service.Presentation);
+                viewModel = new CinematicViewModel(service);
                 view.Bind(viewModel);
                 return service;
             }

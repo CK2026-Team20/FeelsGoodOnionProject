@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
 using Cooked.Session;
+using Cooked.Authoring;
 using UnityEngine;
 namespace FeelsGoodOnion.TechSYM.Interaction
 {
@@ -9,10 +10,10 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     public sealed class MemoUIController : MonoBehaviour, IInteractionOverlay
     {
         [Tooltip("메모 본문을 생성할 스크린 공간 Canvas 안의 RectTransform입니다. World Space Canvas는 사용할 수 없습니다.")]
-        [SerializeField] private RectTransform screenRoot;
+        [SerializeField, InspectorLabel("화면 부모")] private RectTransform screenRoot;
         [Tooltip("메모 본문 화면 프리팹입니다. 이미지·크기 표현을 연결하며 마우스 닫기 버튼 없이 F로만 닫습니다.")]
-        [SerializeField] private MemoView viewPrefab;
-        private readonly Dictionary<int, MemoObject> owners = new Dictionary<int, MemoObject>();
+        [SerializeField, InspectorLabel("메모 화면")] private MemoView viewPrefab;
+        private readonly Dictionary<MemoModel, MemoObject> owners = new Dictionary<MemoModel, MemoObject>();
         private MemoView view;
         private MemoViewModel model;
         private IGameplayControlService control;
@@ -47,24 +48,32 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         {
             if (owner == null) return false;
             MemoModel data = owner.Data;
-            if (data == null || data.MemoID <= 0 || data.MemoImage == null)
+            if (data == null || data.MemoImage == null)
             {
-                Debug.LogError("MemoObject에는 고유 양수 PK와 Sprite가 설정된 MemoModel이 필요합니다.", owner);
+                Debug.LogError("MemoObject에는 실제 Sprite가 연결된 MemoModel 원본이 필요합니다.", owner);
                 return false;
             }
-            if (owners.TryGetValue(data.MemoID, out var existing) && existing != null && existing != owner)
+            if (owners.TryGetValue(data, out var existing) && existing != null && existing != owner)
             {
-                Debug.LogError($"MemoID {data.MemoID}: 다른 MemoObject와 모델/PK를 공유할 수 없습니다.", owner);
+                Debug.LogError("같은 MemoModel 원본을 서로 다른 MemoObject가 등록할 수 없습니다: " + data.name, owner);
                 return false;
             }
-            owners[data.MemoID] = owner;
+            // An authored Model can change while this component is enabled. Remove this
+            // owner's previous reference instead of retaining an orphaned registration.
+            var previousSources = new List<MemoModel>();
+            foreach (var entry in owners)
+                if (entry.Value == owner && entry.Key != data) previousSources.Add(entry.Key);
+            foreach (var source in previousSources) owners.Remove(source);
+            owners[data] = owner;
             return true;
         }
         public void Unregister(MemoObject owner)
         {
             if (owner == null) return;
-            if (owner.Data != null && owners.TryGetValue(owner.Data.MemoID, out var existing) && existing == owner)
-                owners.Remove(owner.Data.MemoID);
+            var ownedSources = new List<MemoModel>();
+            foreach (var entry in owners)
+                if (entry.Value == owner) ownedSources.Add(entry.Key);
+            foreach (var source in ownedSources) owners.Remove(source);
             if (currentOwner == owner) ReleaseView();
         }
         public bool TryOpen(MemoObject owner)

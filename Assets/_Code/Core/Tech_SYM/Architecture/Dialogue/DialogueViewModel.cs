@@ -16,8 +16,10 @@ namespace Cooked.Dialogue
             service.Changed += OnChanged;
         }
         public event PropertyChangedEventHandler PropertyChanged;
-        public bool IsActive => service.IsActive;
-        public bool CanAdvance => service.CanAdvance;
+        public bool IsDisposed => disposed;
+        public bool IsActive => !disposed && service.IsActive;
+        public bool CanAdvance => !disposed && service.CanAdvance;
+        public bool CanSkip => !disposed && service.CanSkip;
         public bool AutoEnabled => service.AutoEnabled;
         public bool LogOpen => service.LogOpen;
         public bool OptionsPaused => service.OptionsPaused;
@@ -33,6 +35,7 @@ namespace Cooked.Dialogue
         public void ToggleAuto() { if (!disposed) service.SetAuto(!service.AutoEnabled); }
         public void OpenLog() { if (!disposed) service.OpenLog(); }
         public void CloseLog() { if (!disposed) service.CloseLog(); }
+        public void SkipAll() { if (CanSkip) service.SkipAll(); }
         public void NotifyRevealCompleted(long sessionId, long rowId, int frameId)
         { if (!disposed) service.NotifyRevealCompleted(sessionId, rowId, frameId); }
         public void CancelPresentation() { if (!disposed) service.Cancel(); }

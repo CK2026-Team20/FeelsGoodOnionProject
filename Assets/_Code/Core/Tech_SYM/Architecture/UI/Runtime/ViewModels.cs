@@ -5,15 +5,20 @@ namespace Cooked.UI
 {
     public sealed class TitleViewModel : ObservableViewModel
     {
-        private readonly IGameFlowService flow; private readonly OptionsService options; private readonly IApplicationService application;
+        private readonly IGameFlowService flow; private readonly OptionsService options; private readonly Action quit;
         public bool CanStart => !IsDisposed && flow.Snapshot.State == FlowState.Title && !flow.Snapshot.IsBusy && !options.IsOpen;
-        public TitleViewModel(IGameFlowService flow, OptionsService options, IApplicationService application = null)
-        { this.flow = flow; this.options = options; this.application = application ?? new ApplicationService(); flow.Changed += OnFlow; options.Changed += OnOptions; }
+        public TitleViewModel(IGameFlowService flow, OptionsService options, Action quit)
+        {
+            this.flow = flow ?? throw new ArgumentNullException(nameof(flow));
+            this.options = options ?? throw new ArgumentNullException(nameof(options));
+            this.quit = quit ?? throw new ArgumentNullException(nameof(quit));
+            flow.Changed += OnFlow; options.Changed += OnOptions;
+        }
         public void NewGame() { if (CanStart) flow.Request(new FlowRequest(FlowCommand.NewGame)); }
-        public void Quit() { if (CanStart) application.Quit(); }
+        public void Quit() { if (CanStart) quit(); }
         public void OpenOptions() { if (CanStart) options.Open(); }
         private void OnFlow(FlowSnapshot _) => Notify(); private void OnOptions() => Notify();
-        protected override void Release() { flow.Changed -= OnFlow; options.Changed -= OnOptions; }
+        protected override void Release() { try { flow.Changed -= OnFlow; } finally { options.Changed -= OnOptions; } }
     }
     public sealed class OptionsViewModel : ObservableViewModel
     {
@@ -31,7 +36,7 @@ namespace Cooked.UI
         public void SetMaster(float value) { if (!IsDisposed) settings.SetVolumes(value, Music, Sfx); }
         public void SetMusic(float value) { if (!IsDisposed) settings.SetVolumes(Master, value, Sfx); }
         public void SetSfx(float value) { if (!IsDisposed) settings.SetVolumes(Master, Music, value); }
-        protected override void Release() { options.Changed -= OnChanged; settings.Changed -= OnChanged; }
+        protected override void Release() { try { options.Changed -= OnChanged; } finally { settings.Changed -= OnChanged; } }
     }
     public sealed class FadeViewModel : ObservableViewModel
     {
@@ -61,10 +66,14 @@ namespace Cooked.UI
             (session.IsUnlocked(AbilityId.FormChange) ? " · 형태 전환 Q" : "") +
             (session.IsUnlocked(AbilityId.Tear) ? " · 눈물 E" : "");
         public HudViewModel(IPlayerBridgeService bridge, IGameSessionService session)
-        { this.bridge = bridge; this.session = session; bridge.Changed += OnPlayer; session.Changed += OnSession; }
+        {
+            this.bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
+            this.session = session ?? throw new ArgumentNullException(nameof(session));
+            bridge.Changed += OnPlayer; session.Changed += OnSession;
+        }
         public void SetVisible(bool value) { if (IsDisposed || Visible == value) return; Visible = value; Notify(); }
         private void OnPlayer(PlayerSnapshot _) => Notify(); private void OnSession() => Notify();
-        protected override void Release() { bridge.Changed -= OnPlayer; session.Changed -= OnSession; }
+        protected override void Release() { try { bridge.Changed -= OnPlayer; } finally { session.Changed -= OnSession; } }
     }
     public sealed class WorldPromptViewModel : ObservableViewModel
     {

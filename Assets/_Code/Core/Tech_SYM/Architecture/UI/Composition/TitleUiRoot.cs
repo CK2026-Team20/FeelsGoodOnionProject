@@ -1,15 +1,34 @@
+using System;
+using System.Collections.Generic;
+using Cooked.Authoring;
 using Cooked.Contracts;
+using Cooked.Session;
 using UnityEngine;
 namespace Cooked.UI
 {
     public sealed class TitleUiRoot : MonoBehaviour
     {
-        [Tooltip("새 게임·설정·종료 버튼을 포함한 타이틀 화면입니다.")]
-        [SerializeField] private TitleView view; private TitleViewModel model;
-        public void Configure(TitleView value) => view = value;
-        public void Bind(IGameFlowService flow, OptionsService options)
-        { Unbind(); model = new TitleViewModel(flow, options); view.Bind(model); }
-        public void Unbind() { if (view != null) view.Unbind(); model?.Dispose(); model = null; }
+        [SerializeField, InspectorLabel("타이틀 화면"), Tooltip("새 게임·설정·종료 버튼이 있는 TitleView를 연결하세요.")]
+        private TitleView view;
+        private TitleViewModel model;
+        public void Bind(IGameFlowService flow, OptionsService options, Action quit)
+        {
+            if (view == null) throw new InvalidOperationException("TitleUiRoot에 TitleView를 연결하세요.");
+            if (flow == null) throw new ArgumentNullException(nameof(flow));
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            if (quit == null) throw new ArgumentNullException(nameof(quit));
+            Unbind();
+            try { model = new TitleViewModel(flow, options, quit); view.Bind(model); }
+            catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, Unbind); throw; }
+        }
+        public void Unbind()
+        {
+            var previous = model; model = null;
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => { if (view != null) view.Unbind(); });
+            SessionCleanup.Attempt(errors, () => previous?.Dispose());
+            SessionCleanup.ThrowIfAny(errors, "Title UI unbind failed.");
+        }
         private void OnDestroy() => Unbind();
     }
 }
