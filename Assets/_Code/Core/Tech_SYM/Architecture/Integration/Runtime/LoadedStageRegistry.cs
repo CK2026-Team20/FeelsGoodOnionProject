@@ -22,13 +22,12 @@ namespace Cooked.Integration
                 var scene = SceneManager.GetSceneByPath(path);
                 if (!scene.IsValid() || !scene.isLoaded) continue;
                 IStageService found = null;
-                foreach (var root in scene.GetRootGameObjects())
-                    foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
-                        if (behaviour is IStageService stage)
-                        {
-                            if (found != null) throw new InvalidOperationException("Multiple Stage services: " + path);
-                            found = stage;
-                        }
+                foreach (var behaviour in SceneComponentLookup.FindAll<MonoBehaviour>(scene))
+                    if (behaviour is IStageService stage)
+                    {
+                        if (found != null) throw new InvalidOperationException("Multiple Stage services: " + path);
+                        found = stage;
+                    }
                 if (found == null || found.StageId != Path.GetFileNameWithoutExtension(path))
                     throw new InvalidOperationException("Stage service identity mismatch: " + path);
                 if (!found.TryGetCheckpointPose(found.InitialCheckpointId, out _))
