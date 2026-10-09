@@ -1,6 +1,6 @@
 # 협업·데이터 계약
 
-> 2026-10-07 사용자 확정안과 추가 답변을 적용한다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)가 이전 초안의 충돌 문구를 대체한다. 구현/실행 완료는 [상태](tracking/status.md)와 실제 검증 증거로 판단한다.
+> 현행 목표는 V1.5 실행 명세다. 구현 완료는 tracking/status.md와 실제 증거로 판단한다.
 
 최신 목표와 현재 실재 API를 구분한다. 공개 API소비와 소유 SYM객체 조립은 허용하지만 HMS·공용·아트 원본/메타의 수정 권한은 별도다. 세부 목표는 [기능 명세서](<tracking/ready-system-v11-refactor-2026-10-06/기능 명세서.md>), 필수 예외는 [보호 원본 변경 요청](<tracking/ready-system-v11-refactor-2026-10-06/보호 원본 변경 요청.md>)를 따른다.
 
@@ -18,11 +18,11 @@ HP/조각 원본은 HMS PlayerFacade.Model/IReadOnlyPlayerModel이다. AddSkillF
 
 공용 원본은 변경하지 않는다. 새 공통 피격·강제 사망은 HMS Facade의 파일 예외 공개 계약으로 연결한다. 요청 수락과 실제 효과 성공을 구분하며 UI/소리는 실제 성공 통지를 소비한다.
 
-## 체크포인트 두 값
+## 체크포인트 세 항목
 
-메인 CheckpointSnapshot은 **Position(Vector3)/Fragments(int) 정확히2개 공개 저장 속성**을 가진 읽기 전용 값이다. Position은 CP 접촉 시 ActorBody 월드 중심으로 XYZ가 모두 유한해야 하며 Fragments는0..5다. 생성/검증 성공 뒤 GameSessionService가 두 값을 함께 교체하고 실패면 이전 기록을 지킨다. 이전 StageId/CheckpointId/Fragments3필드 설명은 변경 전 계약이다.
+CheckpointSnapshot은 불변 Position(유한한 현재 ActorBody 월드 Vector3), Fragments(정수0..5), UnlockedAbilities(None=0/FormChange=1/Tear=2/Both=3)만 가진다. 기존 AbilityId 번호0/1을 보존한다. 모든 값을 검증한 뒤 원자 교체하며 실패는 이전 snapshot을 유지한다. 첫 저장 전에는 snapshot이 없고 해당 Stage의 초기 구성을 사용한다.
 
-StageId/CheckpointId·회전·HP·폼·능력·대화·카메라·적·기믹·시간을 payload에 추가하지 않는다. 이후 원본의 다른 저장 요구도 무시한다. SceneCatalog/현재 FlowStage와 Marker ID/Pose는 실행의 씬/배치 설정이며 저장 항목으로 우회하지 않는다. 중복 CP판별은 입력 문맥에서 수행한다. 초기 진입은 Stage/Entry의 Pose를 조회해 두 값을 만들고 CP수락 때 현재 PC의 두 값으로 갱신한다. retry에는 이미 선택된 Stage를 초기 재준비한 뒤 저장 Position/Fragments만 복원한다. 월드 DTO·등록자·객체별 저장 서비스·앱 종료 후 진행 파일은 없다.
+같은 실제 Marker 재접촉은 갱신하지 않는다. 전신 통과·퇴로 안전·추격 시작 가능 확인 뒤 현재 상태 저장에 성공해야 추격을 시작한다. Stage/CP 식별은 실행 참조이며 payload에 저장하지 않는다. HP·폼·껍질·월드/대화/카메라/시간·디스크 진행 저장은 없다. 사망 복귀는 초기 Stage 재준비 뒤 세 항목 복원이며 완료/Skipped 대화 장부는 유지한다.
 
 ## 카메라: 현재 API와 계획 API
 
@@ -36,7 +36,9 @@ HMS PlayerCameraController는 T1 opt-in 분리 리그 API와 기존 enum/기본�
 
 App ServiceLocator는 앱 수명이고 GameSessionRuntime의 App 부모 Core 범위·Session/PlayerBridge/Dialogue·CoreWorldBinding/CoreUiBinding은 한 판 수명이다. SceneCatalog/LoadedStageRegistry는 현재 씬 실행 구성을 조회하며 월드 저장 참가자 등록자가 아니다. 같은 Core/Stage3 씬을 유지해도 Title에는 ReleaseSession, NewGame에는 새 범위/VM 연결이 필요하다. retry에는 같은 한 판 범위를 유지한다.
 
-StageService의 명시적 typed ResetForRetry가 기존 발판/장치/적/TearFragment/StageTrigger/카메라 접촉·추격 gate 소유자를 재준비한다. reset 전에 Actor/빌린 참조/작업을 해제하고 동일 소비 Tear 객체의 Visual/Collider/소비 플래그를 복구한다. GameSessionService.ResetStageUnlocks는 최초 부여 출처가 현재 Stage인 능력만 제거하며 Dialogue.ForgetCompletedCodes는 해당 안내 코드만 다시 실행 가능하게 한다. 초기 배치 캐시는 checkpoint나 WorldSave/ParticipantRegistry/ObjectIDs가 아니다.
+체크포인트 payload는 유한한 현재 ActorBody 월드 Position, 정수 Fragments 0..5, UnlockedAbilities 마스크 None=0/FormChange=1/Tear=2/Both=3의 정확히 세 항목이다. 모든 값을 검증한 뒤 한 번에 교체하며 실패 시 이전 snapshot을 지킨다. 첫 저장 전에는 초기 진입 구성을 사용한다. 같은 실제 Marker의 재접촉은 갱신하지 않고 추격 직전 저장은 별도 수락 경계로 처리한다. StageId/CheckpointId·월드 상태·HP·폼·카메라·시간·대화 완료를 저장하지 않는다.
+
+사망은 같은 Stage의 초기 배치·기믹·소비 조각 Root/Collider를 재준비하고 저장 위치·조각·마스크를 새 Normal/HP3 Actor에 복원한다. Stage 출처별 능력 초기화는 사용하지 않는다. 완료/Skipped 대화 장부는 한 판 동안 유지하고 Cancelled만 재시작 가능하다. 추가 재등장 무적·월드 저장 등록자를 만들지 않는다.
 
 ## 입력·표시·비동기
 
@@ -65,3 +67,16 @@ Gameplay/World/Presentation은 독립적인 소유형 제한이다. Memo는 Worl
 빈 Root는 컨트롤러/데이터, Visual은 Renderer/Animator, Physics는 콜백/물리를 맡는다. HMS Facade/ActorBody동거는 GetComponent/attachedRigidbody계약 때문에 제한된 예외로 유지한다. 소유 SYM발판은 명시적 Body/Contacts참조로 이관한다. 같은 몸체에 이름만 다른 이동자를 중복 연결하지 않는다.
 
 미래 프리팹 가이드의 준비 기록과 현재 저장 자산을 구분한다. Phase2 소스/meta32개 삭제, 7필드/11자산 재저장, native32/61/12/참조0, actual 작성2회에는 완료 증거가 있다. 이를 전체 Play/빌드/아트 clip 수락으로 확대하지 않는다. Phase3-R2는 Flow/App/Kinematic/ServiceLocator4개 승인으로 갱신됐고 IsDisposed 읽기 전용 API 추가 외 enum/serialized/meta 계약을 보존했다. HMS1회9파일 예외도 보호 폴더 전체 정리·원본 prefab Apply·_Art·Packages·ProjectSettings 허가가 아니다.
+
+## 2026-10-10 현행 V1.5 기준
+
+현재 시스템 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.5.docx`다. 최신 직접 지시 → V1.5 활성 본문 → 기존 구현 순서로 적용한다. 승인된 실행 명세는 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/spec.md`, 구현·검증 상태는 tracking/status.md다. 이전 버전과 당시 실행 증거는 보존하되 현행 정책으로 승계하지 않는다.
+
+- 체크포인트는 현재 ActorBody 월드 위치·보유 조각·해금 마스크 세 항목만 원자 저장한다. 첫 유효 저장 전 상태를 구별하고 같은 물리 Marker 재접촉은 갱신하지 않는다. 전신 통과·퇴로 안전 확인 뒤 추격 시작 직전에 현재 상태를 저장한다. 사망은 같은 Stage 초기 재준비 후 마지막 세 값을 복원하며, 완료/Skipped 대화 장부는 능력 복원 때문에 지우지 않는다.
+- 현재 목표는 응집형 Prototype Stage 한 곳에서 전체 게임 흐름 1회다. Stage 1→2→3 자동 연결을 추가하지 않으며 등록 씬과 향후 본편의 독립 진입을 보존한다.
+- 위치·끝점·경로·대상은 실제 Transform/컴포넌트/자산을 드래그한다. 속도·시간·높이·방향은 명확한 수치/선택으로 남긴다. 한국어 이름과 Tooltip은 무엇을 연결/조절하는지 짧게 설명하고 필요한 단위·0·좌표계·기즈모만 덧붙인다.
+- 씬 관리자·카메라·Canvas·월드 오브젝트는 독립 씬 루트다. 빈 Root/Render/Collider 규칙은 개별 기능 프리팹에 적용한다. HMS ActorBody 동거, Shell 실제 물리 Root, 움직이는 Rigidbody 아래 Render의 예외를 명시한다. 눈물은 수집 Root와 Collider가 함께 움직인다.
+- 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
+- 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
+- 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
+- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위 2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만이다. 이전 9개 파일의 한정 허가는 종료됐으며 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다.

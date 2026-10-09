@@ -1,6 +1,6 @@
 # 열린 문제와 검증 제한
 
-2026-10-08. 아래는 현재 제한과 과거 발견의 처리 상태다. 과거 발견·재현·종결 전체 원문은 [보관본](archive/2026-10-05-before-guidance-refresh/findings.md)에 있다. 보관본은 내용과 판정을 유지하고 이동에 따른 상대 링크만 보정했다.
+2026-10-10. V1.5 실행 상태는 status.md를 따른다. 아래는 과거 발견의 증거와 아직 남은 보호/리소스 제한이다. 과거 성공은 이번 성공으로 승계하지 않는다. 과거 발견·재현·종결 전체 원문은 [보관본](archive/2026-10-05-before-guidance-refresh/findings.md)에 있다. 보관본은 내용과 판정을 유지하고 이동에 따른 상대 링크만 보정했다.
 
 | ID | 상태·영향 | 처리 경계·근거 |
 |---|---|---|
@@ -39,3 +39,7 @@ F11은 이번 실제 진입에서 확인한 Bootstrap/Actor 출력2·Listener2 �
 카메라 접촉 수정 뒤 실제 Editor36시나리오584관찰·6통합/3직접 Play와Stop을 다시 통과했다. 원본 동선 두 판은 실제 방향키/Space/Q/E/Enter/Esc와 UGUI 이벤트로 Title→Opening→Play→각 낙사·적 접촉 사망→재접촉 해금→END→POPO→Ending→Title까지 완료했다. 자연 사망4회와 143관찰 모두 통과했으며 Core/3Stage·출력·수집물/적 identity는 유지됐다. 전체 동선 검사는 teleport·복제 fixture·직접 ForceDeath/Flow 요청·능력/조각 상태 쓰기를 사용하지 않았다. Editor 합성 입력이며 Windows 실행 파일의 수동 UI/UX·QA39케이스·FunQA와 실제 미연결13 animation 재생은 별도 대기다.
 
 증거: T10-camera-overlap-product-RED.json → T10-camera-overlap-actual-regression.json, T10-whole-input-flow.json, final-review/camera-overlap-patch-review.json. 이 종결은 실제 animation13연결과 팀 QA/FunQA 수락을 대신하지 않는다.
+
+## V1.5 실행 대기 조건
+
+HudIconGraphic은 실제 하트 Sprite/Image 리소스와 사람의 HUD 조립 후 삭제한다. 연결 전 기존 표시를 유지한다. 실제 clip 재생·전체 수동 플레이는 사람이 확인하며 에이전트는 Play를 실행하지 않는다. HMS Tooltip 전수 보완·보호 씬 Missing Script는 이번 두 파일 허가로 수정하지 않는다.

@@ -1,6 +1,6 @@
 # 현재 확정 게임 규칙
 
-> 2026-10-07 사용자 확정안과 추가 답변을 적용한다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)가 이전 초안의 충돌 문구를 대체한다. 구현/실행 완료는 [상태](tracking/status.md)와 실제 검증 증거로 판단한다.
+> 현행 목표는 V1.5 실행 명세다. 구현 완료는 tracking/status.md와 실제 증거로 판단한다.
 
 ## 플레이어와 상호작용
 
@@ -20,11 +20,15 @@ HP최대3, 피해당1, 모든 피해원의 공통 무적2초를 사용한다. �
 
 일반 HP0와 추격 포획은 Dead 표현 완료→Fade→retry 순서다. 데드존은 HP·무적을 무시하고 HP0으로 만들며 Dead 표현을 생략한다. 사망 시 미완료 동작·메모·대화를 취소한다. retry는 HP최대·Normal·껍질0, 속도·피격·넉백·무적 초기화이며 별도 재등장 무적은 없다. 실제 clip이 없으면 안전한 완료 대체로 영구 대기를 막되 실제 재생 성공으로 기록하지 않는다.
 
-**체크포인트 저장값은 현재 ActorBody의 월드 위치(Position)와 보유 눈물조각 수(Fragments) 두 항목뿐이다.** 원본 또는 이후 문서에 모호성이나 다른 저장 요구가 있어도 이 직접 지시가 우선한다. HP·폼·능력·대화·카메라·적·장치·필드·남은 시간·StageId/CheckpointId는 저장 payload에 넣지 않는다. World snapshot·상태 등록자·객체별 저장 ID·앱 재시작용 진행 파일을 만들지 않는다.
+체크포인트 payload는 유한한 현재 ActorBody 월드 Position, 정수 Fragments 0..5, UnlockedAbilities 마스크 None=0/FormChange=1/Tear=2/Both=3의 정확히 세 항목이다. 모든 값을 검증한 뒤 한 번에 교체하며 실패 시 이전 snapshot을 지킨다. 첫 저장 전에는 초기 진입 구성을 사용한다. 같은 실제 Marker의 재접촉은 갱신하지 않고 추격 직전 저장은 별도 수락 경계로 처리한다. StageId/CheckpointId·월드 상태·HP·폼·카메라·시간·대화 완료를 저장하지 않는다.
 
-유한한 XYZ와 조각0..5를 모두 검증한 뒤 두 값을 함께 교체한다. 실패 시 이전 값이 유지된다. 저장 위치를 Marker의 고정 Pose로 대신하지 않는다. 같은 CP의 중복 입력은 실행 문맥에서 억제하며 ID는 저장·복원 항목이 아니다. 초기 진입은 명시된 Stage/Entry 위치와 초기 조각을 사용한다. retry는 Stage를 초기 재준비하고 PC위치·조각만 저장값으로 복원한다. 적·장치·필드 진행은 복원하지 않는다.
+사망은 같은 Stage의 초기 배치·기믹·소비 조각 Root/Collider를 재준비하고 저장 위치·조각·마스크를 새 Normal/HP3 Actor에 복원한다. Stage 출처별 능력 초기화는 사용하지 않는다. 완료/Skipped 대화 장부는 한 판 동안 유지하고 Cancelled만 재시작 가능하다. 추가 재등장 무적·월드 저장 등록자를 만들지 않는다.
 
-능력 해금과 완료 대화는 한 판의 런타임 상태이며 checkpoint에 저장하지 않는다. GameSessionService가 능력의 최초 부여 Stage 출처를 소유한다. 현재 Stage 출처의 능력과 해당 안내 완료만 사망 retry에 다시 잠그며 트리거 재접촉으로 활성화한다. 이미 이전 Stage에서 얻은 능력을 현재 Stage 트리거로 재부여해 출처를 덮어쓰지 않는다. 새 게임·Title 세션 종료에는 장부를 비운다. 해금은 지정 구간 트리거/UI·안내 DialogCode로 처리하며 중간 CP 캡처를 만들지 않는다. Q회수는 별도 능력이 아니다. 앱 종료 후 이어하기는 추가하지 않는다.
+체크포인트 payload는 유한한 현재 ActorBody 월드 Position, 정수 Fragments 0..5, UnlockedAbilities 마스크 None=0/FormChange=1/Tear=2/Both=3의 정확히 세 항목이다. 모든 값을 검증한 뒤 한 번에 교체하며 실패 시 이전 snapshot을 지킨다. 첫 저장 전에는 초기 진입 구성을 사용한다. 같은 실제 Marker의 재접촉은 갱신하지 않고 추격 직전 저장은 별도 수락 경계로 처리한다. StageId/CheckpointId·월드 상태·HP·폼·카메라·시간·대화 완료를 저장하지 않는다.
+
+사망은 같은 Stage의 초기 배치·기믹·소비 조각 Root/Collider를 재준비하고 저장 위치·조각·마스크를 새 Normal/HP3 Actor에 복원한다. Stage 출처별 능력 초기화는 사용하지 않는다. 완료/Skipped 대화 장부는 한 판 동안 유지하고 Cancelled만 재시작 가능하다. 추가 재등장 무적·월드 저장 등록자를 만들지 않는다.
+
+해금은 지정 구간의 실제 Trigger/UI/선택한 대화 Code로 처리한다. 현재 해금은 Session 한 원본이며 저장과 복원은 위 snapshot 계약을 따른다. Q 회수는 별도 능력이 아니다. 앱 종료 후 이어하기는 만들지 않는다.
 
 ## 기믹·적·추격
 
@@ -34,7 +38,7 @@ HP최대3, 피해당1, 모든 피해원의 공통 무적2초를 사용한다. �
 
 일반 적은 Idle/X 순찰/Y 순찰의 세 배치이며 FSM은 Idle/Patrol/Stunned만 사용한다. 추적·복귀·HP·처치·사망 기름·몸체 bob은 없다. 기절 중 이동과 접촉 공격을 멈추고 재기절은 기존 남은 시간 추가 계약을 따른다. 종류·순찰 방향의 이전 저장값은 실제 자산별로 이관하며 enum 값을 추정해서 재해석하지 않는다.
 
-마지막 무리는 전신의 시작선 통과와 새 캡처 없는 시작 수락 이후 후퇴문을 닫는다.8m 뒤에서4m/s로 진행하고 경로상 gap<=0.8m면 강제 사망이다. Y와 점프로 포획을 피하지 않는다. 옵션은 진행·포획도 정지한다. retry 뒤 새 시작선 통과가 필요하다. Poppo에서 무리를 멈추고 최종 DialogCode 완료 뒤 Ending으로 간다. 구출·껍질 래치·눈물 게이트의 옛 추가 조건은 제거한다.
+마지막 무리는 전신의 시작선 통과·퇴로 안전 확인과 현재 상태 원자 저장 성공 이후 후퇴문을 닫는다.8m 뒤에서4m/s로 진행하고 경로상 gap<=0.8m면 강제 사망이다. Y와 점프로 포획을 피하지 않는다. 옵션은 진행·포획도 정지한다. retry 뒤 새 시작선 통과가 필요하다. Poppo에서 무리를 멈추고 최종 대화 Completed/Skipped 뒤 Ending으로 간다. 구출·껍질 래치·눈물 게이트의 옛 추가 조건은 제거한다.
 
 ## 대화·연출·옵션·카메라
 
@@ -44,4 +48,17 @@ Opening/Ending은 순서 있는 원화 한 장과 하단 문구를 컷4초씩 �
 
 App에 출력 Camera/Brain/Listener를 각1개 두고, Core Side/Quarter가상 카메라는 Actor를 명시적으로 추적한다. 전환은 트리거로 시작하며0.6초 기본값과 완료까지 PC입력 제한을 사용한다. 실제 Brain과 Side Z정렬이 끝난 뒤 축을 확정한다. Back/Corridor·Actor 자식 리그·두 출력 교대는 제거한다. 초기 모드는 배치 설정에서 결정하며 checkpoint에 저장하지 않는다.
 
-HUD는HP3/조각0..5와 세션의 Q/E 해금을 구독한다. 해금 전 alpha0.3, 기존 트리거 수락 후 alpha1을 유지하고 현재 Stage 재잠금 때 같은 상태 원본으로 음영과 실행 수락 조건을 갱신한다. CPID·Recover·거리 Instruction 폐기 소비를 이관했고 Phase2의7호환필드는11기존자산에서 선택적으로 제거·재저장했다. 화면은 ScreenSpaceOverlay, F 안내는 별도 WorldSpaceCanvas에 유효 대상1개다. Core 최초1회/등록 Stage3개 전부 additive 선로딩 뒤 retry·Title·다음 판에 같은 씬을 유지하고 Title 씬은 새 게임 때 언로드할 수 있다. 정확한6씬 진입 정책과 비대상 직접 Play는 유지한다. 실제 clip 재생·빌드 QA/FunQA는 별도 판정한다.
+HUD는HP3/조각0..5와 세션의 Q/E 해금을 구독한다. 해금 전 alpha0.3, 기존 트리거 수락 후 alpha1을 유지하고 snapshot 마스크 복원 때 같은 상태 원본으로 음영과 실행 수락 조건을 갱신한다. CPID·Recover·거리 Instruction 폐기 소비를 이관했고 Phase2의7호환필드는11기존자산에서 선택적으로 제거·재저장했다. 화면은 ScreenSpaceOverlay, F 안내는 별도 WorldSpaceCanvas에 유효 대상1개다. Core 최초1회/등록 Stage3개 전부 additive 선로딩 뒤 retry·Title·다음 판에 같은 씬을 유지하고 Title 씬은 새 게임 때 언로드할 수 있다. 정확한6씬 진입 정책과 비대상 직접 Play는 유지한다. 실제 clip 재생·빌드 QA/FunQA는 별도 판정한다.
+
+## 2026-10-10 현행 V1.5 기준
+
+현재 시스템 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.5.docx`다. 최신 직접 지시 → V1.5 활성 본문 → 기존 구현 순서로 적용한다. 승인된 실행 명세는 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/spec.md`, 구현·검증 상태는 tracking/status.md다. 이전 버전과 당시 실행 증거는 보존하되 현행 정책으로 승계하지 않는다.
+
+- 체크포인트는 현재 ActorBody 월드 위치·보유 조각·해금 마스크 세 항목만 원자 저장한다. 첫 유효 저장 전 상태를 구별하고 같은 물리 Marker 재접촉은 갱신하지 않는다. 전신 통과·퇴로 안전 확인 뒤 추격 시작 직전에 현재 상태를 저장한다. 사망은 같은 Stage 초기 재준비 후 마지막 세 값을 복원하며, 완료/Skipped 대화 장부는 능력 복원 때문에 지우지 않는다.
+- 현재 목표는 응집형 Prototype Stage 한 곳에서 전체 게임 흐름 1회다. Stage 1→2→3 자동 연결을 추가하지 않으며 등록 씬과 향후 본편의 독립 진입을 보존한다.
+- 위치·끝점·경로·대상은 실제 Transform/컴포넌트/자산을 드래그한다. 속도·시간·높이·방향은 명확한 수치/선택으로 남긴다. 한국어 이름과 Tooltip은 무엇을 연결/조절하는지 짧게 설명하고 필요한 단위·0·좌표계·기즈모만 덧붙인다.
+- 씬 관리자·카메라·Canvas·월드 오브젝트는 독립 씬 루트다. 빈 Root/Render/Collider 규칙은 개별 기능 프리팹에 적용한다. HMS ActorBody 동거, Shell 실제 물리 Root, 움직이는 Rigidbody 아래 Render의 예외를 명시한다. 눈물은 수집 Root와 Collider가 함께 움직인다.
+- 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
+- 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
+- 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
+- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위 2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만이다. 이전 9개 파일의 한정 허가는 종료됐으며 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다.

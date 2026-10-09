@@ -1,6 +1,6 @@
 # 일반 적
 
-최신 기준은 Assets/_Docs/planning-index.md와 ready-system-v11-refactor-2026-10-06 확정안 적용 명세다. 작성된 목표를 실제완료로 보고하지 않는다.
+최신 기준은 Assets/_Docs/planning-index.md와 ready-system-v15-2026-10-10 spec다. 작성된 목표를 실제완료로 보고하지 않는다.
 
 EnemyActor 조립, StateMachine 배타적 전이/기절시간, Motor 지형/실제이동, Combat/ContactSensor 접촉피해원의 책임을 구분한다. 일반 적은 X/Y 작성평면 순찰·Idle·Stunned만 가지며 Chase/Return은 제거한다. 기존 종류/방향/직렬화값은 실제 배치의 의미로 명시적으로 이관하고 재번호화로 추측하지 않는다.
 
@@ -9,3 +9,5 @@ EnemyActor 조립, StateMachine 배타적 전이/기절시간, Motor 지형/실�
 PlayerFacade의 공통 피해1/무적2초/피해+넉백과 단일Knockback ms 조회를 사용한다. consumedDamage 일회성 대신 무적종료후 지속접촉을 다시 판정한다. 적 body는 루트바로아래 실제 BoxCollider Trigger이고 EnemyContactSensor는 그 몸체접촉relay다. 이름만 보고 탐지영역으로 제외하지 않는다. 적에 Rigidbody를 새로 요구하지 않는다. 몸체/루트 무회전·단위배율과 지형조건을 유지한다.
 
 Stage의 retry/reset은 초기배치·기절/접촉/방향을 재준비하며 저장DTO/객체상태ID를 만들지 않는다. 비활성Stage는 target과 작업을 해제한다. 명시적HurtCollider 읽기계약을 제공해 눈물candidate와 탐지센서를 구분한다. 순찰X/Y·기절/재기절·해제/지속접촉·옵션·retry/비활성Stage를 결합 검증한다. 등록/Stage/Native변경과 실제삭제는 T9 단일작성자가 수행한다.
+
+현행 지침: Inspector 위치/대상은 실물 참조, 수치는 목적·단위가 명확한 값이다. 씬 월드 객체를 관리자 자식에 묶지 않는다. 에이전트 Play 실행·기존 프리팹 삭제/재생성/Apply·자동 Builder 실행은 금지다. 이전 실행 관찰 수는 당시 증거이고 이번 통과가 아니다.

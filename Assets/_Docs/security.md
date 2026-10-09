@@ -41,8 +41,12 @@
 
 현재 플랫폼 실행의 보호 기준점 1,025개는 원래 해시를 유지한다. 최종 감사에서 승인된 자동 저장5건 외 변화는0이다. ProBuilder의 editor.autoRecalculateCollisions 기본값 저장, URP의 Shader Prefilter 및 RuntimeSettings17항목, Input System project-wide Actions의 사전 로드 참조, UnityConnect의 m_Enabled 저장을 확인했다. 패키지 소스에서 확인한 원인과 native 빌드 전후로만 확인한 내부 저장을 구분하며 정확한 해시는 verification의 automatic-change-authorization.json에 보존한다. 이후 자동 저장도 새 기준점으로 몰래 덮지 않고 원래 기준점·변경 시점·원인·현재 값을 함께 기록한다. 앞선250개 미커밋 변경과 HMS 입력·폼의 승인된 두 파일도 기능별 검토 후 포함한다.
 
-## 이번 명세 1회 HMS 최소 확장 예외
+## 2026-10-07 종료된 HMS 최소 확장 기록 (현행 허가 아님)
 
 2026-10-07 사용자는 현재 확정안 구현에 한정해 HMS 스크립트의 최소 기능 확장·참조 캐시·데이터 변수를 허용했다. 기존 기능의 변경/삭제/전체 리팩터링은 금지다. 승인 대상은 Assets/_Code/Core/Tech_HMS/Features/의 PlayerInputReader.cs, PlayerFacade.cs, PlayerCameraController.cs, TearSkill.cs, PlayerAnimationTypes.cs, PlayerAnimationPlayback.cs, PlayerAnimationController.cs, PlayerAnimationSet.cs, PlayerAnimatorOutput.cs의 필요한 additive 공개 경계다. 기존 기본값·독립 소비·enum 번호·공개 계약을 보존한다.
 
 추가 13개 내부 정리 후보, 보호 .meta/원본 프리팹/_Art/Interfaces/Packages/ProjectSettings 수동 수정은 이 허가에 포함되지 않는다. 이번 작업 종료 후 영구 권한으로 사용하지 않는다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)와 실제 파일별 diff·보호 hash·독립 검토를 함께 남긴다. 기존 사용자 및 Unity 자동 저장 변경은 기존 지시대로 원인과 diff를 검토·분류한 뒤 포함한다.
+
+## 2026-10-10 이번 실행의 HMS 예외
+
+사용자 직접 답변과 go 승인에 따라 Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만 수정할 수 있다. 이전9파일/입력·폼 한정 허가는 종료됐다. 다른 HMS·공용·아트·보호 meta/import·Packages·ProjectSettings 수동 변경은 금지다. 사람 프리팹 삭제·재생성·Apply는 수행하지 않는다.
