@@ -15,8 +15,11 @@ namespace Cooked.Dialogue
         private static readonly string[] Fields = { "Dialogue_Code", "Sequence", "Name", "Context", "ContextRevealDuration" };
         private readonly string sourceName;
         private Dictionary<string, IReadOnlyList<DialogueRow>> table;
+        private string sourceJson;
+        private IReadOnlyList<string> codes = Array.AsReadOnly(Array.Empty<string>());
         public DialogueTableService(string sourceName = "DialogueTable") { this.sourceName = sourceName; }
         public bool IsLoaded => table != null;
+        public IReadOnlyList<string> Codes => codes;
 
         public void LoadJson(string json)
         {
@@ -69,7 +72,8 @@ namespace Cooked.Dialogue
                     }
                     validated.Add(group.Key, Array.AsReadOnly(group.Value.Values.ToArray()));
                 }
-                table = validated;
+                var choices = Array.AsReadOnly(validated.Keys.OrderBy(code => code, StringComparer.Ordinal).ToArray());
+                table = validated; codes = choices; sourceJson = json;
             }
             catch (JsonException exception) { throw Error("JSON", exception.Message, exception); }
             catch (OverflowException exception) { throw Error("Rows numeric field", exception.Message, exception); }
@@ -79,6 +83,21 @@ namespace Cooked.Dialogue
         {
             rows = null;
             return table != null && dialogueCode != null && table.TryGetValue(dialogueCode, out rows);
+        }
+
+        public string RequireCode(string dialogueCode)
+        {
+            if (!IsLoaded) throw Error("Code", "대화 표를 먼저 검증하세요.");
+            if (!TryGetRows(dialogueCode, out _)) throw Error("Code (" + dialogueCode + ")", "연결한 대화 표에 없는 Code입니다.");
+            return dialogueCode;
+        }
+
+        public string RequireSelection(DialogueSelection selection)
+        {
+            if (selection == null || selection.Table == null) throw Error("대화 표", "JSON TextAsset를 연결하세요.");
+            if (!IsLoaded || !string.Equals(sourceJson, selection.Table.text, StringComparison.Ordinal))
+                throw Error("대화 표 (" + selection.Table.name + ")", "서비스에 로드한 JSON과 선택 자산이 다릅니다.");
+            return RequireCode(selection.Code);
         }
         private string StringField(JObject row, string field, string path)
         {
