@@ -1,37 +1,34 @@
 using System;
 using System.Collections.Generic;
-using Cooked.Contracts;
 using UnityEngine;
 
 namespace Cooked.Cinematics
 {
     public sealed class CinematicViewModel : IDisposable
     {
-        private readonly ICinematicService service;
-        private readonly CinematicPresentationState state;
+        private readonly CinematicService service;
         private bool disposed;
-        public CinematicViewModel(ICinematicService service, CinematicPresentationState state)
+        public CinematicViewModel(CinematicService service)
         {
             this.service = service ?? throw new ArgumentNullException(nameof(service));
-            this.state = state ?? throw new ArgumentNullException(nameof(state));
-            state.Changed += OnChanged;
+            service.Changed += OnChanged;
         }
-        public Texture2D Artwork => disposed ? null : state.Artwork;
-        public string Caption => disposed ? string.Empty : state.Caption;
-        public bool IsVisible => !disposed && state.IsVisible;
-        public bool CanSkip => !disposed && state.CanSkip;
+        public Texture2D Artwork => disposed ? null : service.Artwork;
+        public string Caption => disposed ? string.Empty : service.Caption;
+        public bool IsVisible => !disposed && service.IsVisible;
+        public bool CanSkip => !disposed && service.CanSkip;
         public event Action Changed;
         public void Skip() { if (CanSkip) service.Skip(); }
         private void OnChanged()
         {
             if (disposed) return;
-            long version = state.Version;
+            long version = service.PresentationVersion;
             var errors = new List<Exception>();
             var listeners = Changed;
             if (listeners != null)
                 foreach (Action listener in listeners.GetInvocationList())
                 {
-                    if (disposed || version != state.Version) break;
+                    if (disposed || version != service.PresentationVersion) break;
                     if (Changed == null || Array.IndexOf(Changed.GetInvocationList(), listener) < 0) continue;
                     try { listener(); } catch (Exception error) { errors.Add(error); }
                 }
@@ -41,7 +38,7 @@ namespace Cooked.Cinematics
         {
             if (disposed) return;
             disposed = true;
-            try { state.Changed -= OnChanged; }
+            try { service.Changed -= OnChanged; }
             finally { Changed = null; }
         }
     }

@@ -1,14 +1,15 @@
 using UnityEngine;
+using Cooked.Authoring;
 namespace FeelsGoodOnion.TechSYM.Interaction
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(InteractionPromptAnchor))]
     public sealed class MemoObject : MonoBehaviour, IInteractable
     {
-        [Tooltip("이 오브젝트가 독점 사용할 메모 데이터입니다. 다른 메모와 고유 번호를 공유하지 마세요.")]
-        [SerializeField] private MemoModel memoModel;
-        [Tooltip("F로 메모를 열고 닫으며 월드 정지를 관리할 화면 담당입니다.")]
-        [SerializeField] private MemoUIController memoUI;
+        [SerializeField, InspectorLabel("메모 원본"), Tooltip("이 메모가 독점 사용할 MemoModel 자산을 연결하세요.")]
+        private MemoModel memoModel;
+        [SerializeField, InspectorLabel("메모 화면 담당"), Tooltip("메모 화면과 자기 월드 정지를 관리할 MemoUIController를 연결하세요.")]
+        private MemoUIController memoUI;
         public MemoModel Data => memoModel;
         private void OnEnable()
         {

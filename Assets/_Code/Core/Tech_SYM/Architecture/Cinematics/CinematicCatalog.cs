@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
+using Cooked.Authoring;
 using UnityEngine;
 
 namespace Cooked.Cinematics
@@ -10,22 +11,15 @@ namespace Cooked.Cinematics
     {
         public const float DefaultDurationSeconds = 4f;
         [Tooltip("이 컷에 표시할 기존 원화 Texture2D 자산 한 장을 연결하세요. 비어 있으면 연출 준비가 실패합니다.")]
-        [SerializeField] private Texture2D artwork;
+        [SerializeField, InspectorLabel("원화")] private Texture2D artwork;
         [Tooltip("현재 원화 아래에 표시할 문구입니다. 비어 있거나 공백만 입력하면 연출 준비가 실패합니다.")]
-        [SerializeField] private string caption;
+        [SerializeField, InspectorLabel("하단 문구")] private string caption;
         [Tooltip("이 컷의 표시 시간(초)입니다. 기본은 4초이며 0 이하, 무한대, 숫자가 아닌 값은 사용할 수 없습니다. 옵션을 열면 남은 시간이 유지됩니다.")]
-        [SerializeField] private float durationSeconds = DefaultDurationSeconds;
+        [SerializeField, InspectorLabel("표시 시간")] private float durationSeconds = DefaultDurationSeconds;
         public Texture2D Artwork => artwork;
         public string Caption => caption;
         public float DurationSeconds => durationSeconds;
 
-        public void Configure(Texture2D artwork, string caption, float durationSeconds = DefaultDurationSeconds)
-        {
-            Validate(artwork, caption, durationSeconds, "Cinematic cut");
-            this.artwork = artwork;
-            this.caption = caption;
-            this.durationSeconds = durationSeconds;
-        }
         internal CinematicCut Snapshot(string source)
         {
             Validate(artwork, caption, durationSeconds, source);
@@ -44,21 +38,11 @@ namespace Cooked.Cinematics
     public sealed class CinematicCatalog : ScriptableObject
     {
         [Tooltip("오프닝 컷을 표시 순서대로 넣으세요. 각 컷에 기존 원화 한 장, 하단 문구, 표시 시간(초)이 필요하며 컷 수에는 제한이 없습니다.")]
-        [SerializeField] private CinematicCut[] openingCuts = Array.Empty<CinematicCut>();
+        [SerializeField, InspectorLabel("오프닝 컷")] private CinematicCut[] openingCuts = Array.Empty<CinematicCut>();
         [Tooltip("엔딩 컷을 표시 순서대로 넣으세요. 각 컷에 기존 원화 한 장, 하단 문구, 표시 시간(초)이 필요하며 빈 목록은 사용할 수 없습니다.")]
-        [SerializeField] private CinematicCut[] endingCuts = Array.Empty<CinematicCut>();
+        [SerializeField, InspectorLabel("엔딩 컷")] private CinematicCut[] endingCuts = Array.Empty<CinematicCut>();
 
         public IReadOnlyList<CinematicCut> Get(CinematicId id) => Array.AsReadOnly(Snapshot(id));
-        public void Configure(CinematicId id, params CinematicCut[] cuts)
-        {
-            var snapshot = Copy(cuts, id);
-            switch (id)
-            {
-                case CinematicId.Opening: openingCuts = snapshot; break;
-                case CinematicId.Ending: endingCuts = snapshot; break;
-                default: throw new ArgumentOutOfRangeException(nameof(id));
-            }
-        }
         internal CinematicCut[] Snapshot(CinematicId id)
         {
             switch (id)

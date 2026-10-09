@@ -16,7 +16,7 @@ namespace Cooked.Dialogue
         private readonly IReadOnlyList<DialogueRow> historyView;
         private IReadOnlyList<DialogueRow> rows;
         private IDisposable inputLease;
-        private bool starting, resettingRound;
+        private bool starting, resettingRound, finishing;
         private int rowIndex;
         private int lastProgressFrame = -1;
         private IDialogueDelayHandle cooldown;
@@ -26,6 +26,7 @@ namespace Cooked.Dialogue
         private bool disposed;
         private bool optionsPaused;
         private long lifecycleRevision;
+        private long notificationRevision;
 
         public DialogueService(IDialogueTableService table, IGameplayControlService control, IDialogueDelayScheduler scheduler, DialogueSettings settings = null)
         {
@@ -46,7 +47,8 @@ namespace Cooked.Dialogue
         public bool LogOpen { get; private set; }
         public bool OptionsPaused => optionsPaused;
         public bool PresentationPaused => optionsPaused || LogOpen;
-        public bool CanAdvance => IsActive && !PresentationPaused && cooldown == null;
+        public bool CanAdvance => !disposed && !resettingRound && !finishing && IsActive && !PresentationPaused && cooldown == null;
+        public bool CanSkip => !disposed && !resettingRound && !finishing && IsActive && !PresentationPaused;
         public long SessionId { get; private set; }
         public long RowId { get; private set; }
         public DialogueRow CurrentRow => IsActive ? rows[rowIndex] : null;
@@ -57,7 +59,7 @@ namespace Cooked.Dialogue
 
         public bool TryStart(string dialogueCode)
         {
-            if (disposed || starting || resettingRound || IsActive || optionsPaused || dialogueCode == null || completedCodes.Contains(dialogueCode) || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
+            if (disposed || starting || resettingRound || finishing || IsActive || optionsPaused || dialogueCode == null || completedCodes.Contains(dialogueCode) || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
             // Acquire before publishing a visible conversation; failure cannot strand an active UI.
             starting = true;
             long revision = lifecycleRevision;
@@ -132,7 +134,7 @@ namespace Cooked.Dialogue
         }
         public void SkipAll()
         {
-            if (!disposed && IsActive && !optionsPaused) Finish(DialogueOutcome.Skipped);
+            if (CanSkip) Finish(DialogueOutcome.Skipped);
         }
         public void Cancel()
         {
@@ -140,23 +142,18 @@ namespace Cooked.Dialogue
             lifecycleRevision++;
             if (IsActive) Finish(DialogueOutcome.Cancelled);
         }
+        // Temporary interface member only: T10 removes CoreWorldBinding's retry caller,
+        // then the contracts owner can remove this member. Never erase a round's ledger.
+        [Obsolete("완료한 대화는 능력 복원으로 지우지 않습니다. 새 판은 ResetRound를 사용하세요.")]
         public void ForgetCompletedCodes(IEnumerable<string> dialogueCodes)
         {
             if (disposed) return;
-            if (dialogueCodes == null) throw new ArgumentNullException(nameof(dialogueCodes));
-            var validated = new List<string>();
-            foreach (var code in dialogueCodes)
-            {
-                if (string.IsNullOrWhiteSpace(code) || code != code.Trim())
-                    throw new ArgumentException("Notice code without surrounding whitespace required.", nameof(dialogueCodes));
-                validated.Add(code);
-            }
-            foreach (var code in validated) completedCodes.Remove(code);
+            throw new NotSupportedException("한 판의 Completed/Skipped 대화 장부는 Retry나 능력 재잠금으로 지울 수 없습니다.");
         }
         // Resident Core can begin another round without retaining a previous round's ledger.
         public void ResetRound()
         {
-            if (disposed || resettingRound) return;
+            if (disposed || resettingRound || finishing) return;
             resettingRound = true;
             try { Cancel(); }
             finally { completedCodes.Clear(); history.Clear(); Outcome = DialogueOutcome.None; resettingRound = false; }
@@ -184,7 +181,9 @@ namespace Cooked.Dialogue
         }
         private void Finish(DialogueOutcome result)
         {
-            if (result == DialogueOutcome.Completed && rows != null)
+            if (finishing || !IsActive) return;
+            finishing = true;
+            if ((result == DialogueOutcome.Completed || result == DialogueOutcome.Skipped) && rows != null)
                 completedCodes.Add(rows[0].Dialogue_Code);
             State = DialogueState.Closed;
             Outcome = result;
@@ -193,11 +192,22 @@ namespace Cooked.Dialogue
             history.Clear();
             rows = null;
             var errors = new List<Exception>();
-            try { CancelAutoDelay(); } catch (Exception e) { errors.Add(e); }
-            try { CancelCooldown(); } catch (Exception e) { errors.Add(e); }
-            try { ReleaseLeases(); } catch (Exception e) { errors.Add(e); }
-            try { Notify(); } catch (Exception e) { errors.Add(e); }
-            try { Ended?.Invoke(result); } catch (Exception e) { errors.Add(e); }
+            try
+            {
+                try { CancelAutoDelay(); } catch (Exception e) { errors.Add(e); }
+                try { CancelCooldown(); } catch (Exception e) { errors.Add(e); }
+                try { ReleaseLeases(); } catch (Exception e) { errors.Add(e); }
+                try { Notify(); } catch (Exception e) { errors.Add(e); }
+                var listeners = Ended;
+                if (!disposed && listeners != null)
+                    foreach (Action<DialogueOutcome> listener in listeners.GetInvocationList())
+                    {
+                        if (disposed) break;
+                        if (Ended == null || Array.IndexOf(Ended.GetInvocationList(), listener) < 0) continue;
+                        try { listener(result); } catch (Exception e) { errors.Add(e); }
+                    }
+            }
+            finally { finishing = false; }
             if (errors.Count > 0) throw new AggregateException("Dialogue completion cleanup failed.", errors);
         }
         private void ReleaseLeases()
@@ -256,7 +266,21 @@ namespace Cooked.Dialogue
             var previous = autoDelay; autoDelay = null;
             previous?.Dispose();
         }
-        private void Notify() { Changed?.Invoke(); }
+        private void Notify()
+        {
+            if (disposed) return;
+            long version = ++notificationRevision;
+            var errors = new List<Exception>();
+            var listeners = Changed;
+            if (listeners != null)
+                foreach (Action listener in listeners.GetInvocationList())
+                {
+                    if (disposed || version != notificationRevision) break;
+                    if (Changed == null || Array.IndexOf(Changed.GetInvocationList(), listener) < 0) continue;
+                    try { listener(); } catch (Exception e) { errors.Add(e); }
+                }
+            if (errors.Count > 0) throw new AggregateException("Dialogue state observer failures.", errors);
+        }
         public void Dispose()
         {
             if (disposed) return;

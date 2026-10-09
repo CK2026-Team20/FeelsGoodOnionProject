@@ -15,6 +15,6 @@ namespace Cooked.Dialogue
         public float ClickCooldown { get; }
         public float AutoDelay { get; }
     }
-    public enum DialogueState { Closed, Revealing, AwaitingAdvance }
-    public enum DialogueOutcome { None, Completed, Skipped, Cancelled }
+    public enum DialogueState { Closed = 0, Revealing = 1, AwaitingAdvance = 2 }
+    public enum DialogueOutcome { None = 0, Completed = 1, Skipped = 2, Cancelled = 3 }
 }

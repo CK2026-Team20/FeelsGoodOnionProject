@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using Cooked.Contracts;
+using UnityEngine;
 
 namespace Cooked.Cinematics
 {
@@ -21,7 +22,14 @@ namespace Cooked.Cinematics
         private OperationResult playResult;
         private long revision;
         private IDisposable inputLease, worldLease;
-        public CinematicPresentationState Presentation { get; } = new CinematicPresentationState();
+        // Atomic display projection shares the playback owner's lifetime; no second state owner.
+        public Texture2D Artwork { get; private set; }
+        public string Caption { get; private set; } = string.Empty;
+        public int CutIndex { get; private set; } = -1;
+        public bool IsVisible { get; private set; }
+        public bool CanSkip { get; private set; }
+        public event Action Changed;
+        internal long PresentationVersion { get; private set; }
         public CinematicOutcome Outcome { get; private set; }
         public CinematicPhase Phase { get; private set; }
         public long Revision => revision;
@@ -204,7 +212,7 @@ namespace Cooked.Cinematics
             // Reject reentrant Prepare before disposing leases or notifying observers.
             try { control.Changed -= OnControlChanged; }
             catch (Exception error) { errors.Add(error); }
-            finally { Reset(CinematicPhase.Disposed, errors); }
+            finally { Changed = null; Reset(CinematicPhase.Disposed, errors); }
             ThrowErrors(errors, "Cinematic Dispose cleanup failed.");
         }
 
@@ -226,8 +234,28 @@ namespace Cooked.Cinematics
         private void Publish()
         {
             bool visible = cuts != null && (Phase == CinematicPhase.Ready || Phase == CinematicPhase.Playing || Phase == CinematicPhase.Holding);
-            Presentation.Publish(visible ? cuts[cursor] : null, visible ? cursor : -1,
+            PublishDisplay(visible ? cuts[cursor] : null, visible ? cursor : -1,
                 visible, Phase == CinematicPhase.Playing && !control.State.PresentationPaused);
+        }
+
+        private void PublishDisplay(CinematicCut cut, int index, bool visible, bool canSkip)
+        {
+            Texture2D artwork = cut?.Artwork;
+            string caption = cut?.Caption ?? string.Empty;
+            if (Artwork == artwork && Caption == caption && CutIndex == index && IsVisible == visible && CanSkip == canSkip) return;
+            Artwork = artwork; Caption = caption; CutIndex = index; IsVisible = visible; CanSkip = canSkip;
+            long version = ++PresentationVersion;
+            if (Phase == CinematicPhase.Disposed) return;
+            var errors = new List<Exception>();
+            var listeners = Changed;
+            if (listeners != null)
+                foreach (Action listener in listeners.GetInvocationList())
+                {
+                    if (Phase == CinematicPhase.Disposed || PresentationVersion != version) break;
+                    if (Changed == null || Array.IndexOf(Changed.GetInvocationList(), listener) < 0) continue;
+                    try { listener(); } catch (Exception error) { errors.Add(error); }
+                }
+            ThrowErrors(errors, "Cinematic presentation observer failures.");
         }
 
         private void Finish(CinematicOutcome outcome)
@@ -289,7 +317,7 @@ namespace Cooked.Cinematics
             cursor = -1;
             remainingSeconds = 0;
             prepareToken = playToken = default;
-            try { Presentation.Publish(null, -1, false, false); }
+            try { PublishDisplay(null, -1, false, false); }
             catch (Exception error) { errors.Add(error); }
             finally { Release(errors, input, world); }
         }

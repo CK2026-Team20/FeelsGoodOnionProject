@@ -1,4 +1,5 @@
 using System;
+using Cooked.Authoring;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,31 +9,20 @@ namespace Cooked.Cinematics
     public sealed class CinematicView : MonoBehaviour
     {
         [Tooltip("원화·문구·Skip 버튼을 포함한 화면의 CanvasGroup입니다. 연출 표시 중 아래 화면의 포인터 입력을 막습니다.")]
-        [SerializeField] private CanvasGroup visibility;
+        [SerializeField, InspectorLabel("연출 화면")] private CanvasGroup visibility;
         [Tooltip("원화 한 장이 들어갈 RectTransform 영역입니다. 하단 문구 영역을 제외하고 배치하면 원화 비율을 유지하며 이 영역 안에 맞춥니다.")]
-        [SerializeField] private RectTransform artworkViewport;
+        [SerializeField, InspectorLabel("원화 영역")] private RectTransform artworkViewport;
         [Tooltip("기존 원화 Texture2D 한 장을 표시할 RawImage입니다. 지정한 원화 영역 아래의 이미지 하나를 연결하세요.")]
-        [SerializeField] private RawImage artwork;
+        [SerializeField, InspectorLabel("원화 이미지")] private RawImage artwork;
         [Tooltip("현재 컷의 문구를 표시할 TMP_Text입니다. 원화 아래에 배치하고 한국어 글꼴을 연결하세요.")]
-        [SerializeField] private TMP_Text caption;
+        [SerializeField, InspectorLabel("하단 문구")] private TMP_Text caption;
         [Tooltip("연출 전체를 한 번 건너뛰는 버튼입니다. 옵션을 열었거나 연출이 끝났으면 사용할 수 없습니다.")]
-        [SerializeField] private Button skipButton;
+        [SerializeField, InspectorLabel("전체 건너뛰기")] private Button skipButton;
         private CinematicViewModel viewModel;
         private bool bound;
+        private int consumedFrame = -1;
         public bool IsConfigured => visibility != null && artworkViewport != null && artwork != null && caption != null && skipButton != null;
 
-        public void Configure(CanvasGroup visibility, RectTransform artworkViewport, RawImage artwork, TMP_Text caption, Button skipButton)
-        {
-            if (visibility == null || artworkViewport == null || artwork == null || caption == null || skipButton == null)
-                throw new ArgumentException("CinematicView needs CanvasGroup, artwork viewport, one RawImage, bottom TMP_Text and Skip Button.");
-            Unbind();
-            this.visibility = visibility;
-            this.artworkViewport = artworkViewport;
-            this.artwork = artwork;
-            this.caption = caption;
-            this.skipButton = skipButton;
-            Refresh();
-        }
         public void Bind(CinematicViewModel value)
         {
             if (!IsConfigured) throw new InvalidOperationException("CinematicView serialized bindings are incomplete.");
@@ -64,7 +54,12 @@ namespace Cooked.Cinematics
             try { if (viewModel != null) viewModel.Changed -= Refresh; }
             finally { if (skipButton != null) skipButton.onClick.RemoveListener(OnSkip); }
         }
-        private void OnSkip() { if (bound && isActiveAndEnabled) viewModel?.Skip(); }
+        private void OnSkip()
+        {
+            if (!bound || !isActiveAndEnabled || viewModel == null || !viewModel.CanSkip || consumedFrame == Time.frameCount) return;
+            consumedFrame = Time.frameCount;
+            viewModel.Skip();
+        }
         private void Refresh()
         {
             if (!IsConfigured || !isActiveAndEnabled || viewModel == null || !viewModel.IsVisible) { Clear(); return; }
