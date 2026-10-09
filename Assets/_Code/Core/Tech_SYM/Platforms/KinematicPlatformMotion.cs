@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using Cooked.Authoring;
+using FeelsGoodOnion.TechSYM.Enemies;
 
 namespace FeelsGoodOnion.TechSYM.Platforms
 {
@@ -10,16 +12,20 @@ namespace FeelsGoodOnion.TechSYM.Platforms
     public sealed class KinematicPlatformMotion : MonoBehaviour
     {
         [Tooltip("실제로 이동할 PhysicsBody 자식의 Rigidbody입니다. 루트에 직접 물리를 둔 기존 배치는 같은 객체를 연결합니다. 위치·회전 작성자는 이 컴포넌트 하나입니다.")]
-        [SerializeField] private Rigidbody physicsBody;
+        [SerializeField, InspectorLabel("이동 몸체")] private Rigidbody physicsBody;
         [Tooltip("위 물리 몸체의 지지 BoxCollider와 같은 객체에 있는 접촉 전달자입니다. 다른 물리 몸체의 접촉은 연결하지 않습니다.")]
-        [SerializeField] private PlatformContacts platformContacts;
+        [SerializeField, InspectorLabel("지지 접촉")] private PlatformContacts platformContacts;
         private Rigidbody body;
         private Vector3 authoredLocalPosition;
         private Quaternion authoredLocalRotation;
         private Quaternion rotationStart, rotationDestination;
-        private bool rotationTween;
-        public Rigidbody PhysicsBody => body != null ? body : physicsBody != null ? physicsBody : GetComponent<Rigidbody>();
-        public PlatformContacts Contacts => contacts != null ? contacts : platformContacts != null ? platformContacts : GetComponent<PlatformContacts>();
+        private bool rotationTween, positionTween;
+        private int motionRevision;
+        public Rigidbody PhysicsBody => body != null ? body : physicsBody;
+        public PlatformContacts Contacts => contacts != null ? contacts : platformContacts;
+        /// <summary>실제 이동 적용 직전의 몸체/현재/다음 월드 자세. 정지·완료 통지·Reset에는 발생하지 않는다.
+        /// 소비자는 몸체를 이동하지 않고 계획된 Collider 교차를 검사한다. 취소/Reset이면 낡은 이동은 적용하지 않는다.</summary>
+        public event Action<Rigidbody, Pose, Pose> BeforePhysicsMove;
         private PlatformContacts contacts;
         private readonly List<Collider> occupants = new List<Collider>();
         private Vector3 target;
@@ -33,18 +39,22 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private readonly HashSet<Rigidbody> carried = new HashSet<Rigidbody>();
         private PhysicsMaterial originalMaterial;
         private PhysicsMaterial motionMaterial;
-        private Tweener travelTween;
         private Vector3 tweenStart, tweenDestination;
         private float tweenDuration, tweenElapsed;
         private bool completionPending;
         private Action tweenCompleted;
-        public bool IsTweening => travelTween != null || rotationTween;
+        public bool IsTweening => positionTween || rotationTween;
         public float RemainingTweenSeconds => Mathf.Max(0f, tweenDuration - tweenElapsed);
         public Vector3 Velocity { get; private set; }
         public Vector3 PreviousVelocity { get; private set; }
         public Vector3 Direction => Velocity.sqrMagnitude > 0.000001f ? Velocity.normalized : Vector3.zero;
         public float Speed => Velocity.magnitude;
         public Vector3 Position => PhysicsBody != null ? PhysicsBody.position : transform.position;
+        public Quaternion Rotation => PhysicsBody != null ? PhysicsBody.rotation : transform.rotation;
+        public Vector3 RestPosition => body != null && body.transform.parent != null
+            ? body.transform.parent.TransformPoint(authoredLocalPosition) : authoredLocalPosition;
+        public Quaternion RestRotation => body != null && body.transform.parent != null
+            ? body.transform.parent.rotation * authoredLocalRotation : authoredLocalRotation;
 
         private void Reset()
         {
@@ -57,8 +67,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         private void Awake()
         {
-            if (!BindPhysics(physicsBody != null ? physicsBody : GetComponent<Rigidbody>(),
-                platformContacts != null ? platformContacts : GetComponent<PlatformContacts>()))
+            if (motionMaterial != null) return;
+            if (!BindPhysics(physicsBody, platformContacts))
             { Debug.LogError("이동 발판의 PhysicsBody/Contacts를 명시적으로 연결하세요.", this); enabled = false; return; }
             body.isKinematic = true;
             body.useGravity = false;
@@ -81,7 +91,19 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             if (physicalBody == null || physicalContacts == null
                 || physicalContacts.GetComponent<Rigidbody>() != physicalBody
+                || physicalContacts.Surface == null || physicalContacts.Surface.attachedRigidbody != physicalBody
+                || physicalContacts.Surface.isTrigger
+                || physicalBody.GetComponent<MovingPlatform>() != null || GetComponent<MovingPlatform>() != null
                 || (physicalBody.transform != transform && !physicalBody.transform.IsChildOf(transform))) return false;
+            int drivers = (GetComponent<LinearShuttlePlatform>() != null ? 1 : 0)
+                + (GetComponent<PressurePlatePlatform>() != null ? 1 : 0)
+                + (GetComponent<PressureLinkedPlatform>() != null ? 1 : 0)
+                + (GetComponent<FeelsGoodOnion.TechSYM.OvenTray.OvenTrayObject>() != null ? 1 : 0);
+            if (drivers > 1) return false;
+            foreach (var writer in physicalBody.GetComponentsInParent<KinematicPlatformMotion>(true))
+                if (writer != this && writer.PhysicsBody == physicalBody) return false;
+            if (body != null && body != physicalBody && motionMaterial != null) return false;
+            if (body == physicalBody && contacts == physicalContacts) return true;
             CancelMotion();
             body = physicsBody = physicalBody;
             contacts = platformContacts = physicalContacts;
@@ -93,17 +115,22 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         public void ResetForRetry()
         {
+            if (body == null) return;
+            ResetForRetry(new Pose(RestPosition, RestRotation));
+        }
+
+        /// <summary>고정 시작/닫힘 지점으로 같은 물리 몸체를 즉시 복구한다. 진행 이벤트는 보내지 않는다.</summary>
+        public void ResetForRetry(Pose worldPose)
+        {
+            if (!Finite(worldPose.position) || !ValidRotation(worldPose.rotation))
+                throw new ArgumentException("복구 자세는 유한한 위치와 유효한 회전이어야 합니다.", nameof(worldPose));
             CancelMotion();
             if (body == null) return;
-            Vector3 restoredPosition = body.transform.parent != null
-                ? body.transform.parent.TransformPoint(authoredLocalPosition) : authoredLocalPosition;
-            Quaternion restoredRotation = body.transform.parent != null
-                ? body.transform.parent.rotation * authoredLocalRotation : authoredLocalRotation;
             // Interpolation can retain the old render Transform after a Rigidbody teleport.
             // Stage reactivation/SyncTransforms must see the same restored pose immediately.
-            body.transform.SetPositionAndRotation(restoredPosition, restoredRotation);
-            body.position = restoredPosition;
-            body.rotation = restoredRotation;
+            body.transform.SetPositionAndRotation(worldPose.position, worldPose.rotation);
+            body.position = worldPose.position;
+            body.rotation = worldPose.rotation;
             effectOrigin = body.position;
             contacts?.ResetForRetry();
         }
@@ -120,12 +147,12 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         public bool TryRotateTo(Quaternion worldDestination, float duration, Action onCompleted)
         {
             if (!isActiveAndEnabled || body == null || IsTweening || duration <= 0f || !float.IsFinite(duration)
-                || !float.IsFinite(worldDestination.x) || !float.IsFinite(worldDestination.y)
-                || !float.IsFinite(worldDestination.z) || !float.IsFinite(worldDestination.w)) return false;
+                || !ValidRotation(worldDestination)) return false;
             if (path == MotionPath.Effect || path == MotionPath.Travel || HasTravelDriver()) { ReportConflict(); return false; }
             rotationStart = body.rotation; rotationDestination = worldDestination;
             tweenDuration = duration; tweenElapsed = 0f; tweenCompleted = onCompleted;
-            completionPending = false; rotationTween = true; path = MotionPath.Tween;
+            completionPending = false; rotationTween = true; positionTween = false; path = MotionPath.Tween;
+            ++motionRevision;
             return true;
         }
 
@@ -153,17 +180,27 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             tweenElapsed = 0f;
             completionPending = false;
             tweenCompleted = onCompleted;
-            travelTween = body.DOMove(worldDestination, duration).SetEase(Ease.OutSine)
-                .SetUpdate(UpdateType.Manual).SetAutoKill(false).Pause();
-            travelTween.ForceInit();
+            positionTween = true;
+            rotationTween = false;
+            ++motionRevision;
+            return true;
+        }
+
+        /// <summary>장치의 위치와 회전을 같은 요청/시간/물리 작성자로 진행한다.</summary>
+        public bool TryTweenPose(Pose worldDestination, float duration, Action onCompleted)
+        {
+            if (!ValidRotation(worldDestination.rotation) || !TryTweenTo(worldDestination.position, duration, onCompleted)) return false;
+            rotationStart = body.rotation;
+            rotationDestination = worldDestination.rotation;
+            rotationTween = true;
             return true;
         }
 
         /// <summary>자신의 트윈과 완료 통지만 취소한다. 남은 시간은 재개를 위해 보존한다.</summary>
         public void CancelTween()
         {
-            travelTween?.Kill(false);
-            travelTween = null;
+            ++motionRevision;
+            positionTween = false;
             rotationTween = false;
             if (path == MotionPath.Tween) path = MotionPath.None;
             tweenCompleted = null;
@@ -180,7 +217,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (owner == null) return false;
             if (path == MotionPath.Travel || path == MotionPath.Tween || HasTravelDriver())
             { ReportConflict(); return false; }
-            if (path == MotionPath.None) { effectOrigin = Position; path = MotionPath.Effect; }
+            if (effects.ContainsKey(owner)) return true;
+            if (path == MotionPath.None) { effectOrigin = RestPosition; path = MotionPath.Effect; }
             effects[owner] = Vector3.zero;
             return true;
         }
@@ -197,7 +235,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (ReferenceEquals(owner, null)) return;
             if (effects.TryGetValue(owner, out var value) && keepPosition) effectOrigin += value;
             effects.Remove(owner);
-            if (effects.Count == 0 && path == MotionPath.Effect) path = MotionPath.None;
+            // 마지막 효과 제거 뒤 한 물리 스텝에서 기준 위치를 돌려 놓은 다음 경로를 닫는다.
         }
 
         private void ReportConflict()
@@ -208,10 +246,54 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         }
 
         private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
+        private static bool ValidRotation(Quaternion value) => float.IsFinite(value.x) && float.IsFinite(value.y)
+            && float.IsFinite(value.z) && float.IsFinite(value.w)
+            && (double)value.x * value.x + (double)value.y * value.y + (double)value.z * value.z + (double)value.w * value.w > 0.000001;
+
+        /// <summary>고정 작성 지점은 실제 몸체와 기존 적/애니메이션 이동 계층 밖의 같은 씬에 둔다.</summary>
+        public bool IsFixedPoint(Transform point) => point != null && PhysicsBody != null
+            && point.gameObject.scene == gameObject.scene && !point.IsChildOf(PhysicsBody.transform)
+            && point.GetComponentInParent<Rigidbody>(true) == null
+            && point.GetComponentInParent<EnemyActor>(true) == null
+            && point.GetComponentInParent<Animator>(true) == null
+            && point.GetComponentInParent<Animation>(true) == null;
+
+        /// <summary>실제 pose 변화 경계만 분류한다. 같은 회전의 q/-q도 정지다.</summary>
+        public static bool HasPoseChange(Pose current, Pose next)
+        {
+            if (!Finite(current.position) || !Finite(next.position) || !ValidRotation(current.rotation) || !ValidRotation(next.rotation))
+                throw new ArgumentException("이동 자세가 유효하지 않습니다.");
+            var a = current.rotation; var b = next.rotation;
+            bool sameRotation = (double)a.x * b.y == (double)a.y * b.x && (double)a.x * b.z == (double)a.z * b.x
+                && (double)a.x * b.w == (double)a.w * b.x && (double)a.y * b.z == (double)a.z * b.y
+                && (double)a.y * b.w == (double)a.w * b.y && (double)a.z * b.w == (double)a.w * b.z;
+            return current.position.x != next.position.x || current.position.y != next.position.y || current.position.z != next.position.z
+                || !sameRotation;
+        }
+
+        private bool NotifyBeforeMove(Pose current, Pose next)
+        {
+            var handlers = BeforePhysicsMove;
+            int revision = motionRevision;
+            bool failed = false;
+            if (handlers != null)
+                foreach (Action<Rigidbody, Pose, Pose> handler in handlers.GetInvocationList())
+                {
+                    try { handler(body, current, next); }
+                    catch (Exception error)
+                    {
+                        failed = true;
+                        Debug.LogException(new InvalidOperationException($"발판 '{name}'의 이동 전 검사에 실패했습니다.", error), this);
+                    }
+                    if (body == null || !isActiveAndEnabled || revision != motionRevision) return false;
+                }
+            if (failed) { enabled = false; return false; }
+            return body != null && isActiveAndEnabled && revision == motionRevision;
+        }
 
         private void FixedUpdate()
         {
-            if (body == null || contacts == null || Time.fixedDeltaTime <= 0f) return;
+            if (!isActiveAndEnabled || body == null || contacts == null || Time.timeScale <= 0f || Time.fixedDeltaTime <= 0f) return;
             // 마지막 MovePosition이 물리에 반영된 다음 스텝에만 완료를 통지한다.
             Action completed = null;
             if (completionPending)
@@ -222,17 +304,19 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             PreviousVelocity = Velocity;
             bool carryWithoutInertia = path == MotionPath.Effect;
             Vector3 next = hasTarget ? target : body.position;
-            bool tweenStep = travelTween != null;
+            bool tweenStep = positionTween;
             Quaternion nextRotation = body.rotation;
-            if (rotationTween)
+            if (rotationTween || tweenStep)
             {
                 tweenElapsed = Mathf.Min(tweenDuration, tweenElapsed + Time.fixedDeltaTime);
+            }
+            if (rotationTween)
+            {
                 nextRotation = Quaternion.Slerp(rotationStart, rotationDestination,
                     DOVirtual.EasedValue(0f, 1f, tweenElapsed / tweenDuration, Ease.OutSine));
             }
             if (tweenStep)
             {
-                tweenElapsed = Mathf.Min(tweenDuration, tweenElapsed + Time.fixedDeltaTime);
                 float fraction = DOVirtual.EasedValue(0f, 1f, tweenElapsed / tweenDuration, Ease.OutSine);
                 next = Vector3.LerpUnclamped(tweenStart, tweenDestination, fraction);
             }
@@ -242,6 +326,11 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 foreach (var entry in effects)
                     if (entry.Key != null) next += entry.Value;
             }
+            Pose currentPose = new Pose(body.position, body.rotation);
+            Pose nextPose = new Pose(next, nextRotation);
+            if (!Finite(next) || !ValidRotation(nextRotation) || !Finite((next - body.position) / Time.fixedDeltaTime))
+            { Debug.LogError("발판의 다음 자세/운반 속도가 유한한 범위를 벗어났습니다.", this); enabled = false; return; }
+            if (HasPoseChange(currentPose, nextPose) && !NotifyBeforeMove(currentPose, nextPose)) return;
             Vector3 displacement = next - body.position;
             Velocity = displacement / Time.fixedDeltaTime;
             carried.Clear();
@@ -278,17 +367,16 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             }
             hasTarget = false;
             // 부유 연출은 위치만 옮겨 키네마틱 속도가 플레이어를 밀어내지 않게 한다.
-            if (tweenStep)
-            {
-                // DOMove가 이 스텝의 유일한 위치 적용자다. 전역 ManualUpdate는 호출하지 않는다.
-                travelTween.Goto(tweenElapsed, false);
-                completionPending = tweenElapsed >= tweenDuration;
-            }
-            else if (carryWithoutInertia) body.position = next;
+            // Tween도 계산만 하고 실제 Rigidbody 작성은 이 경계 한 곳에서 수행한다.
+            if (carryWithoutInertia) body.position = next;
             else body.MovePosition(next);
             if (rotationTween)
-            { body.MoveRotation(nextRotation); completionPending = tweenElapsed >= tweenDuration; }
-            completed?.Invoke();
+                body.MoveRotation(nextRotation);
+            if (tweenStep || rotationTween) completionPending = tweenElapsed >= tweenDuration;
+            if (carryWithoutInertia && effects.Count == 0) path = MotionPath.None;
+            if (completed != null)
+                try { completed(); }
+                catch (Exception error) { Debug.LogException(new InvalidOperationException($"발판 '{name}'의 이동 완료 통지에 실패했습니다.", error), this); }
         }
 
         private void OnDisable() => CancelMotion();
@@ -298,7 +386,11 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             CancelTween();
             var collider = contacts != null ? contacts.Surface : null;
             if (collider != null && collider.sharedMaterial == motionMaterial) collider.sharedMaterial = originalMaterial;
-            if (motionMaterial != null) Destroy(motionMaterial);
+            if (motionMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(motionMaterial);
+                else DestroyImmediate(motionMaterial);
+            }
         }
     }
 }

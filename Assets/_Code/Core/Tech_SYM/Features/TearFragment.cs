@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Cooked.Authoring;
 namespace FeelsGoodOnion.TechSYM.Features
 {
     /// <summary>Single pickup and display owner on the actual Trigger sensor; Visual contains no scripts.</summary>
@@ -7,15 +8,15 @@ namespace FeelsGoodOnion.TechSYM.Features
     public sealed class TearFragment : MonoBehaviour
     {
         [Tooltip("획득 후 숨길 이 눈물조각의 Root입니다. 씬 전체 Root를 연결하지 마세요. 센서는 이 Root 아래에 둡니다.")]
-        [SerializeField] private GameObject pickupRoot;
-        [Tooltip("회전·부유할 이 아이템의 Render/Visual 자식입니다. Collider·Rigidbody·스크립트가 없는 표시 자식을 지정하며 루트와 센서는 움직이지 않습니다.")]
-        [SerializeField] private Transform presentationVisual;
-        [Tooltip("표시 자식의 월드 Y축 회전 속도입니다(도/초, 0은 회전 없음). 아이템 활성 수명 동안만 진행합니다.")]
-        [SerializeField, Min(0)] private float rotationDegreesPerSecond = 90f;
-        [Tooltip("표시 자식의 원래 위치에서 이동할 로컬 Y 높이입니다(m). 양수는 위, 음수는 아래, 0은 부유 없음이며 물리 Root는 이동하지 않습니다.")]
-        [SerializeField] private float bobHeight = .24f;
-        [Tooltip("표시 자식이 원래 높이에서 목표 높이까지 가는 편도 시간입니다(초, 최소 0.02). 같은 시간으로 되돌아오며 월드 정지에는 진행하지 않습니다.")]
-        [SerializeField, Min(.02f)] private float bobSeconds = 1.5f;
+        [SerializeField, InspectorLabel("수집 루트")] private GameObject pickupRoot;
+        [Tooltip("이 눈물의 물리·스크립트 없는 외형 자식을 연결합니다. 회전과 상하 이동은 센서와 함께 수집 루트 전체에 적용합니다.")]
+        [SerializeField, InspectorLabel("외형")] private Transform presentationVisual;
+        [Tooltip("수집 루트의 월드 Y축 회전 속도를 조절합니다(도/초). 0이면 회전하지 않습니다.")]
+        [SerializeField, InspectorLabel("회전 속도"), Min(0)] private float rotationDegreesPerSecond = 90f;
+        [Tooltip("전체 루트의 상하 이동 높이를 조절합니다(초기 외형 부모의 로컬 m). 원래 방향·배율을 반영하며 0이면 이동하지 않습니다.")]
+        [SerializeField, InspectorLabel("상하 높이")] private float bobHeight = .24f;
+        [Tooltip("상하 이동의 편도 시간을 조절합니다(초, 최소 0.02). 같은 시간으로 돌아오며 월드 정지 때 멈춥니다.")]
+        [SerializeField, InspectorLabel("상하 시간"), Min(.02f)] private float bobSeconds = 1.5f;
         private bool collected, initialized, rootWasActive;
         private Collider[] sensors;
         private bool[] sensorDefaults;
@@ -25,8 +26,9 @@ namespace FeelsGoodOnion.TechSYM.Features
         private bool[] visualActive;
         private Renderer[] renderers;
         private bool[] rendererDefaults;
-        private Vector3 displayOrigin;
-        private float displayElapsed;
+        private Vector3 rootOrigin, bobAxisInParent;
+        private Quaternion rootLocalRotation;
+        private double displayElapsed;
         private long attemptRevision;
         public bool IsCollected => collected;
         public void Configure(GameObject itemRoot, Transform childVisual, float rotationDegreesPerSecond = 90f,
@@ -65,15 +67,37 @@ namespace FeelsGoodOnion.TechSYM.Features
             }
             renderers = pickupRoot.GetComponentsInChildren<Renderer>(true); rendererDefaults = new bool[renderers.Length];
             for (int i = 0; i < renderers.Length; i++) rendererDefaults[i] = renderers[i].enabled;
-            displayOrigin = presentationVisual.localPosition; displayElapsed = 0; initialized = true;
+            var root = pickupRoot.transform;
+            rootOrigin = root.localPosition;
+            rootLocalRotation = root.localRotation;
+            // 이전 외형의 authored 높이/방향은 보존하되 동일 변위를 Root 전체에 적용한다.
+            Vector3 axisWorld = presentationVisual.parent.TransformVector(Vector3.up);
+            bobAxisInParent = root.parent != null ? root.parent.InverseTransformVector(axisWorld) : axisWorld;
+            displayElapsed = 0; initialized = true;
         }
         private void Awake() => PrepareSource();
-        private void Update()
+        private void Update() => AdvanceMotion(Time.deltaTime);
+
+        /// <summary>수집 루트 전체를 갱신한다. 비활성/소비/월드 정지 뒤에는 진행하지 않는다.</summary>
+        public void AdvanceMotion(float scaledDeltaSeconds)
         {
-            if (!initialized || collected || presentationVisual == null) return;
-            displayElapsed = (displayElapsed + Time.deltaTime) % (2f * bobSeconds);
-            presentationVisual.localPosition = displayOrigin + Vector3.up * (bobHeight * .5f * (1f - Mathf.Cos(Mathf.PI * displayElapsed / bobSeconds)));
-            if (rotationDegreesPerSecond > 0) presentationVisual.Rotate(Vector3.up, rotationDegreesPerSecond * Time.deltaTime, Space.World);
+            if (!float.IsFinite(scaledDeltaSeconds) || scaledDeltaSeconds < 0) throw new ArgumentOutOfRangeException(nameof(scaledDeltaSeconds));
+            if (!initialized || !isActiveAndEnabled || collected || pickupRoot == null || !pickupRoot.activeInHierarchy || scaledDeltaSeconds == 0) return;
+            displayElapsed += scaledDeltaSeconds;
+            var root = pickupRoot.transform;
+            root.localPosition = rootOrigin + bobAxisInParent * BobOffset(displayElapsed, bobHeight, bobSeconds);
+            Quaternion authoredWorldRotation = root.parent != null ? root.parent.rotation * rootLocalRotation : rootLocalRotation;
+            double angle = displayElapsed * rotationDegreesPerSecond % 360;
+            root.rotation = Quaternion.AngleAxis((float)angle, Vector3.up) * authoredWorldRotation;
+        }
+
+        /// <summary>실행에서 쓰는 왕복 높이 규칙이다. 실제 Transform 갱신·접촉과 구분한다.</summary>
+        public static float BobOffset(double elapsedSeconds, float height, float seconds)
+        {
+            if (!double.IsFinite(elapsedSeconds) || elapsedSeconds < 0 || !float.IsFinite(height)
+                || !float.IsFinite(seconds) || seconds < .02f) throw new ArgumentOutOfRangeException(nameof(elapsedSeconds));
+            double phase = elapsedSeconds % (2.0 * seconds);
+            return (float)(height * .5 * (1 - Math.Cos(Math.PI * phase / seconds)));
         }
         private void OnTriggerEnter(Collider other) => TryCollect(other);
         private void OnTriggerStay(Collider other) => TryCollect(other);
@@ -98,7 +122,9 @@ namespace FeelsGoodOnion.TechSYM.Features
             if (!owner.TryGetComponent<PlayerFacade>(out var player) || !player.isActiveAndEnabled || player.IsDead) return;
             collected = true;
             long revision = attemptRevision;
-            int added = player.AddSkillFragments(1);
+            int added;
+            try { added = player.AddSkillFragments(1); }
+            catch { if (revision == attemptRevision) collected = false; throw; }
             if (revision != attemptRevision) return; // A synchronous retry reset owns the new attempt's presentation.
             if (added != 1) { collected = false; return; }
             foreach (var sensor in sensors) if (sensor != null) sensor.enabled = false;

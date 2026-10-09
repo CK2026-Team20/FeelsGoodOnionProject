@@ -28,6 +28,7 @@ namespace FeelsGoodOnion.TechSYM.Features
         private readonly Transform visual;
         private readonly Animator animator;
         private readonly bool animatorWasEnabled;
+        private readonly AnimatorCullingMode animatorCulling;
         private readonly Transform[] transforms;
         private readonly Vector3[] restPositions;
         private readonly Quaternion[] restRotations;
@@ -35,6 +36,8 @@ namespace FeelsGoodOnion.TechSYM.Features
         private readonly Renderer[] renderers;
         private readonly bool[] rendererDefaults;
         private Tween ownedTween;
+        private bool ownsShake;
+        private Quaternion shakeOrigin;
         private bool animatorSuspended;
         private RuntimeAnimatorController requestedController;
         private bool observedCollapse;
@@ -52,6 +55,7 @@ namespace FeelsGoodOnion.TechSYM.Features
             this.visual = visual;
             this.animator = animator;
             animatorWasEnabled = animator != null && animator.enabled;
+            animatorCulling = animator != null ? animator.cullingMode : AnimatorCullingMode.AlwaysAnimate;
             transforms = visual.GetComponentsInChildren<Transform>(true);
             restPositions = new Vector3[transforms.Length];
             restRotations = new Quaternion[transforms.Length];
@@ -71,6 +75,8 @@ namespace FeelsGoodOnion.TechSYM.Features
         public void Shake(float seconds, float degrees, float frequency)
         {
             CancelTween();
+            ownsShake = true;
+            shakeOrigin = visual.localRotation;
             ownedTween = visual.DOShakeRotation(seconds, new Vector3(degrees, 0f, degrees),
                 Mathf.Clamp(Mathf.RoundToInt(seconds * frequency), 1, 1000), 90f, true)
                 .SetEase(Ease.Linear).SetUpdate(UpdateType.Fixed, false)
@@ -94,6 +100,8 @@ namespace FeelsGoodOnion.TechSYM.Features
             Tween owned = ownedTween;
             ownedTween = null;
             if (owned != null && owned.IsActive()) owned.Kill(false);
+            if (ownsShake && visual != null) visual.localRotation = shakeOrigin;
+            ownsShake = false;
         }
 
         /// <summary>필수 구성 오류와 단순 클립 미연결을 구분할 수 있도록 상태 진입을 요청한다.</summary>
@@ -242,6 +250,7 @@ namespace FeelsGoodOnion.TechSYM.Features
         {
             if (animator == null || animator.transform != visual) return;
             animatorSuspended = true;
+            animator.cullingMode = animatorCulling;
             animator.enabled = false;
         }
 
@@ -257,6 +266,7 @@ namespace FeelsGoodOnion.TechSYM.Features
             CancelTween();
             requestedController = null;
             observedCollapse = false;
+            if (animator != null && animator.transform == visual) animator.cullingMode = animatorCulling;
             if (animatorSuspended && animator != null && animator.transform == visual)
             {
                 animatorSuspended = false;
