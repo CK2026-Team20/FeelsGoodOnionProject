@@ -67,7 +67,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             double phase = seconds % total;
             return phase < visible ? CyclePhase.Visible : phase < visible + hidden ? CyclePhase.Hidden : CyclePhase.Warning;
         }
-        /// <summary>실제 교차/지지는 native 관측이다. 비율은 MTD가 아닌 현재 몸체의 수직 겹침/높이다.</summary>
+        /// <summary>실제 교차/지지는 native 관측이다. 마지막 두 값은 실제 교차의 Y 구간이며 Box AABB가 아니다.</summary>
         public static OverlapResult ClassifyOverlap(bool intersects, bool normalTop, double bodyBottom, double bodyTop,
             double platformBottom, double platformTop)
         {
@@ -203,15 +203,43 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             bool normalTop, out Vector3 bodySeparation, out float liftMetres)
         {
             if (platform == null || shape == null) throw new ArgumentNullException(nameof(shape));
-            Bounds platformBounds = ShapeBounds(platform, platformPose);
-            Bounds bodyBounds = ShapeBounds(shape, shapePose);
             bool intersects = Physics.ComputePenetration(platform, platformPose.position, platformPose.rotation,
                 shape, shapePose.position, shapePose.rotation, out Vector3 direction, out float distance);
             bodySeparation = intersects ? -direction * (distance + .001f) : Vector3.zero;
-            liftMetres = intersects ? Mathf.Max(0f, platformBounds.max.y - bodyBounds.min.y) + .005f : 0f;
-            bool topTolerance = intersects && bodyBounds.min.y >= platformBounds.max.y - .001f && bodySeparation.y > 0;
-            return ClassifyOverlap(intersects, normalTop || topTolerance, bodyBounds.min.y, bodyBounds.max.y,
-                platformBounds.min.y, platformBounds.max.y);
+            liftMetres = 0;
+            if (!intersects) return new OverlapResult(OverlapKind.None, 0);
+            if (shape is CapsuleCollider capsule)
+            {
+                WorldCapsule(capsule, shapePose, out Vector3 start, out Vector3 end, out float radius);
+                Vector3 center = platformPose.position + platformPose.rotation * Vector3.Scale(platform.center, platform.transform.lossyScale);
+                var result = InspectCapsuleBox(center, platformPose.rotation, Vector3.Scale(platform.size * .5f, Abs(platform.transform.lossyScale)),
+                    start, end, radius, normalTop, out _, out _, out float exit);
+                if (result.Kind == OverlapKind.None)
+                    throw new InvalidOperationException("PhysX 교차와 실제 Box–Capsule 계산이 일치하지 않습니다.");
+                liftMetres = exit + .001f;
+                // 실제 접촉 위치에서 위로 1mm 이내에 이탈하는 상부 접촉만 허용한다.
+                // 이미 계산한 실제 교차 비율을 숨기거나 발판 AABB 최고점을 사용하지 않는다.
+                if (normalTop || (exit <= .001f && bodySeparation.y > 0))
+                    return new OverlapResult(OverlapKind.SupportedTop, result.Ratio);
+                return result;
+            }
+            if (shape is BoxCollider) // 껍질은 최소 MTD 분리만 소비하며 Player 사망 비율을 사용하지 않는다.
+                return new OverlapResult(normalTop ? OverlapKind.SupportedTop : OverlapKind.Shallow, 0);
+            throw new ArgumentException("주기 판정은 실제 Player Capsule 또는 껍질 Box만 수락합니다.", nameof(shape));
+        }
+        private static void WorldCapsule(CapsuleCollider capsule, Pose pose, out Vector3 start, out Vector3 end, out float radius)
+        {
+            int direction = capsule.direction;
+            Vector3 scale = capsule.transform.lossyScale;
+            Vector3 sizeScale = Abs(scale);
+            float radiusScale = direction == 0 ? Mathf.Max(sizeScale.y, sizeScale.z) :
+                direction == 1 ? Mathf.Max(sizeScale.x, sizeScale.z) : Mathf.Max(sizeScale.x, sizeScale.y);
+            radius = capsule.radius * radiusScale;
+            float halfLine = Mathf.Max(0, capsule.height * sizeScale[direction] * .5f - radius);
+            Vector3 axis = direction == 0 ? Vector3.right : direction == 1 ? Vector3.up : Vector3.forward;
+            Vector3 center = pose.position + pose.rotation * Vector3.Scale(capsule.center, scale);
+            Vector3 offset = pose.rotation * axis * halfLine;
+            start = center - offset; end = center + offset;
         }
         public static Pose PhysicsPose(Collider shape)
         {
@@ -220,6 +248,194 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (body == null) return new Pose(shape.transform.position, shape.transform.rotation);
             Quaternion delta = body.rotation * Quaternion.Inverse(body.transform.rotation);
             return new Pose(body.position + delta * (shape.transform.position - body.transform.position), delta * shape.transform.rotation);
+        }
+        /// <summary>Box∩Capsule의 실제 world-Y 투영과 상향 이탈 거리. 축 선분과 반지름은 실제 scale/pose 값이다.</summary>
+        public static OverlapResult InspectCapsuleBox(Vector3 boxCenter, Quaternion boxRotation, Vector3 boxHalfExtents,
+            Vector3 capsuleStart, Vector3 capsuleEnd, float capsuleRadius, bool normalTop,
+            out double intersectionBottom, out double intersectionTop, out float upwardExit)
+        {
+            var center = new GeometryPoint(boxCenter); var half = new GeometryPoint(boxHalfExtents);
+            var start = new GeometryPoint(capsuleStart); var end = new GeometryPoint(capsuleEnd);
+            double qx = boxRotation.x, qy = boxRotation.y, qz = boxRotation.z, qw = boxRotation.w;
+            double norm = Math.Sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
+            if (!center.Finite || !half.Finite || !start.Finite || !end.Finite ||
+                half.X <= 0 || half.Y <= 0 || half.Z <= 0 || !float.IsFinite(capsuleRadius) || capsuleRadius <= 0 ||
+                !double.IsFinite(norm) || norm <= 0) throw new ArgumentOutOfRangeException(nameof(boxHalfExtents));
+            qx /= norm; qy /= norm; qz /= norm; qw /= norm;
+            var x = new GeometryPoint(1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy + qz * qw), 2 * (qx * qz - qy * qw));
+            var y = new GeometryPoint(2 * (qx * qy - qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz + qx * qw));
+            var z = new GeometryPoint(2 * (qx * qz + qy * qw), 2 * (qy * qz - qx * qw), 1 - 2 * (qx * qx + qy * qy));
+            intersectionBottom = intersectionTop = 0; upwardExit = 0;
+            double radiusSquared = (double)capsuleRadius * capsuleRadius;
+            // double 계산의 거리 제곱 오차만 허용한다. 몸 높이 비율의 .25 경계는 그대로 소비한다.
+            double contactLimit = radiusSquared + 1e-12 * Math.Max(1, radiusSquared);
+            if (SegmentBoxDistance(start, end, center, x, y, z, half, out var seed) > contactLimit)
+                return new OverlapResult(OverlapKind.None, 0);
+            Span<GeometryPoint> corners = stackalloc GeometryPoint[8];
+            Span<GeometryPoint> section = stackalloc GeometryPoint[12];
+            for (int i = 0; i < 8; i++) corners[i] = center + x * ((i & 1) == 0 ? -half.X : half.X) +
+                y * ((i & 2) == 0 ? -half.Y : half.Y) + z * ((i & 4) == 0 ? -half.Z : half.Z);
+            double boxBottom = corners[0].Y, boxTop = boxBottom;
+            for (int i = 1; i < 8; i++) { boxBottom = Math.Min(boxBottom, corners[i].Y); boxTop = Math.Max(boxTop, corners[i].Y); }
+            double bodyBottom = Math.Min(start.Y, end.Y) - capsuleRadius;
+            double bodyTop = Math.Max(start.Y, end.Y) + capsuleRadius;
+            double low = Math.Max(boxBottom, bodyBottom), high = Math.Min(boxTop, bodyTop);
+            if (high <= low) return new OverlapResult(OverlapKind.None, 0);
+            double seedY = Clamp(seed.Y, low, high);
+            // 수평 Box 단면은 볼록 다각형이다. Capsule 축 선분까지의 거리가 r 이하인 Y도 한 구간이다.
+            // 48회씩 유한 이분 탐색하며 외측 bracket을 반환해 정확한 .25를 아래로 반올림하지 않는다.
+            intersectionBottom = low;
+            if (SectionDistance(low, corners, section, start, end) > contactLimit)
+            {
+                double outside = low, inside = seedY;
+                for (int i = 0; i < 48; i++)
+                {
+                    double mid = (outside + inside) * .5;
+                    if (SectionDistance(mid, corners, section, start, end) <= contactLimit) inside = mid; else outside = mid;
+                }
+                intersectionBottom = outside;
+            }
+            intersectionTop = high;
+            if (SectionDistance(high, corners, section, start, end) > contactLimit)
+            {
+                double inside = seedY, outside = high;
+                for (int i = 0; i < 48; i++)
+                {
+                    double mid = (inside + outside) * .5;
+                    if (SectionDistance(mid, corners, section, start, end) <= contactLimit) inside = mid; else outside = mid;
+                }
+                intersectionTop = outside;
+            }
+            // AABB는 이탈 탐색의 유효 상한일 뿐, 최종 윗면/거리/침투 구간으로 사용하지 않는다.
+            double liftInside = 0, liftOutside = Math.Max(0, boxTop - bodyBottom) + Math.Max(1e-6, capsuleRadius * 1e-6);
+            for (int i = 0; i < 48; i++)
+            {
+                double mid = (liftInside + liftOutside) * .5;
+                var shift = new GeometryPoint(0, mid, 0);
+                if (SegmentBoxDistance(start + shift, end + shift, center, x, y, z, half, out _) <= contactLimit) liftInside = mid;
+                else liftOutside = mid;
+            }
+            upwardExit = (float)liftOutside;
+            return ClassifyOverlap(true, normalTop, bodyBottom, bodyTop, intersectionBottom, intersectionTop);
+        }
+        // 계산용 값과 고정 stack scratch만 사용한다. Native 임시 Collider와 프레임별 GC는 만들지 않는다.
+        private readonly struct GeometryPoint
+        {
+            public readonly double X, Y, Z;
+            public GeometryPoint(double x, double y, double z) { X = x; Y = y; Z = z; }
+            public GeometryPoint(Vector3 value) : this(value.x, value.y, value.z) { }
+            public bool Finite => double.IsFinite(X) && double.IsFinite(Y) && double.IsFinite(Z);
+            public double LengthSquared => X * X + Y * Y + Z * Z;
+            public double Axis(int axis) => axis == 0 ? X : axis == 1 ? Y : Z;
+            public static GeometryPoint operator +(GeometryPoint a, GeometryPoint b) => new GeometryPoint(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+            public static GeometryPoint operator -(GeometryPoint a, GeometryPoint b) => new GeometryPoint(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+            public static GeometryPoint operator *(GeometryPoint a, double scale) => new GeometryPoint(a.X * scale, a.Y * scale, a.Z * scale);
+            public static double Dot(GeometryPoint a, GeometryPoint b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+        }
+        private static double Clamp(double value, double low, double high) => Math.Max(low, Math.Min(high, value));
+        private static double SegmentBoxDistance(GeometryPoint start, GeometryPoint end, GeometryPoint center,
+            GeometryPoint x, GeometryPoint y, GeometryPoint z, GeometryPoint half, out GeometryPoint closestBox)
+        {
+            var local = new GeometryPoint(GeometryPoint.Dot(start - center, x), GeometryPoint.Dot(start - center, y), GeometryPoint.Dot(start - center, z));
+            var delta = new GeometryPoint(GeometryPoint.Dot(end - start, x), GeometryPoint.Dot(end - start, y), GeometryPoint.Dot(end - start, z));
+            Span<double> cuts = stackalloc double[8]; cuts[0] = 0; cuts[1] = 1; int count = 2;
+            for (int axis = 0; axis < 3; axis++) if (delta.Axis(axis) != 0)
+                for (int sign = -1; sign <= 1; sign += 2)
+                {
+                    double t = (sign * half.Axis(axis) - local.Axis(axis)) / delta.Axis(axis);
+                    if (t > 0 && t < 1) cuts[count++] = t;
+                }
+            for (int i = 1; i < count; i++) { double v = cuts[i]; int j = i - 1; while (j >= 0 && cuts[j] > v) { cuts[j + 1] = cuts[j]; j--; } cuts[j + 1] = v; }
+            double best = double.PositiveInfinity; var bestLocal = default(GeometryPoint);
+            for (int i = 0; i < count - 1; i++)
+            {
+                double midpoint = (cuts[i] + cuts[i + 1]) * .5, a = 0, b = 0;
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    double p = local.Axis(axis), d = delta.Axis(axis), h = half.Axis(axis), sample = p + d * midpoint;
+                    if (Math.Abs(sample) <= h) continue;
+                    double offset = p - (sample < 0 ? -h : h); a += d * d; b += d * offset;
+                }
+                double t = a > 0 ? Clamp(-b / a, cuts[i], cuts[i + 1]) : cuts[i];
+                var point = local + delta * t;
+                var clamped = new GeometryPoint(Clamp(point.X, -half.X, half.X), Clamp(point.Y, -half.Y, half.Y), Clamp(point.Z, -half.Z, half.Z));
+                double distance = (point - clamped).LengthSquared;
+                if (distance < best) { best = distance; bestLocal = clamped; }
+            }
+            closestBox = center + x * bestLocal.X + y * bestLocal.Y + z * bestLocal.Z;
+            return best;
+        }
+        private static double SectionDistance(double height, Span<GeometryPoint> corners, Span<GeometryPoint> section,
+            GeometryPoint start, GeometryPoint end)
+        {
+            int count = 0;
+            for (int i = 0; i < 8; i++) for (int bit = 1; bit <= 4; bit <<= 1) if ((i & bit) == 0)
+            {
+                var a = corners[i]; var b = corners[i | bit];
+                if (height < Math.Min(a.Y, b.Y) || height > Math.Max(a.Y, b.Y)) continue;
+                if (a.Y == b.Y) { AddSection(section, ref count, a); AddSection(section, ref count, b); }
+                else AddSection(section, ref count, a + (b - a) * ((height - a.Y) / (b.Y - a.Y)));
+            }
+            if (count == 0) return double.PositiveInfinity;
+            if (count == 1) return PointSegmentDistance(section[0], start, end);
+            if (count == 2) return SegmentDistance(start, end, section[0], section[1]);
+            var centroid = default(GeometryPoint);
+            for (int i = 0; i < count; i++) centroid += section[i] * (1.0 / count);
+            for (int i = 1; i < count; i++)
+            {
+                var v = section[i]; double angle = Math.Atan2(v.Z - centroid.Z, v.X - centroid.X); int j = i - 1;
+                while (j >= 0 && Math.Atan2(section[j].Z - centroid.Z, section[j].X - centroid.X) > angle)
+                { section[j + 1] = section[j]; j--; }
+                section[j + 1] = v;
+            }
+            if (end.Y != start.Y)
+            {
+                double t = (height - start.Y) / (end.Y - start.Y);
+                if (t >= 0 && t <= 1 && InsideSection(start + (end - start) * t, section, count)) return 0;
+            }
+            double best = Math.Min(PointSectionDistance(start, height, section, count), PointSectionDistance(end, height, section, count));
+            for (int i = 0; i < count; i++) best = Math.Min(best, SegmentDistance(start, end, section[i], section[(i + 1) % count]));
+            return best;
+        }
+        private static void AddSection(Span<GeometryPoint> section, ref int count, GeometryPoint point)
+        {
+            for (int i = 0; i < count; i++) if ((section[i] - point).LengthSquared <= 1e-24) return;
+            section[count++] = point;
+        }
+        private static bool InsideSection(GeometryPoint point, Span<GeometryPoint> section, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var edge = section[(i + 1) % count] - section[i]; var offset = point - section[i];
+                if (edge.X * offset.Z - edge.Z * offset.X < 0) return false;
+            }
+            return true;
+        }
+        private static double PointSectionDistance(GeometryPoint point, double height, Span<GeometryPoint> section, int count)
+        {
+            if (InsideSection(point, section, count)) return (point.Y - height) * (point.Y - height);
+            double best = double.PositiveInfinity;
+            for (int i = 0; i < count; i++) best = Math.Min(best, PointSegmentDistance(point, section[i], section[(i + 1) % count]));
+            return best;
+        }
+        private static double PointSegmentDistance(GeometryPoint point, GeometryPoint start, GeometryPoint end)
+        {
+            var delta = end - start; double length = delta.LengthSquared;
+            double t = length > 0 ? Clamp(GeometryPoint.Dot(point - start, delta) / length, 0, 1) : 0;
+            return (point - start - delta * t).LengthSquared;
+        }
+        private static double SegmentDistance(GeometryPoint p, GeometryPoint q, GeometryPoint a, GeometryPoint b)
+        {
+            var u = q - p; var v = b - a; var w = p - a;
+            double uu = u.LengthSquared, vv = v.LengthSquared, uw = GeometryPoint.Dot(u, w), vw = GeometryPoint.Dot(v, w);
+            if (uu == 0) return PointSegmentDistance(p, a, b);
+            if (vv == 0) return PointSegmentDistance(a, p, q);
+            double uv = GeometryPoint.Dot(u, v), denominator = uu * vv - uv * uv;
+            double s = denominator > 0 ? Clamp((uv * vw - uw * vv) / denominator, 0, 1) : 0;
+            double t = (uv * s + vw) / vv;
+            if (t < 0) { t = 0; s = Clamp(-uw / uu, 0, 1); }
+            else if (t > 1) { t = 1; s = Clamp((uv - uw) / uu, 0, 1); }
+            return (w + u * s - v * t).LengthSquared;
         }
         public static Bounds ShapeBounds(Collider shape, Pose pose)
         {
@@ -233,15 +449,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             }
             if (shape is CapsuleCollider capsule)
             {
-                int direction = capsule.direction;
-                Vector3 sizeScale = Abs(scale);
-                float radiusScale = direction == 0 ? Mathf.Max(sizeScale.y, sizeScale.z) :
-                    direction == 1 ? Mathf.Max(sizeScale.x, sizeScale.z) : Mathf.Max(sizeScale.x, sizeScale.y);
-                float radius = capsule.radius * radiusScale;
-                float halfLine = Mathf.Max(0, capsule.height * sizeScale[direction] * .5f - radius);
-                Vector3 axis = direction == 0 ? Vector3.right : direction == 1 ? Vector3.up : Vector3.forward;
-                Vector3 extent = Abs(pose.rotation * axis) * halfLine + Vector3.one * radius;
-                return new Bounds(pose.position + pose.rotation * Vector3.Scale(capsule.center, scale), extent * 2f);
+                WorldCapsule(capsule, pose, out Vector3 start, out Vector3 end, out float radius);
+                Vector3 extent = Abs(end - start) * .5f + Vector3.one * radius;
+                return new Bounds((start + end) * .5f, extent * 2f);
             }
             throw new ArgumentException("주기 판정은 실제 Player Capsule 또는 껍질 Box만 수락합니다.", nameof(shape));
         }

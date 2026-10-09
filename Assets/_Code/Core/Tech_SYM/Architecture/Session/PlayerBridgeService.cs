@@ -434,11 +434,9 @@ namespace Cooked.Session
             // 공개 실제 속도로 손실을 관측하므로 HMS의 private 중력 수치를 복제하지 않는다.
             separationStepLoss = Mathf.Max(0, requestedSeparationVelocityY - movement.Velocity.y);
             separationRemaining = Mathf.Max(0, separationRemaining - deltaSeconds);
-            if (separationRemaining <= 0 && actorBody.position.y >= separationTargetY - .001f)
-            {
-                ClearSeparation();
-                IssueMovementVelocity(Vector3.zero, 0);
-            }
+            if (TryFinishSeparation(IsCurrentActor(separationActor, separationGeneration) && separationActor.IsDead,
+                PhysicsPaused, false, separationRemaining, actorBody.position.y, separationTargetY, out float residualLift))
+                FinishSeparation(residualLift);
             else ScheduleSeparationVelocity();
         }
         private void ScheduleSeparationVelocity()
@@ -454,9 +452,36 @@ namespace Cooked.Session
             if (!float.IsFinite(distance) || distance < 0 || !float.IsFinite(remainingSeconds) || remainingSeconds < 0 ||
                 !float.IsFinite(stepSeconds) || stepSeconds <= 0 || !float.IsFinite(observedStepLoss) || observedStepLoss < 0)
                 throw new ArgumentOutOfRangeException(nameof(distance));
+            if (remainingSeconds == 0) return 0;
             double velocity = distance / (double)Math.Max(remainingSeconds, stepSeconds) + observedStepLoss;
             if (velocity > float.MaxValue) throw new ArgumentOutOfRangeException(nameof(distance), "분리 속도가 유한 범위를 벗어났습니다.");
             return (float)velocity;
+        }
+        /// <summary>현재 사망 Actor의 유한 종결 경계. 시간 종료/소유자 해제는 잔여 lift를 한 번 보정한다.</summary>
+        public static bool TryFinishSeparation(bool currentDeadActor, bool paused, bool ownerReleased,
+            float remainingSeconds, float bodyY, float targetY, out float residualLift)
+        {
+            if (!float.IsFinite(remainingSeconds) || remainingSeconds < 0 || !float.IsFinite(bodyY) || !float.IsFinite(targetY))
+                throw new ArgumentOutOfRangeException(nameof(remainingSeconds));
+            residualLift = 0;
+            if (!currentDeadActor || paused || (!ownerReleased && remainingSeconds > 0)) return false;
+            double lift = Math.Max(0, (double)targetY - bodyY);
+            if (lift > float.MaxValue) throw new ArgumentOutOfRangeException(nameof(targetY));
+            residualLift = (float)lift;
+            return true;
+        }
+        private void FinishSeparation(float residualLift)
+        {
+            PlayerFacade expected = separationActor; long generation = separationGeneration;
+            if (!separationPending || PhysicsPaused || !IsCurrentActor(expected, generation) || !expected.IsDead) return;
+            ClearSeparation(); // 동기 MovementUpdated가 다시 분리 명령을 예약하지 않도록 먼저 종료한다.
+            issuingMovementCommand = true;
+            try { movement.ResetForRevive(true); } // 운동/외력 정리만 요청한다. HP/Dead/폼은 부활시키지 않는다.
+            finally { issuingMovementCommand = false; }
+            if (!IsCurrentActor(expected, generation) || !expected.IsDead) return;
+            // 얕은 보정과 같은 단발 Rigidbody 경계. 천장 차단이 무한 외력/Retry 0으로 이어지지 않는다.
+            if (residualLift > 0) actorBody.position += Vector3.up * residualLift;
+            actorBody.WakeUp();
         }
         private void IssueMovementVelocity(Vector3 velocity, float lockSeconds)
         {
@@ -475,9 +500,16 @@ namespace Cooked.Session
         {
             if (!separationPending || !ReferenceEquals(separationOwner, owner)) return;
             bool current = IsCurrentActor(separationActor, separationGeneration);
+            if (current && separationActor.IsDead)
+            {
+                // 현재 사망과 낡은 Actor 취소는 다르다. owner Disable/reset은 Dead 표현을 Interrupted로 만들지 않는다.
+                separationRemaining = 0;
+                if (TryFinishSeparation(true, PhysicsPaused, true, 0, actorBody.position.y, separationTargetY, out float lift))
+                    FinishSeparation(lift);
+                else IssueMovementVelocity(Vector3.zero, 0); // 옵션 중에는 보정을 미루고 상승 외력만 중단한다.
+                return;
+            }
             ClearSeparation();
-            // 제거/재시도 취소가 완료된 사망으로 바뀌지 않는다.
-            deathInterrupted = true; deathReady = false;
             if (current && movement != null) movement.ResetForRevive(true);
         }
 
