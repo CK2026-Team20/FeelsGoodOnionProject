@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using FeelsGoodOnion.TechSYM.Interaction;
 using FeelsGoodOnion.TechSYM.Platforms;
+using Cooked.Authoring;
 
 namespace FeelsGoodOnion.TechSYM.OvenTray
 {
@@ -11,62 +12,61 @@ namespace FeelsGoodOnion.TechSYM.OvenTray
     [RequireComponent(typeof(KinematicPlatformMotion), typeof(InteractionPromptAnchor))]
     public sealed class OvenTrayObject : MonoBehaviour, IInteractable
     {
-        public enum OperationMode { Move, Hinge }
+        public enum OperationMode { [InspectorName("이동")] Move = 0, [InspectorName("힌지 회전")] Hinge = 1 }
         public enum OperationOutcome { Completed, Cancelled }
-        [Tooltip("이 장치의 작동 방식입니다. 트레이·서랍은 Move, 문은 PhysicsBody 원점을 축으로 Hinge 회전을 사용합니다.")]
-        [SerializeField] private OperationMode operationMode;
-        [Tooltip("닫힘에서 열림까지의 부모 로컬 XYZ 이동량(m)입니다. 부모 회전·각 축 배율을 반영합니다. 0이면 제자리입니다. 청록 기즈모 경로입니다.")]
-        [SerializeField] private Vector3 travelOffset = new Vector3(0f, 0f, -3f);
-        [Tooltip("힌지 닫힘에서 열림까지의 물리 몸체 로컬 XYZ 회전량(도)입니다. 0이면 회전하지 않습니다. PhysicsBody 원점을 실제 경첩에 놓으세요.")]
-        [SerializeField] private Vector3 hingeEulerOffset = new Vector3(0f, 90f, 0f);
+        [Tooltip("장치의 작동 방식을 선택합니다. 트레이·서랍은 이동, 문은 실제 몸체 원점을 경첩으로 회전합니다.")]
+        [SerializeField, InspectorLabel("작동 방식")] private OperationMode operationMode;
+        [Tooltip("닫힘 위치와 회전 지점을 연결합니다. 움직이는 몸체 밖에 두며 청록 경로의 시작입니다.")]
+        [SerializeField, InspectorLabel("닫힘 자세")] private Transform closedPose;
+        [Tooltip("열림 위치와 회전 지점을 연결합니다. 몸체 밖에 두며 힌지는 닫힘과 같은 경첩 위치를 사용합니다.")]
+        [SerializeField, InspectorLabel("열림 자세")] private Transform openPose;
         [Tooltip("한 번 열거나 닫는 시간(초, 최소 0.02)입니다. 각 장치가 독립 설정을 가지며 작동 중 추가 F는 거절합니다.")]
-        [SerializeField, Min(0.02f)] private float moveDuration = 0.8f;
+        [SerializeField, InspectorLabel("작동 시간"), Min(0.02f)] private float moveDuration = 0.8f;
         private KinematicPlatformMotion motion;
         private InteractionPromptAnchor anchor;
-        private Vector3 closedLocalPosition;
-        private Quaternion closedLocalRotation;
-        private Transform bodyParent;
         private OvenTrayState acceptedFrom;
         private bool requestPending;
         private bool anchorDefault;
+        private bool resetting;
         public event Action Accepted;
         public event Action<OperationOutcome> OperationEnded;
         public OvenTrayState State { get; private set; } = OvenTrayState.Closed;
         public bool IsMoving => State == OvenTrayState.Opening || State == OvenTrayState.Closing;
-        public Vector3 ClosedLocalPosition => closedLocalPosition;
-        public Vector3 OpenLocalPosition => closedLocalPosition + travelOffset;
+        public Pose ClosedPose => ResolvePose(closedPose, "닫힘");
+        public Pose OpenPose => ResolvePose(openPose, "열림");
         private void Awake()
         {
             OnValidate();
             motion = GetComponent<KinematicPlatformMotion>(); anchor = GetComponent<InteractionPromptAnchor>();
             var body = motion.PhysicsBody;
-            if (body == null) { Debug.LogError("장치 PhysicsBody를 연결하세요.", this); enabled = false; return; }
-            bodyParent = body.transform.parent;
-            closedLocalPosition = body.transform.localPosition; closedLocalRotation = body.transform.localRotation;
             anchorDefault = anchor != null && anchor.enabled;
+            if (body == null || !ValidReferences())
+            { Debug.LogError("장치의 고정 닫힘/열림 자세와 몸체 아래 F 안내/조작 지점을 연결하세요.", this); enabled = false; }
         }
         public bool Interact()
         {
-            if (!isActiveAndEnabled || IsMoving || requestPending || motion == null || !motion.isActiveAndEnabled) return false;
+            if (resetting || !isActiveAndEnabled || Time.timeScale <= 0f || IsMoving || requestPending || motion == null || !motion.isActiveAndEnabled || !ValidReferences()) return false;
             var next = State == OvenTrayState.Closed ? OvenTrayState.Opening : OvenTrayState.Closing;
-            bool accepted = operationMode == OperationMode.Hinge
-                ? motion.TryRotateTo(RotationDestination(next), moveDuration, CompleteMovement)
-                : motion.TryTweenTo(Destination(next), moveDuration, CompleteMovement);
+            bool accepted = motion.TryTweenPose(next == OvenTrayState.Opening ? OpenPose : ClosedPose, moveDuration, CompleteMovement);
             if (!accepted) return false;
             acceptedFrom = State; State = next; requestPending = true;
             if (anchor != null) anchor.enabled = false;
             Notify(Accepted);
             return true;
         }
-        private Vector3 Destination(OvenTrayState state)
+        private static Pose ResolvePose(Transform point, string field)
         {
-            Vector3 local = state == OvenTrayState.Opening ? OpenLocalPosition : closedLocalPosition;
-            return bodyParent != null ? bodyParent.TransformPoint(local) : local;
+            if (point == null) throw new InvalidOperationException($"장치의 {field} 자세를 연결하세요.");
+            return new Pose(point.position, point.rotation);
         }
-        private Quaternion RotationDestination(OvenTrayState state)
+        private bool ValidReferences()
         {
-            Quaternion local = state == OvenTrayState.Opening ? closedLocalRotation * Quaternion.Euler(hingeEulerOffset) : closedLocalRotation;
-            return bodyParent != null ? bodyParent.rotation * local : local;
+            if (motion == null || !motion.IsFixedPoint(closedPose) || !motion.IsFixedPoint(openPose) || anchor == null
+                || anchor.PromptPoint == null || anchor.InteractionPoint == null
+                || !anchor.PromptPoint.IsChildOf(motion.PhysicsBody.transform)
+                || !anchor.InteractionPoint.IsChildOf(motion.PhysicsBody.transform)) return false;
+            return operationMode == OperationMode.Move || (operationMode == OperationMode.Hinge
+                && (openPose.position - closedPose.position).sqrMagnitude <= .000001f);
         }
         private void CompleteMovement()
         {
@@ -88,8 +88,15 @@ namespace FeelsGoodOnion.TechSYM.OvenTray
         }
         public void ResetForRetry()
         {
-            CancelOperation(); motion?.ResetForRetry(); State = OvenTrayState.Closed;
-            if (anchor != null) anchor.enabled = isActiveAndEnabled && anchorDefault;
+            resetting = true;
+            try
+            {
+                CancelOperation();
+                if (motion != null && closedPose != null) motion.ResetForRetry(ClosedPose);
+                State = OvenTrayState.Closed;
+                if (anchor != null) anchor.enabled = isActiveAndEnabled && anchorDefault;
+            }
+            finally { resetting = false; }
         }
         private void OnDisable() { CancelOperation(); if (anchor != null) anchor.enabled = false; }
         // One failing observer must not prevent the remaining lifecycle consumers.
@@ -100,17 +107,14 @@ namespace FeelsGoodOnion.TechSYM.OvenTray
         private void OnValidate()
         {
             if (!float.IsFinite(moveDuration) || moveDuration < 0.02f) moveDuration = 0.8f;
-            if (!Finite(travelOffset)) travelOffset = Vector3.zero;
-            if (!Finite(hingeEulerOffset)) hingeEulerOffset = Vector3.zero;
         }
-        private static bool Finite(Vector3 v) => float.IsFinite(v.x) && float.IsFinite(v.y) && float.IsFinite(v.z);
         private void OnDrawGizmos()
         {
             Gizmos.color = Color.cyan;
-            Vector3 start = Application.isPlaying && motion != null ? closedLocalPosition : transform.localPosition;
-            var parent = Application.isPlaying && motion != null ? bodyParent : transform.parent;
-            Gizmos.DrawLine(parent != null ? parent.TransformPoint(start) : start,
-                parent != null ? parent.TransformPoint(start + travelOffset) : start + travelOffset);
+            if (closedPose == null || openPose == null) return;
+            Gizmos.DrawLine(closedPose.position, openPose.position);
+            Gizmos.DrawRay(closedPose.position, closedPose.forward * .3f);
+            Gizmos.DrawRay(openPose.position, openPose.forward * .3f);
         }
     }
 }

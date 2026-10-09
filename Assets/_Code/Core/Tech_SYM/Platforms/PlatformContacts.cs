@@ -12,15 +12,27 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private readonly Dictionary<Collider, Vector3> contactVelocities = new Dictionary<Collider, Vector3>();
         private readonly List<Collider> stale = new List<Collider>();
         private BoxCollider surface;
-        public BoxCollider Surface => surface;
+        public BoxCollider Surface => surface != null ? surface : GetComponent<BoxCollider>();
         /// <summary>물리 자식에서 루트의 자기 소비자에게 전체 방향 접촉을 전달한다.</summary>
         public event Action<Collision> ContactReported;
         public void ResetForRetry() { contacts.Clear(); contactVelocities.Clear(); stale.Clear(); }
         public bool IsTopContact(Collider other) => other != null && contacts.Contains(other);
 
         private void Awake() => surface = GetComponent<BoxCollider>();
-        private void OnCollisionEnter(Collision collision) { Collect(collision); ContactReported?.Invoke(collision); }
-        private void OnCollisionStay(Collision collision) { Collect(collision); ContactReported?.Invoke(collision); }
+        private void OnCollisionEnter(Collision collision) { Collect(collision); Report(collision); }
+        private void OnCollisionStay(Collision collision) { Collect(collision); Report(collision); }
+        private void Report(Collision collision)
+        {
+            if (!isActiveAndEnabled || collision == null) return;
+            var handlers = ContactReported;
+            if (handlers == null) return;
+            foreach (Action<Collision> handler in handlers.GetInvocationList())
+            {
+                if (!isActiveAndEnabled) return;
+                try { handler(collision); }
+                catch (Exception error) { Debug.LogException(new InvalidOperationException($"발판 '{name}'의 접촉 통지에 실패했습니다.", error), this); }
+            }
+        }
         private void OnCollisionExit(Collision collision)
         {
             if (collision != null && collision.collider != null) RemoveContact(collision.collider);
@@ -56,14 +68,14 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             { contacts.Clear(); contactVelocities.Clear(); return; }
             stale.Clear();
             Bounds bounds = surface.bounds;
+            bounds.Expand(.3f);
             foreach (Collider other in contacts)
             {
                 if (other == null || !other.enabled || other.isTrigger || !other.gameObject.activeInHierarchy)
                 { stale.Add(other); continue; }
                 Bounds actor = other.bounds;
-                if (actor.max.x < bounds.min.x || actor.min.x > bounds.max.x
-                    || actor.max.z < bounds.min.z || actor.min.z > bounds.max.z
-                    || actor.min.y > bounds.max.y + 0.15f || actor.max.y < bounds.max.y)
+                // 윗면은 Collision의 실제 normal이 소유한다. 월드 Y 상단으로 다시 판정하면 기울어진 몸체를 잘못 제거한다.
+                if (!bounds.Intersects(actor))
                 { stale.Add(other); continue; }
                 result.Add(other);
             }

@@ -1,9 +1,10 @@
 using System;
 using UnityEngine;
+using Cooked.Authoring;
 
 namespace FeelsGoodOnion.TechSYM.Platforms
 {
-    /// <summary>부모 기준 시작점과 전체 이동량 사이를 일정 속도로 왕복한다.</summary>
+    /// <summary>고정된 실물 시작/끝 지점 사이를 월드 속도로 왕복한다.</summary>
     [DisallowMultipleComponent, DefaultExecutionOrder(-400)]
     [RequireComponent(typeof(KinematicPlatformMotion))]
     public sealed class LinearShuttlePlatform : MonoBehaviour
@@ -11,71 +12,78 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private const float MinimumMoveSpeed = 0.01f;
 
         [Header("이동")]
-        [Tooltip("시작점에서 도착점까지의 전체 이동량(X/Y/Z, m). 부모가 있으면 부모의 로컬 좌표이며 회전·배율이 반영됩니다. 부모가 없으면 월드 좌표입니다. 0이면 시작점에 머뭅니다. 실행 시작 시 적용하며 청록색 기즈모로 경로를 표시합니다.")]
-        [SerializeField] private Vector3 travelOffset = new Vector3(6f, 0f, 0f);
-        [Tooltip("현재 월드 경로를 따라 이동하는 속도(m/s). 값이 클수록 빨리 왕복하며 최소값은 0.01입니다. 편도시간은 경로 길이와 속도로 계산하고 양 끝점에서 각각 0.5초 기다립니다. 실행 시작 시 적용합니다.")]
-        [SerializeField, Min(0.01f)] private float moveSpeed = 2f;
+        [Tooltip("시작 지점을 연결합니다. 움직이는 몸체 밖에 두며 청록색 경로의 시작입니다.")]
+        [SerializeField, InspectorLabel("시작 지점")] private Transform startPoint;
+        [Tooltip("끝 지점을 연결합니다. 움직이는 몸체 밖에 두며 청록색 경로의 끝입니다. 시작과 같으면 정지합니다.")]
+        [SerializeField, InspectorLabel("끝 지점")] private Transform endPoint;
+        [Tooltip("경로를 따라 이동하는 속도를 조절합니다(m/s, 최소 0.01). 양 끝에서 0.5초 기다립니다.")]
+        [SerializeField, InspectorLabel("이동 속도"), Min(0.01f)] private float moveSpeed = 2f;
 
         private KinematicPlatformMotion motion;
-        private Transform pathParent;
-        private Vector3 startInParent;
-        private Vector3 cachedTravelOffset;
-        private float cachedMoveSpeed;
-        private double cycleProgress;
-        private float endpointWait;
-        private bool returning;
+        private ShuttleStep step;
         private bool initialized;
-        private bool hadParent;
         private bool invalidPathReported;
 
-        public Vector3 StartPosition => TryGetEndpoints(out var start, out _) ? start : SafeCurrentPosition();
-        public Vector3 EndPosition => TryGetEndpoints(out _, out var end) ? end : SafeCurrentPosition();
+        public Vector3 StartPosition => startPoint != null ? startPoint.position : throw new InvalidOperationException("선형 발판의 시작 지점이 없습니다.");
+        public Vector3 EndPosition => endPoint != null ? endPoint.position : throw new InvalidOperationException("선형 발판의 끝 지점이 없습니다.");
+        public const double EndpointWaitSeconds = .5;
+
+        public readonly struct ShuttleStep
+        {
+            public double Progress { get; }
+            public double WaitSeconds { get; }
+            public bool Returning { get; }
+            public ShuttleStep(double progress, double waitSeconds, bool returning)
+            { Progress = progress; WaitSeconds = waitSeconds; Returning = returning; }
+        }
+
+        /// <summary>진행·종점 대기·반전을 계산한다. 물리 접지 결과가 아닌 실제 실행의 시간 규칙이다.</summary>
+        public static ShuttleStep Advance(ShuttleStep current, double length, double speed, double deltaSeconds)
+        {
+            if (!double.IsFinite(length) || length < 0 || !double.IsFinite(speed) || speed <= 0
+                || !double.IsFinite(deltaSeconds) || deltaSeconds < 0 || !double.IsFinite(current.Progress)
+                || current.Progress < 0 || current.Progress > 1 || !double.IsFinite(current.WaitSeconds)
+                || current.WaitSeconds < 0 || current.WaitSeconds > EndpointWaitSeconds)
+                throw new ArgumentOutOfRangeException(nameof(deltaSeconds), "왕복 이동의 경로·속도·시간·진행이 유효하지 않습니다.");
+            if (length == 0) return new ShuttleStep(0, 0, false);
+            double travel = length / speed;
+            double cycle = 2 * (travel + EndpointWaitSeconds);
+            if (!double.IsFinite(cycle) || travel <= 0) throw new ArgumentOutOfRangeException(nameof(length));
+            double phase = current.WaitSeconds > 0
+                ? (current.Returning ? travel + EndpointWaitSeconds : cycle) - current.WaitSeconds
+                : current.Returning ? travel + EndpointWaitSeconds + (1 - current.Progress) * travel : current.Progress * travel;
+            phase = (phase + deltaSeconds % cycle) % cycle;
+            if (phase < travel) return new ShuttleStep(phase / travel, 0, false);
+            if (phase < travel + EndpointWaitSeconds) return new ShuttleStep(1, travel + EndpointWaitSeconds - phase, true);
+            if (phase < 2 * travel + EndpointWaitSeconds) return new ShuttleStep(1 - (phase - travel - EndpointWaitSeconds) / travel, 0, true);
+            return new ShuttleStep(0, cycle - phase, false);
+        }
 
         private void Awake()
         {
             OnValidate();
             motion = GetComponent<KinematicPlatformMotion>();
-            pathParent = transform.parent;
-            hadParent = pathParent != null;
-            Vector3 start = motion != null ? motion.Position : transform.position;
-            startInParent = hadParent ? pathParent.InverseTransformPoint(start) : start;
-            cachedTravelOffset = travelOffset;
-            cachedMoveSpeed = moveSpeed;
-            cycleProgress = 0.0;
-            initialized = true;
+            step = default;
+            initialized = TryGetEndpoints(out _, out _);
+            if (!initialized) { ReportInvalidPath("실물 시작/끝 지점을 같은 씬의 움직이는 몸체 밖에 연결하세요."); enabled = false; }
         }
 
         private void FixedUpdate()
         {
-            if (!initialized || motion == null || !motion.isActiveAndEnabled) return;
+            if (!initialized || motion == null || !motion.isActiveAndEnabled || Time.timeScale <= 0f) return;
             float deltaTime = Time.fixedDeltaTime;
             if (!float.IsFinite(deltaTime) || deltaTime <= 0f) return;
             if (!TryGetEndpoints(out var start, out var end))
             {
-                ReportInvalidPath("경로 좌표가 유한한 범위를 벗어났거나 실행 시작 시의 부모가 제거되어 이동을 중단합니다.");
+                ReportInvalidPath("시작/끝 지점이 제거되었거나 유효한 고정 지점이 아닙니다.");
+                enabled = false;
                 return;
             }
 
             // 부모 배율이 바뀌어도 현재 월드 경로 길이에 맞는 속도로 진행한다.
             double length = PathLength(start, end);
-            double nextProgress = cycleProgress;
-            if (endpointWait > 0f)
-            {
-                endpointWait = Mathf.Max(0f, endpointWait - deltaTime);
-                if (endpointWait < 0.000001f) endpointWait = 0f;
-            }
-            else if (length > 0.0)
-            {
-                double step = deltaTime * cachedMoveSpeed / length;
-                nextProgress = returning ? Math.Max(0.0, cycleProgress - step) : Math.Min(1.0, cycleProgress + step);
-                if ((!returning && nextProgress >= 1.0) || (returning && nextProgress <= 0.0))
-                {
-                    endpointWait = 0.5f;
-                    returning = !returning;
-                }
-            }
-            double fraction = nextProgress;
-            Vector3 target = PointOnPath(start, end, fraction);
+            ShuttleStep nextStep = Advance(step, length, moveSpeed, deltaTime);
+            Vector3 target = PointOnPath(start, end, nextStep.Progress);
 
             // MoveTo의 좌표뿐 아니라 운반 속도를 구하는 float 연산의 overflow도 막는다.
             Vector3 velocity = (target - motion.Position) / deltaTime;
@@ -84,43 +92,32 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 ReportInvalidPath("이번 물리 스텝의 목표 위치 또는 탑승 속도가 유한한 범위를 벗어나 이동을 중단합니다.");
                 return;
             }
-            cycleProgress = nextProgress;
+            step = nextStep;
             motion.MoveTo(target);
         }
 
         /// <summary>Stage의 초기 경로 시작점으로 복구한다. 저장 데이터가 아니다.</summary>
         public void ResetForRetry()
         {
-            cycleProgress = 0.0;
-            endpointWait = 0f;
-            returning = false;
+            step = default;
             invalidPathReported = false;
-            motion?.ResetForRetry();
+            if (motion != null && TryGetEndpoints(out var start, out _))
+                motion.ResetForRetry(new Pose(start, startPoint.rotation));
+            else motion?.ResetForRetry();
         }
 
         private bool TryGetEndpoints(out Vector3 start, out Vector3 end)
         {
-            bool useCachedPath = Application.isPlaying && initialized;
-            Transform parent = useCachedPath ? pathParent : transform.parent;
-            Vector3 localStart = useCachedPath ? startInParent
-                : parent != null ? transform.localPosition : transform.position;
-            Vector3 offset = useCachedPath ? cachedTravelOffset : travelOffset;
             start = end = Vector3.zero;
-            if (useCachedPath && hadParent && parent == null) return false;
-            if (!Finite(localStart) || !Finite(offset)) return false;
-
-            // float 덧셈/보간의 중간 overflow를 피하고 변환 결과도 경계에서 확인한다.
-            Vector3 localEnd = new Vector3(
-                (float)((double)localStart.x + offset.x),
-                (float)((double)localStart.y + offset.y),
-                (float)((double)localStart.z + offset.z));
-            if (!Finite(localEnd)) return false;
-            start = parent != null ? parent.TransformPoint(localStart) : localStart;
-            end = parent != null ? parent.TransformPoint(localEnd) : localEnd;
+            var writer = motion != null ? motion : GetComponent<KinematicPlatformMotion>();
+            if (writer == null || !writer.IsFixedPoint(startPoint) || !writer.IsFixedPoint(endPoint)) return false;
+            // Transform.position이 작성 부모→world의 유일한 변환 경계다.
+            start = startPoint.position;
+            end = endPoint.position;
             return Finite(start) && Finite(end);
         }
 
-        private static double PathLength(Vector3 start, Vector3 end)
+        public static double PathLength(Vector3 start, Vector3 end)
         {
             double x = (double)end.x - start.x;
             double y = (double)end.y - start.y;
@@ -128,7 +125,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             return Math.Sqrt(x * x + y * y + z * z);
         }
 
-        private static Vector3 PointOnPath(Vector3 start, Vector3 end, double fraction) => new Vector3(
+        public static Vector3 PointOnPath(Vector3 start, Vector3 end, double fraction) => new Vector3(
             (float)((double)start.x + ((double)end.x - start.x) * fraction),
             (float)((double)start.y + ((double)end.y - start.y) * fraction),
             (float)((double)start.z + ((double)end.z - start.z) * fraction));
@@ -136,7 +133,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private static bool Finite(Vector3 value) => float.IsFinite(value.x)
             && float.IsFinite(value.y) && float.IsFinite(value.z);
 
-        private Vector3 SafeCurrentPosition() => Finite(transform.position) ? transform.position : Vector3.zero;
+        private void OnDisable() => motion?.CancelMotion();
 
         private void ReportInvalidPath(string reason)
         {
@@ -147,11 +144,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         private void OnValidate()
         {
-            if (!Finite(travelOffset))
-            {
-                travelOffset = Vector3.zero;
-                Debug.LogWarning($"선형 발판 '{name}': 이동량의 NaN/Infinity를 0으로 변경했습니다.", this);
-            }
             if (!float.IsFinite(moveSpeed) || moveSpeed < MinimumMoveSpeed)
             {
                 moveSpeed = MinimumMoveSpeed;
