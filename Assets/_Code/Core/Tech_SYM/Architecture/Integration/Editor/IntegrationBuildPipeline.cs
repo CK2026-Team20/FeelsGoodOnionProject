@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using Cooked.Foundation;
+using Cooked.Audio;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
@@ -30,19 +31,27 @@ namespace Cooked.Integration.Editor
             if (installation == null) throw new InvalidOperationException("Architecture installation is not authored yet.");
             var catalog = installation.CreateCatalog();
             var scenes = new[] { catalog.BootstrapPath, catalog.TitlePath, catalog.CorePath }.Concat(catalog.StagePaths).ToArray();
-            var approved = IntegrationSceneBuilder.Catalog;
-            var expected = new[] { approved.BootstrapPath, approved.TitlePath, approved.CorePath }.Concat(approved.StagePaths).ToArray();
-            if (scenes.Length != 6 || !scenes.SequenceEqual(expected, StringComparer.Ordinal))
-                throw new InvalidOperationException("Build requires the exact approved six canonical scene paths in order.");
             foreach (var path in scenes)
             {
                 if (!path.StartsWith("Assets/_Scenes/Tech_SYM/Architecture/", StringComparison.Ordinal) ||
                     AssetDatabase.LoadAssetAtPath<SceneAsset>(path) == null)
                     throw new InvalidOperationException("Missing or unapproved scene: " + path);
             }
+            var entries = AssetDatabase.LoadAssetAtPath<IntegrationEntrySettings>(IntegrationEntrySettings.AssetPath);
+            if (entries == null) throw new InvalidOperationException("스테이지 진입 설정 누락: " + IntegrationEntrySettings.AssetPath);
+            entries.ValidateCatalog(catalog);
+            var audio = AssetDatabase.LoadAssetAtPath<AudioCueCatalog>(AudioCueCatalog.AssetPath);
+            if (audio == null) throw new InvalidOperationException("소리 목록 누락: " + AudioCueCatalog.AssetPath);
+            audio.RefreshAuthoring();
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
                 if (UnityEngine.SceneManagement.SceneManager.GetSceneAt(i).isDirty)
                     throw new InvalidOperationException("Save reviewed scene edits explicitly before building.");
+            // SceneAsset가 이동해도 Player에는 현재 생성 경로를 저장한다. 씬/보호 설정은 저장하지 않는다.
+            foreach (UnityEngine.Object asset in new UnityEngine.Object[] { installation, entries, audio })
+            {
+                EditorUtility.SetDirty(asset);
+                AssetDatabase.SaveAssetIfDirty(asset);
+            }
             string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
             string output = Path.Combine(project, "output/Tech_SYM/integration/build/Windows");
             Directory.CreateDirectory(output);

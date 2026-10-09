@@ -1,5 +1,5 @@
 using System;
-using System.IO;
+using System.Linq;
 using Cooked.Contracts;
 namespace Cooked.Foundation
 {
@@ -19,22 +19,28 @@ namespace Cooked.Foundation
             sourcePath == BootstrapPath || sourcePath == TitlePath || sourcePath == CorePath ||
             sourcePath == PrototypePath || sourcePath == Stage2Path || sourcePath == Stage3Path;
 
+        // SceneAsset 기반 읽기 계약. 이전 overload는 미이관 Editor hook의 호환용이다.
+        public static bool IsTarget(string sourcePath, SceneCatalog catalog)
+        {
+            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
+            return sourcePath == catalog.BootstrapPath || sourcePath == catalog.TitlePath ||
+                sourcePath == catalog.CorePath || catalog.StagePaths.Contains(sourcePath);
+        }
+
         public static bool TryResolve(string sourcePath, SceneCatalog catalog, out BootRoute route)
         {
             route = default;
-            if (!IsTarget(sourcePath)) return false;
-            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
-            if (catalog.BootstrapPath != BootstrapPath || catalog.TitlePath != TitlePath ||
-                catalog.CorePath != CorePath || catalog.StagePaths.Count != 3 ||
-                catalog.StagePaths[0] != PrototypePath || catalog.StagePaths[1] != Stage2Path ||
-                catalog.StagePaths[2] != Stage3Path)
-                throw new ArgumentException("R20 requires the six designated scenes, with Prototype/1_Stage first. Update the installation before Play.", nameof(catalog));
+            if (catalog == null)
+            {
+                if (!IsTarget(sourcePath)) return false;
+                throw new ArgumentNullException(nameof(catalog));
+            }
+            if (!IsTarget(sourcePath, catalog)) return false;
 
-            if (sourcePath == BootstrapPath || sourcePath == TitlePath)
+            if (sourcePath == catalog.BootstrapPath || sourcePath == catalog.TitlePath)
                 route = new BootRoute(false, null);
             else
-                route = new BootRoute(true, Path.GetFileNameWithoutExtension(
-                    sourcePath == CorePath ? PrototypePath : sourcePath));
+                route = new BootRoute(true, catalog.GetStageId(sourcePath == catalog.CorePath ? catalog.StagePaths[0] : sourcePath));
             return true;
         }
 
