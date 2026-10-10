@@ -1,4 +1,5 @@
 using System;
+using Cooked.Integration;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -19,8 +20,8 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private Collider[] overlaps = new Collider[16];
         private Vector3 physical;
         private bool reportedBlocked;
-        public Vector3 Origin => bounded ? RequirePoint(patrolStart).position : initialPosition;
-        public Vector3 End => bounded ? RequirePoint(patrolEnd).position : initialPosition;
+        public Vector3 Origin => bounded ? RequirePoint(patrolStart, "순찰 시작점").position : initialPosition;
+        public Vector3 End => bounded ? RequirePoint(patrolEnd, "순찰 끝점").position : initialPosition;
         public Vector3 BasePosition { get; private set; }
         public Vector3 Facing { get; private set; }
         public float MinimumY { get; }
@@ -56,8 +57,11 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             }
             if (Overlaps(physical)) throw new InvalidOperationException("적 몸체가 시작부터 지형에 묻혀 있습니다.");
         }
-        private static Transform RequirePoint(Transform point) => point != null ? point :
-            throw new InvalidOperationException("순찰 Transform이 해제됐습니다. Stage 연결을 확인하세요.");
+        private Transform RequirePoint(Transform point, string label)
+        {
+            SceneComponentLookup.RequireFixedPoint(owner, point, label);
+            return point;
+        }
         private static bool Finite(Vector3 v) => float.IsFinite(v.x) && float.IsFinite(v.y) && float.IsFinite(v.z);
         /// <summary>실제 점의 X/Y 축·초기 위치와 첫 방향을 검증하고 첫 목표 끝점을 반환합니다.</summary>
         public static bool ValidatePatrol(Vector3 start, Vector3 end, Vector3 origin, PatrolDirection direction)

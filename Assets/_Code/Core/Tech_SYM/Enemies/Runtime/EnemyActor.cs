@@ -1,5 +1,6 @@
 using System;
 using Cooked.Authoring;
+using Cooked.Integration;
 using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
@@ -76,9 +77,8 @@ namespace FeelsGoodOnion.TechSYM.Enemies
                 throw new InvalidOperationException("지형 검색 거리와 지면 간격 범위를 확인하세요.");
             if (definition.Kind == EnemyKind.Patrol)
             {
-                if (patrolStart == null || patrolEnd == null || patrolStart.IsChildOf(transform) || patrolEnd.IsChildOf(transform) ||
-                    patrolStart.gameObject.scene != gameObject.scene || patrolEnd.gameObject.scene != gameObject.scene)
-                    throw new InvalidOperationException("같은 씬의 고정 순찰 Transform 두 개가 필요합니다. 움직이는 적의 내부 참조는 사용할 수 없습니다.");
+                SceneComponentLookup.RequireFixedPoint(this, patrolStart, "순찰 시작점");
+                SceneComponentLookup.RequireFixedPoint(this, patrolEnd, "순찰 끝점");
                 towardEnd = EnemyMotor.ValidatePatrol(patrolStart.position, patrolEnd.position, transform.position, initialDirection);
             }
             else towardEnd = true;
