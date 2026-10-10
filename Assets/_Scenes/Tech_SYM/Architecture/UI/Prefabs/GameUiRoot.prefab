@@ -697,7 +697,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2329777565532205460}
-  - component: {fileID: 5063208094733738627}
   - component: {fileID: 3342649275387857287}
   - component: {fileID: 3139531993888988413}
   m_Layer: 0
@@ -724,23 +723,6 @@ Transform:
   - {fileID: 3608110663348577533}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5063208094733738627
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3231799562293998182}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 08505bf9c68f46ae8f760e910f0f7924, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.UI.GameUiRoot
-  hud: {fileID: 3342649275387857287}
-  prompt: {fileID: 3139531993888988413}
-  worldCanvas: {fileID: 2728679265439395724}
-  dialogueMount: {fileID: 4020997307138213419}
-  cinematicMount: {fileID: 6334351664904732751}
 --- !u!114 &3342649275387857287
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -761,6 +743,8 @@ MonoBehaviour:
   - {fileID: 7744607675494385696}
   - {fileID: 7595775525159764677}
   - {fileID: 9004163343407192870}
+  heartImages: []
+  heartSprite: {fileID: 0}
   formCard: {fileID: 7905041712406693900}
   tearCard: {fileID: 2788430000230319437}
   fragmentCount: {fileID: 5128762306435252830}

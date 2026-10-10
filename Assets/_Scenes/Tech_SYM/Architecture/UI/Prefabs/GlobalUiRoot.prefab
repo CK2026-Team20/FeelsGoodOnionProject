@@ -296,7 +296,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8600989337894045964}
-  - component: {fileID: 2452577668516938259}
   - component: {fileID: 4404107753116821164}
   - component: {fileID: 684659900037394228}
   m_Layer: 0
@@ -323,20 +322,6 @@ Transform:
   - {fileID: 654705002622156228}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2452577668516938259
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1154335029261405674}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b8ed4335f5b41ee85ba5311e2725fb5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.UI.GlobalUiRoot
-  optionsView: {fileID: 4404107753116821164}
-  fadeView: {fileID: 684659900037394228}
 --- !u!114 &4404107753116821164
 MonoBehaviour:
   m_ObjectHideFlags: 0
