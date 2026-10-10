@@ -68,6 +68,8 @@ public sealed class CharacterMovement : MonoBehaviour
     public bool IsGrounded { get; private set; }
     public Collider GroundCollider { get; private set; }
     public Vector3 GroundNormal { get; private set; } = Vector3.up;
+    /// <summary>접지할 수 있는 지면의 최대 기울기입니다. 단위: 도. 실제 HMS 접지 설정을 읽습니다.</summary>
+    public float MaximumGroundAngle => maximumGroundAngle;
     public Vector3 FacingDirection { get; private set; } = Vector3.right;
     public bool AllowDepthMovement => allowDepthMovement;
     public bool AllowHorizontalMovement => allowHorizontalMovement;

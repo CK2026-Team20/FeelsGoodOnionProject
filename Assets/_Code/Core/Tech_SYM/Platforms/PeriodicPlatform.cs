@@ -20,7 +20,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             public OverlapKind Kind { get; }
             public double Ratio { get; }
         }
-        [SerializeField, InspectorLabel("지지 충돌체"), Tooltip("실제 발판 몸체의 비 Trigger BoxCollider를 연결합니다.")]
+        [SerializeField, InspectorLabel("지지 충돌체"), Tooltip("실제 발판 몸체의 비 Trigger BoxCollider를 연결합니다. 윗면은 현재 HMS 접지각 안에 있어야 합니다.")]
         private BoxCollider supportCollider;
         [SerializeField, InspectorLabel("발판 이동"), Tooltip("이 발판 몸체를 움직이는 KinematicPlatformMotion을 연결합니다. 고정 발판은 비워 둡니다.")]
         private KinematicPlatformMotion motion;
@@ -179,11 +179,11 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 // Move 통지는 운반 이전이다. 실제 접지/윗면 접촉을 가진 탑승자는 이번 운반 의도를 존중한다.
                 bool normalTop = moving && IsSupportedPassenger(other);
                 OverlapResult overlap = InspectOverlap(support, supportPose, other, bodyShapePose, normalTop,
-                    out Vector3 bodySeparation, out float lift);
+                    out Vector3 bodySeparation, out Vector3 correction);
                 if (overlap.Kind == OverlapKind.None || overlap.Kind == OverlapKind.SupportedTop || !examined.Add(body)) continue;
                 if (shell != null) bridge.TrySeparateOwnedDebris(shell, bodySeparation);
                 else if (bridge.IsCurrentActor(expected, generation))
-                    bridge.TryResolvePlatformOverlap(this, expected, generation, Vector3.up * lift, separationSeconds, overlap.Kind == OverlapKind.Fatal);
+                    bridge.TryResolvePlatformOverlap(this, expected, generation, correction, separationSeconds, overlap.Kind == OverlapKind.Fatal);
             }
             Array.Clear(candidates, 0, count);
         }
@@ -200,24 +200,27 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         }
         /// <summary>실제 엔진 교차 검사. 다른 씬 pose에도 동작하며 전역 물리 씬을 전진시키지 않는다.</summary>
         public static OverlapResult InspectOverlap(BoxCollider platform, Pose platformPose, Collider shape, Pose shapePose,
-            bool normalTop, out Vector3 bodySeparation, out float liftMetres)
+            bool normalTop, out Vector3 bodySeparation, out Vector3 playerCorrection)
         {
             if (platform == null || shape == null) throw new ArgumentNullException(nameof(shape));
             bool intersects = Physics.ComputePenetration(platform, platformPose.position, platformPose.rotation,
                 shape, shapePose.position, shapePose.rotation, out Vector3 direction, out float distance);
             bodySeparation = intersects ? -direction * (distance + .001f) : Vector3.zero;
-            liftMetres = 0;
+            playerCorrection = Vector3.zero;
             if (!intersects) return new OverlapResult(OverlapKind.None, 0);
             if (shape is CapsuleCollider capsule)
             {
                 WorldCapsule(capsule, shapePose, out Vector3 start, out Vector3 end, out float radius);
                 Vector3 center = platformPose.position + platformPose.rotation * Vector3.Scale(platform.center, platform.transform.lossyScale);
                 var half = Vector3.Scale(platform.size * .5f, Abs(platform.transform.lossyScale));
-                var result = InspectCapsuleBox(center, platformPose.rotation, half,
-                    start, end, radius, normalTop, out _, out _, out float exit);
+                var actorMovement = shape.attachedRigidbody != null ? shape.attachedRigidbody.GetComponent<CharacterMovement>() : null;
+                if (actorMovement == null || !actorMovement.isActiveAndEnabled)
+                    throw new InvalidOperationException("실제 Capsule 몸체의 활성 HMS 이동 설정이 필요합니다.");
+                var result = InspectCapsulePlacement(center, platformPose.rotation, half, start, end, radius,
+                    actorMovement.MaximumGroundAngle, normalTop, actorMovement.AllowHorizontalMovement, actorMovement.AllowDepthMovement,
+                    out playerCorrection);
                 if (result.Kind == OverlapKind.None)
                     throw new InvalidOperationException("PhysX 교차와 실제 Box–Capsule 계산이 일치하지 않습니다.");
-                liftMetres = exit + .001f;
                 return result;
             }
             if (shape is BoxCollider) // 껍질은 최소 MTD 분리만 소비하며 Player 사망 비율을 사용하지 않는다.
