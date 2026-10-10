@@ -49,4 +49,4 @@
 
 ## 2026-10-10 이번 실행의 HMS 예외
 
-사용자 직접 답변과 go 승인에 따라 Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만 수정할 수 있다. 이전9파일/입력·폼 한정 허가는 종료됐다. 다른 HMS·공용·아트·보호 meta/import·Packages·ProjectSettings 수동 변경은 금지다. 사람 프리팹 삭제·재생성·Apply는 수행하지 않는다.
+사용자 직접 답변과 go 승인에 따라 Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만 수정할 수 있다. 2026-10-10 추가 직접 승인에 한해 Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs에 `public float MaximumGroundAngle => maximumGroundAngle;` 읽기 전용 속성 한 개와 설명을 추가할 수 있다. 발판 보정이 실제 HMS Inspector 접지 설정을 읽게 하려는 변경이며, 원래 필드·기본값·Range·접지 동작·입력·속도·상태·enum·기존 API·meta는 보존한다. 추후 PR 생성 시 이 의도와 변경 한계를 명확히 설명해야 한다. 이전9파일/입력·폼 한정 허가는 종료됐다. 이 세 파일의 지정 범위 외 다른 HMS·공용·아트·보호 meta/import·Packages·ProjectSettings 수동 변경은 금지다. 이번 실행 1회의 예외이며 일반 HMS 수정 권한이 아니다. 사람 프리팹 삭제·재생성·Apply는 수행하지 않는다.
