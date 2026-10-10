@@ -206,6 +206,7 @@ namespace Cooked.Session
                 SceneComponentLookup.RequireSameScene(this, facade, "독립 플레이어");
                 SceneComponentLookup.RequireSameScene(this, independentUi, "독립 안내");
                 SceneComponentLookup.RequireSameScene(this, independentCamera, "독립 출력");
+                facade.SetHitInvincibilityDuration(2f);
                 independentSession.Begin(new CheckpointSnapshot(facade.transform.position, facade.Model.CurrentSkillFragment, AbilityMask.Both));
                 bridge = new PlayerBridgeService(control, independentSession, requestRetry: null,
                     horizontalKnockbackSpeed: HorizontalKnockbackSpeed, upwardKnockbackSpeed: UpwardKnockbackSpeed);

@@ -67,7 +67,13 @@ namespace Cooked.Level
         public string StageId => string.IsNullOrEmpty(gameObject.scene.path) ? gameObject.scene.name : SceneCatalog.StageIdFromPath(gameObject.scene.path);
         public CheckpointMarker InitialCheckpoint => initialCheckpoint != null ? initialCheckpoint : throw new InvalidOperationException("같은 씬의 초기 CheckpointMarker를 연결하세요.");
         public Pose InitialPose => InitialCheckpoint.Pose;
-        public bool ContainsCheckpoint(CheckpointMarker marker) => marker != null && marker.gameObject.scene == gameObject.scene && Array.IndexOf(sceneCheckpoints, marker) >= 0;
+        public bool ContainsCheckpoint(CheckpointMarker marker)
+        {
+            if (marker == null || marker.gameObject.scene != gameObject.scene) return false;
+            // LoadedStageRegistry queries before the first Reset/Bind. Prepare through this Stage's existing boundary.
+            if (sceneCheckpoints.Length == 0) RebuildRegistry();
+            return Array.IndexOf(sceneCheckpoints, marker) >= 0;
+        }
         public AudioCuePurpose StageMusicPurpose => RequireStageMusicPurpose(stageMusicPurpose);
         public static AudioCuePurpose RequireStageMusicPurpose(AudioCuePurpose purpose)
         {
