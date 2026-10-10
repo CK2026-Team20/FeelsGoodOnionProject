@@ -61,6 +61,15 @@ namespace Cooked.Contracts
     public interface IPlayerBridgeService : IDisposable
     {
         bool HasActor { get; }
+        global::PlayerFacade Actor { get; }
+        long ActorGeneration { get; }
+        bool IsCurrentActor(global::PlayerFacade expected, long generation);
+        bool OwnsDebris(global::PlayerDebris shell);
+        /// <summary>피해원의 월드 위치를 전달합니다. 모든 일반 피해원의 방향과 넉백 세기는 Bridge가 계산합니다.</summary>
+        int Damage(Vector3 sourcePosition);
+        int ForceDeath(Vector3 knockbackVelocity, bool skipPresentation = false);
+        /// <summary>실제 Volume/Trigger가 전달한 Collider에서 현재 Player와 같은 OwnedDebris를 구별합니다.</summary>
+        bool HandleDeadzoneContact(Collider other);
         PlayerSnapshot Snapshot { get; }
         Transform CameraTarget { get; }
         event Action<PlayerSnapshot> Changed;
