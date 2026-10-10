@@ -1475,6 +1475,10 @@ PrefabInstance:
       propertyPath: closedPose
       value: 
       objectReference: {fileID: 470641029}
+    - target: {fileID: 5908068384186659322, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
+      propertyPath: physicalContacts
+      value: 
+      objectReference: {fileID: 1748932370}
     - target: {fileID: 6105978476996486923, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
       propertyPath: endPoint
       value: 
@@ -1570,6 +1574,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e8afdfc2e354f6dbf313a2cf1278310, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.SessionActorHost
+--- !u!114 &1748932370 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1295344977022069905, guid: d0be9461504d832449081bbfa1c4d1c3, type: 3}
+  m_PrefabInstance: {fileID: 1748932366}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67128e709f098e24e836e7cb99380c7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PlatformContacts
 --- !u!1 &1787463401
 GameObject:
   m_ObjectHideFlags: 0

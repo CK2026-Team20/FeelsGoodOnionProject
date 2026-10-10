@@ -6538,7 +6538,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c89f2d7cdc56b44e8bb30e342d2da7b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamageFloorPlatform
-  physicalContacts: {fileID: 0}
+  physicalContacts: {fileID: 2042808511}
 --- !u!114 &2042808511
 MonoBehaviour:
   m_ObjectHideFlags: 0
