@@ -22,6 +22,12 @@ CP는 현재 ActorBody 월드 위치·조각·해금 마스크 정확히3항목�
 
 자동 제작기12개와 중복 런타임10개, 자기 meta를 실제 소비 이관 후 제거했다. HudIconGraphic은 실제 리소스가 연결될 때까지 기존 prototype의 모든 하트·Q/E·조각 소비와 함께 유지한다. 전체23개 삭제 완료가 아니다. 새 prefab에는 Image/Sprite를 연결하며 모든 기존 Graphic 소비를 이관한 뒤 구형 분기와 Source를 제거한다.
 
+## 현재 최종 센서 수정과 검증
+
+체크포인트와 포포 도착은 '한 시도에 한 번' 값과 관계없이 재접촉 규칙을 따른다. 같은 체류에서 수락은 한 번이며 완전히 나간 뒤 다시 요청한다. CP 저장 서비스는 마지막 Marker 재접촉을 거절하고 A→B→A에서는 새 현재 위치·조각·해금을 저장한다. 포포 최종 대화만 일반 Completed/Skipped 장부를 보존한 새 회차를 허용한다. 데드존은 실제 몸체별 중복을 막고 다른 종류는 기존 once 설정을 따른다.
+
+Source a192d2a7/로컬 반영8659744b의 전체 SDK158/158/11·현재 Player DLL204·현재 Native201 평가 실패0, 실제6씬 Windows 빌드 오류0/경고48을 확인했다. 이전 T13의51경고 빌드와 DLL은 당시 증거로 보존한다. Native Completed 정상 시계·자연 접지·실물 표시·사람 Play 대기를 포함한 정확한 범위는 검증 기록에 있다. 최종 수정 diff와 문서의 독립 재검토 결과는 코드 리뷰에 기록한다.
+
 ## 권한과 검증 경계
 
 Tech_SYM 소유 소스·최소 자산 참조 이관과 프로젝트 Markdown만 기본 수정 범위다. 이번 HMS 예외는 Playback Interact2→4/설명, Controller 관련 설명, CharacterMovement의 실제 접지각 readonly getter/설명이다. 기존 필드·기본값·Range·접지 동작은 그대로다. 이전9파일 허가는 종료됐다. 보호 원본/meta/import, _Art, Packages/ProjectSettings의 수동 수정 권한은 없다.
