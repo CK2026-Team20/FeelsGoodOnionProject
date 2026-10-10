@@ -1,33 +1,43 @@
+using Cooked.Authoring;
 using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
-    public enum EnemyKind { Stationary = 0, Patrol = 1 }
-    // Preserve native values. Diagonals require explicit T8/T9 axis migration, never reinterpret them.
-    public enum PatrolDirection { Right = 0, Left = 1, Up = 2, Down = 3, UpRight = 4, UpLeft = 5, DownRight = 6, DownLeft = 7 }
+    public enum EnemyState { IDLE = 0, PATROL = 1, STUNNED = 2 }
+    public enum EnemyKind
+    {
+        [InspectorName("고정")] Stationary = 0,
+        [InspectorName("순찰")] Patrol = 1
+    }
+    // 기존 번호를 보존한다. 대각선 배치는 축 방향으로 명시적으로 이관한다.
+    public enum PatrolDirection
+    {
+        [InspectorName("오른쪽")] Right = 0,
+        [InspectorName("왼쪽")] Left = 1,
+        [InspectorName("위")] Up = 2,
+        [InspectorName("아래")] Down = 3,
+        [InspectorName("오른쪽 위(이관 필요)")] UpRight = 4,
+        [InspectorName("왼쪽 위(이관 필요)")] UpLeft = 5,
+        [InspectorName("오른쪽 아래(이관 필요)")] DownRight = 6,
+        [InspectorName("왼쪽 아래(이관 필요)")] DownLeft = 7
+    }
 
     [CreateAssetMenu(menuName = "Tech SYM/Enemy Definition")]
     public sealed class EnemyDefinition : ScriptableObject
     {
-        [Header("Enemy")]
-        [Tooltip("고정형(0) 또는 순찰형(1) 설정 자산입니다. 순찰의 X/Y 축과 외형은 개체 배치에서 정합니다.")]
-        [SerializeField] private EnemyKind kind = EnemyKind.Patrol;
-        [Tooltip("순찰 속도(m/s)입니다.")]
-        [SerializeField, Min(0.01f)] private float speed = 2f;
-        [Tooltip("최초 IDLE 유지 시간(초)입니다.")]
-        [SerializeField, Min(0f)] private float initialIdle = .5f;
-        [Header("Knockback")]
-        [Tooltip("수락된 몸통 피해에서 플레이어를 바깥쪽으로 밀어낼 속력(m/s)입니다. 양수가 필요하며 기존 자산의 값을 유지합니다.")]
-        [SerializeField, Min(0f)] private float knockbackSpeed = 3f;
+        [SerializeField, InspectorLabel("종류"), Tooltip("고정 또는 순찰 종류를 정합니다. 순찰 지점과 첫 방향은 씬의 적에서 연결합니다.")]
+        private EnemyKind kind = EnemyKind.Patrol;
+        [SerializeField, Min(.01f), InspectorLabel("이동 속도"), Tooltip("순찰 이동 속도를 정합니다(m/s). 양수가 필요합니다.")]
+        private float speed = 2f;
+        [SerializeField, Min(0), InspectorLabel("첫 대기 시간"), Tooltip("순찰을 시작하기 전 대기 시간을 정합니다(초). 0이면 바로 이동합니다.")]
+        private float initialIdle = .5f;
 
         public EnemyKind Kind => kind;
         public float Speed => speed;
-        public int ContactDamage => 1;
         public float InitialIdle => initialIdle;
-        public float KnockbackSpeed => knockbackSpeed;
 
         public bool IsValid => (kind == EnemyKind.Stationary || kind == EnemyKind.Patrol) && Positive(speed) &&
-            float.IsFinite(initialIdle) && initialIdle >= 0 && Positive(knockbackSpeed);
+            float.IsFinite(initialIdle) && initialIdle >= 0;
         private static bool Positive(float value) => float.IsFinite(value) && value > 0;
         public static bool IsAxisDirection(PatrolDirection value) => value >= PatrolDirection.Right && value <= PatrolDirection.Down;
 
