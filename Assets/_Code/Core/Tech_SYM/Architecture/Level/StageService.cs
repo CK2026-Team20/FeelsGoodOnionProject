@@ -55,8 +55,10 @@ namespace Cooked.Level
         private EnemyContactSensor[] sceneSensors = Array.Empty<EnemyContactSensor>();
         private DamageFloorPlatform[] sceneFloors = Array.Empty<DamageFloorPlatform>();
         private PlayerFacade finalActor;
+        private StageTrigger finalTrigger;
         private string finalCode;
         private Func<string, bool> tryStartSafeDialogue;
+        private Func<StageTrigger, PlayerFacade, long, string, bool> tryStartFinalDialogue;
         private Func<StageService, bool> tryStartChase;
         private Func<StageService, bool> canStartChase, captureBeforeChase;
         private Func<CheckpointMarker, PlayerFacade, bool> captureMarker;
@@ -132,6 +134,8 @@ namespace Cooked.Level
             => captureMarker = capture ?? throw new ArgumentNullException(nameof(capture));
         public void BindDialogueTable(IDialogueTableService table)
             => dialogueTable = table ?? throw new ArgumentNullException(nameof(table));
+        public void BindFinalDialogueStart(Func<StageTrigger, PlayerFacade, long, string, bool> start)
+            => tryStartFinalDialogue = start ?? throw new ArgumentNullException(nameof(start));
         /// <summary>T10 owns Player death / current-owned Shell return. Stage validates current Actor before dispatch.</summary>
         public void BindFallRequests(Func<PlayerFacade, PlayerDebris, bool> request)
             => fallRequest = request ?? throw new ArgumentNullException(nameof(request));
@@ -216,8 +220,9 @@ namespace Cooked.Level
                 case StageTriggerKind.Chase: return TryStartChaseAtBodyPosition();
                 case StageTriggerKind.Escape:
                     if (finalPending || finalStarted || endingPending || (resolvedChaseWaypoints.Length > 1 && !chaseAccepted) ||
+                        bridge == null || !bridge.IsCurrentActor(candidate, bridge.ActorGeneration) || tryStartFinalDialogue == null ||
                         !TryResolveDialogue(trigger, false, out var exitCode)) return false;
-                    finalActor = candidate; finalActorGeneration = bridge.ActorGeneration; finalCode = exitCode;
+                    finalActor = candidate; finalActorGeneration = bridge.ActorGeneration; finalTrigger = trigger; finalCode = exitCode;
                     finalPending = true; return true; // Resolve after all physics contacts and chase capture for this frame.
                 default: return false;
             }
@@ -308,21 +313,30 @@ namespace Cooked.Level
             }
             if (!finalPending) return;
             if (!bound || finalActor == null || finalActor != actor || actor.IsDead || bridge == null ||
-                !bridge.IsCurrentActor(finalActor, finalActorGeneration)) { finalPending = false; finalActor = null; return; }
+                !bridge.IsCurrentActor(finalActor, finalActorGeneration) || finalTrigger == null ||
+                finalTrigger.Kind != StageTriggerKind.Escape || finalTrigger.Owner != this || !finalTrigger.isActiveAndEnabled ||
+                finalTrigger.gameObject.scene != gameObject.scene) { finalPending = false; finalActor = null; finalTrigger = null; return; }
             if (!CanDispatch(finalActor)) return;
             stopChase(); // ChaseRuntimeDriver runs earlier; capture/death has priority over arrival.
             if (dialogue.IsActive) return;
             long revision = bindingRevision;
-            finalStarted = true;
-            if (!tryStartSafeDialogue(finalCode)) { finalStarted = false; throw new InvalidOperationException("Final dialogue could not start: " + finalCode); }
-            if (!bound || revision != bindingRevision || actor != finalActor || actor.IsDead) { dialogue.Cancel(); return; }
-            finalDialogueSession = dialogue.SessionId; finalPending = false;
+            var conversation = dialogue;
+            var source = finalActor;
+            long generation = finalActorGeneration;
+            if (!tryStartFinalDialogue(finalTrigger, source, generation, finalCode))
+                throw new InvalidOperationException("Final dialogue could not start: " + finalCode);
+            if (!bound || revision != bindingRevision || actor != source || actor.IsDead || bridge == null ||
+                !bridge.IsCurrentActor(source, generation) || !ReferenceEquals(dialogue, conversation)) { conversation.Cancel(); return; }
+            finalDialogueSession = conversation.SessionId; finalPending = false; finalStarted = true;
+            // 시작 통지 중 완료/Skip/취소도 이 새 SessionId에만 연결한다.
+            if (!conversation.IsActive) OnFinalDialogueEnded(conversation.Outcome);
         }
         private void OnFinalDialogueEnded(DialogueOutcome outcome)
         {
             if (!finalStarted || dialogue == null || dialogue.SessionId != finalDialogueSession) return;
             finalStarted = false;
-            if ((outcome != DialogueOutcome.Completed && outcome != DialogueOutcome.Skipped) || finalActor == null || finalActor != actor || !CanDispatch(finalActor)) return;
+            if ((outcome != DialogueOutcome.Completed && outcome != DialogueOutcome.Skipped) || finalActor == null || finalActor != actor ||
+                bridge == null || !bridge.IsCurrentActor(finalActor, finalActorGeneration) || !CanDispatch(finalActor)) return;
             // Reserve only: ChaseRuntimeDriver.LateUpdate(200) must run before Stage.LateUpdate(500).
             endingPending = true;
         }
@@ -365,8 +379,8 @@ namespace Cooked.Level
             foreach (var sensor in sceneSensors) if (sensor != null) SessionCleanup.Attempt(errors, sensor.UnbindPlayer);
             foreach (var floor in sceneFloors) if (floor != null) SessionCleanup.Attempt(errors, floor.UnbindPlayer);
             actor = null; bridge = null; control = null; dialogue = null; dialogueTable = null; flow = null;
-            tryStartSafeDialogue = null; tryStartChase = null; canStartChase = null; captureBeforeChase = null; captureMarker = null; unlockAbility = null; fallRequest = null; stopChase = null;
-            ChaseStarted = null; StageEntered = null; finalPending = finalStarted = endingPending = false; finalActor = null; finalCode = null; finalDialogueSession = finalActorGeneration = 0;
+            tryStartSafeDialogue = null; tryStartFinalDialogue = null; tryStartChase = null; canStartChase = null; captureBeforeChase = null; captureMarker = null; unlockAbility = null; fallRequest = null; stopChase = null;
+            ChaseStarted = null; StageEntered = null; finalPending = finalStarted = endingPending = false; finalActor = null; finalTrigger = null; finalCode = null; finalDialogueSession = finalActorGeneration = 0;
             SessionCleanup.ThrowIfAny(errors, "Stage connection release failed.");
         }
         private void OnDisable() => Dispose();

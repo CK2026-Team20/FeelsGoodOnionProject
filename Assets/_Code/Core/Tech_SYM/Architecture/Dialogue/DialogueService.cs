@@ -58,8 +58,21 @@ namespace Cooked.Dialogue
         public bool IsCompleted(string code) => !disposed && code != null && completedCodes.Contains(code);
 
         public bool TryStart(string dialogueCode)
+            => TryStartCore(dialogueCode, false, null);
+
+        /// <summary>완료 장부를 존중하며 입력 차단 획득 뒤 조립자의 메모/현재 요청 검사를 실행한다.</summary>
+        public bool TryStart(string dialogueCode, Func<bool> prepare)
+            => TryStartCore(dialogueCode, false, prepare);
+
+        /// <summary>최종 접촉을 검증한 조립자 전용 경로. 장부를 지우지 않고 새 대화를 시작한다.
+        /// 일반 IDialogueService 소비자에게는 이 재생 예외를 노출하지 않는다.</summary>
+        public bool TryStartFinalDialogue(string dialogueCode, Func<bool> prepare = null)
+            => TryStartCore(dialogueCode, true, prepare);
+
+        private bool TryStartCore(string dialogueCode, bool allowCompletedFinal, Func<bool> prepare)
         {
-            if (disposed || starting || resettingRound || finishing || IsActive || optionsPaused || dialogueCode == null || completedCodes.Contains(dialogueCode) || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
+            if (disposed || starting || resettingRound || finishing || IsActive || optionsPaused || dialogueCode == null ||
+                (!allowCompletedFinal && completedCodes.Contains(dialogueCode)) || !table.TryGetRows(dialogueCode, out var found) || found.Count == 0) return false;
             // Acquire before publishing a visible conversation; failure cannot strand an active UI.
             starting = true;
             long revision = lifecycleRevision;
@@ -67,6 +80,9 @@ namespace Cooked.Dialogue
             {
                 inputLease = control.BlockGameplay("Dialogue");
                 if (disposed || optionsPaused || revision != lifecycleRevision) { ReleaseLeases(); return false; }
+                // 메모 강제 닫기의 관찰자가 Actor/Stage/옵션/수명을 바꿔도 게시 전에 거절한다.
+                bool prepared = prepare == null || prepare();
+                if (!prepared || disposed || optionsPaused || revision != lifecycleRevision) { ReleaseLeases(); return false; }
                 rows = found;
                 rowIndex = 0;
                 SessionId++;
