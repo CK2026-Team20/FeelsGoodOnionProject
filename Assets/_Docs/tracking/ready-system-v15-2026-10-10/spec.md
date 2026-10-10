@@ -2,15 +2,15 @@
 
 목표는 최신 V1.5 기능을 기준으로 현재 구현을 정합화하고, 사람이 코드 없이 씬·프리팹을 조립할 수 있게 하는 것이다. 위치·대상 키의 수기 입력, 관리자 부모에 종속된 씬 배치, 외형과 충돌체의 다른 이동, 동일 수명의 전달 객체를 정리한다. 현재 개발 목표는 **응집된 Prototype Stage 하나에서 게임 전체 흐름을 한 번 보여주는 것**이다.
 
-이 문서는 승인할 실행 명세다. READY에서 이미 구현·삭제·Play 검증됐다는 기록이 아니다. 이전 V1.1 READY를 대체하며 과거 결과/원본은 보존한다.
+이 문서는 사용자가 승인한 실행 명세다. 구현 결과는 status.md와 실제 검증 기록을 함께 확인한다. 이전 V1.1 READY를 대체하며 과거 결과/원본은 보존한다. 기획 목표와 실제 수행·미실행 범위를 구분한다.
 
 ## R01 — 권위·지침·쓰기 범위
 
 최신 직접 지시 → 첨부 V1.5의 활성 기능 본문 → 현재 구현 순서로 판단한다. DOCX의 색·취소선·삭제문과 후반 버전 이력을 구분한다. 이전의 Position/Fragments 두 항목 저장, 현재Stage 능력 일괄 재잠금, 안내 대화 완료 기록 삭제, 주기 시간 고정은 V1.5와 맞지 않으므로 새 구현 기준으로 사용하지 않는다. 취소선의 적 처치 기름·수동 Retry/이어하기·붕괴 자동 복구는 복구하지 않는다.
 
-첨부 원본 SHA256은 `d5698cbc3e50bcb1a4ea8c4f31eae325b43af7221bbcc97a150fdb8b28aa8ebe`다. 원본을 다시 편집하지 않고 같은 바이트의 V1.5를 프로젝트의 기획 원본으로 보관하고 planning-index의 지정 버전/적용 범위를 갱신한다. 현재 portable 보존본은 `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/sources/Cooked_시스템_기획서_V.1.5.docx`다.
+첨부 원본 SHA256은 `d5698cbc3e50bcb1a4ea8c4f31eae325b43af7221bbcc97a150fdb8b28aa8ebe`다. 원본을 다시 편집하지 않고 같은 바이트의 V1.5를 프로젝트의 기획 원본으로 보관하고 planning-index의 지정 버전/적용 범위를 갱신한다. 현재 제품 기획 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.5.docx`이며 같은 바이트의 준비 증거를 보존한다.
 
-Tech_SYM 코드·소유 씬/설정의 최소 참조 이관, 프로젝트 Markdown·대응 메타데이터가 기본 수정 범위다. `_Art`, 타 Tech/art/QA·공용 원본, 보호 prefab/meta/import, Packages/ProjectSettings의 수동 수정·Apply·이동·삭제는 제외한다. 별도 예외는 R12의 HMS 두 파일뿐이다. 앞선 HMS 9파일 허가를 재사용하지 않는다.
+Tech_SYM 코드·소유 씬/설정의 최소 참조 이관, 프로젝트 Markdown·대응 메타데이터가 기본 수정 범위다. `_Art`, 타 Tech/art/QA·공용 원본, 보호 prefab/meta/import, Packages/ProjectSettings의 수동 수정·Apply·이동·삭제는 제외한다. 별도 예외는 R12의 HMS 세 파일에 명시된 최소 변경뿐이다. 앞선 HMS 9파일 허가를 재사용하지 않는다.
 
 루트 AGENTS/CLAUDE 및 관련 지역 지침에 다음 규칙을 일치시킨다. 위치/대상은 실물 참조, 수치 조절은 목적·단위가 분명한 값, 간단한 한국어 표시 이름/Tooltip, 씬 관리자 부모 배치 금지, 실제 물리 몸체와 외형 이동 일치, Play 검증은 사람, 사람의 prefab 제거/제작 소유, 삭제 전 소비 이관이다. 과거 dated 기록을 현재 목표로 승계하지 않도록 표시한다.
 
@@ -22,7 +22,7 @@ Tech_SYM 코드·소유 씬/설정의 최소 참조 이관, 프로젝트 Markdow
 
 Inspector 이름은 간단한 한국어다. Tooltip 첫 문장은 연결 대상 또는 조절 효과를 말한다. 단위·0 의미·좌표계·Gizmo 색은 그 설정에 필요할 때 짧게 덧붙인다. “AI/개발자만 알고 있는 계산값”을 일반 작성 항목으로 노출하지 않는다. enum 번호는 기존 직렬화 의미를 보존한다. 한국어 필드 라벨을 위한 SYM 한정 PropertyDrawer는 허용하며 보호 타입의 전역 Inspector를 덮어쓰거나 새 패키지를 도입하지 않는다.
 
-속도/시간/높이/각도·이동 방향/음량/회수는 조절 값으로 남긴다. Vector3 저장 위치·Physics 인자·실행 중 계산한 변위 자체를 금지하지 않는다. 실제 필드별 이관 기준은 `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/Inspector 연결 전환 명세.md`의 201개 표다. 정규식 밖 직렬화도 실제 SerializedObject와 대조한다.
+속도/시간/높이/각도·이동 방향/음량/회수는 조절 값으로 남긴다. Vector3 저장 위치·Physics 인자·실행 중 계산한 변위 자체를 금지하지 않는다. 실제 필드별 이관 기준은 [Inspector 연결 전환 명세](Inspector%20연결%20전환%20명세.md)의 실제 최종199개 표다. 정규식 밖 직렬화도 실제 SerializedObject와 대조한다.
 
 필수 authoring 변환은 Stage의 Transform 경로 배열/추격 시작점, CP의 respawnPoint, Zone의 alignmentPoint, 플랫폼의 start/end 또는 start/target, 장치의 closed/openPose, 적의 patrolStart/end, F prompt/interactionPoint다. CameraZoneTrigger가 모드/정렬점을 작성하고 CheckpointMarker의 initialCameraZone에는 실제 Trigger를 드래그한다. 기존 CameraZoneData는 실행 값 struct이며 컴포넌트/자산으로 붙이지 않는다. Player의 cameraAnchor/visualRoot는 기존 PlayerDamagePresentation의 명시 참조로 연결한다. 임의 이름 검색 fallback을 새 API에 남기지 않는다.
 
@@ -96,7 +96,7 @@ HUD3하트/0..5조각/Q·E 아이콘 음영/해금 표시, 메모 F Opening 중 
 
 ## R09 — 실제 책임 이관과 폐기 소스 제거
 
-삭제 대상23개와 정확한 path/GUID/소비는 `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/스크립트 필요성 및 삭제 계획.md`가 정본이다. Editor 자동 제작/Repair12개는 제거한다. 런타임11개는 GameEventBus/EventContracts/CinematicPresentationState/UIScaleTween/GameUiRoot/GlobalUiRoot/HudIconGraphic/EnemyStateMachine/EnemyCombat/ActorFallGuard/ApplicationService다.
+삭제 대상23개와 정확한 path/GUID/소비는 [스크립트 필요성 및 삭제 계획](스크립트%20필요성%20및%20삭제%20계획.md)이 정본이다. Editor 자동 제작/Repair12개는 제거한다. 런타임11개는 GameEventBus/EventContracts/CinematicPresentationState/UIScaleTween/GameUiRoot/GlobalUiRoot/HudIconGraphic/EnemyStateMachine/EnemyCombat/ActorFallGuard/ApplicationService다.
 
 같은 수명 참조·VM 생성은 AppComposition/CoreUiBinding, 메모 Tween은 MemoView, 연출 표시 원자 발행은 CinematicService, 적 상태는 Actor, 적 접촉은 Sensor, 종료 한 동작은 주입 Action으로 이관한다. 범용 버스의 실제 사망→Flow 명령과 Stage 알림은 소유자별 좁은 명령/이벤트로 바꾼다. 독립 모드에 Retry Flow가 없는 계약은 명시하여 매프레임 거절 반복을 만들지 않는다.
 
@@ -104,7 +104,7 @@ HUD3하트/0..5조각/Q·E 아이콘 음영/해금 표시, 메모 F Opening 중 
 
 HudIconGraphic의 Image/Sprite 이관은 **사람의 실제 하트 리소스 연결 후** 수행한다. 리소스 없을 때 이 source를 삭제하거나 placeholder로 대체하지 않는다. 그동안 기존 prototype 하트 표시 소비를 유지하며 임시 구형 분기는 실제 Image 연결·GUID 해소 시 함께 제거하는 종료 조건을 적는다. 새 제작 guide에서는 Image 경로만 사용한다. 이 조건은 삭제 대기이며 완료로 집계하지 않는다. SceneComponentLookup/CoroutineOperationRunner/SessionShutdownOperation/HeavyState/KinematicPlatformMotion은 실제 공유 규칙/수명/공개 물리 계약이 있어서 유지한다.
 
-각 유지 source의 builder 전용 Configure/무소비 overload/폐기 Feature 상수·이벤트/캐시/using은 정확한 소비 확인 후 제거한다. GameRuntimeService의 무소비 GameplayOutputChanged 전달, Stage 출처 reset·ForgetCompletedCodes, pair 전용 캡처, 순수 미래용 SelectActiveStage 미소비 경로를 검토·제거한다. 모든128개 필요성/생명주기/대체 근거를 최종 diff에 맞춰 갱신한다.
+각 유지 source의 builder 전용 Configure/무소비 overload/폐기 Feature 상수·이벤트/캐시/using은 정확한 소비 확인 후 제거한다. GameRuntimeService의 무소비 GameplayOutputChanged 전달, Stage 출처 reset·ForgetCompletedCodes, pair 전용 캡처, 순수 미래용 SelectActiveStage 미소비 경로를 검토·제거한다. 유지한109개 SYM source의 필요성/생명주기/대체 근거와 삭제한22개 및 조건부1개의 책임 이관을 최종 diff에 맞춰 갱신한다.
 
 ## R10 — 사람이 직접 만들 prefab과 연결 안내
 
@@ -122,7 +122,7 @@ Locator는 타입 등록·조회·scope 소유·Dispose, Composition은 구체 �
 
 이전 관련 commit `6f2a386`(2files,+12/-30), `5d1770d`(9files,+362/-20), 고유10개 소스의 추가/삭제/변경 이유·API·단위·기본값·독립 소비·해제 계약을 상세 기록한다. 과거 테스트 수/Unity 실행을 이번 결과로 승계하지 않는다. PR은 이번에 만들지 않으며 이후 최종 diff 기준으로 이 기록을 PR에 포함한다.
 
-이번 허용 범위는 `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs`의 Interact priority2→4 및 관련 설명, `.../PlayerAnimationController.cs`의 우선순위 설명만이다. 기존 enum/RequestId/결과·피해·입력·독립 소비는 변경하지 않는다. 실제 우선순위는 Dead>Knockback>Interact>Tear>Form>Land>기본 표현, 중단 one-shot 재개 없음, 이동/점프 실행 제한과 분리다. 다른 HMS 기본 jump/속도는 소유 prefab의 기존 fields로 맞춘다.
+이번 허용 범위는 `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs`의 Interact priority2→4 및 관련 설명, `.../PlayerAnimationController.cs`의 우선순위 설명, `.../CharacterMovement.cs`의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 하나와 설명이다. 마지막 항목은 실제 Inspector 접지각을 외부 접촉 판정에서 읽도록 별도로 승인받았다. 원래 필드·기본값·Range·접지 동작은 변경하지 않는다. 기존 enum/RequestId/결과·피해·입력·독립 소비는 변경하지 않는다. 실제 우선순위는 Dead>Knockback>Interact>Tear>Form>Land>기본 표현, 중단 one-shot 재개 없음, 이동/점프 실행 제한과 분리다. 다른 HMS 기본 jump/속도는 소유 prefab의 기존 fields로 맞춘다.
 
 ## R13 — 검증·보고의 경계
 
@@ -136,7 +136,7 @@ Locator는 타입 등록·조회·scope 소유·Dispose, Composition은 구체 �
 
 제품 동작/권한/데이터 모델의 미결 선택은 없다. 승인 후 작업은 plan의 각 gate로 확인한다. 실제 리소스가 아직 없는 HudIconGraphic은 조건 충족 전 삭제 대기, 사람의 새 prefab/플레이는 사람의 다음 작업으로 명시한다. engineering 구현·비 Play 검사·수동 리소스/플레이 완료를 서로 다른 상태로 보고한다.
 
-planning-index/지역 지침, 변경 소스와 최소 소유 자산 이관, script별 최종 필요성/삭제 근거, 사람이 보는 최종 제작 guide/Inspector 대응표, 이전·신규 HMS 변경 설명, 코드 리뷰·검증 결과가 있어야 한다. 실제 무단 보호 diff/Missing Script/해제 실패를 남겨 놓고 완료라고 하지 않는다. 현재 READY 문서 검증 완료는 이 후속 구현 완료와 구별한다.
+planning-index/지역 지침, 변경 소스와 최소 소유 자산 이관, script별 최종 필요성/삭제 근거, 사람이 보는 최종 제작 guide/Inspector 대응표, 이전·신규 HMS 변경 설명, 코드 리뷰·검증 결과가 있어야 한다. 실제 무단 보호 diff/Missing Script/해제 실패를 남겨 놓고 완료라고 하지 않는다. 준비 문서 검수, 실제 구현·삭제, 비 Play 검증, 사람의 리소스·플레이 확인은 각각 실제 결과로 판단한다.
 
 ## 2026-10-10 포포 최종 대화 재생 예외
 

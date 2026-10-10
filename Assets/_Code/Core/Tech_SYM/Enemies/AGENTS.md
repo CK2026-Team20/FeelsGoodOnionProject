@@ -1,13 +1,11 @@
 # 일반 적
 
-최신 기준은 Assets/_Docs/planning-index.md와 ready-system-v15-2026-10-10 spec다. 작성된 목표를 실제완료로 보고하지 않는다.
+EnemyActor가 Idle/Patrol/Stunned 상태·기절 시간·현재 방향을 소유한다. EnemyMotor는 지형과 실제 Root Transform 이동, EnemyContactSensor는 실제 Trigger 접촉 피해를 담당한다. 삭제한 EnemyStateMachine/EnemyCombat을 다시 붙이거나 생성하지 않는다. X/Y 순찰 또는 Stationary 배치만 사용하며 적 HP·처치·Dead·Chase/Return·사망 기름·몸체 bob을 추가하지 않는다.
 
-EnemyActor 조립, StateMachine 배타적 전이/기절시간, Motor 지형/실제이동, Combat/ContactSensor 접촉피해원의 책임을 구분한다. 일반 적은 X/Y 작성평면 순찰·Idle·Stunned만 가지며 Chase/Return은 제거한다. 기존 종류/방향/직렬화값은 실제 배치의 의미로 명시적으로 이관하고 재번호화로 추측하지 않는다.
+EnemyActor Root의 직접 자식 Body에 BoxCollider Trigger와 EnemyContactSensor를 함께 붙이고 body/owner를 실제 컴포넌트로 연결한다. Root·조상·자식에 Rigidbody를 추가하지 않는다. Body localPosition=0, Root/Body 월드 무회전·단위 배율, 유효 지형 LayerMask를 유지한다. Player의 동적 Rigidbody로 Trigger 접촉한다. 순찰 start/end는 실제 고정 Scene 지점이며 움직이는 EnemyRoot 밖에 둔다. Stationary 종류는 두 지점을 쓰지 않는다.
 
-적 HP/무적/머리밟기/처치/Dead/사망기름/몸체Float는 제거한다. EnemyModel의 남는 기절은 FSM 하나로 통합하고 IState 계약도 필요한 내부상태로 이관한다. 배치OilSurface와 HMS IStunState VFX는 다른 실제기능이므로 유지한다. 기절은 일반적만 대상, 재기절의 기존남은시간추가 계약 유지, 미선택상한을 추가하지 않는다. 기절중 접촉공격 없음이다.
+배치 OilSurface와 기존 HMS IStunState VFX는 실제 다른 기능이므로 조합한다. 기절 중 이동·접촉 공격을 멈추고 재기절은 기존 남은 시간 추가 계약을 사용하며 임의 상한을 만들지 않는다. PlayerFacade의 공통 피해1/무적2초와 Bridge의 공통 넉백을 사용하고 피해원별 속도/타이머를 복제하지 않는다. 지속 접촉은 무적 종료 뒤 다시 판정하며 낡은 Actor는 거절한다.
 
-PlayerFacade의 공통 피해1/무적2초/피해+넉백과 단일Knockback ms 조회를 사용한다. consumedDamage 일회성 대신 무적종료후 지속접촉을 다시 판정한다. 적 body는 루트바로아래 실제 BoxCollider Trigger이고 EnemyContactSensor는 그 몸체접촉relay다. 이름만 보고 탐지영역으로 제외하지 않는다. 적에 Rigidbody를 새로 요구하지 않는다. 몸체/루트 무회전·단위배율과 지형조건을 유지한다.
+Stage 초기 재준비는 기존 적의 pose·방향·기절·접촉을 복원한다. 비활성 Stage는 target·자기 작업을 해제한다. Hurt Collider는 실제 Body이며 Sensor 후보라는 이유로 눈물 차폐 검사에서 무조건 제외하지 않는다. 순찰·기절/재기절·지속 접촉·Options·Retry/비활성 Stage를 기능 단위로 검증한다.
 
-Stage의 retry/reset은 초기배치·기절/접촉/방향을 재준비하며 저장DTO/객체상태ID를 만들지 않는다. 비활성Stage는 target과 작업을 해제한다. 명시적HurtCollider 읽기계약을 제공해 눈물candidate와 탐지센서를 구분한다. 순찰X/Y·기절/재기절·해제/지속접촉·옵션·retry/비활성Stage를 결합 검증한다. 등록/Stage/Native변경과 실제삭제는 T9 단일작성자가 수행한다.
-
-현행 지침: Inspector 위치/대상은 실물 참조, 수치는 목적·단위가 명확한 값이다. 씬 월드 객체를 관리자 자식에 묶지 않는다. 에이전트 Play 실행·기존 프리팹 삭제/재생성/Apply·자동 Builder 실행은 금지다. 이전 실행 관찰 수는 당시 증거이고 이번 통과가 아니다.
+Inspector 이름·Tooltip은 연결 대상/조절 효과를 짧은 한국어로 설명한다. 씬 월드 Root를 Manager의 자식으로 묶지 않는다. 에이전트 Play·기존 prefab 삭제/재생성/Apply·자동 Builder·리소스 제작은 실행하지 않는다. 실제 컴파일/격리 엔진/API 검사와 사람의 자연 충돌·VFX·플레이를 구분해 보고한다.

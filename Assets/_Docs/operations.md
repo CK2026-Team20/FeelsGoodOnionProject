@@ -15,13 +15,13 @@ git lfs pull
 
 LFS 복원은 Git LFS 설치와 해당 원격 저장소 읽기 권한이 필요하다. 오류가 나면 원인을 해결한 뒤 Unity를 연다. 포인터 파일을 모델·이미지 원본으로 사용하지 않는다.
 
-Unity Hub에서 위 프로젝트를 지정한 버전으로 열고 import·컴파일이 끝날 때까지 기다린다. 처음부터 Builder를 실행하면 저장된 자산을 다시 만들 수 있으므로 기존 씬·프리팹을 우선 사용한다. 문서 검토 작업에서 이 절차를 실행했다고 간주하지 않는다.
+Unity Hub에서 위 프로젝트를 지정한 버전으로 열고 import·컴파일이 끝날 때까지 기다린다. 자동 Builder는 삭제했으며 실행하지 않는다. 기존 소유 씬·프리팹을 확인하고 사람의 새 리소스/프리팹으로 교체한다. 문서 검토 작업에서 이 절차를 실행했다고 간주하지 않는다.
 
 ## 사람이 확인할 플레이
 
 사람이 Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity를 열고 Play한다. 타이틀 → 새 게임 → 오프닝 → 응집형 Prototype Stage → 포포 대화 완료 또는 전체 Skip → 엔딩 → 타이틀의 한 판 흐름을 확인한다. Stage 씬을 선택하여 직접 Play하는 경우 Editor 진입 라우팅이 적용되며 오프닝이 생략된다. 에이전트는 Play 버튼·PlayMode API/CLI/pipeline·batch PlayMode 테스트·직접 플레이를 실행하지 않는다. 저장되지 않은 타인 씬을 자동 저장하지 않는다.
 
-Architecture의 Bootstrapper·Title·Core·Prototype/1_Stage·Stages/03_2_Stage·Stages/03_3_Stage 여섯 경로에만 Bootstrap 시작을 적용한다. 선택한 Stage2/3는 해당 Stage로 도착한다. 그 밖의 저장 씬은 현재 활성 씬에서 직접 시작한다. 역사적 Stages/03_1_Stage는 플레이어를 포함하지 않는 level-only 씬이어서 독립 Play만으로 통합 세션을 만들지는 않는다. 프로그래머가 대상을 바꿀 때 BootstrapEntryRoute의 정확한 경로 목록·설치의 Stage Paths·StageId/직접 진입 설정·생성 코드의 Catalog·실제 진입 검증 목록을 함께 맞춘다.
+Architecture의 Bootstrapper·Title·Core·Prototype/1_Stage·Stages/03_2_Stage·Stages/03_3_Stage 여섯 경로에만 Bootstrap 시작을 적용한다. 선택한 Stage2/3는 해당 Stage로 도착한다. 그 밖의 저장 씬은 현재 활성 씬에서 직접 시작한다. 역사적 Stages/03_1_Stage는 플레이어를 포함하지 않는 level-only 씬이어서 독립 Play만으로 통합 세션을 만들지는 않는다. 프로그래머가 대상을 바꿀 때 BootstrapEntryRoute의 정확한 경로 목록·설치의 SceneAsset Stage 목록·직접 진입 설정·빌드 생성 경로와 Catalog·실제 진입 검증 목록을 함께 맞춘다.
 
 ArchitectureInstallation.asset에는 씬 자산을, IntegrationEntrySettings.asset에는 직접 진입할 Stage 씬과 초기 조각·해금 설정을 연결한다. 초기 Pose는 해당 Stage의 실제 초기 Marker에서 조회한다. 유효 CP 접촉 뒤 저장 payload는 현재 ActorBody의 유한 월드 Position, Fragments 0..5, UnlockedAbilities 마스크 0/1/2/3의 세 항목뿐이다. StageId/CheckpointId·HP·폼·시간·대화 완료를 저장하지 않는다. 첫 저장 전에는 초기 진입 구성을 사용한다. Core1회 뒤 등록 Stage3개를 최초 additive 로드하고 retry·Title·다음 판에 씬을 유지한다. Title 씬 자체는 NewGame 때 언로드할 수 있다. 한 판 ReleaseSession/재연결과 씬 수명을 구분한다. 현재 Prototype 한 판에서 Stage1→2→3 자동 전환은 추가하지 않는다.
 
@@ -34,17 +34,17 @@ unity status --project-path 'F:\CK2026_Project\Project\FeelsGoodOnionProject' --
 unity pipeline list --format json
 ```
 
-실제 Editor 조회가 성공한 뒤 필요한 검증을 실행한다. 2026-10-06 정리로 기존 테스트 전용 클래스와 Cooked/Verification 등의 시험 메뉴를 제거했다. 현재 배치 생성 도구와 Cooked/Integration/Build Windows Player는 제품 작업 도구로 유지한다. 과거 검증 메뉴 이름을 현재 실행 명령으로 사용하지 않는다.
+실제 Editor 조회가 성공한 뒤 필요한 검증을 실행한다. 2026-10-06 정리로 기존 테스트 전용 클래스와 Cooked/Verification 등의 시험 메뉴를 제거했다. 자동 배치 생성/Repair 도구12개는 제거했다. Cooked/Integration/Build Windows Player와 실제 씬 진입·편집 검증은 유지한다. 과거 검증 메뉴 이름을 현재 실행 명령으로 사용하지 않는다.
 
 일회성 C# 검증은 output/Tech_SYM/ 아래 기능·날짜별 검증 폴더에 두고 Unity의 run_script로 메모리 컴파일하여 Edit Mode에서 실행한다. 실행 스크립트도 Play 중지 조건을 검사한다. 컴파일 진단과 Main의 실제 완료 상태·관찰값·실패를 확인한다. 순수 규칙, 실제 Editor 직렬화/엔진 검사, 사람의 전체 동선·애니메이션 확인은 결과를 구분한다. 비동기 검사는 요청 수락과 완료를 구분하고 시간 제한·취소·finally 정리를 제공한다. 필요한 검증만 작성·실행하며 일회성 테스트 소스를 Assets 안에 남기지 않는다.
 
 끝난 뒤 검증이 소유한 임시 오브젝트·이벤트·정지 차단을 정리한다. Play를 시작하거나 Stop할 필요가 없는 비 Play 검사로 수행한다. 원래 scene setup와 startScene 복원, dirty 상태, 컴파일, Console와 보호 파일 diff를 확인한다. 자동 저장 변경은 원인·전후 diff를 기록하여 커밋에 포함한다. 명령·실행 시각·결과 JSON·케이스·소스 해시·실패 원인은 보존한다.
 
-최신 시스템의 준비 케이스/실행 상태는 tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md에서 추적한다. ready-platform-hms-cleanup의 결과는 이전 실행 이력이다. 제어된 서비스 요청·런타임 위치 이동 검사, 실제 InputSystem 전체 동선, Windows 빌드, 팀 실제 실행과 FunQA를 따로 판정한다. 이전 editor-entry-hms 및 T9 결과와 캡처는 당시 실행 이력이다.
+최신 시스템의 실제 비 Play 검사와 사람 확인 목록은 tracking/ready-system-v15-2026-10-10/테스트 및 검증 항목.md에서 추적한다. ready-platform-hms-cleanup의 결과는 이전 실행 이력이다. 제어된 서비스 요청·런타임 위치 이동 검사, 실제 InputSystem 전체 동선, Windows 빌드, 팀 실제 실행과 FunQA를 따로 판정한다. 이전 editor-entry-hms 및 T9 결과와 캡처는 당시 실행 이력이다.
 
 ## 팀 검증 인계
 
-프로그래머·에이전트는 기능 테스트 엑셀과 Cooked! FunQA DOCX 한 개를 제공한다. 기능 케이스 작성·유지는 프로그래머 책임이며 QA는 제공된 원본 서식의 FunQA를 직접 작성한다. 현재 제공 파일과 문서 검증은 [QA 인계 명세](tracking/2026-10-05-functional-qa-spec.md)를 참조한다.
+QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스트 엑셀과 Cooked! FunQA DOCX 한 개를 제공한다. 현재 V1.5 실행에서는 요청 없이 QA/FunQA 문서를 새로 작성하거나 평가하지 않는다. 기존 원본·당시 인계 기록은 보존한다. 기능 케이스 작성·유지는 프로그래머 책임이며 QA는 제공된 원본 서식의 FunQA를 직접 작성한다. 현재 제공 파일과 문서 검증은 [QA 인계 명세](tracking/2026-10-05-functional-qa-spec.md)를 참조한다.
 
 빌드 ID·소스/명세 버전·실행 파일 경로·해상도·입력 장치·처음부터 진입 또는 체크포인트 조건·알려진 제한을 확정해 전달한다. 현재 존재하는 과거 exe를 새 소스 빌드로 간주하지 않는다. 긴 진행 경로가 필요한 케이스에는 도달 순서와 대상명을 제공하고, 테스트용 진입 기능이 없으면 그 제약을 기록한다. 임의의 새 검증 씬이나 보호 자산 변경을 인계 문서 작성 과정에서 수행하지 않는다.
 

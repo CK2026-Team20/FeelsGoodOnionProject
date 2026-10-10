@@ -11,7 +11,7 @@
 - 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
 - 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
 - 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
-- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위 2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만이다. 이전 9개 파일의 한정 허가는 종료됐으며 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다.
+- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명, CharacterMovement.cs의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 한 개와 설명이다. 실제 Inspector 접지각을 읽으며 원래 필드·기본값·Range·접지 동작을 보존한다. 이전9파일 허가는 종료됐고 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다. 추후 PR에 변경 의도와 한계를 명시한다.
 
 App 출력 Camera/Brain/Listener 각 하나와 Core Side/Quarter 리그를 독립 루트로 연결한다. Player prefab은 비활성, 실제 물리 ActorBody와 VisualRoot/CameraAnchor 동거·자식 계약을 보존한다. 같은 씬 Component 참조를 사용하고 설치 자산은 SceneAsset로 작성한다.
 

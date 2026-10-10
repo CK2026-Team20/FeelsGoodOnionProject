@@ -26,7 +26,7 @@ AppComposition/CoreComposition/CoreWorldBinding/GameSessionRuntime/SessionActorH
 - 목표: 사람이 Scene/대화/소리/필드를 이해하고 실제 자산을 연결한다.
 - 대상: ArchitectureInstallation, IntegrationEntrySettings, SceneContracts, DialogueContracts/DialogueTableService의 선택 계약, AudioCueCatalog/AudioCue, SYM 한정 필드 라벨 Attribute/Editor PropertyDrawer(필요한 최소 파일), BootstrapEntryRoute/IntegrationBuildPipeline의 읽기 계약.
 - 계약: SceneAsset→숨은 runtimepath, Stage 식별 자동, 초기 CP는 Stage의 실제 Marker. Table TextAsset→검증된 Code 선택, Audio 용도 선택+Clip. Player 빌드 UnityEditor 참조0. enum 번호·외부 JSON의 Code/Sequence 의미 유지. 임의 global MonoBehaviour CustomEditor/패키지 설치 없음.
-- gate: 누락/중복/이동한 씬/잘못된 Code·Clip가 named 작성 오류로 드러남. 내부 생성 값과 수동 key UI 구분, 이미지는 실제 asset reference. SerializedObject와 201개 표를 대조할 공통 기준 마련.
+- gate: 누락/중복/이동한 씬/잘못된 Code·Clip가 named 작성 오류로 드러남. 내부 생성 값과 수동 key UI 구분, 이미지는 실제 asset reference. 준비 단계201개 목록을 최종199개 실제 필드/SerializedObject와 대조한다.
 
 ## T03 — CP snapshot와 해금 복원
 
@@ -206,3 +206,11 @@ regen_barriers: []
 ```
 
 기존 자동 생성기를 regen barrier로 쓰지 않는다. 새 참조는 실제 편집/빌드 경계에서 검증하고 저장한다. 그래프 순서는 실제 의존을 반영하며 risk는 동작·불변식·수명·경계가 있는지로 분류했다.
+
+## 실행 결과와 현재 인계
+
+작업 의존·Execution Graph는 승인된 구조 그대로다. T01–T12는 실제 기능 구현·소유 참조 이관·22소스 삭제를 반영했다. T13의 최종 Source/엔진/빌드 증거와 T14의 최종 매뉴얼·독립 검토 판정은 [현재 상태](../status.md)와 [검증 기록](테스트%20및%20검증%20항목.md)에 명시한다. T15는 사람이 실제 하트·Q/E·조각 리소스와 새 HUD를 연결하고 모든 구형 소비를 이관한 뒤 진행할 외부 조건부 작업이다. 전체23삭제 또는 사람 Play 완료로 집계하지 않는다.
+
+## 최종 실행 범위와 남은 승인
+
+T01–T13의 기능/참조/소스 정리와 비Play검증을 반영했다. T14는 Source109/표시필드199·구체작성타입50/기존prefab61 GUID소비의 제작 매뉴얼·실제실행기록과현재지침을 반영하고 최종 독립 검토를 진행한다. T15는 실제하트뿐아니라Q/E·조각의12소비이관과사람제작을 기다리므로완료가아니다. 위ExecutionGraph와외부자료경계는변경하지않았다. 로컬featurecommit만진행했고remotePR/main병합은없다. 최종결과승인후active3문서보관을완료한다.

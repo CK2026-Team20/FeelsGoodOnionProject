@@ -7,3 +7,5 @@ StageService는 실제 Marker·경로·카메라 구간·기믹의 연결과 초
 추격은 전신 통과·퇴로 안전 확인 → 원자 저장 성공 → 추격 시작/문 닫힘이다. 포획은 같은 프레임 포포보다 우선하며 최종 대화 Completed/Skipped만 Ending으로 연결한다. StageTriggerKind 0..7과 Side1/Quarter3 의미는 보존한다. CameraZoneData는 실행 값 struct이고 작성은 실제 CameraZoneTrigger/정렬 Transform이다. Stage 간 자동 전환을 추가하지 않는다.
 
 현행 공통 규칙은 Assets/_Docs/planning-index.md와 루트 AGENTS.md를 따른다. 에이전트 Play는 금지하며 구현/검증 상태는 tracking/status.md다.
+
+최종 포포 Escape(7)만 완료 장부와 별개로 새 회차를 허용한다. 실제 Trigger·선택 객체·Table·Code·활성 Stage·Actor 세대·Round·Session을 수락 전후 및 완료 callback에서 검증하고 Completed/Skipped에서만 Ending을 한 번 예약한다. 동일 프레임 사망/포획이 우선이고 Cancelled/낡은 callback은 현재 판에 전달하지 않는다.

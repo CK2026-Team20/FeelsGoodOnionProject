@@ -1,58 +1,33 @@
-# V1.5 구현 인계 — 승인 대기
+# V1.5 구현 인계
 
-현재 작업은 DryForge READY다. 최신 V1.5·직접 답변과 현재 소스를 조사하여 실행 명세/계획/수동 제작 계약을 작성했다. 제품 구현·source 삭제·씬/prefab 변경·Unity실행·commit/push/PR은 아직 수행하지 않았다. 이 인계를 승인한 뒤 같은 대화에서 `dryforge:go`로 실행한다.
+사용자가 승인한 V1.5와 후속 직접 선택을 구현했다. 현재 결과와 실제 실행 증거는 [현재 상태](../status.md), [검증 기록](테스트%20및%20검증%20항목.md), [코드 리뷰](코드%20리뷰.md)에 있다. 준비 단계의 문서를 제품 구현 완료 증거로 사용하지 않는다.
 
-## 문서 역할과 위치
+## 먼저 볼 문서
 
-아래 위치는 프로젝트 루트 기준이며 portable이다. 실행 정본은 `.dryforge/`3문서, 사람이 검토할 동일 바이트 사본과 상세 설명은 `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/`다. 이전3문서는 그 폴더의 `archive-before-ready/`에 보존했다.
+1. [씬 흐름과 수동 프리팹 제작 가이드](씬%20흐름과%20수동%20프리팹%20제작%20가이드.md): 전체 씬 흐름, 제작 순서, 기능별 Hierarchy·컴포넌트·필수 설정·드래그할 참조와 실제 물리 예외.
+2. [Inspector 연결 전환 명세](Inspector%20연결%20전환%20명세.md): 최종199개 작성 필드의 실제 타입·한국어 이름·Tooltip과 기존 prefab 소비/새 연결 위치.
+3. [스크립트 필요성 및 삭제 계획](스크립트%20필요성%20및%20삭제%20계획.md): 유지109개, 제거22개, 리소스 대기1개의 필요성·책임·삭제 근거. Locator와 Composition을 유지하는 이유.
+4. [이전 Tech_HMS 변경 기록](이전%20Tech_HMS%20변경%20기록.md): 이전2commit10고유소스와 이번3파일 최소 변경의 추가·삭제·변경 이유 및 추후 PR에 포함할 의도.
+5. [현재 구조와 V1.5 차이](현재%20구조와%20V1.5%20차이.md): 이전 문제, 실제 변경, 현재 소유자와 남은 확인 범위.
 
-| 문서 | 위치 | 역할 |
-|---|---|---|
-| handoff | `.dryforge/handoff.md` | 권한·하드게이트·읽기 순서·실행 범위 |
-| spec | `.dryforge/spec.md` | 만들 동작/데이터/불변식·검증의 기준 |
-| plan | `.dryforge/plan.md` | 작업 대상/순서/공유작성/gate·Execution Graph |
-| 현재 차이 | `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/현재 구조와 V1.5 차이.md` | 현재 소스 근거와 V1.5 차이. 목표를 완료로 가장하지 않음 |
-| 제작 guide | `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/씬 흐름과 수동 프리팹 제작 가이드.md` | 사용자에게 먼저 보여줄 초보 제작 순서·컴포넌트·연결·물리 예외 |
-| Inspector | `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/Inspector 연결 전환 명세.md` | 현재201개 작성 필드와 새 참조/수치 분류 |
-| source 판단 | `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/스크립트 필요성 및 삭제 계획.md` | 174source/23삭제후보의 필요성·책임이관·현재GUID/소비 |
-| HMS 기록 | `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/이전 Tech_HMS 변경 기록.md` | 이전2commit10고유source의 추가·삭제·변경 이유와 이번 최소 허용 |
-| 검수 | `output/Tech_SYM/Planning/ready-system-v15-2026-10-10/코드 리뷰.md`, `테스트 및 검증 항목.md` | READY 결과와 후속 구현·사람 검증을 구별 |
+정본은 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/`의 handoff/spec/plan 및 상세 문서다. `.dryforge/`는 실행 도구용 사본, `output/Tech_SYM/Planning/`은 같은 준비/인계 사본이고 `output/Tech_SYM/Execution/system-v15-2026-10-10/`은 실제 명령·Source hash·엔진 관찰·BuildReport 증거다. 기획 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.5.docx`, SHA256은 `d5698cbc3e50bcb1a4ea8c4f31eae325b43af7221bbcc97a150fdb8b28aa8ebe`다.
 
-행동 충돌은 spec이 plan/설명문서보다 우선한다. 계획 변경으로 spec 동작/권한/데이터를 조용히 바꾸지 않는다. 최신 직접 수정이 들어오면 해당 의도와 영향을 문서에 반영한다. 현재 `Assets/_Docs`와 지역 지침에는 V1.1 전용 규칙이 남아 있으므로 T01에서 일치시키기 전에는 이번 spec과 최신 직접 지시를 우선한다. 과거 `.dryforge`나 dated 실행 기록을 현재 목표로 다시 읽지 않는다.
+## 결과의 범위
 
-## 작업의 큰 모양
+현재 흐름은 Bootstrap→Title→Opening→응집형 Prototype Stage→포포 Escape(7) 대화 완료/전체 Skip→Ending→Title이다. Stage1→2→3 자동 연결은 추가하지 않았고 등록된 다른 Stage와 기존 독립 기능 씬의 진입을 보존했다. 일반 대화 Completed/Skipped 장부는 유지한다. 포포 최종 대화만 재접촉·재시도 후 새 회차를 허용하며 현재 Stage/Trigger/선택 객체/Table/Code/Actor 세대/Round/Session을 검증한다. 취소·낡은 callback·같은 프레임 사망/포획은 Ending을 열지 않는다.
 
-현재는 **한 응집형 Prototype Stage에서 게임 진행1회**를 보여준다. Stage 1→2→3 자동 연결과 본편 레벨 제작은 이번 범위 밖이다. 이후 본편 연결에서도 각 씬 독립 진입을 유지한다. 등록된 다른 Stage를 곧 삭제하거나 새게임이 자동으로 방문한다고 일반화하지 않는다.
+위치·경로·끝점·CP·카메라 Zone·장치·리소스는 실물 참조다. SceneAsset/대화 Code 선택의 내부 경로와 실행 중 snapshot Vector3는 시스템 경계가 생성·검증한다. 속도·시간·높이·방향은 목적이 분명한 조절 값으로 유지한다. 씬 관리자·카메라·Canvas·월드 오브젝트는 독립 루트다. 기능 prefab의 부모/자식과 ActorBody/Shell 물리 계약은 제작 가이드의 예외를 따른다.
 
-처음에는 지침·참조 authoring와 snapshot 원본을 정리한다. 기능별 수정 후 한 작성자가 App/Core/Stage/Actor 연결을 이관한다. 그 뒤 관리자 하위 월드 배치와 자기 자산 참조를 실제로 바꾸고, 참조가 사라진 source를 삭제한다. 비 Play 검증과 최종 제작 guide를 전달한다. 실제 하트Sprite가 제공된 뒤 HudIconGraphic과 임시구형HUD소비를 제거하는 마지막 외부자료 조건이 있다.
+CP는 현재 ActorBody 월드 위치·조각·해금 마스크 정확히3항목을 원자 저장한다. 첫 저장 전/같은 물리 Marker/추격 직전 저장을 구분하며 사망은 같은 Stage 초기 재준비 후 복원한다. 주기 발판은 초기5/2/3초를 조절할 수 있고 실제 몸체 세로 침투<1/4는 착지 보정, ≥1/4는 몸체를 위로 분리하며 사망한다. 껍질은 따로 분리하고 데드존에서 같은 소유 껍질을 현재 Actor로 반환한다. Tear는 수집 Root·Collider가 함께 이동한다.
 
-## 반드시 지킬 실행 경계
+자동 제작기12개와 중복 런타임10개, 자기 meta를 실제 소비 이관 후 제거했다. HudIconGraphic은 실제 리소스가 연결될 때까지 기존 prototype의 모든 하트·Q/E·조각 소비와 함께 유지한다. 전체23개 삭제 완료가 아니다. 새 prefab에는 Image/Sprite를 연결하며 모든 기존 Graphic 소비를 이관한 뒤 구형 분기와 Source를 제거한다.
 
-1. **에이전트 Play 금지.** Editor 버튼/PlayMode API·CLI·pipeline/batchPlayMode/직접플레이를 실행하지 않는다. 사람이 플레이한다. 정적/EditMode/import/compile/build를 실제로 실행한 범위만 기록한다.
-2. **사람 prefab 소유.** 기존 AI prefab 삭제·재생성·Apply·아트연결은 사람이 한다. 먼저 guide와 기존GUID 소비표를 보여준다. source 수정에 필요한 자기 소유 참조의 최소 migration은 가능하나 보호 원본·중첩 원본을 건드리지 않는다. 무해소참조는삭제대기다.
-3. **명시된 HMS2파일만 예외.** `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs`의 Interact2→4와 관련 설명, `PlayerAnimationController.cs`의 관련 설명만 허용한다. 다른 HMS·타 작업자·공용·아트·보호 meta/import/Packages/ProjectSettings는 수동 수정하지 않는다. 이전 HMS9파일 허가는 재사용하지 않는다.
-4. **씬과 개별 prefab을 구별.** 월드 오브젝트를 manager 자식으로 배치하지 않는다. 개별 Actor/Shell/Platform의 실제 물리 동거 계약은 보존하고 예외를 설명한다. 계층만 펼치고 자식 탐색·해제·재준비를 방치하지 않는다.
-5. **저장 항목3개만.** CP는 유한 Position/0..5 Fragments/Form·Tear 마스크다. WorldSave/StageID/CheckpointID/HP/폼/시간을 저장하지 않는다. 대화 완료는 한 판 런타임 장부이며 능력 rollback으로 지우지 않는다.
-6. **상태와 작성자는 하나.** HP/폼/운동은 HMS, CP/해금은 Session, 기믹은 자기 소유자, 화면은 VM 상태·명령을 사용한다. 빌린 Actor를 Dispose하거나 모든 listener를 RemoveAll하지 않는다. Render만 움직여 충돌체를 남기지 않는다.
-7. **미저장 작업·Git 보호.** READY는 Git을 변경하지 않는다. 실행 시에도 검토 범위와 기존 승인 경계를 지킨다. 자동 저장 diff는 원인·전후·소유를 검토한다. 미저장 Editor를 강제 종료하거나 검증 때문에 씬을 덮어쓰지 않는다.
-8. **완료의 의미를 구별.** READY3문서 검수, 실제 source 삭제, 비 Play compile/build, 실제 clip 재생·수동 전체 플레이는 서로 다른 상태다. QA/FunQA 평가 문서를 임의 작성하지 않는다. 하트 리소스 대기나 컴파일 미실행을 통과로 쓰지 않는다.
+## 권한과 검증 경계
 
-## 구현 방법을 선택한 이유
+Tech_SYM 소유 소스·최소 자산 참조 이관과 프로젝트 Markdown만 기본 수정 범위다. 이번 HMS 예외는 Playback Interact2→4/설명, Controller 관련 설명, CharacterMovement의 실제 접지각 readonly getter/설명이다. 기존 필드·기본값·Range·접지 동작은 그대로다. 이전9파일 허가는 종료됐다. 보호 원본/meta/import, _Art, Packages/ProjectSettings의 수동 수정 권한은 없다.
 
-사용자가 배치한 지점을 그대로 drag/drop해야 하므로 경로·도착 위치를 작성좌표에서 Transform 참조로 옮긴다. 실행 중 저장 Vector3와 계산 결과는 필요한 값이므로 유지한다. 씬 관리자 부모 배치는 사용자 제작 방식과 맞지 않으므로 씬 소속 조회와 실제 참조로 옮긴다.
+에이전트는 Editor Play 버튼·API/CLI/pipeline/batch PlayMode·직접 플레이·Player 실행을 하지 않았다. 실제 비 Play Source 컴파일·직접 DLL 공개 결과·격리 엔진/직렬화·빌드는 평가한 assertion과 명령/exit/Source식별을 기록한다. helper compile-only, 포트, 예약 수락, 파일 존재, NOT_EVALUATED는 통과가 아니다. 실제 자연 접촉·clip 재생·전체 동선·화면 품질·빌드 UI/UX는 사람이 확인한다. QA/FunQA 평가 문서는 이번에 만들지 않는다.
 
-App/Core 조립자는 실제 생성·해제/재연결 수명이 있어서 유지하고, 같은 수명에서 Bind만 중복하는 UIroot/표시객체·상태전달을 흡수한다. Locator를 구체 서비스 생성/씬 배치까지 아는 거대 객체로 바꾸지 않는다. 자동 prefab 제작기를 없애는 이유는 사람이 리소스 병합과 제작을 맡기 때문이다.
+기존 prefab 삭제·재생성·Apply·리소스 연동은 사람이 한다. 새 prefab을 먼저 제작하고 소비표의 설치/설정/중첩 참조를 이관한 뒤 기존 것을 제거한다. 자동 Builder·placeholder로 대체하지 않는다. 미저장 Scene/Prefab을 덮거나 Editor를 강제 종료하지 않는다.
 
-깊은 끼임은 몸체 위 이동+Dead, 껍질은 분리만 수행하고 데드존에서는 같은 소유 껍질을 현재 Player로 반환한다. 껍질 회수/Q 성장과 같은 뜻으로 사용하지 않는다. Root/Render/Collider 제작 예시보다 실제 HMS 물리 동거·Remove 수명 계약을 우선하여 제작 예외를 명시한다.
-
-## 증거와 한계
-
-`evidence/source-v15.json`에는 문단 색/취소선/본문, `reference-inventory.json`에는174개 source의 보수적 코드 언급/GUID, `inspector-inventory.json`에는 자동 추출 필드, `scene-hierarchy-inventory.json`에는12개 소유 씬의 배치가 있다. 원본은 `sources/Cooked_시스템_기획서_V.1.5.docx`, 실제 Git patch는 `evidence/hms-6f2a386.patch`/`hms-5d1770d.patch`다. 이 경로들의 접두사는 상세 문서 폴더다.
-
-정규식/텍스트 GUID 검색은 정확한 compiler 호출 그래프나 바이너리·외부 소비까지 증명하지 않는다. 실행 시 실제 SerializedObject/import/compile로 대조한다.128개 SYM 중 삭제 후보는23개(22개 선행 이관 후,1개 실제 리소스 후)다. 필요한 편집 어댑터가 추가될 수 있으므로 최종 파일 수를 성과로 고정하지 않는다.
-
-이번은 이미 harness가 있는 delta 작업이다. 프로젝트 기반 설계를 다시 설정하거나 처음부터 Foundation을 요구하지 않는다. 기존 프로젝트 관례와 이번 상위 명세를 따르고 아래 승인 게이트 뒤 실행한다.
-
-## 실행 전 사용자 확인
-
-세 문서와 제작 guide를 검토한 뒤 이 계획대로 진행한다고 확인한다. 승인 뒤 같은 대화에서 `dryforge:go`를 호출한다. HMS 두 파일의 제한 허용과 깊은끼임·껍질 규칙·현재 프로토타입 범위는 이미 직접 결정됐으므로 다시 묻지 않는다. 새로운 미결 제품 선택은 없다. 리소스 제공/사람 Play가 아직 없는 경우 해당 작업 상태를 남겨 둔다.
+현재 로컬 feature 결과는 승인된 범위의 commit과 자동 저장 감사로 보존한다. 원격 push·PR·main 병합은 이번에 수행하지 않았다. 이후 PR에는 위 변경 의도, 제거된 책임의 실제 소유자, HMS 세 파일의 정확한 최소 범위와 미실행 사람 확인을 적는다. 최종 결과 승인과 저장소 반영 방식은 구현·검증·문서를 모두 검토할 수 있는 상태에서 결정한다.

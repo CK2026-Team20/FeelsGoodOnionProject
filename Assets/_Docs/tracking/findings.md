@@ -1,5 +1,25 @@
 # 열린 문제와 검증 제한
 
+## 현재 V1.5의 남은 조건
+
+| 항목 | 실제 영향 | 담당/종료 조건 |
+|---|---|---|
+| 실제 리소스/HudIconGraphic | 구형Graphic은Native12개/rawGUID6곳의하트·Q/E·조각소비에남음 | 사람이실제Sprite/Image와새표시를연결하고모든저장소비를이관한뒤HudViewfallback/Source/meta제거·재검증.현재전체23삭제완료아님 |
+| 새prefab의Scene지점 | 순찰4template의시작/끝8개,Linear2개,OvenTray2개는외부배치필수 | 새prefab을Scene에놓은instance에서실제Marker드래그.Stationary2template의4순찰빈슬롯은미사용.현재배치Stage의필수누락과구별 |
+| 실제Play/리소스표시 | 자연물리callback·접지/착지·실제clip/VFX·전체한판/다음판·빌드화면품질미평가 | 사람이검증기록의기능목록으로Play.에이전트NoPlay를우회하지않음.요청없이QA/FunQA작성하지않음 |
+| 보호HMSInspector | 이번전체한국어라벨정비는SYM소유필드에적용.HMS나머지영문필드원본은보호범위 | 해당소유자가별도명시범위로정비.현재제작가이드에는실제HMS필드명/연결을명시.이번3최소파일허가를전면정비로확대하지않음 |
+
+현재 구현·최종 비 Play assertion·빌드·독립 검토는 [status](status.md)와 [검증 기록](ready-system-v15-2026-10-10/테스트%20및%20검증%20항목.md)을 따른다. 미실행과 실제 실패를 섞어 통과로 표시하지 않는다.
+
+## 현재 실제 비 Play 검증 경계
+
+Native elapsed Tween 실패는 설치 DLL initialized=false/Kill 조기 반환, selection 교체1fixture 실패는 inline 객체 전제가 충족되지 않은 결과로 원문을 보존한다. 두 결과를 미실행이나 통과로 바꾸지 않는다. 실제 Owner/callback8항목·다른UI4사례, 공개PlayerDLL59와 실제기하13통과는 별도다. Native Completed 정상 update 시계·자연contact/Grounded/Landed·실제소유Shell accepted반환·DialogueView Native입력/재Bind·실제리소스표시는 미평가다. 구체적 방법·Source/DLL·원문 경로는 [검증 기록](ready-system-v15-2026-10-10/테스트%20및%20검증%20항목.md)에 있다. 실제Core/Stage 바인딩에서 발견한Floor참조4건은수리·73자산sweep/5Bind/보존검사로해소했다.
+
+## 아래는 과거 발견과 당시 제한의 보존 기록
+
+아래 수치·경로·‘이번/현재’ 표현은 해당 과거 작업의 시점이다. 이전 성공/실패를 V1.5의 새 실행 결과로 주장하지 않는다. 보호 원본의 당시 Missing/Tooltip 등은 이번에 직접 고칠 권한이 없으며 현재 재평가하지 않은 수치를 현행 전수로 일반화하지 않는다.
+
+
 2026-10-10. V1.5 실행 상태는 status.md를 따른다. 아래는 과거 발견의 증거와 아직 남은 보호/리소스 제한이다. 과거 성공은 이번 성공으로 승계하지 않는다. 과거 발견·재현·종결 전체 원문은 [보관본](archive/2026-10-05-before-guidance-refresh/findings.md)에 있다. 보관본은 내용과 판정을 유지하고 이동에 따른 상대 링크만 보정했다.
 
 | ID | 상태·영향 | 처리 경계·근거 |

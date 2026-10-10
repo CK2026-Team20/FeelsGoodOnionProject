@@ -35,15 +35,15 @@
 
 HMS와 SYM 기능을 조립하기 전에 의미가 같은 상태·입력·물리·화면 출력의 소유자를 한 명으로 정한다. 공개 API·이벤트, 실행 수명, 씬·프리팹 배치, 코드 호출과 GUID·직렬화 참조를 비교한다. HMS로 완전히 대체할 수 있으면 SYM 소유 배치에서 연결을 이관하고 중복 SYM 구현·호환 필드·조립 참조를 제거한다. 부분 대체라면 남는 책임과 이유를 기록한다. 이름이나 미래의 재사용 가능성만으로 공통화하지 않는다.
 
-현재 HMS는 플레이어 입력·폼·이동·애니메이션 선택과 Cinemachine 모드를 소유한다. SYM의 세션 Actor 수명, 모달 입력 차단, 카메라 정렬·전환 완료, 발판 운반, HeavyState의 무게 표시는 별도 책임이다. 상한5에서 보존하는 단일 TearFragment의 성공 소비/동일 객체 재활성화 계약을 사용한다. 두 수집기의 과거 차이는 이관 근거이며 현재 중복 구현의 유지 이유가 아니다. 부모 로컬 경로를 사용하는 SYM 선형 발판을 월드 오프셋·끝점 대기 정책이 다른 HMS MovingPlatform으로 임의 대체하지 않는다.
+현재 HMS는 플레이어 입력·폼·이동·애니메이션 선택과 Cinemachine 모드를 소유한다. SYM의 세션 Actor 수명, 모달 입력 차단, 카메라 정렬·전환 완료, 발판 운반, HeavyState의 무게 표시는 별도 책임이다. 상한5에서 보존하는 단일 TearFragment의 성공 소비/동일 객체 재활성화 계약을 사용한다. 두 수집기의 과거 차이는 이관 근거이며 현재 중복 구현의 유지 이유가 아니다. 실제 고정 시작/끝 Transform을 연결하는 SYM 선형 발판을 월드 오프셋·끝점 대기 정책이 다른 HMS MovingPlatform으로 임의 대체하지 않는다.
 
 임시 더미·중복·테스트 소스를 제거할 때 코드·문자열·메뉴·동적 등록·자산 GUID·직렬화 참조와 공개 계약을 확인한다. 삭제 허용된 소스는 참조 이관 후 자기 .cs/.meta를 함께 정리한다. 기존 프리팹 자체의 삭제·재생성·Apply는 사람이 하며 자동 제작기를 실행하지 않는다. 실제 진입·빌드 경계는 보존하되 사용자가 맡은 제작을 중복하는 자동 Builder는 승인된 삭제표에 따라 제거한다. 제거 후 컴파일·Missing Script·중요한 결합 기능을 확인한다. 일회성 외부 검증 스크립트는 실행 후 제거하고 케이스·명령·결과·삭제 근거를 보존한다. 테스트 소스 삭제는 검증 생략이나 과거 증거 삭제를 뜻하지 않는다.
 
 ### 이번 명세의 삭제·수정 경계
 
-이번 삭제 후보는 V1.5 명세의 23개다. 22개는 소비 이관 후 삭제하며 HudIconGraphic은 실제 하트 리소스 연결 후 삭제한다. HMS 허가는 명시된 두 파일의 최소 변경만이다.
+V1.5 삭제 대상23개 중22개 Source와 자기 meta를 실제 소비 이관 후 제거했다. HudIconGraphic은 실제 하트·Q/E·조각 표시 소비 이관 후 삭제한다. HMS 허가는 세 파일의 명시된 최소 변경만이다.
 
-검증 기록에는 준비한 위치·격리 오브젝트·직접 서비스 호출 등 실행 조건을 명시한다. 자동 기능 검사, 실제 실행 파일의 전체 플레이, 아트 재생과 FunQA 평가는 각각 수행한 범위대로 기록한다. 실패 원문은 보존하고 후속 재검증 증거로 해결 여부를 연결한다. 현재 수치와 실행 결과는 [검증 항목](<tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md>), 종료 순서의 구현 주의사항은 [engineering-notes.md](engineering-notes.md)를 따른다.
+검증 기록에는 준비한 위치·격리 오브젝트·직접 서비스 호출 등 실행 조건을 명시한다. 자동 기능 검사, 실제 실행 파일의 전체 플레이, 아트 재생과 FunQA 평가는 각각 수행한 범위대로 기록한다. 실패 원문은 보존하고 후속 재검증 증거로 해결 여부를 연결한다. 현재 수치와 실행 결과는 [검증 항목](<tracking/ready-system-v15-2026-10-10/테스트 및 검증 항목.md>), 종료 순서의 구현 주의사항은 [engineering-notes.md](engineering-notes.md)를 따른다.
 
 ## UI와 수명
 
@@ -57,7 +57,7 @@ Bind/Unbind, OnEnable/OnDisable/OnDestroy, 풀 반환의 소유권을 명시한�
 
 새로 구성하는 완성 오브젝트는 빈 GameObject를 최상위 루트로 둔다. 루트는 제어·공통 데이터, 자식은 Visual·CameraAnchor·VFX·SFX·Collider의 역할을 분리한다. Visual에 업무 스크립트를 몰아넣지 않는다. 같은 역할마다 별도 Canvas나 파일을 강제하지 않는다.
 
-기존 물리 계약 때문에 Facade·Rigidbody·Collider가 같은 ActorBody에 있어야 하는 경우, 빈 PlayerRoot 아래 ActorBody로 묶인 현재 구조를 유지하고 차이를 명시한다. 기존 붕괴 발판처럼 같은 오브젝트의 Collider를 요구하는 구현도 승인 없이 이동하지 않는다. 기존 자산 전체가 새 배치 기준을 만족한다고 주장하지 않는다.
+기존 물리 계약 때문에 Facade·Rigidbody·Collider가 같은 ActorBody에 있어야 하는 경우, 빈 PlayerRoot 아래 ActorBody로 묶인 현재 구조를 유지하고 차이를 명시한다. 붕괴 발판은 명시적 supportCollider/physicalContacts 참조를 사용한다. Visual은 물리 없는 표현이고 Animator 없는 경고 Shake도 이동하므로 고정 Marker를 Visual 아래에 두지 않는다. 기존 자산 전체가 새 배치 기준을 만족한다고 주장하지 않는다.
 
 자산 이동·이름 변경으로 GUID 참조를 깨뜨리지 않는다. 원본과 .meta를 함께 검토한다. 설정 수치·문구·리소스 ID는 목적에 맞는 데이터로 관리하고 의미가 같은 반복값만 공통화한다. 단순 재사용 가능성만으로 다른 기능을 결합하지 않는다.
 
@@ -99,4 +99,6 @@ Unity 실행 변경에는 컴파일, Missing Script/직렬화 참조, 변경한 
 - 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
 - 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
 - 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
-- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위 2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만이다. 이전 9개 파일의 한정 허가는 종료됐으며 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다.
+- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명, CharacterMovement.cs의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 한 개와 설명이다. 실제 Inspector 접지각을 읽으며 원래 필드·기본값·Range·접지 동작을 보존한다. 이전9파일 허가는 종료됐고 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다. 추후 PR에 변경 의도와 한계를 명시한다.
+
+최종 포포 Escape(7) 대화만 Completed/Skipped 장부를 보존한 채 재접촉·재시도 후 새 회차를 허용한다. 일반 대화 완료 장부는 지우지 않는다. 현재 Stage·Trigger·선택 객체·Table·Code·Actor 세대·Round·Session이 동일하고 완료/전체 Skip인 경우에만 Ending을 한 번 예약하며 취소·낡은 콜백·동시 사망/포획은 거절한다.

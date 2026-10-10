@@ -34,7 +34,7 @@
 - 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
 - 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
 - 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
-- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위 2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만이다. 이전 9개 파일의 한정 허가는 종료됐으며 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다.
+- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명, CharacterMovement.cs의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 한 개와 설명이다. 실제 Inspector 접지각을 읽으며 원래 필드·기본값·Range·접지 동작을 보존한다. 이전9파일 허가는 종료됐고 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다. 추후 PR에 변경 의도와 한계를 명시한다.
 
 ## 유지하는 자료와 상태
 
@@ -43,3 +43,5 @@
 목표 동작은 [business-rules.md](business-rules.md), 책임과 수명은 [architecture.md](architecture.md), 협업 계약은 [contracts.md](contracts.md), 권한은 [security.md](security.md), 실제 구현/검증은 [tracking/status.md](tracking/status.md)다. 새 명세를 지정한 것과 기능 구현 완료는 다르다. 원격 push/PR/main 병합은 별도 지시 없이는 수행하지 않는다.
 
 2026-10-10 추가 직접 결정: 포포 최종 대화만 재생 예외를 허용한다. 완료 장부는 유지하고, 사망 복귀 후 실제 종료 구역에 재도착한 현재 플레이어가 첫 행부터 새 회차로 재생한다. 일반 안내의 반복 방지와 사망/포획 우선은 유지한다. 적용 기준은 V1.5 spec의 추가 직접 결정 절이며, 원본 DOCX를 편집하지 않는다.
+
+최종 포포 Escape(7) 대화만 Completed/Skipped 장부를 보존한 채 재접촉·재시도 후 새 회차를 허용한다. 일반 대화 완료 장부는 지우지 않는다. 현재 Stage·Trigger·선택 객체·Table·Code·Actor 세대·Round·Session이 동일하고 완료/전체 Skip인 경우에만 Ending을 한 번 예약하며 취소·낡은 콜백·동시 사망/포획은 거절한다.

@@ -1,6 +1,27 @@
 # 현재 요구와 검증 상태
 
-2026-10-10 V1.5 실행 시작. 승인된 명세는 [spec](ready-system-v15-2026-10-10/spec.md), 작업 순서는 [plan](ready-system-v15-2026-10-10/plan.md)다. 원본·지침을 갱신했으며 기능 변경/참조 이관/삭제/비 Play 검증은 진행 중이다. 현재 에이전트 Play·빌드·실제 리소스 재생·QA/FunQA는 실행하지 않았다. 기존 프리팹 교체와 실제 플레이는 사람이 한다.
+2026-10-10. 현행은 V1.5 활성 본문과 사용자 후속 직접 선택이다. 승인된 [spec](ready-system-v15-2026-10-10/spec.md)과 [plan](ready-system-v15-2026-10-10/plan.md)을 구현하고 실제 소스·소유 참조를 이관했다. 이전 버전의 Play·빌드·QA 수치는 아래 당시 이력으로만 보존하며 이번 통과로 승계하지 않는다.
+
+## 이번 구현
+
+| 영역 | 실제 변경 | 남은 사람 작업/확인 |
+|---|---|---|
+| 씬 흐름 | Bootstrap→Title→Opening→Prototype한번→최종포포대화→Ending→Title. 등록Stage독립진입·기존standaloneHost유지 | 실제 전체한판/다음판과 각독립Stage Play |
+| Inspector | 위치/끝점/대상/Scene/대화/음원 실물참조·선택. SYM109source/표시199필드 이름/Tooltip·최종연결표 | 사람의 새prefab/실제자원연결. 보호HMS전체Inspector이름변경은이번허용밖 |
+| 체크포인트 | Position/Fragments/해금마스크3항목원자저장.첫저장전/같은Marker/추격직전저장·같은Stage초기재준비복원 | 실제센서접촉/원본레벨동선 |
+| 물리/기믹 | Tear전체Root/Collider이동.주기시간조절·실제세로침투<1/4착지·≥1/4몸체위분리/사망.껍질독립분리·데드존같은객체반환 | 자연collision/착지·실제clip·좁은레벨조건 |
+| 씬루트/참조 | 관리자하위145루트이관.기존1670객체pose/물리/GUID·1877enabled보존,219참조검사와후속실제Floor4참조수리/5Bind검사 | 새리소스prefab의배치instance필수지점연결 |
+| 대화/UI | Skip한명령경로·Options/Log/Auto/수명보존.최종Escape7만장부보존한새회차,전체context검증·동시죽음우선 | 실제버튼/폰트·스프라이트·전체동선 |
+| 소스정리 | 자동Builder12+중복runtime10및자기meta실제제거,유지109필요성/수명/대체근거 | HudIconGraphic조건부1개:모든하트/Q/E/조각Graphic소비이관후삭제 |
+| HMS공개계약 | PlaybackInteract2→4/설명,Controller설명,CharacterMovement실제접지각readonlygetter/설명만 | 이전허가종료.이후PR에정확한추가/삭제/변경의도명시 |
+
+## 실제 검증과 인계
+
+실제 전체 컴파일 Runtime158/Player158/Editor11 exit0, 실제 Player DLL59계약·추가 공개 규칙과 격리 엔진 경계,73자산/1670기존객체/145루트 보존 비교 실패0을 확인했다. 최종 Windows r3빌드는 오류0·경고51로 성공했고 설정29개 추가 변화0이다. Native Memo 실패의 설치 라이브러리 초기화 경계·selection 교체 fixture1실패·자연시간/접지/표시 미평가를 [검증 기록](ready-system-v15-2026-10-10/테스트%20및%20검증%20항목.md)에 보존한다. Source 기능 실패로 확인된 항목은 없으며 최종 독립 전체 검토는 진행 중이다. 실제 판정은 [코드 리뷰](ready-system-v15-2026-10-10/코드%20리뷰.md)에 기록한다.
+
+[수동 제작 가이드](ready-system-v15-2026-10-10/씬%20흐름과%20수동%20프리팹%20제작%20가이드.md)에 컴포넌트부착/설정자산/Hierarchy·물리예외/실제드래그대상/기존GUID소비교체순서를 적었다. [HMS변경기록](ready-system-v15-2026-10-10/이전%20Tech_HMS%20변경%20기록.md)은 이전2commit10고유소스와이번3파일최소변경을분리한다.
+
+에이전트 Play 버튼·API/CLI/pipeline/batch PlayMode·직접 플레이·Player 실행은 하지 않았다. QA/FunQA 문서를 요청 없이 새로 작성/평가하지 않았다. 기존 AI prefab 삭제·재생성·Apply·리소스 제작도 하지 않았다. 최종비Play결과와사람리소스/플레이완료를구별한다. 로컬featurecommit만보존하고원격push·PR·main병합은수행하지않았다.
 
 ## 이전 V1.1 실행 기록 (현재 명세/이번 통과 아님)
 
