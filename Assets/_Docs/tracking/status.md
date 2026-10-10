@@ -1,6 +1,6 @@
 # 현재 요구와 검증 상태
 
-2026-10-10. 현행은 V1.5 활성 본문과 사용자 후속 직접 선택이다. 승인된 [spec](ready-system-v15-2026-10-10/spec.md)과 [plan](ready-system-v15-2026-10-10/plan.md)을 구현하고 실제 소스·소유 참조를 이관했다. 이전 버전의 Play·빌드·QA 수치는 아래 당시 이력으로만 보존하며 이번 통과로 승계하지 않는다.
+2026-10-11. 현행은 V1.5 활성 본문과 사용자 후속 직접 선택이다. 승인된 [spec](ready-system-v15-2026-10-10/spec.md)과 [plan](ready-system-v15-2026-10-10/plan.md)을 구현하고 실제 소스·소유 참조를 이관했다. 이전 버전의 Play·빌드·QA 수치는 아래 당시 이력으로만 보존하며 이번 통과로 승계하지 않는다.
 
 ## 이번 구현
 
@@ -17,11 +17,17 @@
 
 ## 실제 검증과 인계
 
-현재 최종 센서 수정 Source는 a192d2a7, 부모 로컬 반영은8659744b다. 전체 SDK Runtime158/Player158/Editor11 exit0, 현재 Player DLL204와 Native201(새 센서46 포함) 평가 실패0, 실제 Windows6씬 빌드 오류0·경고48, 설정29개/자동 URP-TMP/추가 자산 변화0을 확인했다. CP A→B→A와 최종 포포 재접촉의 영구 once 문제를 StageTrigger 한 파일에서 고치고 기존 CP8/Escape2의 once1과 참조를 보존했다.73자산/1670기존객체/145루트 보존 검사는 앞선 T13의 실제 자산 이력이며 이번 Source-only 수정으로 배치를 바꾸지 않았다. 원래 새 Native r2의3사례/4행 실패와 이전 Memo·selection fixture 실패, Completed 정상 Native 시계·자연 접지/표시 미평가는 [검증 기록](ready-system-v15-2026-10-10/테스트%20및%20검증%20항목.md)에 보존한다. 첫 독립 검토의 차단3/비차단2 중 Quarter 안내/포인터·역사 링크3건은 문서 재검토에서 해결 판정을 받았다. 수정된 Source/실제 증거/제작 문서 전체의 최종 독립 재검토는1b7069f1까지 approved/남은 차단0이다. 첫 issues 보고서는 보존한다. T14 기술 인계를 마쳤고 T15와 사람 Play·리소스·사용자 수락은 대기다. 실제 판정은 [코드 리뷰](ready-system-v15-2026-10-10/코드%20리뷰.md)에 기록한다.
+현재 최종 센서 수정 Source는 a192d2a7, 부모 로컬 반영은8659744b다. 전체 SDK Runtime158/Player158/Editor11 exit0, 현재 Player DLL204와 Native201(새 센서46 포함) 평가 실패0, 실제 Windows6씬 빌드 오류0·경고48, 설정29개/자동 URP-TMP/추가 자산 변화0을 확인했다. CP A→B→A와 최종 포포 재접촉의 영구 once 문제를 StageTrigger 한 파일에서 고치고 기존 CP8/Escape2의 once1과 참조를 보존했다.73자산/1670기존객체/145루트 보존 검사는 앞선 T13의 실제 자산 이력이며 이번 Source-only 수정으로 배치를 바꾸지 않았다. 원래 새 Native r2의3사례/4행 실패와 이전 Memo·selection fixture 실패, Completed 정상 Native 시계·자연 접지/표시 미평가는 [검증 기록](ready-system-v15-2026-10-10/테스트%20및%20검증%20항목.md)에 보존한다. 첫 독립 검토의 차단3/비차단2 중 Quarter 안내/포인터·역사 링크3건은 문서 재검토에서 해결 판정을 받았다. 수정된 Source/실제 증거/제작 문서 전체의 최종 독립 재검토는1b7069f1까지 approved/남은 차단0이다. 첫 issues 보고서는 보존한다. T14 기술 인계와 사용자 최종 수락을 마쳤다. T15와 사람 Play·리소스는 대기다. 실제 판정은 [코드 리뷰](ready-system-v15-2026-10-10/코드%20리뷰.md)에 기록한다.
 
 [수동 제작 가이드](ready-system-v15-2026-10-10/씬%20흐름과%20수동%20프리팹%20제작%20가이드.md)에 컴포넌트부착/설정자산/Hierarchy·물리예외/실제드래그대상/기존GUID소비교체순서를 적었다. [HMS변경기록](ready-system-v15-2026-10-10/이전%20Tech_HMS%20변경%20기록.md)은 이전2commit10고유소스와이번3파일최소변경을분리한다.
 
-에이전트 Play 버튼·API/CLI/pipeline/batch PlayMode·직접 플레이·Player 실행은 하지 않았다. QA/FunQA 문서를 요청 없이 새로 작성/평가하지 않았다. 기존 AI prefab 삭제·재생성·Apply·리소스 제작도 하지 않았다. 최종비Play결과와사람리소스/플레이완료를구별한다. 로컬featurecommit만보존하고원격push·PR·main병합은수행하지않았다.
+에이전트 Play 버튼·API/CLI/pipeline/batch PlayMode·직접 플레이·Player 실행은 하지 않았다. QA/FunQA 문서를 요청 없이 새로 작성/평가하지 않았다. 기존 AI prefab 삭제·재생성·Apply·리소스 제작도 하지 않았다. 최종비Play결과와사람리소스/플레이완료를구별한다. 사용자가 최종 결과를 수락하고 로컬 `feature/core/systems` 병합을 지시했다. 원격 push·PR·main 병합은 수행하지 않았다.
+
+## 최종 수락과 문서 보관
+
+2026-10-11 사용자가 결과·인계 문서의 검토 종결과 활성3문서 보관을 승인하고 Systems 브랜치 병합을 지시했다. 실제 브랜치명은 `feature/core/systems`다. 앞선 `.dryforge/001/` 보관본을 보존하고 이번 실행용 handoff/spec/plan을 `.dryforge/002/`로 보관했다. 실행 루트에 활성3문서를 남기지 않고 기존 `initialized: true` 표시는 유지한다. 이 수락은 T15·사람 리소스 제작·실제 Play·미평가 Native 항목의 완료 판정이 아니다.
+
+승인·보관·병합 식별과 보존 검사는 `output/Tech_SYM/Execution/system-v15-2026-10-10/evidence/systems-merge-completion-r1.json`에 기록한다. 검토된 Source와 씬·프리팹·설정에 추가 변경이 없으면 기존 실제 컴파일·DLL 평가·빌드 결과를 해당 범위에 재사용한다.
 
 ## 이전 V1.1 실행 기록 (현재 명세/이번 통과 아님)
 
