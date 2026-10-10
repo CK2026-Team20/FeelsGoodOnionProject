@@ -62,7 +62,7 @@ QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스�
 
 ## 새 목표 검증 범위와 준비 상태
 
-최신 자동 검증은 tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md와 output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T10-final-verified-snapshot.json에서 명령·시각·소스/빌드 해시·관찰 범위를 확인한다. 입력과 물리 시간을 사용해도 위치 준비·서비스 요청·복제 fixture가 포함된 결과는 원본 전체 수동 동선 판정으로 승계하지 않는다.
+현행 V1.5 검증은 [테스트 및 검증 항목](tracking/ready-system-v15-2026-10-10/테스트%20및%20검증%20항목.md)에서 명령·시각·Source/DLL/빌드 식별·평가 실패·미평가 범위를 확인한다. 실제 비 Play 결과와 사람의 수동 동선 판정은 구분한다. 아래 2026-10-06~07의 V1.1 관찰은 당시 실행 기록으로 보존하며 이번 통과로 승계하지 않는다. 당시 원문은 tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md와 output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T10-final-verified-snapshot.json에 있다.
 
 ### Windows 빌드 설정 감사 주의 (2026-10-05 T9의 과거 관찰)
 명시 여섯 씬 BuildPipeline.BuildPlayer는 성공했으나 최초 실행에서 Unity 자체가 GraphicsSettings 형식을 정규화하고 InputSystem preloadedAssets 및 UnityConnect m_Enabled를 디스크에 기록했다. 엔진 결과 Succeeded와 ProjectSettings 불변 gate 실패를 분리한다. baseline의 GraphicsSettings 복사본을 native load/save한 바이트는 현재 파일과 동일하므로 형식 변환으로 재현됐다. PlayerSettings.preloadedAssets와 Connect.m_Enabled의 본 검사 부수 변경은 원래 값으로만 native API 복원했다. raw 파일 해시는 줄바꿈/형식 차이 때문에 baseline과 달라 raw 불변 PASS가 아니다. 근거 t9-windows-first-build.json, t9-build-settings-restoration.json.

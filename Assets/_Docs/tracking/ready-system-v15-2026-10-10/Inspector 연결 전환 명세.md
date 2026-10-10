@@ -16,7 +16,7 @@
 
 ## 같은 연결을 중복 설정하지 않는 기준
 
-PressureLinkedPlatform.pressurePlate만 연결한다. PressurePlate에 역방향 linkedPlatform을 쓰지 않는다. PeriodicPlatform의 supportCollider는 실제 비 Trigger BoxCollider이고, motion은 고정 발판이면 비울 수 있다. CameraZoneTrigger의 alignmentPoint는 Side 구간에서 필요하다. Stationary Enemy의 patrolStart/end는 쓰지 않는다. Player의 GameplayInputRouter는 prefab 전체 하나이며 Host가 주입한다. Play 전에 버튼 OnClick에 코드가 바인딩하는 명령을 다시 등록하지 않는다.
+PressureLinkedPlatform.pressurePlate만 연결한다. PressurePlate에 역방향 linkedPlatform을 쓰지 않는다. PeriodicPlatform의 supportCollider는 실제 비 Trigger BoxCollider이고, motion은 고정 발판이면 비울 수 있다. CameraZoneTrigger의 alignmentPoint는 **Side·Quarter 모두 같은 씬의 고정 Transform을 필수 연결한다.** Side만 해당 월드 Z로 정렬하며 Quarter도 요청 생성 검증에는 참조가 필요하다. Stationary Enemy의 patrolStart/end는 쓰지 않는다. Player의 GameplayInputRouter는 prefab 전체 하나이며 Host가 주입한다. Play 전에 버튼 OnClick에 코드가 바인딩하는 명령을 다시 등록하지 않는다.
 
 TearFragment의 pickupRoot는 전체 눈물 Root, presentationVisual은 물리 없는 Render다. PlayerDamagePresentation의 visualRoot와 cameraAnchor는 실제 ActorBody의 서로 다른 직계 자식이다. Shell의 PlayerDebris/BoxCollider/Rigidbody/HeavyState는 실제 Shell Root에 동거한다. 이 세 가지는 로컬 외형과 월드 물리를 혼동하지 않도록 제작 가이드에서 구체 계층을 설명한다.
 
