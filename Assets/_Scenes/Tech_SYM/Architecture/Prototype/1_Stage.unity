@@ -900,10 +900,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 3
   alignmentPoint: {fileID: 780563153}
-  zone:
-    Id: QuarterA
-    Movement: 3
-    AlignmentOffset: {x: -17, y: -3, z: 0}
 --- !u!65 &219110154
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1191,10 +1187,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 3
   alignmentPoint: {fileID: 189184092}
-  zone:
-    Id: QuarterB
-    Movement: 3
-    AlignmentOffset: {x: -27, y: -3, z: 0}
 --- !u!65 &324151204
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1294,10 +1286,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 3
   alignmentPoint: {fileID: 1701175331}
-  zone:
-    Id: CorridorA
-    Movement: 3
-    AlignmentOffset: {x: 0, y: -3, z: -6.75}
 --- !u!65 &346445737
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1366,10 +1354,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 334486178}
-  zone:
-    Id: Side
-    Movement: 1
-    AlignmentOffset: {x: -42, y: -3, z: 1.7}
 --- !u!65 &382408180
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1476,12 +1460,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   respawnPoint: {fileID: 153886678}
   initialCameraZone: {fileID: 1835615971}
-  checkpointId: P_END
-  cameraZone:
-    Id: 1_Stage_P_END
-    Movement: 1
-    AlignmentOffset: {x: 0, y: 0, z: 0}
-  bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &434336500
 Transform:
   m_ObjectHideFlags: 0
@@ -1838,7 +1816,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &461810004
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2007,19 +1984,6 @@ MonoBehaviour:
   - {fileID: 1103648341}
   chaseStartPoint: {fileID: 714666297}
   chaseRetreatGate: {fileID: 592473348}
-  stageId: 1_Stage
-  initialCheckpointId: P_START
-  chaseWaypoints:
-  - {x: 92, y: 0, z: 36}
-  - {x: 132, y: 0, z: 36}
-  chaseStartProgress: 140
-  progressWaypoints:
-  - {x: 0, y: 0, z: 0}
-  - {x: 42, y: 0, z: 0}
-  - {x: 42, y: 0, z: 18}
-  - {x: 78, y: 0, z: 18}
-  - {x: 78, y: 0, z: 36}
-  - {x: 132, y: 0, z: 36}
 --- !u!4 &560416144
 Transform:
   m_ObjectHideFlags: 0
@@ -2278,10 +2242,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 1553363687}
-  zone:
-    Id: Side
-    Movement: 1
-    AlignmentOffset: {x: -19, y: -3, z: 0}
 --- !u!65 &658639216
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3002,7 +2962,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &884021768
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3441,7 +3400,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &1001368208
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -4519,7 +4477,6 @@ MonoBehaviour:
     code: EXPLORE_OVEN_01
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &1348572031
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -4635,12 +4592,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   respawnPoint: {fileID: 1712406849}
   initialCameraZone: {fileID: 2065481633}
-  checkpointId: P_START
-  cameraZone:
-    Id: 1_Stage_P_START
-    Movement: 1
-    AlignmentOffset: {x: 0, y: 0, z: 0}
-  bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &1463087100
 Transform:
   m_ObjectHideFlags: 0
@@ -4889,7 +4840,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &1533800063
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -5142,10 +5092,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 3
   alignmentPoint: {fileID: 1097348261}
-  zone:
-    Id: CorridorB
-    Movement: 3
-    AlignmentOffset: {x: 0, y: -3, z: -9}
 --- !u!65 &1577954135
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -5753,10 +5699,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 1835615973}
-  zone:
-    Id: 
-    Movement: 0
-    AlignmentOffset: {x: 0, y: 0, z: 0}
 --- !u!65 &1835615972
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6207,7 +6149,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 0
-  value: 
 --- !u!65 &1873988700
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6367,7 +6308,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &1919134417
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6598,7 +6538,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c89f2d7cdc56b44e8bb30e342d2da7b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamageFloorPlatform
-  physicalContacts: {fileID: 0}
+  physicalContacts: {fileID: 2042808511}
 --- !u!114 &2042808511
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6839,10 +6779,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 2065481635}
-  zone:
-    Id: 
-    Movement: 0
-    AlignmentOffset: {x: 0, y: 0, z: 0}
 --- !u!65 &2065481634
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6963,7 +6899,6 @@ MonoBehaviour:
     code: POPO
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &2073430809
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7038,7 +6973,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &2073667541
 BoxCollider:
   m_ObjectHideFlags: 0
