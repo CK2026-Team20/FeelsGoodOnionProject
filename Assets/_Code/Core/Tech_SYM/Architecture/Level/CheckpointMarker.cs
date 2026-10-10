@@ -20,7 +20,7 @@ namespace Cooked.Level
         {
             get
             {
-                if (initialCameraZone == null) return cameraZone.Resolve(transform);
+                if (initialCameraZone == null) throw new System.InvalidOperationException("초기 등장 위치의 CameraZoneTrigger를 연결하세요.");
                 SceneComponentLookup.RequireSameScene(this, initialCameraZone, "시작 카메라 구간");
                 return initialCameraZone.Resolve();
             }
@@ -29,7 +29,7 @@ namespace Cooked.Level
         {
             get
             {
-                if (respawnPoint == null) return new Pose(transform.position + bodyOffset, transform.rotation);
+                if (respawnPoint == null) throw new System.InvalidOperationException("초기 ActorBody 중심의 고정 Transform을 연결하세요.");
                 SceneComponentLookup.RequireFixedPoint(this, respawnPoint, "초기 등장 지점");
                 if (!CameraZoneRequest.IsFinite(respawnPoint.position))
                     throw new System.InvalidOperationException("초기 등장 지점은 유한한 월드 위치여야 합니다.");

@@ -19,7 +19,7 @@ namespace Cooked.Level
         private long bindingRevision;
         private readonly HashSet<Collider> contacts = new HashSet<Collider>();
         private bool requestSubmitted;
-        public CameraMovementMode Mode => alignmentPoint != null ? mode : zone.Movement;
+        public CameraMovementMode Mode => mode;
         public Transform AlignmentPoint => alignmentPoint;
         internal bool IsBoundTo(LevelCameraService camera, PlayerFacade player) => isActiveAndEnabled && player != null &&
             ReferenceEquals(cameraService, camera) && ReferenceEquals(actor, player) && !player.IsDead &&
@@ -30,7 +30,7 @@ namespace Cooked.Level
         public Vector3 AlignmentPosition => ResolvedZone.AlignmentPosition;
         private Vector3 ResolveAlignment()
         {
-            if (alignmentPoint == null) return transform.TransformPoint(zone.AlignmentOffset);
+            if (alignmentPoint == null) throw new System.InvalidOperationException("같은 씬의 실제 카메라 정렬 Transform을 연결하세요.");
             SceneComponentLookup.RequireFixedPoint(this, alignmentPoint, "정렬 지점");
             return alignmentPoint.position;
         }

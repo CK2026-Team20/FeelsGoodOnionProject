@@ -81,7 +81,8 @@ namespace Cooked.Contracts
     public interface IStageService : IDisposable
     {
         string StageId { get; }
-        string InitialCheckpointId { get; }
-        bool TryGetCheckpointPose(string checkpointId, out Pose pose);
+        global::Cooked.Level.CheckpointMarker InitialCheckpoint { get; }
+        Pose InitialPose { get; }
+        bool ContainsCheckpoint(global::Cooked.Level.CheckpointMarker marker);
     }
 }

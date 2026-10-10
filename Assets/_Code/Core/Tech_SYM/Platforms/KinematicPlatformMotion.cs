@@ -1,9 +1,9 @@
+using Cooked.Integration;
 using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using Cooked.Authoring;
-using FeelsGoodOnion.TechSYM.Enemies;
 
 namespace FeelsGoodOnion.TechSYM.Platforms
 {
@@ -252,11 +252,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         /// <summary>고정 작성 지점은 실제 몸체와 기존 적/애니메이션 이동 계층 밖의 같은 씬에 둔다.</summary>
         public bool IsFixedPoint(Transform point) => point != null && PhysicsBody != null
-            && point.gameObject.scene == gameObject.scene && !point.IsChildOf(PhysicsBody.transform)
-            && point.GetComponentInParent<Rigidbody>(true) == null
-            && point.GetComponentInParent<EnemyActor>(true) == null
-            && point.GetComponentInParent<Animator>(true) == null
-            && point.GetComponentInParent<Animation>(true) == null;
+            && !point.IsChildOf(PhysicsBody.transform) && SceneComponentLookup.IsFixedPoint(this, point);
 
         /// <summary>실제 pose 변화 경계만 분류한다. 같은 회전의 q/-q도 정지다.</summary>
         public static bool HasPoseChange(Pose current, Pose next)

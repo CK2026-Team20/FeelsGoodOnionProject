@@ -27,7 +27,6 @@ namespace Cooked.Integration
         public ICinematicService Cinematics => RequireSession().Cinematics;
         public GameSessionRuntime CurrentSession => session;
         public string ActiveStageId => session?.ActiveStageId;
-        public event Action<bool> GameplayOutputChanged;
         public void SetGameplayVisible(bool visible) => RequireSession().SetGameplayVisible(visible);
         public void CancelDialogue() { if (!disposed) session?.CancelDialogue(); }
         public IEnumerator InitializeSession(string entryStageId, CancellationToken token, OperationResult result)
@@ -36,8 +35,6 @@ namespace Cooked.Integration
             if (session != null || pendingRelease != null) throw new InvalidOperationException("Previous session must be shut down first.");
             // Assign before Begin: failed partial initialization remains reachable for Foundation recovery.
             session = createLoadedCore() ?? throw new InvalidOperationException("Loaded Core did not provide a session composition.");
-            session.GameplayVisibilityChanged += OnGameplayVisibilityChanged;
-            session.ActorRemoving += OnActorRemoving;
             var preparation = new OperationResult();
             yield return session.PrepareInitialStages(token, preparation);
             if (preparation.Status != OperationStatus.Succeeded)
@@ -47,7 +44,6 @@ namespace Cooked.Integration
                 yield break;
             }
             session.Begin(entryStageId);
-            PublishGameplayOutput();
             result.Succeed();
             yield break;
         }
@@ -72,8 +68,6 @@ namespace Cooked.Integration
                 yield return null;
             }
             token.ThrowIfCancellationRequested();
-            // Retry retains GameplayVisible=true, so no visibility-change event is required to fire.
-            PublishGameplayOutput();
             result.Succeed();
         }
         public IEnumerator PrepareCurrentStageForRetry(CancellationToken token, OperationResult result)
@@ -115,28 +109,8 @@ namespace Cooked.Integration
             finally
             {
                 SessionCleanup.Attempt(errors, () => ReleaseSession(old ?? pendingRelease));
-                try { GameplayOutputChanged?.Invoke(false); }
-                catch (Exception error) { errors.Add(error); }
-                finally { GameplayOutputChanged = null; }
             }
             if (errors.Count != 0) throw new AggregateException("Game runtime disposal failed.", errors);
-        }
-        private void OnGameplayVisibilityChanged(bool visible)
-        {
-            PublishGameplayOutput();
-        }
-        private void OnActorRemoving()
-        {
-            // Output remains App-owned; this event reports only gameplay readiness.
-            GameplayOutputChanged?.Invoke(false);
-        }
-        private void PublishGameplayOutput()
-            => GameplayOutputChanged?.Invoke(session != null && session.GameplayVisible && session.ActorViewReady);
-        private void DetachSession(GameSessionRuntime old)
-        {
-            if (old == null) return;
-            old.GameplayVisibilityChanged -= OnGameplayVisibilityChanged;
-            old.ActorRemoving -= OnActorRemoving;
         }
         private void ReleaseSession(GameSessionRuntime old)
         {
@@ -145,7 +119,6 @@ namespace Cooked.Integration
             var errors = new List<Exception>();
             try
             {
-                SessionCleanup.Attempt(errors, () => DetachSession(old));
                 if (releaseLoadedCore == null) errors.Add(new InvalidOperationException("T9 CoreComposition session release callback is not connected."));
                 else SessionCleanup.Attempt(errors, () =>
                 {
@@ -158,8 +131,6 @@ namespace Cooked.Integration
                 if (ReferenceEquals(session, old))
                 {
                     session = null;
-                    // App subscribers survive Title and the next game; only the old session is detached.
-                    SessionCleanup.Notify(errors, GameplayOutputChanged, false);
                 }
             }
             SessionCleanup.ThrowIfAny(errors, "Core composition release failed.");

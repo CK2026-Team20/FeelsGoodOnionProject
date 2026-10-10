@@ -11,6 +11,10 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("타이틀 화면"), Tooltip("새 게임·설정·종료 버튼이 있는 TitleView를 연결하세요.")]
         private TitleView view;
         private TitleViewModel model;
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(TitleView value) => view = value;
+#endif
         public void Bind(IGameFlowService flow, OptionsService options, Action quit)
         {
             if (view == null) throw new InvalidOperationException("TitleUiRoot에 TitleView를 연결하세요.");

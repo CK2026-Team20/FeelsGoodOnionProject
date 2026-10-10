@@ -49,6 +49,19 @@ namespace Cooked.Dialogue
         private int consumedFrame = -1;
         private bool lastOptionsPaused;
 
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(CanvasGroup root, CanvasGroup log, TMP_Text speakerText, TMP_Text contextText,
+            TMP_Text autoText, TMP_Text historyText, GameObject marker, UnityEngine.UI.Button panel,
+            UnityEngine.UI.Button auto, UnityEngine.UI.Button historyOpen,
+            UnityEngine.UI.Button logClose, UnityEngine.UI.ScrollRect scroll)
+        {
+            rootGroup = root; logGroup = log; speaker = speakerText; body = contextText;
+            autoLabel = autoText; history = historyText; nextMarker = marker;
+            panelButton = panel; autoButton = auto; historyButton = historyOpen;
+            logCloseButton = logClose; logScroll = scroll;
+        }
+#endif
         public void Bind(DialogueViewModel viewModel)
         {
             if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));

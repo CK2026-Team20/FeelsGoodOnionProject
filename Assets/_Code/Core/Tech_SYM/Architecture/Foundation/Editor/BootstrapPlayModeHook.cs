@@ -1,5 +1,7 @@
 using System;
 using Cooked.Contracts;
+using Cooked.Integration;
+using Cooked.Level;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -48,19 +50,14 @@ namespace Cooked.Foundation.Editor
         private static void Arm()
         {
             if (InPlayTransition) return;
-            if (!BootstrapEntryRoute.IsTarget(SceneManager.GetActiveScene().path))
-            {
-                RestoreTemporarySettings();
-                // A restored baseline may itself be Bootstrap (or a user's custom start scene).
-                // This Play policy still starts the actual active independent scene.
-                ArmStartSceneForEntry(null);
-                return;
-            }
             try
             {
-                if (Installation == null) throw new InvalidOperationException("Architecture installation is missing.");
-                SceneCatalog catalog = Installation.CreateCatalog();
-                if (!BootstrapEntryRoute.TryResolve(SceneManager.GetActiveScene().path, catalog, out _)) return;
+                if (!TryResolveEntry(SceneManager.GetActiveScene().path, out SceneCatalog catalog, out _))
+                {
+                    RestoreTemporarySettings();
+                    ArmStartSceneForEntry(null);
+                    return;
+                }
                 var bootstrap = AssetDatabase.LoadAssetAtPath<SceneAsset>(catalog.BootstrapPath);
                 if (bootstrap == null) throw new InvalidOperationException("Installed Bootstrap scene missing: " + catalog.BootstrapPath);
                 // Setting this never opens Bootstrap in the user's editing scene setup.
@@ -77,21 +74,16 @@ namespace Cooked.Foundation.Editor
             if (state == PlayModeStateChange.ExitingEditMode)
             {
                 string source = SceneManager.GetActiveScene().path;
-                if (!BootstrapEntryRoute.IsTarget(source))
-                {
-                    RestoreOptions();
-                    ClearRoute();
-                    CaptureSceneSetup();
-                    ArmStartSceneForEntry(null);
-                    SessionState.SetBool(Key + "Entering", true);
-                    return;
-                }
                 try
                 {
-                    if (Installation == null) throw new InvalidOperationException("Architecture installation is missing.");
-                    SceneCatalog catalog = Installation.CreateCatalog();
-                    // Capture the REAL editing active scene before routing. Never read playModeStartScene as origin.
-                    if (!BootstrapEntryRoute.TryResolve(source, catalog, out var route)) return;
+                    if (!TryResolveEntry(source, out SceneCatalog catalog, out var route))
+                    {
+                        RestoreOptions(); ClearRoute(); CaptureSceneSetup();
+                        ArmStartSceneForEntry(null);
+                        SessionState.SetBool(Key + "Entering", true);
+                        return;
+                    }
+                    // Resolve from the actual editing active scene and SceneAsset catalog.
                     CaptureSceneSetup();
                     SessionState.SetString(Key + "SourcePath", source);
                     var bootstrap = AssetDatabase.LoadAssetAtPath<SceneAsset>(catalog.BootstrapPath);
@@ -164,7 +156,8 @@ namespace Cooked.Foundation.Editor
             if (!SessionState.GetBool(Key + "RoutePending", false)) return fallback;
             bool direct = SessionState.GetBool(Key + "DirectGame", false);
             var route = new BootRoute(direct, direct ? SessionState.GetString(Key + "StageId", "") : null);
-            bool valid = BootstrapEntryRoute.IsTarget(SessionState.GetString(Key + "SourcePath", ""));
+            bool valid = TryResolveEntry(SessionState.GetString(Key + "SourcePath", ""), out _, out var actual) &&
+                actual.DirectGame == route.DirectGame && actual.StageId == route.StageId;
             ClearRoute();
             return valid ? route : fallback;
         }
@@ -175,6 +168,30 @@ namespace Cooked.Foundation.Editor
             // EnteredEditMode may precede the final runtime teardown. Keep the captured
             // setup until a stable update can compare it, including after domain reload.
             VerifyRestoredSceneSetup();
+        }
+        private static bool TryResolveEntry(string source, out SceneCatalog catalog, out BootRoute route)
+        {
+            catalog = null; route = default;
+            var installation = Installation;
+            if (installation == null)
+            {
+                if (HasIntegratedOwner(source)) throw new InvalidOperationException("Architecture installation is missing for the integrated scene.");
+                return false;
+            }
+            try { catalog = installation.CreateCatalog(); }
+            catch
+            {
+                // Independent feature scenes do not require the integration installation.
+                if (HasIntegratedOwner(source)) throw;
+                return false;
+            }
+            return BootstrapEntryRoute.IsTarget(source, catalog) && BootstrapEntryRoute.TryResolve(source, catalog, out route);
+        }
+        private static bool HasIntegratedOwner(string path)
+        {
+            var scene = SceneManager.GetSceneByPath(path);
+            return scene.IsValid() && scene.isLoaded && (SceneComponentLookup.FindAll<AppComposition>(scene).Length > 0 ||
+                SceneComponentLookup.FindAll<CoreComposition>(scene).Length > 0 || SceneComponentLookup.FindAll<StageService>(scene).Length > 0);
         }
         private static void RestoreOptions()
         {

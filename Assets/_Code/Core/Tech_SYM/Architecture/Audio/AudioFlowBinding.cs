@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Cooked.Contracts;
 
 namespace Cooked.Audio
@@ -10,34 +9,24 @@ namespace Cooked.Audio
         private readonly AudioService audio;
         private readonly IGameFlowService flow;
         private readonly IGameplayControlService control;
-        private readonly Dictionary<string, string> stageMusic;
         private FlowState state;
-        private string stageId;
+        private string stageMusic;
         private bool chase, disposed;
 
-        public AudioFlowBinding(AudioService audio, IGameFlowService flow, IGameplayControlService control,
-            IReadOnlyDictionary<string, string> stageMusic)
+        public AudioFlowBinding(AudioService audio, IGameFlowService flow, IGameplayControlService control)
         {
             this.audio = audio ?? throw new ArgumentNullException(nameof(audio));
             this.flow = flow ?? throw new ArgumentNullException(nameof(flow));
             this.control = control ?? throw new ArgumentNullException(nameof(control));
-            if (stageMusic == null || stageMusic.Count == 0) throw new ArgumentException("Stage music map required.", nameof(stageMusic));
-            this.stageMusic = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (var pair in stageMusic)
-            {
-                if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
-                    throw new ArgumentException("Empty stage music mapping.", nameof(stageMusic));
-                this.stageMusic.Add(pair.Key, pair.Value);
-            }
             ApplyControl(control.State); ApplyFlow(flow.Snapshot);
             flow.Changed += ApplyFlow; control.Changed += ApplyControl;
         }
 
-        public void SetStage(string id)
+        public void SetStage(AudioCuePurpose purpose)
         {
             RequireAlive();
-            if (id == null || !stageMusic.ContainsKey(id)) throw new ArgumentException("Unmapped stage: " + id, nameof(id));
-            stageId = id; SelectMusic();
+            if (AudioCueIds.KindForPurpose(purpose) != AudioCueKind.Music) throw new ArgumentException("Stage requires a music purpose.", nameof(purpose));
+            stageMusic = AudioCueIds.ForPurpose(purpose); SelectMusic();
         }
         public void SetChaseActive(bool active)
         {
@@ -60,14 +49,14 @@ namespace Cooked.Audio
                     case FlowState.ReturningToTitle:
                     case FlowState.Recovering:
                     case FlowState.Title:
-                        stageId = null; chase = false; audio.ClearWorldSfx(); break;
+                        stageMusic = null; chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.Retrying:
-                        stageId = null; chase = false; audio.ClearWorldSfx(); break;
+                        stageMusic = null; chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.Ending:
                         chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.Faulted:
                     case FlowState.Disposed:
-                        audio.StopAll(); stageId = null; chase = false; break;
+                        audio.StopAll(); stageMusic = null; chase = false; break;
                 }
             }
             SelectMusic();
@@ -81,7 +70,7 @@ namespace Cooked.Audio
                 case FlowState.Ending: audio.PlayMusic(AudioCueIds.Ending); break;
                 case FlowState.Playing:
                     if (chase) audio.PlayMusic(AudioCueIds.Chase);
-                    else if (stageId != null) audio.PlayMusic(stageMusic[stageId]);
+                    else if (stageMusic != null) audio.PlayMusic(stageMusic);
                     break;
             }
         }

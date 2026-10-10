@@ -22,7 +22,7 @@ namespace Cooked.Integration
         private readonly CoreUiBinding ui;
         private readonly IGameFlowService flow;
         private readonly IGameplayControlService control;
-        private readonly IGameEventBus bus;
+        private readonly IDialogueTableService dialogueTable;
         private readonly IAudioService audio;
         private readonly AudioFlowBinding audioFlow;
         private readonly ISceneService scenes;
@@ -30,25 +30,23 @@ namespace Cooked.Integration
         private readonly CinemachineBrain brain;
         private readonly PlayerCameraController controller;
         private readonly CinemachineCamera side, quarter;
-        private readonly IDisposable stageSubscription;
         private StageService stage;
         private readonly List<MemoUIController> memos = new List<MemoUIController>();
-        private CheckpointSnapshot checkpoint;
-        private readonly HashSet<AbilityId> unlocked = new HashSet<AbilityId>();
+        private AbilityMask observedUnlocks;
         private int fragments;
         private bool observing, subscriptionsDetached, disposed;
         public CoreWorldBinding(GameSessionRuntime runtime, LevelCameraService camera, ChaseRuntimeDriver chase,
-            CoreUiBinding ui, IGameFlowService flow, IGameplayControlService control, IGameEventBus bus,
+            CoreUiBinding ui, IGameFlowService flow, IGameplayControlService control, IDialogueTableService dialogueTable,
             IAudioService audio, AudioFlowBinding audioFlow, ISceneService scenes, Camera output,
             CinemachineBrain brain, PlayerCameraController controller, CinemachineCamera side, CinemachineCamera quarter)
         {
             this.runtime = runtime; this.camera = camera; this.chase = chase; this.ui = ui; this.flow = flow;
-            this.control = control; this.bus = bus; this.audio = audio; this.audioFlow = audioFlow; this.scenes = scenes;
+            this.control = control; this.dialogueTable = dialogueTable; this.audio = audio; this.audioFlow = audioFlow; this.scenes = scenes;
             this.output = output; this.brain = brain; this.controller = controller; this.side = side; this.quarter = quarter;
             if (output == null || brain == null || controller == null || output.gameObject != brain.gameObject ||
                 output.gameObject != controller.gameObject || side == null || quarter == null || side == quarter)
                 throw new ArgumentException("World requires explicit App output and distinct Core rigs.");
-            stageSubscription = bus.Subscribe<StageEnteredEvent>(OnStage);
+            runtime.CheckpointCaptured += OnCheckpointCaptured;
             runtime.ActorReady += BindActor; runtime.ActorRemoving += UnbindActor;
             runtime.Player.AbilitySucceeded += OnAbility; runtime.Player.AbilityRejected += OnAbilityRejected;
         }
@@ -66,7 +64,7 @@ namespace Cooked.Integration
                 if (!item.IsInitialPreparationComplete)
                 {
                     scenes.SetRootsActive(path, true);
-                    foreach (var pickup in item.GetComponentsInChildren<FeelsGoodOnion.TechSYM.Features.TearFragment>(true)) pickup.PrepareSource();
+                    item.PrepareInitialSources();
                     yield return null;
                 }
                 token.ThrowIfCancellationRequested();
@@ -75,11 +73,6 @@ namespace Cooked.Integration
                 result.Succeed();
             }
             finally { scenes.SetRootsActive(path, false); }
-        }
-        public void ResetAbilityNotices(string id, IReadOnlyList<AbilityId> relocked)
-        {
-            var item = (StageService)runtime.Stages.Require(id);
-            runtime.Dialogue.ForgetCompletedCodes(item.AbilityNoticeCodes(relocked));
         }
         private void BindActor()
         {
@@ -90,24 +83,30 @@ namespace Cooked.Integration
             try
             {
                 foreach (var item in runtime.Stages.Stages) scenes.SetRootsActive(runtime.Stages.ScenePath(item.StageId), item.StageId == runtime.ActiveStageId);
-                chase.Initialize(runtime.Player, control, flow, bus);
-                stage.Initialize(bus, flow, actor, code => runtime.TryStartSafeDialogue(stage.StageId, code), runtime.Session);
+                chase.Initialize(runtime.Player, control, flow);
+                stage.Initialize(flow, actor, code => runtime.TryStartSafeDialogue(stage.StageId, code));
                 var active = stage;
                 stage.BindRequests(runtime.Player, control, runtime.Dialogue,
-                    (id, source) => runtime.TryCaptureCheckpoint(active.StageId, id, source),
                     (ability, code) => Unlock(active, ability, code), StopChase);
-                stage.BindChaseStart(s => chase.TryStart(s.StageId, s.ChaseWaypoints, s.Actor));
+                stage.BindCheckpointCapture((marker, source) => runtime.TryCaptureCheckpoint(active.StageId, marker, source));
+                stage.BindDialogueTable(dialogueTable);
+                stage.BindFallRequests((source, shell) => runtime.Player.IsCurrentActor(source, runtime.Player.ActorGeneration) &&
+                    (shell != null ? runtime.Player.ReturnOwnedDebris(shell) : runtime.Player.ForceDeath(Vector3.zero, skipPresentation: true) > 0));
+                stage.BindChaseStart(s => chase.CanStart(s.StageId, s.ChaseWaypoints, s.Actor),
+                    s => runtime.TryCaptureBeforeChase(s, s.Actor),
+                    s => chase.TryStart(s.StageId, s.ChaseWaypoints, s.Actor));
+                stage.StageEntered += OnStage;
                 stage.ChaseStarted += OnChaseStarted;
-                foreach (var memo in stage.GetComponentsInChildren<MemoUIController>(true))
+                foreach (var memo in stage.FindComponents<MemoUIController>())
                 { memo.Initialize(control); memos.Add(memo); }
                 runtime.ActorHost.Interaction.BindOverlays(memos);
-                foreach (var periodic in stage.GetComponentsInChildren<PeriodicPlatform>(true))
-                    periodic.BindMaterialization(runtime.Player, ResolveBodyVisual);
+                foreach (var periodic in stage.FindComponents<PeriodicPlatform>())
+                    periodic.BindMaterialization(runtime.Player);
                 camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), controller,
                     brain, side, quarter, runtime.Player.CameraTarget, runtime.Player.BodyTransform);
                 ui.SetActorCamera(output);
                 CameraZoneRequest? resolved = null;
-                foreach (var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true))
+                foreach (var zone in stage.FindComponents<CameraZoneTrigger>())
                 {
                     zone.Bind(camera, actor);
                     if (zone.TryResolveAtPosition(actor.transform.position, out var request))
@@ -119,17 +118,16 @@ namespace Cooked.Integration
                 if (!resolved.HasValue)
                 {
                     // Safe unzoned entry uses authored default configuration only, not saved IDs.
-                    var initial = stage.GetCheckpoint(stage.InitialCheckpointId);
+                    var initial = stage.InitialCheckpoint;
                     var fallback = initial.CameraZone;
                     if (string.IsNullOrWhiteSpace(fallback.Id))
                         throw new InvalidOperationException("Actual Actor position is outside camera volumes and Stage has no authored entry mode.");
                     resolved = fallback;
                 }
                 camera.EnterZone(resolved.Value, true);
-                audioFlow.SetStage(stage.StageId);
-                checkpoint = runtime.Session.Checkpoint; fragments = runtime.Player.Snapshot.Fragments;
-                unlocked.Clear();
-                foreach (var ability in new[] { AbilityId.FormChange, AbilityId.Tear }) if (runtime.Session.IsUnlocked(ability)) unlocked.Add(ability);
+                audioFlow.SetStage(stage.StageMusicPurpose);
+                fragments = runtime.Player.Snapshot.Fragments;
+                observedUnlocks = runtime.Session.UnlockedAbilities;
                 runtime.Session.Changed += OnSession; runtime.Player.Changed += OnPlayer; observing = true;
             }
             catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, UnbindActor); }
@@ -138,19 +136,16 @@ namespace Cooked.Integration
         {
             if (owner != stage || owner.Actor != runtime.Player.Actor || owner.Actor == null || owner.Actor.IsDead ||
                 flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy) return false;
-            runtime.Session.Unlock(ability, owner.StageId);
+            runtime.Session.Unlock(ability);
             // A busy notice does not undo an already accepted ability; contact remains eligible to present it.
             return string.IsNullOrWhiteSpace(code) || runtime.Dialogue.IsCompleted(code) || runtime.TryStartSafeDialogue(owner.StageId, code);
         }
-        private static Transform ResolveBodyVisual(Transform body)
-        {
-            if (body == null) return null;
-            return body.Find("VisualRoot") ?? body.Find("Visual");
-        }
         private void StopChase()
         { chase.Service?.Stop(ChaseStopReason.Arrival); audioFlow.SetChaseActive(false); }
-        private void OnStage(StageEnteredEvent message)
-        { if (stage != null && message.StageId == stage.StageId && observing) audioFlow.SetStage(stage.StageId); }
+        private void OnStage(StageService owner)
+        { if (owner == stage && observing) audioFlow.SetStage(owner.StageMusicPurpose); }
+        private void OnCheckpointCaptured()
+        { if (observing) audio.PlaySfx(AudioCueIds.Checkpoint); }
         private void OnChaseStarted(StageService value) => audioFlow.SetChaseActive(true);
         private void OnAbility(AbilityId ability)
         {
@@ -165,12 +160,9 @@ namespace Cooked.Integration
         private void OnSession()
         {
             if (!observing || !runtime.Session.IsActive) return;
-            var next = runtime.Session.Checkpoint;
-            if (!next.Equals(checkpoint)) audio.PlaySfx(AudioCueIds.Checkpoint);
-            checkpoint = next;
-            bool added = false;
-            foreach (var ability in new[] { AbilityId.FormChange, AbilityId.Tear })
-                if (runtime.Session.IsUnlocked(ability) && unlocked.Add(ability)) added = true;
+            var current = runtime.Session.UnlockedAbilities;
+            bool added = (current & ~observedUnlocks) != AbilityMask.None;
+            observedUnlocks = current;
             if (added) audio.PlaySfx(AudioCueIds.Unlock);
         }
         private void UnbindActor()
@@ -185,8 +177,15 @@ namespace Cooked.Integration
             memos.Clear();
             if (stage != null)
             {
-                foreach (var zone in stage.GetComponentsInChildren<CameraZoneTrigger>(true)) zone.ResetForRetry();
-                foreach (var periodic in stage.GetComponentsInChildren<PeriodicPlatform>(true)) periodic.BindMaterialization(null, null);
+                SessionCleanup.Attempt(errors, () =>
+                {
+                    foreach (var zone in stage.FindComponents<CameraZoneTrigger>()) SessionCleanup.Attempt(errors, zone.ResetForRetry);
+                });
+                SessionCleanup.Attempt(errors, () =>
+                {
+                    foreach (var periodic in stage.FindComponents<PeriodicPlatform>()) SessionCleanup.Attempt(errors, () => periodic.BindMaterialization(null));
+                });
+                stage.StageEntered -= OnStage;
                 stage.ChaseStarted -= OnChaseStarted;
                 SessionCleanup.Attempt(errors, stage.Dispose);
             }
@@ -200,7 +199,7 @@ namespace Cooked.Integration
             var errors = new List<Exception>();
             if (!subscriptionsDetached)
             {
-                SessionCleanup.Attempt(errors, stageSubscription.Dispose);
+                runtime.CheckpointCaptured -= OnCheckpointCaptured;
                 runtime.ActorReady -= BindActor; runtime.ActorRemoving -= UnbindActor;
                 runtime.Player.AbilitySucceeded -= OnAbility; runtime.Player.AbilityRejected -= OnAbilityRejected;
                 subscriptionsDetached = true;

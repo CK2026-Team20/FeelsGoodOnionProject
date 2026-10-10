@@ -21,6 +21,20 @@ namespace Cooked.Cinematics
         private CinematicViewModel viewModel;
         private bool bound;
         private int consumedFrame = -1;
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(CanvasGroup visibility, RectTransform artworkViewport, RawImage artwork, TMP_Text caption, Button skipButton)
+        {
+            if (visibility == null || artworkViewport == null || artwork == null || caption == null || skipButton == null)
+                throw new ArgumentException("CinematicView needs CanvasGroup, artwork viewport, one RawImage, bottom TMP_Text and Skip Button.");
+            Unbind();
+            this.visibility = visibility;
+            this.artworkViewport = artworkViewport;
+            this.artwork = artwork;
+            this.caption = caption;
+            this.skipButton = skipButton;
+        }
+#endif
         public bool IsConfigured => visibility != null && artworkViewport != null && artwork != null && caption != null && skipButton != null;
 
         public void Bind(CinematicViewModel value)

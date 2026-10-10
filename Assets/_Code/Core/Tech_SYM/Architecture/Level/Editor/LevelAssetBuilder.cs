@@ -661,7 +661,7 @@ namespace Cooked.Level.Editor
                     var registry=roots.SelectMany(r=>r.GetComponentsInChildren<StageService>()).Single(); registry.RebuildRegistry();
                     if(missing!=0 || pb==0 || badMesh!=0) throw new InvalidOperationException($"Invalid Stage {path}: missing {missing}, PB {pb}, invalid PB {badMesh}");
                     if(all.Any(t=>t.GetComponent<Camera>()!=null || t.GetComponent<PlayerFacade>()!=null || t.GetComponent<AudioListener>()!=null)) throw new InvalidOperationException("Stage contains Core-owned objects.");
-                    report.Add($"{path}: ProBuilder={pb}; MissingScript={missing}; InvalidMesh={badMesh}; Initial={registry.InitialCheckpointId}; Saved={!scene.isDirty}");
+                    report.Add($"{path}: ProBuilder={pb}; MissingScript={missing}; InvalidMesh={badMesh}; Initial={registry.InitialCheckpoint.name}; Saved={!scene.isDirty}");
                 }
                 finally { EditorSceneManager.CloseScene(scene,true); }
             }

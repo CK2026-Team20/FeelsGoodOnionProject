@@ -30,6 +30,17 @@ namespace Cooked.Chase
 
         public bool TryStart(ChasePath route, Vector3 actorPosition, out string rejection)
         {
+            if (!CanStart(route, actorPosition, out rejection)) return false;
+            float playerProgress = route.Project(actorPosition);
+            path = route;
+            // Exactly once per attempt. Never re-centre the swarm around the actor in Tick.
+            swarmProgress = playerProgress - ChaseSettings.InitialGap;
+            SetSnapshot(ChaseState.Running, ChaseStopReason.None, playerProgress);
+            return true;
+        }
+
+        public bool CanStart(ChasePath route, Vector3 actorPosition, out string rejection)
+        {
             rejection = null;
             if (Snapshot.State != ChaseState.Ready) { rejection = "This chase attempt already started or stopped."; return false; }
             if (route == null || !ChasePath.IsFinite(actorPosition)) { rejection = "Valid route and actor position required."; return false; }
@@ -37,10 +48,6 @@ namespace Cooked.Chase
             if (route.DistanceFromRoute(actorPosition) > 2f || playerProgress < ChaseSettings.InitialGap ||
                 playerProgress >= route.Length - settings.CaptureGap)
             { rejection = "Start needs 8m of route behind the actor and remaining escape space (route corridor +/-2m)."; return false; }
-            path = route;
-            // Exactly once per attempt. Never re-centre the swarm around the actor in Tick.
-            swarmProgress = playerProgress - ChaseSettings.InitialGap;
-            SetSnapshot(ChaseState.Running, ChaseStopReason.None, playerProgress);
             return true;
         }
 

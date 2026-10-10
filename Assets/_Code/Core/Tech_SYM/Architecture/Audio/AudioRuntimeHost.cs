@@ -1,5 +1,5 @@
+using Cooked.Authoring;
 using System;
-using System.Collections.Generic;
 using Cooked.Contracts;
 using UnityEngine;
 
@@ -9,9 +9,9 @@ namespace Cooked.Audio
     public sealed class AudioRuntimeHost : MonoBehaviour
     {
         [Tooltip("소리 ID와 실제 AudioClip을 연결한 목록 자산입니다. 게임에서 요청하는 ID가 이 목록에 있어야 재생됩니다.")]
-        [SerializeField] private AudioCueCatalog catalog = null;
+        [SerializeField, InspectorLabel("소리 목록")] private AudioCueCatalog catalog = null;
         [Tooltip("소리를 재생할 AudioSource 목록입니다. 서로 다른 AudioSource를 정확히 10개 연결해야 합니다. 음악·효과음 재생에 사용하며 null이나 중복 참조는 허용하지 않습니다.")]
-        [SerializeField] private AudioSource[] sources = Array.Empty<AudioSource>();
+        [SerializeField, InspectorLabel("재생 채널")] private AudioSource[] sources = Array.Empty<AudioSource>();
         private AudioService service;
         private AudioFlowBinding binding;
         private UnityAudioPlaybackDriver driver;
@@ -22,6 +22,7 @@ namespace Cooked.Audio
         {
             if (service != null) throw new InvalidOperationException("Audio already initialized.");
             if (catalog == null) throw new InvalidOperationException("Audio catalog not assigned.");
+            foreach (var source in sources) Cooked.Integration.SceneComponentLookup.RequireSameScene(this, source, "재생 채널");
             var settings = catalog.CreateSettings();
             driver = new UnityAudioPlaybackDriver(sources, catalog);
             var crossfade = new DotweenMusicCrossfadeDriver(gameObject);
@@ -30,11 +31,10 @@ namespace Cooked.Audio
             return service;
         }
         // Caller creates SettingsService and applies saved volume before this call.
-        public void BindFlow(IGameFlowService flow, IGameplayControlService control,
-            IReadOnlyDictionary<string, string> stageMusic)
+        public void BindFlow(IGameFlowService flow, IGameplayControlService control)
         {
             if (binding != null) throw new InvalidOperationException("Audio flow already bound.");
-            binding = new AudioFlowBinding(Service, flow, control, stageMusic);
+            binding = new AudioFlowBinding(Service, flow, control);
         }
         private void Update() { service?.PollCompletedVoices(); }
         public void Shutdown()

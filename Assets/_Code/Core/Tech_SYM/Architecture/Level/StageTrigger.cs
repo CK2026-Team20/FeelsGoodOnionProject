@@ -119,6 +119,8 @@ namespace Cooked.Level
                 acceptedFallBodies.Remove(other.attachedRigidbody);
             if (occupants.Count == 0) acceptedThisOccupancy = false;
         }
+        private void OnEnable()
+        { if (independentHost != null && stage == null && kind == StageTriggerKind.Fall) independentHost.BindIndependentFall(this); }
         private void OnDisable() => UnbindIndependentFall();
         private void OnDestroy() => UnbindIndependentFall();
     }

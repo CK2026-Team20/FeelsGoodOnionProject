@@ -30,8 +30,9 @@ namespace Cooked.Integration
                     }
                 if (found == null || found.StageId != Path.GetFileNameWithoutExtension(path))
                     throw new InvalidOperationException("Stage service identity mismatch: " + path);
-                if (!found.TryGetCheckpointPose(found.InitialCheckpointId, out _))
-                    throw new InvalidOperationException("Initial checkpoint missing: " + found.StageId);
+                _ = found.InitialPose;
+                if (!found.ContainsCheckpoint(found.InitialCheckpoint))
+                    throw new InvalidOperationException("Initial Marker is outside its Stage: " + found.StageId);
                 if (next.ContainsKey(found.StageId)) throw new InvalidOperationException("Duplicate Stage: " + found.StageId);
                 next.Add(found.StageId, found);
             }
@@ -45,20 +46,6 @@ namespace Cooked.Integration
             if (!stages.TryGetValue(stageId, out var stage)) throw new InvalidOperationException("Unknown loaded Stage: " + stageId);
             if (stage is UnityEngine.Object obj && obj == null) throw new InvalidOperationException("Stage registry contains a destroyed component: " + stageId);
             return stage;
-        }
-        // Presets mean progression, not a second saved origin. Resolve from authored unlocks
-        // in catalog order so direct Stage2/3 preserve prior progress on retry.
-        public string ResolvePresetOrigin(string entryId, AbilityId ability)
-        {
-            foreach (string path in catalog.StagePaths)
-            {
-                string id = Path.GetFileNameWithoutExtension(path);
-                var stage = Require(id) as Cooked.Level.StageService;
-                if (stage == null) throw new InvalidOperationException("Unexpected Stage implementation.");
-                if (stage.HasAbilityUnlock(ability)) return id;
-                if (id == entryId) break;
-            }
-            throw new InvalidOperationException("Preset has no reachable authored progression origin: " + entryId + "/" + ability);
         }
         public string ScenePath(string stageId)
         {
