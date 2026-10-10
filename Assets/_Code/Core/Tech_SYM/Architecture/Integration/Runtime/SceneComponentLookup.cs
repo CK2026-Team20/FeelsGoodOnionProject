@@ -32,6 +32,7 @@ namespace Cooked.Integration
             }
             return found != null ? found : throw new InvalidOperationException("Missing " + typeof(T).Name + " in " + scene.path);
         }
+        /// <summary>Validates assigned objects without querying scene contents; safe during Awake/OnEnable.</summary>
         public static void RequireSameScene(Component owner, Component reference, string fieldName)
         {
             if (owner == null)
@@ -44,9 +45,6 @@ namespace Cooked.Integration
                 throw new InvalidOperationException(fieldName + ": 같은 씬의 컴포넌트를 연결하세요. 검사 대상 '" +
                     owner.name + "'의 씬: '" + ownerScene.path + "', 연결 대상 '" + reference.name +
                     "'의 씬: '" + referenceScene.path + "'.");
-            if (!ownerScene.isLoaded)
-                throw new InvalidOperationException(fieldName + ": 씬 '" + ownerScene.path +
-                    "'의 로딩이 완료되지 않았습니다. 씬 간 조립은 Start 또는 씬 로드 완료 후 실행하세요.");
         }
         /// <summary>World targets may share a static rotated/scaled parent, but must not travel with an Actor or mover.</summary>
         public static void RequireFixedPoint(Component owner, Transform point, string fieldName)
@@ -58,7 +56,7 @@ namespace Cooked.Integration
         /// <summary>Checks actual Transform writers. A static logical controller Root does not move its Body's siblings.</summary>
         public static bool IsFixedPoint(Component owner, Transform point)
         {
-            if (owner == null || point == null || !owner.gameObject.scene.IsValid() || !owner.gameObject.scene.isLoaded ||
+            if (owner == null || point == null || !owner.gameObject.scene.IsValid() ||
                 owner.gameObject.scene != point.gameObject.scene || !global::Cooked.Level.CameraZoneRequest.IsFinite(point.position)) return false;
             for (var parent = point; parent != null; parent = parent.parent)
             {

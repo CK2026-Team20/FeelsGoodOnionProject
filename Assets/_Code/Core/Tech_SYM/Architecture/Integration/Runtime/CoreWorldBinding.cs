@@ -32,6 +32,8 @@ namespace Cooked.Integration
         private readonly CinemachineCamera side, quarter;
         private StageService stage;
         private readonly List<MemoUIController> memos = new List<MemoUIController>();
+        private readonly List<CameraZoneTrigger> cameraZones = new List<CameraZoneTrigger>();
+        private readonly List<PeriodicPlatform> periodicPlatforms = new List<PeriodicPlatform>();
         private AbilityMask observedUnlocks;
         private int fragments;
         private bool observing, subscriptionsDetached, disposed;
@@ -103,13 +105,15 @@ namespace Cooked.Integration
                 foreach (var memo in stage.FindComponents<MemoUIController>())
                 { memo.Initialize(control); memos.Add(memo); }
                 runtime.ActorHost.Interaction.BindOverlays(memos);
-                foreach (var periodic in stage.FindComponents<PeriodicPlatform>())
+                periodicPlatforms.AddRange(stage.FindComponents<PeriodicPlatform>());
+                foreach (var periodic in periodicPlatforms)
                     periodic.BindMaterialization(runtime.Player);
                 camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), controller,
                     brain, side, quarter, runtime.Player.CameraTarget, runtime.Player.BodyTransform);
                 ui.SetActorCamera(output);
                 CameraZoneRequest? resolved = null;
-                foreach (var zone in stage.FindComponents<CameraZoneTrigger>())
+                cameraZones.AddRange(stage.FindComponents<CameraZoneTrigger>());
+                foreach (var zone in cameraZones)
                 {
                     zone.Bind(camera, actor);
                     if (zone.TryResolveAtPosition(actor.transform.position, out var request))
@@ -178,16 +182,14 @@ namespace Cooked.Integration
             SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.BindOverlays(null));
             foreach (var memo in memos) if (memo != null) SessionCleanup.Attempt(errors, memo.Unbind);
             memos.Clear();
+            // Release only the objects borrowed at bind time. Unity may already be
+            // unloading this Stage during app shutdown, when scene lookup is invalid.
+            foreach (var zone in cameraZones) if (zone != null) SessionCleanup.Attempt(errors, zone.ResetForRetry);
+            cameraZones.Clear();
+            foreach (var periodic in periodicPlatforms) if (periodic != null) SessionCleanup.Attempt(errors, () => periodic.BindMaterialization(null));
+            periodicPlatforms.Clear();
             if (stage != null)
             {
-                SessionCleanup.Attempt(errors, () =>
-                {
-                    foreach (var zone in stage.FindComponents<CameraZoneTrigger>()) SessionCleanup.Attempt(errors, zone.ResetForRetry);
-                });
-                SessionCleanup.Attempt(errors, () =>
-                {
-                    foreach (var periodic in stage.FindComponents<PeriodicPlatform>()) SessionCleanup.Attempt(errors, () => periodic.BindMaterialization(null));
-                });
                 stage.StageEntered -= OnStage;
                 stage.ChaseStarted -= OnChaseStarted;
                 SessionCleanup.Attempt(errors, stage.Dispose);

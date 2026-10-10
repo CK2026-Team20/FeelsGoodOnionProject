@@ -97,7 +97,7 @@ namespace Cooked.Integration
                 });
                 services.Register<IGameRuntimeService>(runtime);
                 SceneManager.sceneLoaded += SceneLoaded; subscribed = true;
-                bootstrap.Initialize(services, catalog, new BootRoute(false, null));
+                bootstrap.Initialize(services, catalog);
                 var flow = services.Get<IGameFlowService>();
                 options = new OptionsService(flow, control, settings);
                 services.Register<OptionsService>(options);
@@ -107,6 +107,9 @@ namespace Cooked.Integration
                 fadeView.Bind(fadeModel);
                 audio.BindFlow(flow, control);
                 services.Register<AudioFlowBinding>(audio.Binding);
+                // Starting a coroutine can consume an already loaded Core synchronously.
+                // Finish every flow consumer before starting any scene transition.
+                bootstrap.Boot(new BootRoute(false, null));
             }
             catch (Exception error)
             {

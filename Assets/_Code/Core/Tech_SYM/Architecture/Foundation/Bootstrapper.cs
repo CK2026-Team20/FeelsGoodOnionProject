@@ -20,8 +20,8 @@ namespace Cooked.Foundation
         public IGameFlowService Flow => flow;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetRuntime() { active = null; }
-        /// <summary>Call synchronously from the integration composition root. All app dependencies must be registered.</summary>
-        public void Initialize(ServiceLocator appServices, SceneCatalog catalog, BootRoute route)
+        /// <summary>Registers the flow without starting it so composition can bind its remaining consumers first.</summary>
+        public void Initialize(ServiceLocator appServices, SceneCatalog catalog)
         {
             if (initialized) throw new InvalidOperationException("Bootstrapper initialization is single-use.");
             if (active != null && active != this) throw new InvalidOperationException("A Bootstrapper is already active.");
@@ -41,14 +41,20 @@ namespace Cooked.Foundation
                     appServices.Get<IGameplayControlService>(), appServices.Get<IGameRuntimeService>(),
                     routine => StartCoroutine(routine), message => Debug.Log(message, this));
                 appServices.Register<IGameFlowService>(flow);
-                route = EditorRouteResolver != null ? EditorRouteResolver(route) : route;
-                if (!flow.Boot(route)) throw new InvalidOperationException("Bootstrap flow could not start.");
             }
             catch
             {
                 flow?.Dispose();
                 throw;
             }
+        }
+        /// <summary>Call only after options, fade and audio consumers are connected.</summary>
+        public void Boot(BootRoute route)
+        {
+            if (!initialized || flow == null || appServices.IsDisposed)
+                throw new InvalidOperationException("앱 시작 전에 공통 서비스를 조립하세요.");
+            route = EditorRouteResolver != null ? EditorRouteResolver(route) : route;
+            if (!flow.Boot(route)) throw new InvalidOperationException("앱 흐름을 시작할 수 없습니다. 중복 시작 또는 전환 실패를 확인하세요.");
         }
         private void OnDestroy()
         {
