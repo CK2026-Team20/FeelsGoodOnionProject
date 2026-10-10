@@ -227,7 +227,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 return new OverlapResult(normalTop ? OverlapKind.SupportedTop : OverlapKind.Shallow, 0);
             throw new ArgumentException("주기 판정은 실제 Player Capsule 또는 껍질 Box만 수락합니다.", nameof(shape));
         }
-        /// <summary>보정 전 실제 교차를 판정하고, 얕을 때만 현재 HMS 접지각/이동축으로 도달할 가장 가까운 윗면 안쪽을 구한다.</summary>
+        /// <summary>보정 전 실제 교차를 판정하고, 얕을 때만 현재 HMS 접지각/이동축으로 윗면 또는 지지 가능한 가장자리를 구한다.</summary>
         public static OverlapResult InspectCapsulePlacement(Vector3 boxCenter, Quaternion boxRotation, Vector3 boxHalfExtents,
             Vector3 capsuleStart, Vector3 capsuleEnd, float capsuleRadius, float maximumGroundAngle, bool normalTop,
             bool horizontalAllowed, bool depthAllowed, out Vector3 correction)
@@ -238,11 +238,12 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (result.Kind == OverlapKind.Fatal) correction = new Vector3(0, exit + .001f, 0);
             else if (result.Kind == OverlapKind.Shallow)
                 correction = TopSupportCorrection(boxCenter, boxRotation, boxHalfExtents, capsuleStart, capsuleEnd,
-                    capsuleRadius, maximumGroundAngle, horizontalAllowed, depthAllowed);
+                    capsuleRadius, maximumGroundAngle, horizontalAllowed, depthAllowed, exit);
             return result;
         }
         private static Vector3 TopSupportCorrection(Vector3 boxCenter, Quaternion rotation, Vector3 boxHalf,
-            Vector3 capsuleStart, Vector3 capsuleEnd, float radius, float maximumGroundAngle, bool horizontalAllowed, bool depthAllowed)
+            Vector3 capsuleStart, Vector3 capsuleEnd, float radius, float maximumGroundAngle, bool horizontalAllowed, bool depthAllowed,
+            float upwardExit)
         {
             if (!float.IsFinite(maximumGroundAngle) || maximumGroundAngle < 0 || maximumGroundAngle > 85)
                 throw new ArgumentOutOfRangeException(nameof(maximumGroundAngle), "현재 HMS의 유효한 접지각이 필요합니다.");
@@ -299,7 +300,20 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 }
             }
             if (!double.IsFinite(best))
+            {
+                // 잠긴 축에서 중심을 상면 안쪽으로 옮길 수 없어도 가장자리 법선은 실제 지지각 안일 수 있다.
+                // 이미 구한 상향 이탈점과 같은 축–OBB 최근접 계산을 사용하며 XZ 제약을 해제하지 않는다.
+                var lift = new GeometryPoint(0, upwardExit, 0);
+                var center = new GeometryPoint(boxCenter); var half = new GeometryPoint(boxHalf);
+                double distance = SegmentBoxDistance(start + lift, end + lift, center, x, normal, z, half,
+                    out var closestBox, out var closestAxis);
+                var contactNormal = closestAxis - closestBox;
+                if (distance > 0 && Math.Abs(GeometryPoint.Dot(closestBox - center, normal) - half.Y) <= tolerance &&
+                    GeometryPoint.Dot(contactNormal, normal) > 0 &&
+                    contactNormal.Y / Math.Sqrt(distance) + 1e-7 >= Math.Cos(maximumGroundAngle * Math.PI / 180))
+                    return new Vector3(0, (float)(upwardExit + skin), 0);
                 throw new InvalidOperationException("현재 HMS의 고정 이동축과 상향 조건으로 발판 윗면에 착지할 수 없습니다. 실제 지원면 배치를 확인하세요.");
+            }
             var shift = offset + x * bestU + z * bestV - low;
             return new Vector3(horizontalAllowed ? (float)shift.X : 0, (float)Math.Max(0, shift.Y), depthAllowed ? (float)shift.Z : 0);
         }
@@ -354,7 +368,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             double radiusSquared = (double)capsuleRadius * capsuleRadius;
             // double 계산의 거리 제곱 오차만 허용한다. 몸 높이 비율의 .25 경계는 그대로 소비한다.
             double contactLimit = radiusSquared + 1e-12 * Math.Max(1, radiusSquared);
-            if (SegmentBoxDistance(start, end, center, x, y, z, half, out var seed) > contactLimit)
+            if (SegmentBoxDistance(start, end, center, x, y, z, half, out var seed, out _) > contactLimit)
                 return new OverlapResult(OverlapKind.None, 0);
             Span<GeometryPoint> corners = stackalloc GeometryPoint[8];
             Span<GeometryPoint> section = stackalloc GeometryPoint[12];
@@ -397,7 +411,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             {
                 double mid = (liftInside + liftOutside) * .5;
                 var shift = new GeometryPoint(0, mid, 0);
-                if (SegmentBoxDistance(start + shift, end + shift, center, x, y, z, half, out _) <= contactLimit) liftInside = mid;
+                if (SegmentBoxDistance(start + shift, end + shift, center, x, y, z, half, out _, out _) <= contactLimit) liftInside = mid;
                 else liftOutside = mid;
             }
             upwardExit = (float)liftOutside;
@@ -419,7 +433,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         }
         private static double Clamp(double value, double low, double high) => Math.Max(low, Math.Min(high, value));
         private static double SegmentBoxDistance(GeometryPoint start, GeometryPoint end, GeometryPoint center,
-            GeometryPoint x, GeometryPoint y, GeometryPoint z, GeometryPoint half, out GeometryPoint closestBox)
+            GeometryPoint x, GeometryPoint y, GeometryPoint z, GeometryPoint half, out GeometryPoint closestBox, out GeometryPoint closestAxis)
         {
             var local = new GeometryPoint(GeometryPoint.Dot(start - center, x), GeometryPoint.Dot(start - center, y), GeometryPoint.Dot(start - center, z));
             var delta = new GeometryPoint(GeometryPoint.Dot(end - start, x), GeometryPoint.Dot(end - start, y), GeometryPoint.Dot(end - start, z));
@@ -431,7 +445,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                     if (t > 0 && t < 1) cuts[count++] = t;
                 }
             for (int i = 1; i < count; i++) { double v = cuts[i]; int j = i - 1; while (j >= 0 && cuts[j] > v) { cuts[j + 1] = cuts[j]; j--; } cuts[j + 1] = v; }
-            double best = double.PositiveInfinity; var bestLocal = default(GeometryPoint);
+            double best = double.PositiveInfinity; var bestLocal = default(GeometryPoint); var bestAxis = default(GeometryPoint);
             for (int i = 0; i < count - 1; i++)
             {
                 double midpoint = (cuts[i] + cuts[i + 1]) * .5, a = 0, b = 0;
@@ -445,9 +459,10 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 var point = local + delta * t;
                 var clamped = new GeometryPoint(Clamp(point.X, -half.X, half.X), Clamp(point.Y, -half.Y, half.Y), Clamp(point.Z, -half.Z, half.Z));
                 double distance = (point - clamped).LengthSquared;
-                if (distance < best) { best = distance; bestLocal = clamped; }
+                if (distance < best) { best = distance; bestLocal = clamped; bestAxis = point; }
             }
             closestBox = center + x * bestLocal.X + y * bestLocal.Y + z * bestLocal.Z;
+            closestAxis = center + x * bestAxis.X + y * bestAxis.Y + z * bestAxis.Z;
             return best;
         }
         private static double SectionDistance(double height, Span<GeometryPoint> corners, Span<GeometryPoint> section,

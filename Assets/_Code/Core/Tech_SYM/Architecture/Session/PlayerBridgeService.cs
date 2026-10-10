@@ -396,12 +396,11 @@ namespace Cooked.Session
             if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused || separationPending) return false;
             if (!fatal)
             {
-                // HMS의 예약 외력/점프/이전 접지는 공개 명령으로 해제하고 실제 몸체를 한 번 보정한다.
-                // ResetForRevive로 기존 공중 시간/착지 예약까지 지우지 않는다.
-                // 다음 자연 물리 접촉이 접지와 착지를 확정한다. 이 호출은 접지를 꾸미지 않는다.
+                // 실제 몸체 pose만 한 번 보정한다. HMS 속도·외력·점프·접촉·착지 예약은 그대로 소비한다.
+                // 0 속도 넉백도 다음 FixedUpdate의 RefreshGround/UpdateLanding을 건너뛰므로 예약하지 않는다.
+                // 다음 HMS 물리 단계가 접지와 착지를 확정한다. ResetForRevive나 가짜 접지는 사용하지 않는다.
                 if ((!movement.AllowHorizontalMovement && correction.x != 0) || (!movement.AllowDepthMovement && correction.z != 0))
                     throw new ArgumentException("현재 HMS의 고정 이동축을 침범하는 착지 보정입니다.", nameof(correction));
-                IssueMovementVelocity(Vector3.zero, 0);
                 if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused ||
                     (!movement.AllowHorizontalMovement && correction.x != 0) || (!movement.AllowDepthMovement && correction.z != 0)) return false;
                 actorBody.position += correction;
