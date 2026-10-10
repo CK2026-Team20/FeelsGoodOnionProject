@@ -41,3 +41,5 @@
 기존 DOCX/PDF/PPTX와 과거 실행 기록은 보존한다. App/Core/등록 Stage의 최초 additive 로드 후 씬 유지, 현재 Actor 한 개와 출력 Camera/Brain/AudioListener 한 개, Side/Quarter 리그 분리, MVVM과 자기 구독/작업 해제는 유지한다. 현재 Prototype을 본편 레벨 배치로 임의 분할하지 않는다.
 
 목표 동작은 [business-rules.md](business-rules.md), 책임과 수명은 [architecture.md](architecture.md), 협업 계약은 [contracts.md](contracts.md), 권한은 [security.md](security.md), 실제 구현/검증은 [tracking/status.md](tracking/status.md)다. 새 명세를 지정한 것과 기능 구현 완료는 다르다. 원격 push/PR/main 병합은 별도 지시 없이는 수행하지 않는다.
+
+2026-10-10 추가 직접 결정: 포포 최종 대화만 재생 예외를 허용한다. 완료 장부는 유지하고, 사망 복귀 후 실제 종료 구역에 재도착한 현재 플레이어가 첫 행부터 새 회차로 재생한다. 일반 안내의 반복 방지와 사망/포획 우선은 유지한다. 적용 기준은 V1.5 spec의 추가 직접 결정 절이며, 원본 DOCX를 편집하지 않는다.
