@@ -183,7 +183,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 if (overlap.Kind == OverlapKind.None || overlap.Kind == OverlapKind.SupportedTop || !examined.Add(body)) continue;
                 if (shell != null) bridge.TrySeparateOwnedDebris(shell, bodySeparation);
                 else if (bridge.IsCurrentActor(expected, generation))
-                    bridge.TryResolvePlatformOverlap(this, expected, generation, lift, separationSeconds, overlap.Kind == OverlapKind.Fatal);
+                    bridge.TryResolvePlatformOverlap(this, expected, generation, Vector3.up * lift, separationSeconds, overlap.Kind == OverlapKind.Fatal);
             }
             Array.Clear(candidates, 0, count);
         }
@@ -212,20 +212,102 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             {
                 WorldCapsule(capsule, shapePose, out Vector3 start, out Vector3 end, out float radius);
                 Vector3 center = platformPose.position + platformPose.rotation * Vector3.Scale(platform.center, platform.transform.lossyScale);
-                var result = InspectCapsuleBox(center, platformPose.rotation, Vector3.Scale(platform.size * .5f, Abs(platform.transform.lossyScale)),
+                var half = Vector3.Scale(platform.size * .5f, Abs(platform.transform.lossyScale));
+                var result = InspectCapsuleBox(center, platformPose.rotation, half,
                     start, end, radius, normalTop, out _, out _, out float exit);
                 if (result.Kind == OverlapKind.None)
                     throw new InvalidOperationException("PhysX 교차와 실제 Box–Capsule 계산이 일치하지 않습니다.");
                 liftMetres = exit + .001f;
-                // 실제 접촉 위치에서 위로 1mm 이내에 이탈하는 상부 접촉만 허용한다.
-                // 이미 계산한 실제 교차 비율을 숨기거나 발판 AABB 최고점을 사용하지 않는다.
-                if (normalTop || (exit <= .001f && bodySeparation.y > 0))
-                    return new OverlapResult(OverlapKind.SupportedTop, result.Ratio);
                 return result;
             }
             if (shape is BoxCollider) // 껍질은 최소 MTD 분리만 소비하며 Player 사망 비율을 사용하지 않는다.
                 return new OverlapResult(normalTop ? OverlapKind.SupportedTop : OverlapKind.Shallow, 0);
             throw new ArgumentException("주기 판정은 실제 Player Capsule 또는 껍질 Box만 수락합니다.", nameof(shape));
+        }
+        /// <summary>보정 전 실제 교차를 판정하고, 얕을 때만 현재 HMS 접지각/이동축으로 도달할 가장 가까운 윗면 안쪽을 구한다.</summary>
+        public static OverlapResult InspectCapsulePlacement(Vector3 boxCenter, Quaternion boxRotation, Vector3 boxHalfExtents,
+            Vector3 capsuleStart, Vector3 capsuleEnd, float capsuleRadius, float maximumGroundAngle, bool normalTop,
+            bool horizontalAllowed, bool depthAllowed, out Vector3 correction)
+        {
+            var result = InspectCapsuleBox(boxCenter, boxRotation, boxHalfExtents, capsuleStart, capsuleEnd,
+                capsuleRadius, normalTop, out _, out _, out float exit);
+            correction = Vector3.zero;
+            if (result.Kind == OverlapKind.Fatal) correction = new Vector3(0, exit + .001f, 0);
+            else if (result.Kind == OverlapKind.Shallow)
+                correction = TopSupportCorrection(boxCenter, boxRotation, boxHalfExtents, capsuleStart, capsuleEnd,
+                    capsuleRadius, maximumGroundAngle, horizontalAllowed, depthAllowed);
+            return result;
+        }
+        private static Vector3 TopSupportCorrection(Vector3 boxCenter, Quaternion rotation, Vector3 boxHalf,
+            Vector3 capsuleStart, Vector3 capsuleEnd, float radius, float maximumGroundAngle, bool horizontalAllowed, bool depthAllowed)
+        {
+            if (!float.IsFinite(maximumGroundAngle) || maximumGroundAngle < 0 || maximumGroundAngle > 85)
+                throw new ArgumentOutOfRangeException(nameof(maximumGroundAngle), "현재 HMS의 유효한 접지각이 필요합니다.");
+            double norm = Math.Sqrt((double)rotation.x * rotation.x + (double)rotation.y * rotation.y +
+                (double)rotation.z * rotation.z + (double)rotation.w * rotation.w);
+            double qx = rotation.x / norm, qy = rotation.y / norm, qz = rotation.z / norm, qw = rotation.w / norm;
+            var x = new GeometryPoint(1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy + qz * qw), 2 * (qx * qz - qy * qw));
+            var normal = new GeometryPoint(2 * (qx * qy - qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz + qx * qw));
+            var z = new GeometryPoint(2 * (qx * qz + qy * qw), 2 * (qy * qz - qx * qw), 1 - 2 * (qx * qx + qy * qy));
+            // 이 Box의 local +Y가 작성한 윗면이다. 실제 Actor 설정 밖의 경사는 접지 성공으로 바꾸지 않는다.
+            if (normal.Y <= 0 || normal.Y + 1e-7 < Math.Cos(maximumGroundAngle * Math.PI / 180))
+                throw new InvalidOperationException("주기 발판의 실제 윗면이 현재 HMS 접지각 밖입니다. 지지 충돌체의 회전을 확인하세요.");
+            var start = new GeometryPoint(capsuleStart); var end = new GeometryPoint(capsuleEnd);
+            // 회전된 Capsule도 축 전체가 윗면의 바깥쪽에 있도록 법선에 가장 가까운 축 끝을 사용한다.
+            var low = GeometryPoint.Dot(start, normal) <= GeometryPoint.Dot(end, normal) ? start : end;
+            double skin = radius * .002; // 현재 몸 크기에 비례한 물리 여유; 판정 비율에는 사용하지 않는다.
+            var offset = new GeometryPoint(boxCenter) + normal * (boxHalf.y + radius + skin);
+            double limitX = boxHalf.x - Math.Min(skin, boxHalf.x * .01);
+            double limitZ = boxHalf.z - Math.Min(skin, boxHalf.z * .01);
+            // 상면 평면의 2차원 최근접점. 사각형/상향/잠긴 XZ 축의 반평면을 유한 후보로 교차한다.
+            Span<GeometryPoint> constraints = stackalloc GeometryPoint[9];
+            constraints[0] = new GeometryPoint(1, 0, limitX); constraints[1] = new GeometryPoint(-1, 0, limitX);
+            constraints[2] = new GeometryPoint(0, 1, limitZ); constraints[3] = new GeometryPoint(0, -1, limitZ);
+            constraints[4] = new GeometryPoint(-x.Y, -z.Y, offset.Y - low.Y); int count = 5;
+            if (!horizontalAllowed)
+            {
+                constraints[count++] = new GeometryPoint(x.X, z.X, low.X - offset.X);
+                constraints[count++] = new GeometryPoint(-x.X, -z.X, offset.X - low.X);
+            }
+            if (!depthAllowed)
+            {
+                constraints[count++] = new GeometryPoint(x.Z, z.Z, low.Z - offset.Z);
+                constraints[count++] = new GeometryPoint(-x.Z, -z.Z, offset.Z - low.Z);
+            }
+            double u = GeometryPoint.Dot(low - offset, x), v = GeometryPoint.Dot(low - offset, z);
+            double tolerance = 1e-10 * Math.Max(radius, Math.Max(boxHalf.x, Math.Max(boxHalf.y, boxHalf.z)));
+            double best = double.PositiveInfinity, bestU = 0, bestV = 0;
+            ConsiderTopCandidate(u, v, u, v, constraints, count, tolerance, ref best, ref bestU, ref bestV);
+            for (int i = 0; i < count; i++)
+            {
+                var a = constraints[i]; double length = a.X * a.X + a.Y * a.Y;
+                if (length > 0)
+                {
+                    double distance = (a.X * u + a.Y * v - a.Z) / length;
+                    ConsiderTopCandidate(u - a.X * distance, v - a.Y * distance, u, v,
+                        constraints, count, tolerance, ref best, ref bestU, ref bestV);
+                }
+                for (int j = 0; j < i; j++)
+                {
+                    var b = constraints[j]; double determinant = a.X * b.Y - a.Y * b.X;
+                    if (determinant == 0) continue;
+                    ConsiderTopCandidate((a.Z * b.Y - a.Y * b.Z) / determinant, (a.X * b.Z - a.Z * b.X) / determinant,
+                        u, v, constraints, count, tolerance, ref best, ref bestU, ref bestV);
+                }
+            }
+            if (!double.IsFinite(best))
+                throw new InvalidOperationException("현재 HMS의 고정 이동축과 상향 조건으로 발판 윗면에 착지할 수 없습니다. 실제 지원면 배치를 확인하세요.");
+            var shift = offset + x * bestU + z * bestV - low;
+            return new Vector3(horizontalAllowed ? (float)shift.X : 0, (float)Math.Max(0, shift.Y), depthAllowed ? (float)shift.Z : 0);
+        }
+        private static void ConsiderTopCandidate(double u, double v, double fromU, double fromV,
+            Span<GeometryPoint> constraints, int count, double tolerance, ref double best, ref double bestU, ref double bestV)
+        {
+            if (!double.IsFinite(u) || !double.IsFinite(v)) return;
+            for (int i = 0; i < count; i++)
+                if (constraints[i].X * u + constraints[i].Y * v - constraints[i].Z > tolerance) return;
+            double distance = (u - fromU) * (u - fromU) + (v - fromV) * (v - fromV);
+            if (distance < best) { best = distance; bestU = u; bestV = v; }
         }
         private static void WorldCapsule(CapsuleCollider capsule, Pose pose, out Vector3 start, out Vector3 end, out float radius)
         {

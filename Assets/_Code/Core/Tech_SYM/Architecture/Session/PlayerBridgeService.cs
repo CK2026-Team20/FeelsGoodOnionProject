@@ -35,7 +35,7 @@ namespace Cooked.Session
         private long separationGeneration;
         private float separationTargetY, separationRemaining;
         private float requestedSeparationVelocityY, separationStepLoss;
-        private bool separationPending, issuingMovementCommand;
+        private bool separationPending, issuingMovementCommand, completingSeparation;
         private double lastSeparationPhysicsTime = double.NegativeInfinity;
         private Action movementHandler;
         private PlayerMovementModeController movementMode;
@@ -387,20 +387,24 @@ namespace Cooked.Session
 
         /// <summary>단발 얕은 보정 또는 HMS 외력으로 깊은 분리를 요청한다. 지속 pose 작성자는 추가하지 않는다.</summary>
         public bool TryResolvePlatformOverlap(Component owner, PlayerFacade expected, long generation,
-            float liftMetres, float seconds, bool fatal)
+            Vector3 correction, float seconds, bool fatal)
         {
             ThrowIfDisposed();
-            if (owner == null || !float.IsFinite(liftMetres) || liftMetres <= 0 || !float.IsFinite(seconds) || seconds <= 0)
-                throw new ArgumentOutOfRangeException(nameof(liftMetres), "실제 양수 분리 거리/시간과 요청 소유자가 필요합니다.");
+            if (owner == null || !Finite(correction) || correction.y < 0 || (correction.x == 0 && correction.y == 0 && correction.z == 0) ||
+                (fatal && (correction.x != 0 || correction.z != 0 || correction.y <= 0)) || !float.IsFinite(seconds) || seconds <= 0)
+                throw new ArgumentOutOfRangeException(nameof(correction), "실제 상향 몸체 보정과 양수 분리 시간/요청 소유자가 필요합니다. 깊은 분리는 수직만 사용합니다.");
             if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused || separationPending) return false;
             if (!fatal)
             {
                 // HMS의 예약 외력/점프/이전 접지는 공개 명령으로 해제하고 실제 몸체를 한 번 보정한다.
                 // ResetForRevive로 기존 공중 시간/착지 예약까지 지우지 않는다.
                 // 다음 자연 물리 접촉이 접지와 착지를 확정한다. 이 호출은 접지를 꾸미지 않는다.
+                if ((!movement.AllowHorizontalMovement && correction.x != 0) || (!movement.AllowDepthMovement && correction.z != 0))
+                    throw new ArgumentException("현재 HMS의 고정 이동축을 침범하는 착지 보정입니다.", nameof(correction));
                 IssueMovementVelocity(Vector3.zero, 0);
-                if (!IsCurrentActor(expected, generation) || !HasLiveActor) return false;
-                actorBody.position += Vector3.up * liftMetres;
+                if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused ||
+                    (!movement.AllowHorizontalMovement && correction.x != 0) || (!movement.AllowDepthMovement && correction.z != 0)) return false;
+                actorBody.position += correction;
                 actorBody.WakeUp();
                 return true;
             }
@@ -409,7 +413,7 @@ namespace Cooked.Session
             separationOwner = owner;
             separationActor = expected;
             separationGeneration = generation;
-            separationTargetY = actorBody.position.y + liftMetres;
+            separationTargetY = actorBody.position.y + correction.y;
             separationRemaining = seconds;
             requestedSeparationVelocityY = separationStepLoss = 0;
             lastSeparationPhysicsTime = double.NegativeInfinity;
@@ -426,7 +430,7 @@ namespace Cooked.Session
         public void AdvanceSeparation(float deltaSeconds)
         {
             if (!float.IsFinite(deltaSeconds) || deltaSeconds < 0) throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
-            if (!separationPending || PhysicsPaused || deltaSeconds == 0 ||
+            if (!separationPending || completingSeparation || PhysicsPaused || deltaSeconds == 0 ||
                 !IsCurrentActor(separationActor, separationGeneration)) return;
             if (movement == null || !movement.isActiveAndEnabled || actorBody == null)
                 throw new InvalidOperationException("현재 사망 Actor의 HMS 이동/몸체가 분리 중 해제되었습니다.");
@@ -435,13 +439,13 @@ namespace Cooked.Session
             separationStepLoss = Mathf.Max(0, requestedSeparationVelocityY - movement.Velocity.y);
             separationRemaining = Mathf.Max(0, separationRemaining - deltaSeconds);
             if (TryFinishSeparation(IsCurrentActor(separationActor, separationGeneration) && separationActor.IsDead,
-                PhysicsPaused, false, separationRemaining, actorBody.position.y, separationTargetY, out float residualLift))
-                FinishSeparation(residualLift);
+                PhysicsPaused, false, separationRemaining, actorBody.position.y, separationTargetY, out _))
+                FinishSeparation();
             else ScheduleSeparationVelocity();
         }
         private void ScheduleSeparationVelocity()
         {
-            if (!separationPending || PhysicsPaused || !IsCurrentActor(separationActor, separationGeneration)) return;
+            if (!separationPending || completingSeparation || PhysicsPaused || !IsCurrentActor(separationActor, separationGeneration)) return;
             float distance = Mathf.Max(0, separationTargetY - actorBody.position.y);
             // 목표까지의 잔여 거리는 매 물리 관측으로 조정한다. clip ms는 시계/거리 계산에 쓰지 않는다.
             requestedSeparationVelocityY = SeparationVelocity(distance, separationRemaining, Time.fixedDeltaTime, separationStepLoss);
@@ -470,18 +474,55 @@ namespace Cooked.Session
             residualLift = (float)lift;
             return true;
         }
-        private void FinishSeparation(float residualLift)
+        private void FinishSeparation()
         {
             PlayerFacade expected = separationActor; long generation = separationGeneration;
-            if (!separationPending || PhysicsPaused || !IsCurrentActor(expected, generation) || !expected.IsDead) return;
-            ClearSeparation(); // 동기 MovementUpdated가 다시 분리 명령을 예약하지 않도록 먼저 종료한다.
-            issuingMovementCommand = true;
-            try { movement.ResetForRevive(true); } // 운동/외력 정리만 요청한다. HP/Dead/폼은 부활시키지 않는다.
-            finally { issuingMovementCommand = false; }
-            if (!IsCurrentActor(expected, generation) || !expected.IsDead) return;
-            // 얕은 보정과 같은 단발 Rigidbody 경계. 천장 차단이 무한 외력/Retry 0으로 이어지지 않는다.
-            if (residualLift > 0) actorBody.position += Vector3.up * residualLift;
-            actorBody.WakeUp();
+            if (!separationPending || completingSeparation || PhysicsPaused || !IsCurrentActor(expected, generation) || !expected.IsDead) return;
+            completingSeparation = true;
+            try
+            {
+                RunSeparationCompletion(() =>
+                {
+                    issuingMovementCommand = true;
+                    try { movement.ResetForRevive(true); } // 운동/외력만 정리한다. HP/Dead/폼 소유자는 유지한다.
+                    finally { issuingMovementCommand = false; }
+                }, () => separationPending && IsCurrentActor(expected, generation) && expected.IsDead,
+                    () => PhysicsPaused, () =>
+                {
+                    // Reset의 동기 통지로 pose가 바뀔 수 있다. 재검증 뒤 실제 잔여 거리만 한 번 보정한다.
+                    float remaining = Mathf.Max(0, separationTargetY - actorBody.position.y);
+                    if (remaining > 0) actorBody.position += Vector3.up * remaining;
+                    actorBody.WakeUp();
+                }, ClearSeparation);
+            }
+            finally { completingSeparation = false; }
+        }
+        /// <summary>현재 Actor를 재검증하고, 동기 통지가 있는 HMS 정리와 실제 몸체 보정 뒤에만 완료를 공개한다.</summary>
+        public static bool RunSeparationCompletion(Action resetMovement, Func<bool> stillCurrent, Func<bool> paused,
+            Action correctBody, Action publishCompletion)
+        {
+            if (resetMovement == null || stillCurrent == null || paused == null || correctBody == null || publishCompletion == null)
+                throw new ArgumentNullException(nameof(resetMovement));
+            if (!stillCurrent() || paused()) return false;
+            Exception resetError = null;
+            try { resetMovement(); }
+            catch (Exception error) { resetError = error; } // HMS는 통지 전에 외력을 정리한다. observer 예외는 보존한다.
+            bool completed = false;
+            try
+            {
+                if (stillCurrent() && !paused())
+                {
+                    correctBody();
+                    if (stillCurrent() && !paused()) { publishCompletion(); completed = true; }
+                }
+            }
+            catch (Exception error)
+            {
+                if (resetError != null) throw new AggregateException("HMS 운동 정리 통지와 몸체 분리 종결에 실패했습니다.", resetError, error);
+                throw;
+            }
+            if (resetError != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(resetError).Throw();
+            return completed;
         }
         private void IssueMovementVelocity(Vector3 velocity, float lockSeconds)
         {
@@ -498,14 +539,14 @@ namespace Cooked.Session
         }
         public void CancelSeparation(Component owner)
         {
-            if (!separationPending || !ReferenceEquals(separationOwner, owner)) return;
+            if (!separationPending || completingSeparation || !ReferenceEquals(separationOwner, owner)) return;
             bool current = IsCurrentActor(separationActor, separationGeneration);
             if (current && separationActor.IsDead)
             {
                 // 현재 사망과 낡은 Actor 취소는 다르다. owner Disable/reset은 Dead 표현을 Interrupted로 만들지 않는다.
                 separationRemaining = 0;
-                if (TryFinishSeparation(true, PhysicsPaused, true, 0, actorBody.position.y, separationTargetY, out float lift))
-                    FinishSeparation(lift);
+                if (TryFinishSeparation(true, PhysicsPaused, true, 0, actorBody.position.y, separationTargetY, out _))
+                    FinishSeparation();
                 else IssueMovementVelocity(Vector3.zero, 0); // 옵션 중에는 보정을 미루고 상승 외력만 중단한다.
                 return;
             }
