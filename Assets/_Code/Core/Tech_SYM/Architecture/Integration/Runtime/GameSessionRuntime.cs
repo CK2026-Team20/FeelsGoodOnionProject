@@ -194,8 +194,37 @@ namespace Cooked.Integration
             ThrowIfDisposed();
             if (!CanAcceptWorldRequest) return false;
             if (stageId != ActiveStageId) return false;
-            Stages.Require(stageId);
-            return Dialogue.TryStart(code);
+            var owner = Stages.Require(stageId);
+            var source = Player.Actor;
+            long generation = Player.ActorGeneration;
+            return Dialogue.TryStart(code, () => PrepareDialogueStart(owner, source, generation));
+        }
+        /// <summary>현재 판의 활성 Stage 최종 접촉만 완료/Skipped Code 재생을 요청한다.</summary>
+        public bool TryStartFinalDialogue(StageService owner, StageTrigger trigger, PlayerFacade source,
+            long generation, string expectedCode)
+        {
+            if (!IsCurrentDialogueSource(owner, source, generation)) return false;
+            var table = scope.Get<IDialogueTableService>();
+            if (!owner.MatchesFinalDialogueRequest(Session, Dialogue, table, trigger, source, generation, expectedCode)) return false;
+            return Dialogue.TryStartFinalDialogue(expectedCode, () => PrepareDialogueStart(owner, source, generation,
+                () => owner.MatchesFinalDialogueRequest(Session, Dialogue, table, trigger, source, generation, expectedCode)));
+        }
+        internal bool IsCurrentStage(IStageService owner)
+        {
+            if (disposed || !Session.IsActive || owner == null || ActiveStageId == null) return false;
+            try { return ReferenceEquals(ActiveStage, owner); }
+            catch (InvalidOperationException) { return false; } // 현재 등록 Stage가 해제/파괴되면 낡은 접촉을 거절한다.
+        }
+        private bool IsCurrentDialogueSource(IStageService owner, PlayerFacade source, long generation)
+            => CanAcceptWorldRequest && owner != null && source != null &&
+                IsCurrentStage(owner) && Player.IsCurrentActor(source, generation);
+        private bool PrepareDialogueStart(IStageService owner, PlayerFacade source, long generation,
+            Func<bool> finalContact = null)
+        {
+            if (!IsCurrentDialogueSource(owner, source, generation) || (finalContact != null && !finalContact())) return false;
+            // DialogueService already owns its input lease: closing the Memo cannot briefly restore input.
+            host.Interaction?.ForceCloseOverlays();
+            return IsCurrentDialogueSource(owner, source, generation) && (finalContact == null || finalContact());
         }
         public void CancelDialogue() { if (!disposed) Dialogue?.Cancel(); }
         public void SetGameplayVisible(bool value)
