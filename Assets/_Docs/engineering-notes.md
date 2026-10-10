@@ -32,6 +32,12 @@ Reader/Router는 하나의 입력을 Bridge로 한 번 전달한다. View 버튼
 
 타이틀 복귀·사망·Actor 파괴·Dispose는 생성한 Coroutine/Tween·예약·이벤트를 취소/해제한다. 부분 초기화 실패에도 이미 획득한 자원을 정리하고 실패를 성공처럼 반환하지 않는다. CoroutineOperationRunner의 nested iterator/finally, SessionShutdownOperation의 집계 해제는 실제 책임이 있어 유지한다. App scope disposing 중 이미 파괴된 Core와 정상 실행 중 Core 누락을 같은 성공으로 취급하지 않는다.
 
+## 조립과 씬 로드·종료의 경계
+
+같은 씬의 실물 참조·고정 지점 검사는 이미 주입된 객체만 사용하므로 Awake/OnEnable에서 scene.isLoaded를 요구하지 않는다. 반면 FindAll/RequireSingle처럼 씬 전체 Root를 조회하는 작업은 로드 완료가 필요하다. AppComposition은 Start에서 출력 단일성을 확인한다. Bootstrapper.Initialize는 Flow를 등록하고, App이 옵션·페이드·오디오 소비자까지 연결한 후 Boot를 실행한다. 서비스 준비와 전환 시작을 섞지 않는다.
+
+CoreWorldBinding은 연결한 CameraZoneTrigger·PeriodicPlatform 참조를 보관하고 그 객체만 해제한다. 정상 retry/Title 복귀에는 살아 있는 객체를 정리하며 Unity 종료 중 이미 파괴된 객체는 건너뛴다. 종료 시 Stage를 다시 검색하지 않는다. 실제 정리 실패는 집계하며, 정상 실행 중 미로드 씬 검색이나 잘못된 참조를 임의로 성공 처리하지 않는다. Flow revision/state/busy의 Debug.Log는 상태 기록이고 참조 오류·전환 실패와 구별한다.
+
 ## 실행 증거의 범위
 
 Source compile, 직접 실제 DLL 공개 API 검사, Native import/SerializedObject·격리 엔진, Windows BuildReport, 사람 Play·실제 clip·QA/FunQA는 각각 수행한 범위다. helper compile-only·포트·예약 수락·파일 존재·NOT_EVALUATED를 평가한 assertion 성공으로 간주하지 않는다. 제품 Source를 helper와 함께 중복 compile해서 CS0436으로 실행해도 실제 DLL 검증이 아니다. source SHA/DLL MVID·loaded path·명령/exit와 실패 원문을 보존한다.

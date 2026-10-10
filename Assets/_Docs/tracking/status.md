@@ -2,7 +2,17 @@
 
 2026-10-11. 현행은 V1.5 활성 본문과 사용자 후속 직접 선택이다. 승인된 [spec](ready-system-v15-2026-10-10/spec.md)과 [plan](ready-system-v15-2026-10-10/plan.md)을 구현하고 실제 소스·소유 참조를 이관했다. 이전 버전의 Play·빌드·QA 수치는 아래 당시 이력으로만 보존하며 이번 통과로 승계하지 않는다.
 
-## 이번 구현
+## 2026-10-11 조립 시작·종료 오류 후속 수정
+
+제품 Source는 `6dd87e4fad53f9af523498f47292def3ba3a117e`이며 로컬 `feature/core/systems`에 반영했다. 앞선 `c2c3b6b`에서 App 조립을 Awake에서 Start로 옮긴 뒤, 사람이 실행한 Console을 읽어 장치·적의 로드 중 참조 거절과 종료 시 Stage 재검색 예외를 확인했다. `Flow revision 1: LoadingGame, busy=True` 자체는 정상 상태 Log다.
+
+같은 씬의 실물 참조·고정 지점 검사는 Awake/OnEnable에서도 가능하게 했다. 씬 전체 검색은 로드 완료 조건을 유지한다. Bootstrap은 Flow 준비 → 옵션·페이드·오디오 연결 → Boot 순서로 실행하며, Core 해제는 연결 당시 보관한 카메라 구간·주기 발판만 해제한다. Inspector 값·씬·프리팹·GUID·HMS 원본을 수동 변경하지 않았다. 파일별 원인·의도·전후는 [코드 리뷰](ready-system-v15-2026-10-10/코드%20리뷰.md)에 있다.
+
+현재 Source 전체 컴파일은 Runtime158/Player158/Editor11 모두 성공했다. 멈춘 Editor의 실제 제품 DLL 검사38개와 등록 Stage3곳의 지점 검사21개가 통과했다. 실제 기동·Play 종료 및 자연 충돌은 사람이 재확인해야 한다. 이번 수정 뒤 새 Windows 빌드를 만들거나 Play/Player를 실행하지 않았다. 아래의 이전 204/201 검사와 Windows 빌드는 V1.5 수락 당시 Source의 증거이며 이 후속 수정의 실행 증거로 승계하지 않는다.
+
+TMP 폰트의 앞선 자동 glyph/atlas 변경은 diff를 보존·검토했다. 후속 사람 실행 종료 후 실제 파일은 기존 Git 원문 SHA `5637afc73bd49fc8568ea1a92e2b789775a54ca2ba7e69e7f0317d1abfbc040d`와 같아 현재 변경이 없다. 에이전트가 폰트 reset/restore/수동 편집을 실행하지 않았으며 빈 자동 변경 커밋을 만들지 않았다.
+
+## V1.5 수락 당시 구현
 
 | 영역 | 실제 변경 | 남은 사람 작업/확인 |
 |---|---|---|
