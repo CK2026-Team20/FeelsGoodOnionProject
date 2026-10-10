@@ -42,7 +42,7 @@ namespace Cooked.Integration.Editor
             entries.ValidateCatalog(catalog);
             var audio = AssetDatabase.LoadAssetAtPath<AudioCueCatalog>(AudioCueCatalog.AssetPath);
             if (audio == null) throw new InvalidOperationException("소리 목록 누락: " + AudioCueCatalog.AssetPath);
-            audio.RefreshAuthoring();
+            audio.CreateSettings();
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
                 if (UnityEngine.SceneManagement.SceneManager.GetSceneAt(i).isDirty)
                     throw new InvalidOperationException("Save reviewed scene edits explicitly before building.");

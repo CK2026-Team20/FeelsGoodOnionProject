@@ -123,7 +123,7 @@ namespace Cooked.Integration
                     // Safe unzoned entry uses authored default configuration only, not saved IDs.
                     var initial = stage.InitialCheckpoint;
                     var fallback = initial.CameraZone;
-                    if (string.IsNullOrWhiteSpace(fallback.Id))
+                    if (fallback.Source == null)
                         throw new InvalidOperationException("Actual Actor position is outside camera volumes and Stage has no authored entry mode.");
                     resolved = fallback;
                 }

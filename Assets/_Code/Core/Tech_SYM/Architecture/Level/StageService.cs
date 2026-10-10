@@ -32,12 +32,6 @@ namespace Cooked.Level
         private Transform chaseStartPoint;
         [SerializeField, InspectorLabel("추격 퇴로"), Tooltip("추격 수락 뒤 닫을 같은 씬의 ChaseRetreatGate를 연결하세요.")]
         private ChaseRetreatGate chaseRetreatGate;
-        // T11 preserves the captured old world calculations. T10 replaces ID/pair consumers, then T12 removes these fields/APIs.
-        [SerializeField, HideInInspector] private string stageId;
-        [SerializeField, HideInInspector] private string initialCheckpointId;
-        [SerializeField, HideInInspector] private Vector3[] chaseWaypoints = Array.Empty<Vector3>();
-        [SerializeField, HideInInspector] private float chaseStartProgress = 18f;
-        [SerializeField, HideInInspector] private Vector3[] progressWaypoints = Array.Empty<Vector3>();
         private Vector3[] resolvedChaseWaypoints = Array.Empty<Vector3>();
         private CheckpointMarker[] sceneCheckpoints = Array.Empty<CheckpointMarker>();
         private EnemyActor[] sceneEnemies = Array.Empty<EnemyActor>();
@@ -101,8 +95,6 @@ namespace Cooked.Level
         public bool IsChaseAccepted => chaseAccepted;
         public event Action<StageService> ChaseStarted;
         public event Action<StageService> StageEntered;
-        public void Configure(string id, string startId, CheckpointMarker[] pair, EnemyActor[] actors)
-        { stageId = id; initialCheckpointId = startId; checkpoints = pair; enemies = actors ?? Array.Empty<EnemyActor>(); RebuildRegistry(); }
         public float ProgressAt(Vector3 position)
         {
             if (!CameraZoneRequest.IsFinite(position)) throw new ArgumentException("진행 위치는 유한해야 합니다.", nameof(position));

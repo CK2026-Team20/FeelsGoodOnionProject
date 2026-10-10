@@ -19,8 +19,6 @@ namespace Cooked.Integration
         [SerializeField, InspectorLabel("앱 시작 담당")] private Bootstrapper bootstrap;
         [Tooltip("부트·타이틀·Core·스테이지 경로를 지정한 설치 자산입니다. 실제 씬 흐름을 이 자산에서 설정합니다.")]
         [SerializeField, InspectorLabel("씬 설치 설정")] private ArchitectureInstallation installation;
-        // T11 transfers the two existing view references; T12 removes this serialized migration field and Editor-only Configure.
-        [SerializeField, HideInInspector] private GlobalUiRoot ui;
         [SerializeField, InspectorLabel("옵션 화면"), Tooltip("이 씬에서 음량과 닫기를 표시할 OptionsView를 연결하세요.")]
         private OptionsView optionsView;
         [SerializeField, InspectorLabel("페이드 화면"), Tooltip("이 씬에서 화면 전환을 표시할 FadeView를 연결하세요.")]
@@ -43,11 +41,6 @@ namespace Cooked.Integration
         public Camera OutputCamera => presentationCamera;
         public CinemachineBrain OutputBrain { get; private set; }
         public PlayerCameraController OutputController { get; private set; }
-#if UNITY_EDITOR
-        // Temporary caller: IntegrationSceneBuilder. Never used for runtime binding; T12 removes the Builder and this method.
-        public void Configure(Bootstrapper bootstrapper, ArchitectureInstallation config, GlobalUiRoot globalUi, AudioRuntimeHost sound, Camera outputCamera)
-        { bootstrap = bootstrapper; installation = config; ui = globalUi; audio = sound; presentationCamera = outputCamera; }
-#endif
         private void Awake()
         {
             try

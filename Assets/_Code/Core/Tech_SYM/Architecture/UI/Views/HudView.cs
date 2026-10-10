@@ -28,11 +28,6 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("E 해금 표시")] private CanvasGroup tearCard;
         [Tooltip("현재 눈물 조각 수와 최대 5개를 표시할 TMP 텍스트입니다.")]
         [SerializeField, InspectorLabel("조각 개수")] private TMP_Text fragmentCount;
-#if UNITY_EDITOR
-        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
-        public void ConfigureIcons(CanvasGroup g, HudIconGraphic[] heartIcons, TMP_Text count, CanvasGroup form, CanvasGroup tear)
-        { group = g; hearts = heartIcons; fragmentCount = count; formCard = form; tearCard = tear; }
-#endif
         protected override void Refresh()
         {
             if (group == null) return; group.alpha = Model != null && Model.Visible ? 1 : 0; group.blocksRaycasts = false;

@@ -39,12 +39,6 @@ namespace Cooked.Session
         private PeriodicPlatform[] independentPeriodic = Array.Empty<PeriodicPlatform>();
         private bool started;
         private bool ownsIndependentServices;
-        public void Configure(GameObject prefab) { actorPrefab = prefab; }
-        public void ConfigureIndependent(GameObject existingActor, CoreUiBinding uiBinding, MemoUIController[] memos, Camera outputCamera)
-        {
-            independentActor = existingActor; independentUi = uiBinding;
-            independentMemos = memos ?? Array.Empty<MemoUIController>(); independentCamera = outputCamera;
-        }
         private PlayerBridgeService bridge;
         private IGameplayControlService control;
         private GameObject actorRoot;

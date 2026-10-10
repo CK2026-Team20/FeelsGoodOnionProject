@@ -165,14 +165,6 @@ namespace Cooked.Dialogue
             lifecycleRevision++;
             if (IsActive) Finish(DialogueOutcome.Cancelled);
         }
-        // Temporary interface member only: T10 removes CoreWorldBinding's retry caller,
-        // then the contracts owner can remove this member. Never erase a round's ledger.
-        [Obsolete("완료한 대화는 능력 복원으로 지우지 않습니다. 새 판은 ResetRound를 사용하세요.")]
-        public void ForgetCompletedCodes(IEnumerable<string> dialogueCodes)
-        {
-            if (disposed) return;
-            throw new NotSupportedException("한 판의 Completed/Skipped 대화 장부는 Retry나 능력 재잠금으로 지울 수 없습니다.");
-        }
         // Resident Core can begin another round without retaining a previous round's ledger.
         public void ResetRound()
         {

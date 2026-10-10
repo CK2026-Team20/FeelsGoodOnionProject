@@ -33,8 +33,6 @@ namespace Cooked.Level
         private SessionActorHost independentHost;
         [SerializeField, InspectorLabel("한 시도에 한 번"), Tooltip("켜면 요청 수락 뒤 재발동하지 않습니다. 끄면 완전히 나간 뒤 다시 요청할 수 있습니다.")]
         private bool once = true;
-        // T11 migrates Marker/JSON selection; T10 removes legacy consumers, then T12 removes this field/API.
-        [SerializeField, HideInInspector] private string value;
         private readonly HashSet<Collider> occupants = new HashSet<Collider>();
         private readonly HashSet<Rigidbody> acceptedFallBodies = new HashSet<Rigidbody>();
         private bool fired;
@@ -44,21 +42,10 @@ namespace Cooked.Level
         private long contactRevision;
         public StageTriggerKind Kind => kind;
         public StageService Owner => stage;
-        public string Value => value;
         public CheckpointMarker Checkpoint => checkpoint;
         public DialogueSelection Dialogue => dialogue;
         public AbilityId Ability => kind == StageTriggerKind.UnlockTear ? AbilityId.Tear : AbilityId.FormChange;
         public SessionActorHost IndependentHost => independentHost;
-        public void Configure(StageService owner, StageTriggerKind request, string idOrDialogueCode, bool once = true)
-        { stage = owner; kind = request; value = idOrDialogueCode; this.once = once; ResetForRetry(); }
-        public void ConfigureReferences(StageService owner, StageTriggerKind request, CheckpointMarker marker,
-            DialogueSelection conversation = null, bool once = true)
-        {
-            if (owner != null) SceneComponentLookup.RequireSameScene(this, owner, "소속 스테이지");
-            if (marker != null) SceneComponentLookup.RequireSameScene(this, marker, "체크포인트 지점");
-            stage = owner; kind = request; checkpoint = marker; dialogue = conversation ?? new DialogueSelection();
-            value = null; this.once = once; ResetForRetry();
-        }
         public void BindIndependentFall(PlayerFacade currentActor, Func<PlayerFacade, PlayerDebris, bool> request)
         {
             if (kind != StageTriggerKind.Fall || independentHost == null || stage != null || currentActor == null ||

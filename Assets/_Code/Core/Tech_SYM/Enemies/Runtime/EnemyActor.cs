@@ -25,7 +25,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         [SerializeField, Min(0), InspectorLabel("지면 간격"), Tooltip("몸체와 위아래 지형 사이의 최소 간격을 정합니다(m). 0이면 추가 간격이 없습니다.")]
         private float surfaceClearance = .15f;
 
-        private EnemyState currentState = EnemyState.IDLE, resumeState = EnemyState.IDLE;
+        private EnemyActivityState currentState = EnemyActivityState.IDLE, resumeState = EnemyActivityState.IDLE;
         private float idleRemaining;
         private double stunMilliseconds;
         private bool towardEnd = true, initialPlacementCaptured, setupFailed, prepared, publishedStunState;
@@ -33,8 +33,8 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private EnemyContactSensor contactSensor;
         public EnemyDefinition Definition => definition;
         public EnemyMotor Motor { get; private set; }
-        public EnemyState CurrentState => currentState;
-        public bool IsStunned => currentState == EnemyState.STUNNED;
+        public EnemyActivityState CurrentState => currentState;
+        public bool IsStunned => currentState == EnemyActivityState.STUNNED;
         public double StunRemainingSeconds => stunMilliseconds / 1000.0;
         public bool TowardEnd => towardEnd;
         public bool IsPrepared => prepared;
@@ -109,7 +109,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             prepared = false;
             contactSensor?.UnbindPlayer();
             Motor = null;
-            currentState = resumeState = EnemyState.IDLE;
+            currentState = resumeState = EnemyActivityState.IDLE;
             stunMilliseconds = 0; idleRemaining = 0;
             PublishStunStateChanged();
         }
@@ -146,45 +146,45 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             return applied;
         }
         /// <summary>Actor가 소유한 실행 상태를 초기화하는 순수 규칙입니다. 공유 설정 자산을 변경하지 않습니다.</summary>
-        public static void ResetState(EnemyKind kind, float initialIdle, out EnemyState state, out EnemyState resume,
+        public static void ResetState(EnemyKind kind, float initialIdle, out EnemyActivityState state, out EnemyActivityState resume,
             out float idle, out double stun)
         {
             if ((kind != EnemyKind.Stationary && kind != EnemyKind.Patrol) || !float.IsFinite(initialIdle) || initialIdle < 0)
                 throw new ArgumentOutOfRangeException(nameof(initialIdle));
-            state = kind == EnemyKind.Patrol && initialIdle == 0 ? EnemyState.PATROL : EnemyState.IDLE;
+            state = kind == EnemyKind.Patrol && initialIdle == 0 ? EnemyActivityState.PATROL : EnemyActivityState.IDLE;
             resume = state; idle = initialIdle; stun = 0;
         }
-        public static int AddStun(int milliseconds, ref EnemyState state, ref EnemyState resume, ref double remainingMilliseconds)
+        public static int AddStun(int milliseconds, ref EnemyActivityState state, ref EnemyActivityState resume, ref double remainingMilliseconds)
         {
             if (milliseconds <= 0) return 0;
             if (!double.IsFinite(remainingMilliseconds) || remainingMilliseconds < 0)
                 throw new ArgumentOutOfRangeException(nameof(remainingMilliseconds));
-            if (state != EnemyState.STUNNED) resume = state;
+            if (state != EnemyActivityState.STUNNED) resume = state;
             remainingMilliseconds += milliseconds;
-            state = EnemyState.STUNNED;
+            state = EnemyActivityState.STUNNED;
             return milliseconds;
         }
         /// <summary>이 단계에서 순찰에 쓸 시간(초)을 반환합니다. 기절 동안 대기 시계도 멈춥니다.</summary>
-        public static float AdvanceState(EnemyKind kind, float delta, ref EnemyState state, EnemyState resume,
+        public static float AdvanceState(EnemyKind kind, float delta, ref EnemyActivityState state, EnemyActivityState resume,
             ref float idle, ref double stun)
         {
             if (!float.IsFinite(delta) || delta <= 0) return 0;
-            if (state == EnemyState.STUNNED)
+            if (state == EnemyActivityState.STUNNED)
             {
                 stun = Math.Max(0, stun - (double)delta * 1000);
                 if (stun <= .001) { stun = 0; state = resume; }
                 return 0;
             }
             if (kind == EnemyKind.Stationary) return 0;
-            if (state == EnemyState.IDLE)
+            if (state == EnemyActivityState.IDLE)
             {
                 float used = Math.Min(idle, delta);
                 idle -= used;
                 if (idle > 0) return 0;
-                state = EnemyState.PATROL;
+                state = EnemyActivityState.PATROL;
                 return delta - used;
             }
-            return state == EnemyState.PATROL ? delta : 0;
+            return state == EnemyActivityState.PATROL ? delta : 0;
         }
         private void PublishStunStateChanged()
         {

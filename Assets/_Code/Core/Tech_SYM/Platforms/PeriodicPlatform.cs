@@ -86,9 +86,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             bridge = player;
             RefreshMotionSubscription();
         }
-        // T10 연결 이관 후 T12에서 제거할 구형 서명. 외형 이동은 더 이상 분리 수단이 아니다.
-        public void BindMaterialization(PlayerBridgeService player, Func<Transform, Transform> visualResolver)
-            => BindMaterialization(player);
+
         private void Awake()
         {
             ValidateAuthoring();

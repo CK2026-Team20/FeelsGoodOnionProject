@@ -18,7 +18,6 @@ namespace Cooked.UI
             get => fillAmount;
             set { value = Mathf.Clamp01(value); if (Mathf.Approximately(fillAmount, value)) return; fillAmount = value; SetVerticesDirty(); }
         }
-        public void Configure(Symbol value) { symbol = value; raycastTarget = false; SetVerticesDirty(); }
         protected override void OnPopulateMesh(VertexHelper vh)
         {
             vh.Clear();

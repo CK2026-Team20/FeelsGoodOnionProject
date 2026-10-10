@@ -33,13 +33,6 @@ namespace FeelsGoodOnion.TechSYM.Features
         public bool IsCollected => collected;
         /// <summary>The actual Root moved by this pickup; fixed-point authoring must remain outside it.</summary>
         public Transform MotionRoot => pickupRoot != null ? pickupRoot.transform : null;
-        public void Configure(GameObject itemRoot, Transform childVisual, float rotationDegreesPerSecond = 90f,
-            float bobHeight = .24f, float bobSeconds = 1.5f)
-        {
-            if (Application.isPlaying && initialized) throw new InvalidOperationException("Configure pickup before source initialization.");
-            pickupRoot = itemRoot; presentationVisual = childVisual; this.rotationDegreesPerSecond = rotationDegreesPerSecond;
-            this.bobHeight = bobHeight; this.bobSeconds = bobSeconds; initialized = false;
-        }
         // May be called while inactive. Never use an uninitialized cache to silently skip restoration.
         public void PrepareSource()
         {
@@ -115,7 +108,6 @@ namespace FeelsGoodOnion.TechSYM.Features
             for (int i = 0; i < renderers.Length; i++) if (renderers[i] != null) renderers[i].enabled = rendererDefaults[i];
             pickupRoot.SetActive(rootWasActive);
         }
-        public void Restore() => ResetForRetry();
         private void TryCollect(Collider other)
         {
             if (!isActiveAndEnabled || collected || other == null || pickupRoot == null) return;

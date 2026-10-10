@@ -14,10 +14,6 @@ namespace Cooked.Integration
         [Serializable]
         public sealed class Entry
         {
-            // 숨은 생성 값/기존 이관 값. Scene의 Marker를 ScriptableObject에 저장하지 않는다.
-            [SerializeField, HideInInspector] private string stageId;
-            [SerializeField, HideInInspector] private string checkpointId;
-            [SerializeField, HideInInspector] private string scenePath;
             [SerializeField, InspectorLabel("진입 스테이지"), Tooltip("진입할 Stage 씬을 연결하세요. 등장 위치는 해당 Stage의 초기 Marker를 사용합니다.")]
             private SceneReference stageScene;
             public SceneReference StageScene => stageScene;
@@ -25,17 +21,13 @@ namespace Cooked.Integration
             [SerializeField, Range(0, 5)] private int fragments;
             [InspectorLabel("초기 해금 능력"), Tooltip("진입할 때 사용할 능력을 선택하세요. 빈 목록은 모두 잠긴 상태입니다.")]
             [SerializeField] private AbilityId[] abilities = Array.Empty<AbilityId>();
-            public string StageId => stageId;
-            public string ScenePath => scenePath;
-            // T10은 이 계약으로 Stage의 초기 Marker를 사용한다. 레거시 CheckpointId는 이관 동안만 보존한다.
-            public bool UsesStageInitialCheckpoint => true;
-            public string CheckpointId => checkpointId;
+            public string StageId => SceneCatalog.StageIdFromPath(ScenePath);
+            public string ScenePath => stageScene?.ResolvePath("진입 스테이지") ?? throw new InvalidOperationException("진입 Stage 씬을 연결하세요.");
             public int Fragments => fragments;
             public IReadOnlyList<AbilityId> Abilities => Array.AsReadOnly(abilities);
 
             public Entry(string scenePath, int fragments, params AbilityId[] abilities)
             {
-                this.scenePath = scenePath; stageId = SceneCatalog.StageIdFromPath(scenePath);
                 this.fragments = fragments; this.abilities = CopyAbilities(abilities);
                 stageScene = new SceneReference(scenePath);
                 Validate();
@@ -46,25 +38,12 @@ namespace Cooked.Integration
 #endif
             public Entry(SceneReference stageScene, int fragments, params AbilityId[] abilities)
                 : this(stageScene?.ResolvePath("진입 스테이지") ?? throw new ArgumentNullException(nameof(stageScene)), fragments, abilities) { }
-            // 기존 Builder 호출만 보존. T11은 SceneAsset 생성자를 사용하고 T12에서 소비 제거를 확인한다.
-            public Entry(string stageId, string checkpointId, int fragments, params AbilityId[] abilities)
-            {
-                this.stageId = stageId; this.checkpointId = checkpointId; this.fragments = fragments;
-                this.abilities = CopyAbilities(abilities);
-                Validate();
-            }
             private static AbilityId[] CopyAbilities(AbilityId[] values) => values == null ? Array.Empty<AbilityId>() : (AbilityId[])values.Clone();
 
-            public void Validate() => Validate("Entry (" + stageId + ")");
+            public void Validate() => Validate("스테이지 진입 설정");
             internal void Validate(string owner)
             {
-                if (string.IsNullOrWhiteSpace(stageId)) throw new InvalidOperationException(owner + ": 진입 스테이지가 없습니다.");
-                if (!string.IsNullOrEmpty(scenePath))
-                {
-                    if (stageId != SceneCatalog.StageIdFromPath(scenePath)) throw new InvalidOperationException(owner + ": Scene/Stage 식별이 일치하지 않습니다.");
-                }
-                else if (string.IsNullOrWhiteSpace(checkpointId))
-                    throw new InvalidOperationException(owner + ": 레거시 Stage/Checkpoint 이관 값이 없습니다.");
+                SceneCatalog.StageIdFromPath(ScenePath);
                 if (fragments < 0 || fragments > 5) throw new InvalidOperationException(owner + ": 초기 눈물 조각은 0~5개입니다.");
                 if (abilities == null) throw new InvalidOperationException(owner + ": 초기 해금 능력 목록이 없습니다.");
                 var selected = new HashSet<AbilityId>();
@@ -100,14 +79,6 @@ namespace Cooked.Integration
                 if (entry.ScenePath != catalog.GetStagePath(entry.StageId))
                     throw new InvalidOperationException("Entry (" + entry.StageId + "): 등록 Stage 씬을 연결하세요.");
             foreach (string path in catalog.StagePaths) Require(catalog.GetStageId(path));
-        }
-
-        public void Configure(Entry[] values)
-        {
-            if (values == null) throw new ArgumentNullException(nameof(values));
-            var copy = (Entry[])values.Clone();
-            ValidateEntries(copy, "스테이지 진입 설정");
-            entries = copy;
         }
 
         private static void ValidateEntries(Entry[] values, string owner)

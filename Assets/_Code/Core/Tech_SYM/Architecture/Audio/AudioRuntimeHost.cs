@@ -8,7 +8,7 @@ namespace Cooked.Audio
     /// <summary>Place exactly once in Bootstrapper. Explicit initialization prevents play-on-Awake races.</summary>
     public sealed class AudioRuntimeHost : MonoBehaviour
     {
-        [Tooltip("소리 ID와 실제 AudioClip을 연결한 목록 자산입니다. 게임에서 요청하는 ID가 이 목록에 있어야 재생됩니다.")]
+        [Tooltip("게임에 사용할 소리 용도와 실제 AudioClip을 연결한 AudioCueCatalog 자산을 연결하세요.")]
         [SerializeField, InspectorLabel("소리 목록")] private AudioCueCatalog catalog = null;
         [Tooltip("소리를 재생할 AudioSource 목록입니다. 서로 다른 AudioSource를 정확히 10개 연결해야 합니다. 음악·효과음 재생에 사용하며 null이나 중복 참조는 허용하지 않습니다.")]
         [SerializeField, InspectorLabel("재생 채널")] private AudioSource[] sources = Array.Empty<AudioSource>();
@@ -40,12 +40,5 @@ namespace Cooked.Audio
         public void Shutdown()
         { binding?.Dispose(); binding = null; service?.Dispose(); service = null; driver = null; }
         private void OnDestroy() => Shutdown();
-#if UNITY_EDITOR
-        public void ConfigureForAuthoring(AudioCueCatalog value, AudioSource[] voiceSources)
-        {
-            if (service != null) throw new InvalidOperationException("Cannot reconfigure initialized audio.");
-            catalog = value; sources = (AudioSource[])voiceSources.Clone();
-        }
-#endif
     }
 }

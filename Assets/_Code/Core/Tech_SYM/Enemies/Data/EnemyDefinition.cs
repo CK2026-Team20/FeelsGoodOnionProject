@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
-    public enum EnemyState { IDLE = 0, PATROL = 1, STUNNED = 2 }
+    public enum EnemyActivityState { IDLE = 0, PATROL = 1, STUNNED = 2 }
     public enum EnemyKind
     {
         [InspectorName("고정")] Stationary = 0,

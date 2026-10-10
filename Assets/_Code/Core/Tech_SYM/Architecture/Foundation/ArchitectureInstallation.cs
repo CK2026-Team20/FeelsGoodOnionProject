@@ -53,21 +53,6 @@ namespace Cooked.Foundation
 #endif
         }
 
-        // 기존 Builder 이관 동안의 코드 호출 호환. T11 자산 이관/T12 Builder 제거 후 재검토한다.
-        public void Configure(SceneCatalog catalog)
-        {
-            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
-#if UNITY_EDITOR
-            var bootstrap = new SceneReference(catalog.BootstrapPath);
-            var title = new SceneReference(catalog.TitlePath);
-            var core = new SceneReference(catalog.CorePath);
-            var stages = new SceneReference[catalog.StagePaths.Count];
-            for (int i = 0; i < stages.Length; i++) stages[i] = new SceneReference(catalog.StagePaths[i]);
-            bootstrapScene = bootstrap; titleScene = title; coreScene = core; stageScenes = stages;
-#endif
-            StorePaths(catalog);
-        }
-
         private void StorePaths(SceneCatalog catalog)
         {
             bootstrapPath = catalog.BootstrapPath; titlePath = catalog.TitlePath; corePath = catalog.CorePath;

@@ -11,8 +11,6 @@ namespace Cooked.Level
         private CameraMovementMode mode = CameraMovementMode.Side;
         [SerializeField, InspectorLabel("정렬 지점"), Tooltip("같은 씬의 고정 Transform을 연결하세요. 측면은 이 지점의 월드 Z에 정렬하며 파란 구로 표시됩니다.")]
         private Transform alignmentPoint;
-        // T11 resolves the old local offset with the original owner; T12 removes the hidden value after migration.
-        [SerializeField, HideInInspector] private CameraZoneData zone;
         private LevelCameraService cameraService;
         private PlayerFacade actor;
         private StageService stageOwner;
@@ -109,8 +107,8 @@ namespace Cooked.Level
                 Gizmos.color = Color.blue;
                 Gizmos.matrix = Matrix4x4.identity;
                 // Unmigrated/unfinished authoring must not throw on every Scene view repaint.
-                if (alignmentPoint == null && zone.Movement != CameraMovementMode.Side && zone.Movement != CameraMovementMode.Quarter) return;
-                var position = alignmentPoint != null ? alignmentPoint.position : transform.TransformPoint(zone.AlignmentOffset);
+                if (alignmentPoint == null) return;
+                var position = alignmentPoint.position;
                 if (!CameraZoneRequest.IsFinite(position)) return;
                 Gizmos.DrawSphere(position, .2f);
                 Gizmos.DrawLine(transform.position, position);
