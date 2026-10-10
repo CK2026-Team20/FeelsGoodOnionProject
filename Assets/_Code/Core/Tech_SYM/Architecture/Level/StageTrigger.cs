@@ -31,12 +31,14 @@ namespace Cooked.Level
         private DialogueSelection dialogue = new DialogueSelection();
         [SerializeField, InspectorLabel("독립 플레이어 담당"), Tooltip("독립 씬 데드존의 SessionActorHost를 연결하세요. 현재 Player와 소유 Shell은 실행 중 주입받습니다.")]
         private SessionActorHost independentHost;
-        [SerializeField, InspectorLabel("한 시도에 한 번"), Tooltip("켜면 요청 수락 뒤 재발동하지 않습니다. 끄면 완전히 나간 뒤 다시 요청할 수 있습니다.")]
+        [SerializeField, InspectorLabel("한 시도에 한 번"), Tooltip("켜면 요청을 한 번만 수락합니다. 체크포인트·포포 도착·데드존은 각 재접촉 규칙을 따릅니다.")]
         private bool once = true;
         private readonly HashSet<Collider> occupants = new HashSet<Collider>();
         private readonly HashSet<Rigidbody> acceptedFallBodies = new HashSet<Rigidbody>();
         private bool fired;
         private bool acceptedThisOccupancy;
+        private StageTriggerKind contactKind;
+        private PlayerFacade contactActor;
         private PlayerFacade independentActor;
         private Func<PlayerFacade, PlayerDebris, bool> independentFall;
         private long contactRevision;
@@ -57,7 +59,13 @@ namespace Cooked.Level
         }
         public void UnbindIndependentFall()
         { independentActor = null; independentFall = null; ResetForRetry(); }
-        public void ResetForRetry() { contactRevision++; fired = false; occupants.Clear(); acceptedFallBodies.Clear(); acceptedThisOccupancy = false; }
+        public void ResetForRetry()
+        {
+            contactRevision++; fired = false; occupants.Clear(); acceptedFallBodies.Clear(); acceptedThisOccupancy = false;
+            contactKind = kind; contactActor = null;
+        }
+        // 저장/최종 대화의 재접촉 판정은 서비스가, 데드존의 중복은 실제 몸체가 소유합니다.
+        private bool UsesOnce => once && kind != StageTriggerKind.Checkpoint && kind != StageTriggerKind.Escape && kind != StageTriggerKind.Fall;
         private void OnTriggerEnter(Collider other) => TryHandleContact(other);
         private void OnTriggerStay(Collider other) => TryHandleContact(other);
         /// <summary>Physics sensor lives with its BoxCollider. PlayerFacade is on the attached Rigidbody; Shell is a separate owned body.</summary>
@@ -68,6 +76,9 @@ namespace Cooked.Level
             if (body == null) return false;
             var current = stage != null ? stage.Actor : independentActor;
             if (current == null || current.IsDead) return false;
+            // 요청 종류 또는 현재 Actor가 바뀌면 이전 종류/Actor의 수락 기록을 승계하지 않습니다.
+            if (contactKind != kind || contactActor != current)
+            { ResetForRetry(); contactActor = current; }
             PlayerDebris shell = null;
             if (body.TryGetComponent<PlayerDebris>(out var debris))
             {
@@ -82,18 +93,20 @@ namespace Cooked.Level
                 !System.Linq.Enumerable.Any(occupants, occupant => occupant.attachedRigidbody == acceptedBody));
             if (occupants.Count == 0) acceptedThisOccupancy = false;
             occupants.Add(other);
-            if (kind == StageTriggerKind.Fall ? acceptedFallBodies.Contains(body) : fired || acceptedThisOccupancy) return false;
+            if (kind == StageTriggerKind.Fall ? acceptedFallBodies.Contains(body) : (UsesOnce && fired) || acceptedThisOccupancy) return false;
             long revision = contactRevision;
+            var requestedKind = kind;
             bool accepted;
             if (stage != null)
                 accepted = kind == StageTriggerKind.Fall ? stage.TryDispatchFall(this, current, shell) : stage.TryDispatch(this, current);
             else
                 accepted = kind == StageTriggerKind.Fall && independentHost != null && independentHost.ActorRoot != null &&
                     current.transform.IsChildOf(independentHost.ActorRoot.transform) && independentFall != null && independentFall(current, shell);
-            if (accepted && revision == contactRevision)
+            if (accepted && revision == contactRevision && requestedKind == kind && contactActor == current &&
+                current == (stage != null ? stage.Actor : independentActor))
             {
                 if (kind == StageTriggerKind.Fall) acceptedFallBodies.Add(body);
-                else { fired = once; acceptedThisOccupancy = true; }
+                else { fired = UsesOnce; acceptedThisOccupancy = true; }
             }
             // Busy/unknown dialogue returns false: keep eligible for a later valid contact.
             return accepted;
