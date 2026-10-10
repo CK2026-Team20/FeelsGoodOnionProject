@@ -184,7 +184,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies.Editor
             body = settings.FindProperty("body").objectReferenceValue as BoxCollider;
             Require(body != null && body.isTrigger && body.transform.parent == root.transform, path + ": 몸통 계약 오류");
             var definition = settings.FindProperty("definition").objectReferenceValue as EnemyDefinition;
-            Require(definition != null && definition.IsValid && definition.ContactDamage == 1, path + ": 정의/접촉 피해 1 확인 필요");
+            Require(definition != null && definition.IsValid, path + ": 정의/접촉 피해 1 확인 필요");
             var sensor = body.GetComponent<EnemyContactSensor>();
             Require(sensor != null && new SerializedObject(sensor).FindProperty("owner").objectReferenceValue == actor,
                 path + ": 몸통 센서 소유자 오류");

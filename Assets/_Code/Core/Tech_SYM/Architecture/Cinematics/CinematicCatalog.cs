@@ -20,6 +20,16 @@ namespace Cooked.Cinematics
         public string Caption => caption;
         public float DurationSeconds => durationSeconds;
 
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(Texture2D artwork, string caption, float durationSeconds = DefaultDurationSeconds)
+        {
+            Validate(artwork, caption, durationSeconds, "Cinematic cut");
+            this.artwork = artwork;
+            this.caption = caption;
+            this.durationSeconds = durationSeconds;
+        }
+#endif
         internal CinematicCut Snapshot(string source)
         {
             Validate(artwork, caption, durationSeconds, source);
@@ -42,6 +52,19 @@ namespace Cooked.Cinematics
         [Tooltip("엔딩 컷을 표시 순서대로 넣으세요. 각 컷에 기존 원화 한 장, 하단 문구, 표시 시간(초)이 필요하며 빈 목록은 사용할 수 없습니다.")]
         [SerializeField, InspectorLabel("엔딩 컷")] private CinematicCut[] endingCuts = Array.Empty<CinematicCut>();
 
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(CinematicId id, params CinematicCut[] cuts)
+        {
+            var snapshot = Copy(cuts, id);
+            switch (id)
+            {
+                case CinematicId.Opening: openingCuts = snapshot; break;
+                case CinematicId.Ending: endingCuts = snapshot; break;
+                default: throw new ArgumentOutOfRangeException(nameof(id));
+            }
+        }
+#endif
         public IReadOnlyList<CinematicCut> Get(CinematicId id) => Array.AsReadOnly(Snapshot(id));
         internal CinematicCut[] Snapshot(CinematicId id)
         {

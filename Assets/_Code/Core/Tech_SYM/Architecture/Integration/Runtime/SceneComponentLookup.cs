@@ -2,8 +2,7 @@ using System;
 using System.Collections.Generic;
 using FeelsGoodOnion.TechSYM.Enemies;
 using FeelsGoodOnion.TechSYM.Features;
-using FeelsGoodOnion.TechSYM.OvenTray;
-using FeelsGoodOnion.TechSYM.Platforms;
+using Cooked.Chase;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -43,16 +42,28 @@ namespace Cooked.Integration
         public static void RequireFixedPoint(Component owner, Transform point, string fieldName)
         {
             RequireSameScene(owner, point, fieldName);
+            if (!IsFixedPoint(owner, point))
+                throw new InvalidOperationException(fieldName + ": 같은 씬의 유한한 고정 지점을 움직이는 몸체 밖에 연결하세요.");
+        }
+        /// <summary>Checks actual Transform writers. A static logical controller Root does not move its Body's siblings.</summary>
+        public static bool IsFixedPoint(Component owner, Transform point)
+        {
+            if (owner == null || point == null || !owner.gameObject.scene.IsValid() || !owner.gameObject.scene.isLoaded ||
+                owner.gameObject.scene != point.gameObject.scene || !global::Cooked.Level.CameraZoneRequest.IsFinite(point.position)) return false;
             for (var parent = point; parent != null; parent = parent.parent)
-                if (parent.GetComponent<Rigidbody>() != null || parent.GetComponent<KinematicPlatformMotion>() != null ||
-                    parent.GetComponent<LinearShuttlePlatform>() != null || parent.GetComponent<FloatingPlatform>() != null ||
-                    parent.GetComponent<PressurePlatePlatform>() != null || parent.GetComponent<PeriodicPlatform>() != null ||
-                    parent.GetComponent<ShatteredPlatform>() != null || parent.GetComponent<Animator>() != null ||
-                    parent.GetComponent<Animation>() != null ||
-                    parent.GetComponent<PressureLinkedPlatform>() != null || parent.GetComponent<OvenTrayObject>() != null ||
-                    parent.GetComponent<EnemyActor>() != null || parent.GetComponent<PlayerFacade>() != null ||
-                    parent.GetComponent<PlayerDebris>() != null)
-                    throw new InvalidOperationException(fieldName + ": 움직이는 몸체 밖의 고정 지점을 연결하세요.");
+                if (parent.GetComponent<Rigidbody>() != null || parent.GetComponent<Animator>() != null ||
+                    parent.GetComponent<Animation>() != null || parent.GetComponent<EnemyActor>() != null ||
+                    parent.GetComponent<PlayerFacade>() != null || parent.GetComponent<PlayerDebris>() != null ||
+                    parent.GetComponent<ChaseRuntimeDriver>() != null || parent.GetComponent<ChaseSwarmPresentation>() != null) return false;
+            // Tear's sensor may be a sibling of the point. Read its explicit moving Root once within this hierarchy,
+            // rather than searching every loaded scene or inferring motion from controller type names.
+            foreach (var pickup in point.root.GetComponentsInChildren<TearFragment>(true))
+            {
+                var movingRoot = pickup.MotionRoot;
+                if (movingRoot != null && movingRoot.gameObject.scene == point.gameObject.scene &&
+                    (point == movingRoot || point.IsChildOf(movingRoot))) return false;
+            }
+            return true;
         }
     }
 }

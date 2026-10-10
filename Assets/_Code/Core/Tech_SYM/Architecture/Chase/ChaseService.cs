@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Cooked.Chase
 {
-    /// <summary>Session-injected coordinator. Does not own actor, control, flow, bus, scenes or UI.</summary>
+    /// <summary>Session-injected coordinator. Borrows the current Actor generation, control and Flow; owns one attempt.</summary>
     public sealed class ChaseService : IDisposable
     {
         private readonly IPlayerBridgeService bridge;
@@ -14,7 +14,7 @@ namespace Cooked.Chase
         private readonly Func<Vector3, int> forceDeath;
         private readonly ChaseModel model;
         private IChaseActor actor;
-        private long lastFrame = -1;
+        private long lastFrame = -1, actorGeneration;
         private bool disposed;
         public ChaseSnapshot Snapshot => model.Snapshot;
         public string LastRejection { get; private set; }
@@ -22,12 +22,11 @@ namespace Cooked.Chase
         public event Action<ChaseSnapshot> Changed;
 
         public ChaseService(IPlayerBridgeService bridge, IGameplayControlService control,
-            IGameFlowService flow, IGameEventBus eventBus, ChaseSettings settings, Func<Vector3, int> forceDeath = null)
+            IGameFlowService flow, ChaseSettings settings, Func<Vector3, int> forceDeath)
         {
             this.bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
             this.control = control ?? throw new ArgumentNullException(nameof(control));
             this.flow = flow ?? throw new ArgumentNullException(nameof(flow));
-            if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
             this.forceDeath = forceDeath ?? throw new ArgumentNullException(nameof(forceDeath), "Capture must use the current Actor's common death presentation.");
             model = new ChaseModel(settings);
             flow.Changed += OnFlowChanged;
@@ -36,6 +35,18 @@ namespace Cooked.Chase
         /// <summary>True is the sole signal for closing Level's rear gate and playing its start cue.</summary>
         public bool Start(string stageId, IReadOnlyList<Vector3> waypoints, IChaseActor candidate)
         {
+            if (!CanStart(stageId, waypoints, candidate, out var path)) return false;
+            if (!model.TryStart(path, candidate.Position, out string rejection)) return Reject(rejection);
+            actor = candidate; actorGeneration = bridge.ActorGeneration;
+            Changed?.Invoke(Snapshot);
+            return true;
+        }
+
+        public bool CanStart(string stageId, IReadOnlyList<Vector3> waypoints, IChaseActor candidate)
+            => CanStart(stageId, waypoints, candidate, out _);
+        private bool CanStart(string stageId, IReadOnlyList<Vector3> waypoints, IChaseActor candidate, out ChasePath path)
+        {
+            path = null;
             LastRejection = null;
             if (disposed) return Reject("Chase service disposed.");
             if (string.IsNullOrWhiteSpace(stageId)) return Reject("A configured Stage ID is required.");
@@ -44,12 +55,9 @@ namespace Cooked.Chase
                 return Reject("Gameplay is not running or the world is paused.");
             if (!bridge.HasActor || bridge.Snapshot.IsDead || candidate == null || !candidate.IsAlive)
                 return Reject("A live, session-bound Actor is required.");
-            ChasePath path;
             try { path = new ChasePath(waypoints); }
             catch (ArgumentException error) { return Reject(error.Message); }
-            if (!model.TryStart(path, candidate.Position, out string rejection)) return Reject(rejection);
-            actor = candidate;
-            Changed?.Invoke(Snapshot);
+            if (!model.CanStart(path, candidate.Position, out var reason)) return Reject(reason);
             return true;
         }
 
@@ -61,7 +69,7 @@ namespace Cooked.Chase
             lastFrame = frameId;
             if (flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy)
             { Stop(ChaseStopReason.FlowTransition); return; }
-            if (!bridge.HasActor || bridge.Snapshot.IsDead || actor == null || !actor.IsAlive)
+            if (!bridge.HasActor || bridge.ActorGeneration != actorGeneration || bridge.Snapshot.IsDead || actor == null || !actor.IsAlive)
             { Stop(ChaseStopReason.ActorUnavailable); return; }
             if (control.State.WorldPaused) return;
             try { model.Tick(deltaTime, actor.Position); }

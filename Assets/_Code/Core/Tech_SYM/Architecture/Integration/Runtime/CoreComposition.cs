@@ -1,3 +1,4 @@
+using Cooked.Authoring;
 using System;
 using System.Collections.Generic;
 using Cooked.Audio;
@@ -15,23 +16,23 @@ namespace Cooked.Integration
     public sealed class CoreComposition : MonoBehaviour
     {
         [Tooltip("통합 플레이어 프리팹을 생성·복원·제거할 Core의 SessionActorHost입니다.")]
-        [SerializeField] private SessionActorHost actor;
+        [SerializeField, InspectorLabel("플레이어 담당")] private SessionActorHost actor;
         [Tooltip("현재 대화와 로그를 표시할 Core의 DialogueView입니다.")]
-        [SerializeField] private DialogueView dialogueView;
+        [SerializeField, InspectorLabel("대화 화면")] private DialogueView dialogueView;
         [Tooltip("오프닝·엔딩의 한 원화와 문구 재생을 담당할 CinematicHost입니다.")]
-        [SerializeField] private CinematicHost cinematic;
+        [SerializeField, InspectorLabel("연출 담당")] private CinematicHost cinematic;
         [Tooltip("직접 Stage 진입의 시작 지점·조각·이전 진행 능력을 지정한 설정 자산입니다. 저장 데이터가 아닙니다.")]
-        [SerializeField] private IntegrationEntrySettings entries;
+        [SerializeField, InspectorLabel("초기 진입 설정")] private IntegrationEntrySettings entries;
         [Tooltip("Core HUD와 한 월드 F 안내를 세션 상태에 연결할 담당입니다.")]
-        [SerializeField] private CoreUiBinding ui;
+        [SerializeField, InspectorLabel("게임 화면 담당")] private CoreUiBinding ui;
         [Tooltip("구간 요청과 실제 Brain 완료를 확인할 Core의 LevelCameraService입니다.")]
-        [SerializeField] private LevelCameraService cameraService;
+        [SerializeField, InspectorLabel("카메라 구간 담당")] private LevelCameraService cameraService;
         [Tooltip("추격 무리와 실제 포획을 갱신할 Core의 ChaseRuntimeDriver입니다.")]
-        [SerializeField] private ChaseRuntimeDriver chase;
+        [SerializeField, InspectorLabel("추격 담당")] private ChaseRuntimeDriver chase;
         [Tooltip("Core에 유지할 Side 가상 카메라입니다. App 출력의 HMS 담당이 우선순위를 결정합니다.")]
-        [SerializeField] private CinemachineCamera sideCamera;
+        [SerializeField, InspectorLabel("사이드 카메라")] private CinemachineCamera sideCamera;
         [Tooltip("Core에 유지할 Quarter 가상 카메라입니다. Side와 다른 가상 카메라를 연결하세요.")]
-        [SerializeField] private CinemachineCamera quarterCamera;
+        [SerializeField, InspectorLabel("쿼터 카메라")] private CinemachineCamera quarterCamera;
         private GameSessionRuntime runtime;
         private CoreWorldBinding world;
         private bool releasing;
@@ -49,16 +50,17 @@ namespace Cooked.Integration
             if (actor == null || dialogueView == null || cinematic == null || entries == null || ui == null ||
                 cameraService == null || chase == null || sideCamera == null || quarterCamera == null || sideCamera == quarterCamera)
                 throw new InvalidOperationException("Core composition references are incomplete.");
+            foreach (var reference in new Component[] { actor, dialogueView, cinematic, ui, cameraService, chase, sideCamera, quarterCamera })
+                SceneComponentLookup.RequireSameScene(this, reference, "Core 연결");
             try
             {
                 var cinematics = cinematic.Initialize(app.Get<IGameplayControlService>());
                 runtime = new GameSessionRuntime(app, catalog, actor, dialogueView, cinematics, entries);
                 ui.Bind(runtime);
                 world = new CoreWorldBinding(runtime, cameraService, chase, ui, app.Get<IGameFlowService>(),
-                    app.Get<IGameplayControlService>(), app.Get<IGameEventBus>(), app.Get<IAudioService>(), audioFlow,
+                    app.Get<IGameplayControlService>(), app.Get<IDialogueTableService>(), app.Get<IAudioService>(), audioFlow,
                     app.Get<ISceneService>(), output, brain, controller, sideCamera, quarterCamera);
-                runtime.BindStageLifecycle(world.PrepareStage, world.ResetAbilityNotices);
-                runtime.BindCheckpointPair(id => ((StageService)runtime.Stages.Require(id)).CheckpointPair);
+                runtime.BindStageLifecycle(world.PrepareStage);
                 runtime.BindActorViewReadiness(() => cameraService.IsViewReady);
                 return runtime;
             }

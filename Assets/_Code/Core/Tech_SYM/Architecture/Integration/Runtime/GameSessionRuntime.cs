@@ -5,6 +5,7 @@ using System.Threading;
 using Cooked.Contracts;
 using Cooked.Dialogue;
 using Cooked.Foundation;
+using Cooked.Level;
 using Cooked.Session;
 using Cooked.UI;
 using UnityEngine;
@@ -21,41 +22,18 @@ namespace Cooked.Integration
         private readonly IntegrationEntrySettings entries;
         private readonly IGameFlowService flow;
         private readonly OptionsService options;
-        private readonly List<IDisposable> eventSubscriptions = new List<IDisposable>();
         private bool disposed, visibilityInitialized;
         private bool actorBindingsReady;
         private Func<bool> actorViewReady;
         public void BindActorViewReadiness(Func<bool> ready)
         { ThrowIfDisposed(); actorViewReady = ready ?? throw new ArgumentNullException(nameof(ready)); }
-        private string lastContactCheckpointId;
+        private CheckpointMarker lastContactMarker;
+        private bool capturingCheckpoint;
         private Func<string, CancellationToken, OperationResult, IEnumerator> prepareStage;
-        private Action<string, IReadOnlyList<AbilityId>> resetAbilityNotices;
-        private Func<string, (string StartId, string EndId)> checkpointPair;
-        // T9 supplies the authored start/end pair. These IDs are contact configuration, never saved data.
-        public void BindCheckpointPair(Func<string, (string StartId, string EndId)> resolve)
-        { ThrowIfDisposed(); checkpointPair = resolve ?? throw new ArgumentNullException(nameof(resolve)); }
         public string ActiveStageId { get; private set; }
-        // Authoring configuration only. Never used to restore a retry position.
-        public string InitialCheckpointId { get; private set; }
         public IStageService ActiveStage => Stages.Require(ActiveStageId);
-        // T9 transitions release bindings/Actor first, select one loaded Stage, then prepare/bind.
-        // This is execution configuration; the saved Position/Fragments are never augmented.
-        public void SelectActiveStage(string stageId)
-        {
-            ThrowIfDisposed();
-            if (!Session.IsActive || Player.HasActor) throw new InvalidOperationException("Stage selection requires an active session with Actor references released.");
-            var stage = Stages.Require(stageId);
-            ActiveStageId = stageId;
-            InitialCheckpointId = stage.InitialCheckpointId;
-            lastContactCheckpointId = null;
-        }
-        public void BindStageLifecycle(Func<string, CancellationToken, OperationResult, IEnumerator> prepare,
-            Action<string, IReadOnlyList<AbilityId>> resetNotices)
-        {
-            ThrowIfDisposed();
-            prepareStage = prepare ?? throw new ArgumentNullException(nameof(prepare));
-            resetAbilityNotices = resetNotices ?? throw new ArgumentNullException(nameof(resetNotices));
-        }
+        public void BindStageLifecycle(Func<string, CancellationToken, OperationResult, IEnumerator> prepare)
+        { ThrowIfDisposed(); prepareStage = prepare ?? throw new ArgumentNullException(nameof(prepare)); }
         public IEnumerator PrepareInitialStages(CancellationToken token, OperationResult result)
         {
             ThrowIfDisposed();
@@ -83,10 +61,7 @@ namespace Cooked.Integration
             var step = new OperationResult();
             yield return PrepareStage(ActiveStageId, token, step);
             if (step.Status != OperationStatus.Succeeded) { CopyFailure(step, result); yield break; }
-            if (resetAbilityNotices == null) { result.Fail("T6/T9 ability notice reset callback is not connected."); yield break; }
-            var relocked = Session.ResetStageUnlocks(ActiveStageId);
-            resetAbilityNotices(ActiveStageId, relocked);
-            lastContactCheckpointId = null;
+            // Actor replacement does not clear physical Marker identity or the completed dialogue ledger.
             result.Succeed();
         }
         private static void CopyFailure(OperationResult source, OperationResult target)
@@ -100,6 +75,7 @@ namespace Cooked.Integration
         public bool GameplayVisible { get; private set; }
         public event Action ActorReady;
         public event Action ActorRemoving;
+        public event Action CheckpointCaptured;
         public event Action<bool> GameplayVisibilityChanged;
 
         public GameSessionRuntime(ServiceLocator app, SceneCatalog catalog, SessionActorHost host,
@@ -110,18 +86,19 @@ namespace Cooked.Integration
             this.host = host != null ? host : throw new ArgumentNullException(nameof(host));
             this.dialogueView = dialogueView != null ? dialogueView : throw new ArgumentNullException(nameof(dialogueView));
             this.entries = entries != null ? entries : throw new ArgumentNullException(nameof(entries));
+            this.entries.ValidateCatalog(catalog);
             Cinematics = cinematics ?? throw new ArgumentNullException(nameof(cinematics));
             Stages = new LoadedStageRegistry(catalog);
             flow = app.Get<IGameFlowService>();
             options = app.Get<OptionsService>();
             var control = app.Get<IGameplayControlService>();
-            var bus = app.Get<IGameEventBus>();
             scope = new ServiceLocator(app);
             try
             {
                 Session = new GameSessionService();
                 scope.Register<IGameSessionService>(Session);
-                Player = new PlayerBridgeService(control, Session, bus);
+                Player = new PlayerBridgeService(control, Session, RequestDeathRetry,
+                    host.HorizontalKnockbackSpeed, host.UpwardKnockbackSpeed);
                 scope.Register<IPlayerBridgeService>(Player);
                 Player.Dying += OnActorDying;
                 Dialogue = new DialogueService(app.Get<IDialogueTableService>(), control, new DOTweenDialogueDelayScheduler(), new DialogueSettings(.3f, 3f));
@@ -131,8 +108,7 @@ namespace Cooked.Integration
                 dialogueView.Bind(dialogueModel);
                 host.Initialize(Player, control);
                 Player.SetEnemyHurtColliderResolver(enemy => enemy.HurtCollider);
-                // CheckpointReachedEvent has no Actor attribution. T9 migrates actual contacts
-                // to TryCaptureCheckpoint(stageId, checkpointId, source); anonymous bus capture is rejected.
+
             }
             catch (Exception initializationError)
             {
@@ -149,23 +125,24 @@ namespace Cooked.Integration
             var entry = entries.Require(entryStageId);
             Stages.Refresh(entryStageId);
             var stage = Stages.Require(entryStageId);
-            if (!stage.TryGetCheckpointPose(entry.CheckpointId, out Pose initialPose))
-                throw new InvalidOperationException("Missing initial entry marker: " + entryStageId + "/" + entry.CheckpointId);
+            var initialPose = stage.InitialPose;
+            AbilityMask mask = AbilityMask.None;
+            foreach (var ability in entry.Abilities)
+                mask |= ability == AbilityId.FormChange ? AbilityMask.FormChange : AbilityMask.Tear;
+            var initial = new CheckpointSnapshot(initialPose.position, entry.Fragments, mask);
             ActiveStageId = entryStageId;
-            InitialCheckpointId = entry.CheckpointId;
-            lastContactCheckpointId = null;
-            Session.Begin(new CheckpointSnapshot(initialPose.position, entry.Fragments));
+            lastContactMarker = null;
+            Session.Begin(initial);
             Dialogue.ResetRound();
-            foreach (var ability in entry.Abilities) Session.Unlock(ability, Stages.ResolvePresetOrigin(entryStageId, ability));
         }
         public void SpawnActorAtCheckpoint()
         {
             ThrowIfDisposed();
             if (!Session.IsActive) throw new InvalidOperationException("Session is inactive.");
-            var saved = Session.Checkpoint;
+            var saved = Session.RestoreCheckpoint();
             Stages.Require(ActiveStageId);
             // Rotation is fresh authoring, not a third checkpoint value. Retry never re-queries a marker.
-            var pose = new Pose(saved.Position, Quaternion.identity);
+            var pose = new Pose(saved.Position, Session.HasCheckpoint ? Quaternion.identity : ActiveStage.InitialPose.rotation);
             try
             {
                 host.Spawn(pose, saved.Fragments);
@@ -217,8 +194,37 @@ namespace Cooked.Integration
             ThrowIfDisposed();
             if (!CanAcceptWorldRequest) return false;
             if (stageId != ActiveStageId) return false;
-            Stages.Require(stageId);
-            return Dialogue.TryStart(code);
+            var owner = Stages.Require(stageId);
+            var source = Player.Actor;
+            long generation = Player.ActorGeneration;
+            return Dialogue.TryStart(code, () => PrepareDialogueStart(owner, source, generation));
+        }
+        /// <summary>현재 판의 활성 Stage 최종 접촉만 완료/Skipped Code 재생을 요청한다.</summary>
+        public bool TryStartFinalDialogue(StageService owner, StageTrigger trigger, PlayerFacade source,
+            long generation, string expectedCode)
+        {
+            if (!IsCurrentDialogueSource(owner, source, generation)) return false;
+            var table = scope.Get<IDialogueTableService>();
+            if (!owner.MatchesFinalDialogueRequest(Session, Dialogue, table, trigger, source, generation, expectedCode)) return false;
+            return Dialogue.TryStartFinalDialogue(expectedCode, () => PrepareDialogueStart(owner, source, generation,
+                () => owner.MatchesFinalDialogueRequest(Session, Dialogue, table, trigger, source, generation, expectedCode)));
+        }
+        internal bool IsCurrentStage(IStageService owner)
+        {
+            if (disposed || !Session.IsActive || owner == null || ActiveStageId == null) return false;
+            try { return ReferenceEquals(ActiveStage, owner); }
+            catch (InvalidOperationException) { return false; } // 현재 등록 Stage가 해제/파괴되면 낡은 접촉을 거절한다.
+        }
+        private bool IsCurrentDialogueSource(IStageService owner, PlayerFacade source, long generation)
+            => CanAcceptWorldRequest && owner != null && source != null &&
+                IsCurrentStage(owner) && Player.IsCurrentActor(source, generation);
+        private bool PrepareDialogueStart(IStageService owner, PlayerFacade source, long generation,
+            Func<bool> finalContact = null)
+        {
+            if (!IsCurrentDialogueSource(owner, source, generation) || (finalContact != null && !finalContact())) return false;
+            // DialogueService already owns its input lease: closing the Memo cannot briefly restore input.
+            host.Interaction?.ForceCloseOverlays();
+            return IsCurrentDialogueSource(owner, source, generation) && (finalContact == null || finalContact());
         }
         public void CancelDialogue() { if (!disposed) Dialogue?.Cancel(); }
         public void SetGameplayVisible(bool value)
@@ -252,23 +258,46 @@ namespace Cooked.Integration
             SessionCleanup.Attempt(errors, () => host.Interaction?.CancelOperations());
             SessionCleanup.ThrowIfAny(errors, "World operation cancellation failed.");
         }
-        public bool TryCaptureCheckpoint(string stageId, string checkpointId, PlayerFacade source)
+        private bool RequestDeathRetry(PlayerFacade source, long generation)
         {
-            if (!CanAcceptWorldRequest || stageId != ActiveStageId || source == null || source != Player.Actor ||
-                host.ActorRoot == null || !source.transform.IsChildOf(host.ActorRoot.transform)) return false;
-            if (checkpointPair == null) throw new InvalidOperationException("T9 start/end checkpoint contact policy is not connected.");
-            var pair = checkpointPair(stageId);
-            var stage = Stages.Require(stageId);
-            if (string.IsNullOrWhiteSpace(pair.StartId) || string.IsNullOrWhiteSpace(pair.EndId) || pair.StartId == pair.EndId ||
-                !stage.TryGetCheckpointPose(pair.StartId, out _) || !stage.TryGetCheckpointPose(pair.EndId, out _))
-                throw new InvalidOperationException("Stage must author distinct registered start/end checkpoints.");
-            if (checkpointId != pair.StartId && checkpointId != pair.EndId) return false;
-            if (!stage.TryGetCheckpointPose(checkpointId, out _))
-                throw new InvalidOperationException("Checkpoint contact references an unknown checkpoint.");
-            if (lastContactCheckpointId == checkpointId) return false;
-            Session.CaptureCheckpoint(source.transform.position, Player.Snapshot.Fragments);
-            lastContactCheckpointId = checkpointId;
-            return true;
+            if (disposed || !Session.IsActive || !Player.IsCurrentActor(source, generation) || !source.IsDead ||
+                flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy) return false;
+            return flow.Request(new FlowRequest(FlowCommand.RetryCheckpoint));
+        }
+        public bool TryCaptureCheckpoint(string stageId, CheckpointMarker marker, PlayerFacade source)
+        {
+            if (marker == null || !CanCapture(stageId, source) || !ActiveStage.ContainsCheckpoint(marker) ||
+                ReferenceEquals(lastContactMarker, marker)) return false;
+            return Capture(source, marker);
+        }
+        public bool TryCaptureBeforeChase(StageService owner, PlayerFacade source)
+        {
+            if (owner == null || !CanCapture(owner.StageId, source) || !ReferenceEquals(ActiveStage, owner)) return false;
+            return Capture(source, null);
+        }
+        private bool CanCapture(string stageId, PlayerFacade source) => !capturingCheckpoint && CanAcceptWorldRequest &&
+            stageId == ActiveStageId && source != null && Player.IsCurrentActor(source, Player.ActorGeneration) &&
+            host.ActorRoot != null && (source.transform == host.ActorRoot.transform || source.transform.IsChildOf(host.ActorRoot.transform));
+        private bool Capture(PlayerFacade source, CheckpointMarker marker)
+        {
+            capturingCheckpoint = true;
+            try
+            {
+                Session.CaptureCheckpoint(source.transform.position, Player.Snapshot.Fragments);
+                if (marker != null) lastContactMarker = marker;
+                var observers = CheckpointCaptured;
+                if (observers != null)
+                    foreach (Action observer in observers.GetInvocationList())
+                        try { observer(); }
+                        catch (Exception error) { Debug.LogException(new InvalidOperationException("완료된 체크포인트 저장의 관찰자 통지에 실패했습니다. 저장은 유지됩니다.", error), host); }
+                return true;
+            }
+            catch (ArgumentException error)
+            {
+                Debug.LogException(new InvalidOperationException("현재 Actor의 체크포인트 저장을 거절했습니다. 이전 저장을 유지합니다.", error), host);
+                return false;
+            }
+            finally { capturingCheckpoint = false; }
         }
 
         public void Dispose()
@@ -278,8 +307,6 @@ namespace Cooked.Integration
             // Cancellation runs while the owned dialogue and interaction still accept forced release.
             SessionCleanup.Attempt(errors, CancelWorldOperations);
             disposed = true;
-            foreach (var subscription in eventSubscriptions) SessionCleanup.Attempt(errors, subscription.Dispose);
-            eventSubscriptions.Clear();
             SessionCleanup.Attempt(errors, NotifyActorRemoving);
             SessionCleanup.Attempt(errors, () => { if (Player != null) Player.Dying -= OnActorDying; });
             SessionCleanup.Attempt(errors, () => { if (dialogueView != null) dialogueView.Unbind(); });
@@ -288,9 +315,9 @@ namespace Cooked.Integration
             SessionCleanup.Attempt(errors, () => { if (Session != null && Session.IsActive) Session.End(); });
             SessionCleanup.Attempt(errors, () => scope?.Dispose());
             Stages.Clear();
-            ActiveStageId = null; InitialCheckpointId = null; lastContactCheckpointId = null;
-            prepareStage = null; resetAbilityNotices = null; checkpointPair = null; actorViewReady = null;
-            ActorReady = null; ActorRemoving = null; GameplayVisibilityChanged = null;
+            ActiveStageId = null; lastContactMarker = null;
+            prepareStage = null; actorViewReady = null;
+            ActorReady = null; ActorRemoving = null; CheckpointCaptured = null; GameplayVisibilityChanged = null;
             SessionCleanup.ThrowIfAny(errors, "Core session cleanup failed.");
         }
         private void ThrowIfDisposed() { if (disposed) throw new ObjectDisposedException(nameof(GameSessionRuntime)); }

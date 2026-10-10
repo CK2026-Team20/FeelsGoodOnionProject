@@ -1,3 +1,4 @@
+using Cooked.Authoring;
 using System;
 using Cooked.Contracts;
 using UnityEngine;
@@ -8,7 +9,7 @@ namespace Cooked.Foundation
     public sealed class Bootstrapper : MonoBehaviour
     {
         [Tooltip("대화 ID·화자·문장을 담은 JSON TextAsset입니다. 시작 시 검증하므로 현재 대화 테이블 자산을 연결하세요.")]
-        [SerializeField] private TextAsset dialogueTable;
+        [SerializeField, InspectorLabel("대화 원본")] private TextAsset dialogueTable;
         private static Bootstrapper active;
         private ServiceLocator appServices;
         private GameFlowService flow;
@@ -43,7 +44,6 @@ namespace Cooked.Foundation
                 appServices.Get<IDialogueTableService>().LoadJson(dialogueTable.text);
                 flow = new GameFlowService(catalog, appServices.Get<ISceneService>(), fade,
                     appServices.Get<IGameplayControlService>(), appServices.Get<IGameRuntimeService>(),
-                    appServices.Get<IGameEventBus>(),
                     routine => StartCoroutine(routine), message => Debug.Log(message, this));
                 appServices.Register<IGameFlowService>(flow);
                 route = EditorRouteResolver != null ? EditorRouteResolver(route) : route;

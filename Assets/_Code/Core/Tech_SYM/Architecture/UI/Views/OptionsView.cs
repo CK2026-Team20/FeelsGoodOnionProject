@@ -23,6 +23,14 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("음량 글자")] private TMP_Text values;
         [Tooltip("설정 저장 실패 등 옵션 오류를 표시할 TMP 텍스트입니다.")]
         [SerializeField, InspectorLabel("저장 오류")] private TMP_Text error;
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(CanvasGroup group, UnityEngine.UI.Button closeButton,
+            UnityEngine.UI.Button titleButton, UnityEngine.UI.Slider masterSlider,
+            UnityEngine.UI.Slider musicSlider, UnityEngine.UI.Slider sfxSlider, TMP_Text volumeText, TMP_Text errorText)
+        { modal = group; close = closeButton; title = titleButton;
+          master = masterSlider; music = musicSlider; sfx = sfxSlider; values = volumeText; error = errorText; }
+#endif
         protected override void ConnectInputs()
         {
             if (modal == null || close == null || title == null || master == null || music == null || sfx == null || values == null || error == null ||

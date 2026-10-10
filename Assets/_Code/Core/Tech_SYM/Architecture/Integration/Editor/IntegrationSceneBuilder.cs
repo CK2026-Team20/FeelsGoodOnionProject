@@ -160,7 +160,12 @@ namespace Cooked.Integration.Editor
             Instantiate(Cooked.Background.Editor.KitchenContentBackdropBuilder.PrefabPath).transform.SetParent(root.transform,false);
             var binding=root.AddComponent<CoreUiBinding>();
             ui.CinematicMount.SetAsLastSibling();
-            binding.Configure(ui);
+            // Temporary Builder caller migration only. T12 removes this Builder after T11 transfers actual saved references.
+            var oldUi = new SerializedObject(ui);
+            var newUi = new SerializedObject(binding);
+            foreach (string field in new[] { "hud", "prompt", "worldCanvas", "dialogueMount", "cinematicMount" })
+                newUi.FindProperty(field).objectReferenceValue = oldUi.FindProperty(field).objectReferenceValue;
+            newUi.ApplyModifiedPropertiesWithoutUndo();
             var side = cameraRoot.transform.Find("Side")?.GetComponent<Unity.Cinemachine.CinemachineCamera>();
             var quarter = cameraRoot.transform.Find("Quarter")?.GetComponent<Unity.Cinemachine.CinemachineCamera>();
             if (side == null || quarter == null) throw new InvalidOperationException("Core requires authored Side/Quarter rigs.");

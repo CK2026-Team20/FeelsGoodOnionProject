@@ -10,6 +10,10 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("종료")] private UnityEngine.UI.Button quit;
         [Tooltip("타이틀에서 옵션 화면을 여는 버튼입니다.")]
         [SerializeField, InspectorLabel("설정")] private UnityEngine.UI.Button settings;
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(UnityEngine.UI.Button start, UnityEngine.UI.Button exit) { newGame = start; quit = exit; }
+#endif
         protected override void ConnectInputs()
         {
             if (newGame == null || quit == null || newGame == quit || (settings != null && (settings == newGame || settings == quit)))

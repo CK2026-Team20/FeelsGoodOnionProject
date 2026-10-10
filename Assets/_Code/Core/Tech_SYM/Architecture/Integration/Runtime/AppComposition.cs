@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cooked.Audio;
+using Cooked.Authoring;
 using Cooked.Contracts;
 using Cooked.Dialogue;
 using Cooked.Foundation;
@@ -15,15 +16,21 @@ namespace Cooked.Integration
     public sealed class AppComposition : MonoBehaviour
     {
         [Tooltip("앱 시작과 공통 서비스 준비를 담당하는 Bootstrapper입니다.")]
-        [SerializeField] private Bootstrapper bootstrap;
+        [SerializeField, InspectorLabel("앱 시작 담당")] private Bootstrapper bootstrap;
         [Tooltip("부트·타이틀·Core·스테이지 경로를 지정한 설치 자산입니다. 실제 씬 흐름을 이 자산에서 설정합니다.")]
-        [SerializeField] private ArchitectureInstallation installation;
-        [Tooltip("앱 수명 동안 유지할 옵션·화면 전환 UI 루트입니다.")]
-        [SerializeField] private GlobalUiRoot ui;
+        [SerializeField, InspectorLabel("씬 설치 설정")] private ArchitectureInstallation installation;
+        // T11 transfers the two existing view references; T12 removes this serialized migration field and Editor-only Configure.
+        [SerializeField, HideInInspector] private GlobalUiRoot ui;
+        [SerializeField, InspectorLabel("옵션 화면"), Tooltip("이 씬에서 음량과 닫기를 표시할 OptionsView를 연결하세요.")]
+        private OptionsView optionsView;
+        [SerializeField, InspectorLabel("페이드 화면"), Tooltip("이 씬에서 화면 전환을 표시할 FadeView를 연결하세요.")]
+        private FadeView fadeView;
+        private OptionsViewModel optionsModel;
+        private FadeViewModel fadeModel;
         [Tooltip("앱의 음악·효과음을 재생할 AudioRuntimeHost입니다.")]
-        [SerializeField] private AudioRuntimeHost audio;
+        [SerializeField, InspectorLabel("소리 담당")] private AudioRuntimeHost audio;
         [Tooltip("모든 화면을 출력하는 앱의 단일 Camera입니다. 같은 오브젝트의 Brain·AudioListener·분리 리그 HMS 카메라 담당을 연결하고 앱 종료까지 켜 둡니다.")]
-        [SerializeField] private Camera presentationCamera;
+        [SerializeField, InspectorLabel("출력 카메라")] private Camera presentationCamera;
         private ServiceLocator services;
         private SceneCatalog catalog;
         private OptionsService options;
@@ -36,16 +43,23 @@ namespace Cooked.Integration
         public Camera OutputCamera => presentationCamera;
         public CinemachineBrain OutputBrain { get; private set; }
         public PlayerCameraController OutputController { get; private set; }
+#if UNITY_EDITOR
+        // Temporary caller: IntegrationSceneBuilder. Never used for runtime binding; T12 removes the Builder and this method.
         public void Configure(Bootstrapper bootstrapper, ArchitectureInstallation config, GlobalUiRoot globalUi, AudioRuntimeHost sound, Camera outputCamera)
         { bootstrap = bootstrapper; installation = config; ui = globalUi; audio = sound; presentationCamera = outputCamera; }
+#endif
         private void Awake()
         {
             try
             {
-                if (bootstrap == null || installation == null || ui == null || audio == null || presentationCamera == null)
+                if (bootstrap == null || installation == null || optionsView == null || fadeView == null || audio == null || presentationCamera == null)
                     throw new InvalidOperationException("Bootstrap composition dependencies are incomplete.");
-                if (presentationCamera.transform == transform || !presentationCamera.transform.IsChildOf(transform))
-                    throw new InvalidOperationException("App presentation Camera must be a child of this composition root.");
+                foreach (var reference in new Component[] { bootstrap, optionsView, fadeView, audio, presentationCamera })
+                    SceneComponentLookup.RequireSameScene(this, reference, "App 연결");
+                if (SceneComponentLookup.RequireSingle<Camera>(gameObject.scene) != presentationCamera ||
+                    SceneComponentLookup.RequireSingle<CinemachineBrain>(gameObject.scene).gameObject != presentationCamera.gameObject ||
+                    SceneComponentLookup.RequireSingle<AudioListener>(gameObject.scene).gameObject != presentationCamera.gameObject)
+                    throw new InvalidOperationException("App requires one explicit output Camera/Brain/Listener in this scene.");
                 var listeners = presentationCamera.GetComponents<AudioListener>();
                 if (listeners.Length != 1)
                     throw new InvalidOperationException("App presentation Camera requires one AudioListener on the same object.");
@@ -60,7 +74,6 @@ namespace Cooked.Integration
                 var control = new GameplayControlService();
                 var fade = new FadeService();
                 services.Register<IGameplayControlService>(control);
-                services.Register<IGameEventBus>(new GameEventBus());
                 services.Register<IFadeService>(fade);
                 services.Register<ISceneService>(new SceneService(catalog));
                 services.Register<IDialogueTableService>(new DialogueTableService());
@@ -90,11 +103,11 @@ namespace Cooked.Integration
                 var flow = services.Get<IGameFlowService>();
                 options = new OptionsService(flow, control, settings);
                 services.Register<OptionsService>(options);
-                ui.Bind(options, settings, fade);
-                audio.BindFlow(flow, control, new Dictionary<string,string>
-                {
-                    ["1_Stage"] = AudioCueIds.Stage1, ["03_1_Stage"] = AudioCueIds.Stage1, ["03_2_Stage"] = AudioCueIds.Stage2, ["03_3_Stage"] = AudioCueIds.Stage3
-                });
+                optionsModel = new OptionsViewModel(options, settings);
+                fadeModel = new FadeViewModel(fade);
+                optionsView.Bind(optionsModel);
+                fadeView.Bind(fadeModel);
+                audio.BindFlow(flow, control);
                 services.Register<AudioFlowBinding>(audio.Binding);
             }
             catch (Exception error)
@@ -109,7 +122,7 @@ namespace Cooked.Integration
         private void SetPresentationOutput(bool visible)
         {
             // App owns the single output. Gameplay visibility belongs to UI/rig readiness.
-            if (presentationCamera == null || !presentationCamera.transform.IsChildOf(transform)) return;
+            if (presentationCamera == null || presentationCamera.gameObject.scene != gameObject.scene) return;
             presentationCamera.enabled = visible;
             if (presentationListener != null) presentationListener.enabled = visible;
             if (OutputBrain != null) OutputBrain.enabled = visible;
@@ -119,7 +132,15 @@ namespace Cooked.Integration
         {
             if (catalog == null || scene.path != catalog.TitlePath) return;
             if (options == null) throw new InvalidOperationException("Title loaded before options composition completed.");
-            SceneComponentLookup.RequireSingle<TitleUiRoot>(catalog.TitlePath).Bind(services.Get<IGameFlowService>(), options);
+            SceneComponentLookup.RequireSingle<TitleUiRoot>(catalog.TitlePath).Bind(services.Get<IGameFlowService>(), options, QuitApplication);
+        }
+        private static void QuitApplication()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
         private void Cleanup()
         {
@@ -130,7 +151,11 @@ namespace Cooked.Integration
             subscribed = false;
             runtime = null;
             Attempt(() => SetPresentationOutput(false));
-            Attempt(() => { if (ui != null) ui.Unbind(); });
+            Attempt(() => { if (optionsView != null) optionsView.Unbind(); });
+            Attempt(() => { if (fadeView != null) fadeView.Unbind(); });
+            Attempt(() => optionsModel?.Dispose());
+            Attempt(() => fadeModel?.Dispose());
+            optionsModel = null; fadeModel = null;
             try { Attempt(() => services?.Dispose()); }
             finally { services = null; catalog = null; options = null; }
             if (errors.Count != 0) throw new AggregateException("App composition cleanup failed.", errors);

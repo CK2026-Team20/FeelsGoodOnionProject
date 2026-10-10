@@ -5,8 +5,10 @@ using Cooked.Contracts;
 using FeelsGoodOnion.TechSYM.Interaction;
 using UnityEngine;
 using Cooked.Level;
-using Cooked.Foundation;
+using Cooked.Authoring;
 using Cooked.Integration;
+using FeelsGoodOnion.TechSYM.Enemies;
+using FeelsGoodOnion.TechSYM.Platforms;
 
 namespace Cooked.Session
 {
@@ -14,18 +16,27 @@ namespace Cooked.Session
     public sealed class SessionActorHost : MonoBehaviour
     {
         [Tooltip("세션에 생성할 플레이어 루트 프리팹입니다. 병합 PlayerFacade·물리·외형 연결이 준비된 프리팹을 지정하세요.")]
-        [SerializeField] private GameObject actorPrefab;
+        [SerializeField, InspectorLabel("플레이어 프리팹")] private GameObject actorPrefab;
         [Tooltip("여섯 통합 씬 밖에서 직접 Play할 기존 플레이어 루트입니다. 비워 두면 통합 세션이 프리팹을 생성합니다.")]
-        [SerializeField] private GameObject independentActor;
+        [SerializeField, InspectorLabel("독립 플레이어")] private GameObject independentActor;
         [Tooltip("독립 씬의 한 월드 F 안내를 표시할 CoreUiBinding입니다. 기존 플레이어를 연결할 때 지정합니다.")]
-        [SerializeField] private CoreUiBinding independentUi;
+        [SerializeField, InspectorLabel("독립 안내 담당")] private CoreUiBinding independentUi;
         [Tooltip("독립 씬에서 F로 열고 닫을 메모 담당 목록입니다. 각 담당의 자기 제한만 해제합니다.")]
-        [SerializeField] private MemoUIController[] independentMemos = Array.Empty<MemoUIController>();
+        [SerializeField, InspectorLabel("독립 메모 담당")] private MemoUIController[] independentMemos = Array.Empty<MemoUIController>();
         [Tooltip("독립 HMS 카메라 리그의 출력 Camera입니다. 이 씬의 기존 단일 출력을 연결하며 App 출력으로 바꾸지 않습니다.")]
-        [SerializeField] private Camera independentCamera;
+        [SerializeField, InspectorLabel("독립 출력 카메라")] private Camera independentCamera;
         private GameSessionService independentSession;
         private GameplayControlService independentControl;
-        private GameEventBus independentBus;
+        [SerializeField, InspectorLabel("수평 넉백 속도"), Tooltip("모든 일반 피해의 수평 넉백 속도를 조절합니다(m/s). 0이면 수평으로 밀리지 않습니다."), Min(0f)]
+        private float horizontalKnockbackSpeed = 3f;
+        [SerializeField, InspectorLabel("상향 넉백 속도"), Tooltip("모든 일반 피해의 위쪽 넉백 속도를 조절합니다(m/s). 0이면 위로 밀리지 않습니다."), Min(0f)]
+        private float upwardKnockbackSpeed = 3f;
+        public float HorizontalKnockbackSpeed => horizontalKnockbackSpeed;
+        public float UpwardKnockbackSpeed => upwardKnockbackSpeed;
+        private readonly List<StageTrigger> independentFalls = new List<StageTrigger>();
+        private EnemyContactSensor[] independentSensors = Array.Empty<EnemyContactSensor>();
+        private DamageFloorPlatform[] independentFloors = Array.Empty<DamageFloorPlatform>();
+        private PeriodicPlatform[] independentPeriodic = Array.Empty<PeriodicPlatform>();
         private bool started;
         private bool ownsIndependentServices;
         public void Configure(GameObject prefab) { actorPrefab = prefab; }
@@ -95,7 +106,6 @@ namespace Cooked.Session
                 if (actor.GetComponent<PlayerAnimatorOutput>()?.KnockbackControlLockMilliseconds <= 0f)
                     Debug.LogWarning("공통 넉백 클립 연결 대기: 기존 설정의 0ms 조작 제한을 사용합니다. 실제 애니메이션 재생은 미검증입니다.", actor);
                 bridge.Attach(actor);
-                foreach (var guard in actorRoot.GetComponentsInChildren<ActorFallGuard>(true)) guard.Bind(bridge);
                 bridge.RestoreFragments(fragments);
                 actor.Heal(actor.Model.MaxHP);
                 Interaction = new PlayerInteractionService(bridge);
@@ -127,6 +137,15 @@ namespace Cooked.Session
             Interaction = null;
             try
             {
+                foreach (var trigger in independentFalls)
+                    if (trigger != null) SessionCleanup.Attempt(errors, trigger.UnbindIndependentFall);
+                independentFalls.Clear();
+                foreach (var sensor in independentSensors) if (sensor != null) SessionCleanup.Attempt(errors, sensor.UnbindPlayer);
+                foreach (var floor in independentFloors) if (floor != null) SessionCleanup.Attempt(errors, floor.UnbindPlayer);
+                foreach (var periodic in independentPeriodic) if (periodic != null) SessionCleanup.Attempt(errors, () => periodic.BindMaterialization(null));
+                independentSensors = Array.Empty<EnemyContactSensor>();
+                independentFloors = Array.Empty<DamageFloorPlatform>();
+                independentPeriodic = Array.Empty<PeriodicPlatform>();
                 // Detach ownership first: reentrant observers cannot dispose the same objects twice.
                 if (oldRoot != null || oldInteraction != null)
                     SessionCleanup.Notify(errors, InteractionChanged, (PlayerInteractionService)null);
@@ -184,21 +203,61 @@ namespace Cooked.Session
                 if (facade == null || reader == null || router == null) throw new InvalidOperationException("Independent Actor dependencies missing.");
                 independentControl = new GameplayControlService(); control = independentControl;
                 independentSession = new GameSessionService();
-                independentSession.Begin(new CheckpointSnapshot(facade.transform.position, facade.Model.CurrentSkillFragment));
-                independentSession.Unlock(AbilityId.FormChange, "Independent"); independentSession.Unlock(AbilityId.Tear, "Independent");
-                independentBus = new GameEventBus();
-                bridge = new PlayerBridgeService(control, independentSession, independentBus);
+                SceneComponentLookup.RequireSameScene(this, facade, "독립 플레이어");
+                SceneComponentLookup.RequireSameScene(this, independentUi, "독립 안내");
+                SceneComponentLookup.RequireSameScene(this, independentCamera, "독립 출력");
+                facade.SetHitInvincibilityDuration(2f);
+                independentSession.Begin(new CheckpointSnapshot(facade.transform.position, facade.Model.CurrentSkillFragment, AbilityMask.Both));
+                bridge = new PlayerBridgeService(control, independentSession, requestRetry: null,
+                    horizontalKnockbackSpeed: HorizontalKnockbackSpeed, upwardKnockbackSpeed: UpwardKnockbackSpeed);
                 bridge.SetEnemyHurtColliderResolver(enemy => enemy.HurtCollider);
                 reader.SetTearSkillBinding("<Keyboard>/e");
                 actorRoot = independentActor;
                 bridge.Attach(facade); bridge.Dying += OnIndependentDying;
                 Interaction = new PlayerInteractionService(bridge);
-                foreach (var memo in independentMemos) if (memo != null) memo.Initialize(control);
+                foreach (var memo in independentMemos) if (memo != null)
+                {
+                    SceneComponentLookup.RequireSameScene(this, memo, "독립 메모 담당");
+                    memo.Initialize(control);
+                }
                 Interaction.BindOverlays(independentMemos);
                 router.Initialize(reader, bridge, Interaction, control);
                 independentUi.BindIndependent(bridge, Interaction, independentCamera);
+                independentSensors = SceneComponentLookup.FindAll<EnemyContactSensor>(gameObject.scene);
+                independentFloors = SceneComponentLookup.FindAll<DamageFloorPlatform>(gameObject.scene);
+                independentPeriodic = SceneComponentLookup.FindAll<PeriodicPlatform>(gameObject.scene);
+                foreach (var sensor in independentSensors)
+                {
+                    SceneComponentLookup.RequireSameScene(this, sensor.Owner, "독립 적 소유자");
+                    sensor.BindPlayer(bridge);
+                }
+                foreach (var floor in independentFloors) floor.BindPlayer(bridge);
+                foreach (var periodic in independentPeriodic) periodic.BindMaterialization(bridge);
+                foreach (var trigger in SceneComponentLookup.FindAll<StageTrigger>(gameObject.scene))
+                    if (trigger.IndependentHost == this) BindIndependentFall(trigger);
             }
             catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, ReleaseSession); }
+        }
+        // A Fall sensor may be disabled independently of this Host. Its next OnEnable reconnects the same current Actor.
+        public bool BindIndependentFall(StageTrigger trigger)
+        {
+            if (trigger == null || trigger.IndependentHost != this || trigger.Owner != null ||
+                trigger.Kind != StageTriggerKind.Fall || !ownsIndependentServices || releasing || shutdown ||
+                bridge == null || !bridge.HasActor || actorRoot == null || bridge.Actor.IsDead) return false;
+            SceneComponentLookup.RequireSameScene(this, trigger, "독립 데드존");
+            trigger.BindIndependentFall(bridge.Actor, (source, shell) => !releasing && !shutdown && bridge != null &&
+                bridge.IsCurrentActor(source, bridge.ActorGeneration) && source.isActiveAndEnabled && !source.IsDead &&
+                control != null && !control.State.WorldPaused &&
+                (shell != null ? bridge.ReturnOwnedDebris(shell) : bridge.ForceDeath(Vector3.zero, skipPresentation: true) > 0));
+            if (!independentFalls.Contains(trigger)) independentFalls.Add(trigger);
+            return true;
+        }
+        private void Update()
+        {
+            // T06 owns separation advancement via MovementUpdated. Host only polls its single death completion.
+            if (!shutdown && !releasing && !spawning && actorRoot != null && bridge != null && bridge.HasActor &&
+                control != null && !control.State.WorldPaused && !control.State.PresentationPaused)
+                bridge.TickDeathPresentation();
         }
         private void OnIndependentDying()
         {
@@ -229,12 +288,11 @@ namespace Cooked.Session
                     SessionCleanup.Attempt(errors, () => bridge?.Dispose());
                     SessionCleanup.Attempt(errors, () => independentSession?.Dispose());
                     SessionCleanup.Attempt(errors, () => independentControl?.Dispose());
-                    SessionCleanup.Attempt(errors, () => independentBus?.Dispose());
                 }
             }
             finally
             {
-                bridge = null; control = null; independentSession = null; independentControl = null; independentBus = null; ownsIndependentServices = false;
+                bridge = null; control = null; independentSession = null; independentControl = null; ownsIndependentServices = false;
             }
             SessionCleanup.ThrowIfAny(errors, "Actor host shutdown completed with teardown failures.");
         }

@@ -1,3 +1,4 @@
+using Cooked.Authoring;
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
@@ -12,24 +13,24 @@ namespace Cooked.Chase
     public sealed class ChaseRuntimeDriver : MonoBehaviour
     {
         [Tooltip("추격 속도와 시작 거리 조건을 제공하는 설정 자산입니다. 무리의 밸런스는 이 자산에서 조절하세요.")]
-        [SerializeField] private ChaseDefinition definition = null;
+        [SerializeField, InspectorLabel("추격 설정")] private ChaseDefinition definition = null;
         [Tooltip("추격 무리의 등장·상하 움직임·퇴장 외형을 표현할 컴포넌트입니다. 포획 판정 자체는 바꾸지 않습니다.")]
-        [SerializeField] private ChaseSwarmPresentation presentation = null;
+        [SerializeField, InspectorLabel("무리 표현")] private ChaseSwarmPresentation presentation = null;
         private IPlayerBridgeService bridge;
         private string reportedFailure;
-        private PlayerFacade actor;
         private ChasePath route;
         public ChaseService Service { get; private set; }
         public string LastRejection { get; private set; }
 
         public void Initialize(IPlayerBridgeService playerBridge, IGameplayControlService control,
-            IGameFlowService flow, IGameEventBus eventBus)
+            IGameFlowService flow)
         {
             Shutdown();
             if (definition == null || presentation == null) throw new InvalidOperationException("Chase prefab bindings are missing.");
+            Cooked.Integration.SceneComponentLookup.RequireSameScene(this, presentation, "무리 표현");
             bridge = playerBridge ?? throw new ArgumentNullException(nameof(playerBridge));
             if (!(bridge is PlayerBridgeService owner)) throw new ArgumentException("Chase needs the current session death owner.");
-            Service = new ChaseService(bridge, control, flow, eventBus, definition.CreateSettings(), velocity => owner.ForceDeath(velocity));
+            Service = new ChaseService(bridge, control, flow, definition.CreateSettings(), velocity => owner.ForceDeath(velocity));
             reportedFailure = null;
             LastRejection = null;
             try { presentation.Bind(Service, control); }
@@ -46,15 +47,21 @@ namespace Cooked.Chase
         {
             if (!isActiveAndEnabled || Service == null || bridge == null)
                 return Reject("Chase driver has not been initialized or enabled.");
-            if (actor == null || bridge.CameraTarget == null ||
-                (bridge.CameraTarget != actor.transform && !bridge.CameraTarget.IsChildOf(actor.transform)))
-                return Reject("Stage Actor does not match the session bridge CameraTarget owner.");
+            if (actor == null || bridge.Actor != actor || !bridge.IsCurrentActor(actor, bridge.ActorGeneration))
+                return Reject("Stage Actor does not match the current session Actor.");
             bool accepted = Service.Start(stageId, waypoints, new PlayerActor(actor));
-            if (accepted) { this.actor = actor; route = new ChasePath(waypoints); }
+            if (accepted) route = new ChasePath(waypoints);
             LastRejection = Service.LastRejection;
             return accepted;
         }
 
+
+        public bool CanStart(string stageId, IReadOnlyList<Vector3> waypoints, PlayerFacade candidate)
+        {
+            if (!isActiveAndEnabled || Service == null || bridge == null || candidate == null ||
+                !bridge.IsCurrentActor(candidate, bridge.ActorGeneration)) return false;
+            return Service.CanStart(stageId, waypoints, new PlayerActor(candidate));
+        }
 
         private void LateUpdate()
         {
@@ -78,7 +85,7 @@ namespace Cooked.Chase
             var errors = new List<Exception>();
             if (presentation != null) SessionCleanup.Attempt(errors, presentation.Unbind);
             if (Service != null) SessionCleanup.Attempt(errors, Service.Dispose);
-            if (errors.Count == 0) { Service = null; bridge = null; actor = null; route = null; }
+            if (errors.Count == 0) { Service = null; bridge = null; route = null; }
             SessionCleanup.ThrowIfAny(errors, "Chase release failed.");
         }
         private bool Reject(string message) { LastRejection = message; return false; }

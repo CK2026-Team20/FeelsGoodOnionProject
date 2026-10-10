@@ -16,7 +16,6 @@ namespace Cooked.Foundation
         private readonly IGameRuntimeService runtime;
         private readonly Action<IEnumerator> schedule;
         private readonly Action<string> log;
-        private readonly IDisposable requestSubscription;
         private CancellationTokenSource current;
         private IDisposable inputLease, worldLease;
         private bool disposed, booted, sessionInitialized;
@@ -28,7 +27,7 @@ namespace Cooked.Foundation
 
         public GameFlowService(SceneCatalog catalog, ISceneService scenes, IFadeService fade,
             IGameplayControlService control, IGameRuntimeService runtime,
-            IGameEventBus eventBus, Action<IEnumerator> schedule, Action<string> log = null)
+            Action<IEnumerator> schedule, Action<string> log = null)
         {
             this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             this.scenes = scenes ?? throw new ArgumentNullException(nameof(scenes));
@@ -37,7 +36,6 @@ namespace Cooked.Foundation
             this.runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
             this.schedule = schedule ?? throw new ArgumentNullException(nameof(schedule));
             this.log = log ?? (_ => { });
-            requestSubscription = (eventBus ?? throw new ArgumentNullException(nameof(eventBus))).Subscribe<FlowRequestedEvent>(e => Request(e.Request));
         }
         public bool Boot(BootRoute route)
         {
@@ -308,7 +306,6 @@ namespace Cooked.Foundation
             if (disposed) return;
             disposed = true;
             current?.Cancel(); current?.Dispose(); current = null;
-            requestSubscription.Dispose();
             ReleaseTransitionLeases();
             Snapshot = new FlowSnapshot(FlowState.Disposed, false, revision, null);
             Changed = null;

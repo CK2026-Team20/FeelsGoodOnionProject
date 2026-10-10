@@ -1,3 +1,4 @@
+using Cooked.Authoring;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,9 +10,9 @@ namespace Cooked.UI
     {
         public enum Symbol { Heart = 0, Tear = 1, Form = 2 }
         [Tooltip("이 HUD에 그릴 아이콘 모양입니다. 체력·눈물·상태 전환 중 화면 목적에 맞는 모양을 선택하세요.")]
-        [SerializeField] private Symbol symbol;
+        [SerializeField, InspectorLabel("아이콘 모양")] private Symbol symbol;
         [Tooltip("체력 아이콘의 채워진 비율입니다(0~1). 0은 비어 있음, 1은 가득 참입니다. 런타임 HUD가 체력에 맞춰 갱신하며 다른 모양에는 체력 채우기를 적용하지 않습니다.")]
-        [SerializeField, Range(0, 1)] private float fillAmount = 1;
+        [SerializeField, InspectorLabel("채움 비율"), Range(0, 1)] private float fillAmount = 1;
         public float FillAmount
         {
             get => fillAmount;

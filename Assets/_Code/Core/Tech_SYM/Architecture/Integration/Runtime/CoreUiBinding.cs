@@ -37,6 +37,8 @@ namespace Cooked.Integration
             if (unbinding) throw new InvalidOperationException("Core UI is unbinding.");
             if (hud == null || prompt == null || worldCanvas == null || dialogueMount == null || cinematicMount == null || dialogueMount == cinematicMount)
                 throw new InvalidOperationException("CoreUiBinding의 HUD·월드 안내·Canvas·서로 다른 대화/연출 부모를 연결하세요.");
+            foreach (var reference in new Component[] { hud, prompt, worldCanvas, dialogueMount, cinematicMount })
+                SceneComponentLookup.RequireSameScene(this, reference, "Core 화면 연결");
             Unbind();
             try
             {
@@ -59,6 +61,8 @@ namespace Cooked.Integration
             if (unbinding) throw new InvalidOperationException("Core UI is unbinding.");
             if (player == null || interaction == null || output == null || prompt == null)
                 throw new ArgumentException("Independent prompt requires Player, interaction, View and output.");
+            SceneComponentLookup.RequireSameScene(this, prompt, "독립 월드 안내");
+            if (worldCanvas != null) SceneComponentLookup.RequireSameScene(this, worldCanvas, "독립 안내 Canvas");
             Unbind();
             try
             {

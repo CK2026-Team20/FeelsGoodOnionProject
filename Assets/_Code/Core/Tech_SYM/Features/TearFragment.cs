@@ -31,6 +31,8 @@ namespace FeelsGoodOnion.TechSYM.Features
         private double displayElapsed;
         private long attemptRevision;
         public bool IsCollected => collected;
+        /// <summary>The actual Root moved by this pickup; fixed-point authoring must remain outside it.</summary>
+        public Transform MotionRoot => pickupRoot != null ? pickupRoot.transform : null;
         public void Configure(GameObject itemRoot, Transform childVisual, float rotationDegreesPerSecond = 90f,
             float bobHeight = .24f, float bobSeconds = 1.5f)
         {

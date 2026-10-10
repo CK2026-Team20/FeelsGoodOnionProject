@@ -44,29 +44,45 @@ namespace Cooked.Level
         private float resolvedChaseStartProgress;
         private Vector3 progressOrigin, progressDirection;
         private Cooked.Chase.ChasePath progressPath;
-        private readonly Dictionary<string, Pose> poses = new Dictionary<string, Pose>(StringComparer.Ordinal);
-        private IGameEventBus eventBus;
         private IGameFlowService flow;
         private PlayerFacade actor;
         private PlayerBridgeService bridge;
         private IGameplayControlService control;
         private DialogueService dialogue;
-        private bool bound, chaseAccepted, chaseStartInProgress, finalPending, finalStarted;
+        private bool bound, chaseAccepted, chaseStartInProgress, finalPending, finalStarted, endingPending;
         private bool chaseApproachObserved;
-        private long bindingRevision, finalDialogueSession;
+        private long bindingRevision, finalDialogueSession, finalActorGeneration;
+        private EnemyContactSensor[] sceneSensors = Array.Empty<EnemyContactSensor>();
+        private DamageFloorPlatform[] sceneFloors = Array.Empty<DamageFloorPlatform>();
         private PlayerFacade finalActor;
+        private StageTrigger finalTrigger;
         private string finalCode;
+        private DialogueSelection finalSelection;
+        private TextAsset finalTable;
+        private IDialogueTableService finalTableService;
+        private DialogueService finalConversation;
+        private GameSessionService boundRound, finalRound;
+        private long finalRoundId, finalBindingRevision;
+        private Func<bool> isCurrentStage;
         private Func<string, bool> tryStartSafeDialogue;
+        private Func<StageTrigger, PlayerFacade, long, string, bool> tryStartFinalDialogue;
         private Func<StageService, bool> tryStartChase;
-        private Func<string, PlayerFacade, bool> captureCheckpoint;
+        private Func<StageService, bool> canStartChase, captureBeforeChase;
         private Func<CheckpointMarker, PlayerFacade, bool> captureMarker;
         private Func<AbilityId, string, bool> unlockAbility;
         private Func<PlayerFacade, PlayerDebris, bool> fallRequest;
         private IDialogueTableService dialogueTable;
         private Action stopChase;
         public string StageId => string.IsNullOrEmpty(gameObject.scene.path) ? gameObject.scene.name : SceneCatalog.StageIdFromPath(gameObject.scene.path);
-        public string InitialCheckpointId => InitialCheckpoint != null ? InitialCheckpoint.CheckpointId : initialCheckpointId;
-        public CheckpointMarker InitialCheckpoint => initialCheckpoint != null ? initialCheckpoint : GetCheckpoint(initialCheckpointId);
+        public CheckpointMarker InitialCheckpoint => initialCheckpoint != null ? initialCheckpoint : throw new InvalidOperationException("같은 씬의 초기 CheckpointMarker를 연결하세요.");
+        public Pose InitialPose => InitialCheckpoint.Pose;
+        public bool ContainsCheckpoint(CheckpointMarker marker)
+        {
+            if (marker == null || marker.gameObject.scene != gameObject.scene) return false;
+            // LoadedStageRegistry queries before the first Reset/Bind. Prepare through this Stage's existing boundary.
+            if (sceneCheckpoints.Length == 0) RebuildRegistry();
+            return Array.IndexOf(sceneCheckpoints, marker) >= 0;
+        }
         public AudioCuePurpose StageMusicPurpose => RequireStageMusicPurpose(stageMusicPurpose);
         public static AudioCuePurpose RequireStageMusicPurpose(AudioCuePurpose purpose)
         {
@@ -84,15 +100,7 @@ namespace Cooked.Level
         public IReadOnlyList<Vector3> ChaseWaypoints => Array.AsReadOnly(resolvedChaseWaypoints);
         public bool IsChaseAccepted => chaseAccepted;
         public event Action<StageService> ChaseStarted;
-        public (string StartId, string EndId) CheckpointPair
-        {
-            get
-            {
-                RebuildRegistry();
-                var end = Array.Find(sceneCheckpoints, point => point != InitialCheckpoint);
-                return (InitialCheckpointId, end != null ? end.CheckpointId : InitialCheckpointId);
-            }
-        }
+        public event Action<StageService> StageEntered;
         public void Configure(string id, string startId, CheckpointMarker[] pair, EnemyActor[] actors)
         { stageId = id; initialCheckpointId = startId; checkpoints = pair; enemies = actors ?? Array.Empty<EnemyActor>(); RebuildRegistry(); }
         public float ProgressAt(Vector3 position)
@@ -101,56 +109,45 @@ namespace Cooked.Level
             if (progressPath != null) return progressPath.Project(position);
             return chaseStartPoint != null ? Vector3.Dot(position - progressOrigin, progressDirection) : transform.InverseTransformPoint(position).x;
         }
-        public CheckpointMarker GetCheckpoint(string id)
-        {
-            var points = sceneCheckpoints.Length > 0 ? sceneCheckpoints : checkpoints;
-            return points == null ? null : Array.Find(points, point => point != null && point.CheckpointId == id);
-        }
         public T[] FindComponents<T>() where T : Component => SceneComponentLookup.FindAll<T>(gameObject.scene);
-        public bool HasAbilityUnlock(AbilityId ability)
+        public void Initialize(IGameFlowService flowService, PlayerFacade player, Func<string, bool> safeDialogueStart)
         {
-            foreach (var trigger in FindComponents<StageTrigger>())
-                if (trigger.Owner == this && ((ability == AbilityId.FormChange && trigger.Kind == StageTriggerKind.UnlockForm) ||
-                    (ability == AbilityId.Tear && trigger.Kind == StageTriggerKind.UnlockTear))) return true;
-            return false;
-        }
-        public IEnumerable<string> AbilityNoticeCodes(IReadOnlyList<AbilityId> relocked)
-        {
-            var codes = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var trigger in FindComponents<StageTrigger>())
-            {
-                if (trigger.Owner != this || string.IsNullOrWhiteSpace(trigger.Value)) continue;
-                foreach (var ability in relocked)
-                    if ((ability == AbilityId.FormChange && trigger.Kind == StageTriggerKind.UnlockForm) ||
-                        (ability == AbilityId.Tear && trigger.Kind == StageTriggerKind.UnlockTear)) codes.Add(trigger.Value);
-            }
-            return codes;
-        }
-        public void Initialize(IGameEventBus bus, IGameFlowService flowService, PlayerFacade player,
-            Func<string, bool> safeDialogueStart = null, IGameSessionService sessionService = null)
-        {
-            if (bus == null || flowService == null || player == null) throw new ArgumentNullException("Stage requires bus, flow and Actor.");
-            Dispose(); RebuildRegistry(); eventBus = bus; flow = flowService; actor = player; tryStartSafeDialogue = safeDialogueStart;
+            if (flowService == null || player == null || safeDialogueStart == null) throw new ArgumentNullException("Stage requires Flow, current Actor and dialogue command.");
+            SceneComponentLookup.RequireSameScene(this, this, "스테이지");
+            Dispose(); RebuildRegistry(); flow = flowService; actor = player; tryStartSafeDialogue = safeDialogueStart;
             bound = true; bindingRevision++;
             ObserveChaseApproach();
-            foreach (var enemy in sceneEnemies) if (enemy != null) enemy.BindTarget(player);
         }
         public void BindRequests(PlayerBridgeService player, IGameplayControlService gameplayControl, DialogueService conversation,
-            Func<string, PlayerFacade, bool> checkpointCapture, Func<AbilityId, string, bool> abilityUnlock, Action haltChase)
+            Func<AbilityId, string, bool> abilityUnlock, Action haltChase)
         {
             if (!bound) throw new InvalidOperationException("Initialize Stage before binding its request owners.");
-            if (dialogue != null) dialogue.Ended -= OnFinalDialogueEnded;
+            ClearFinalDialogue(true);
             bridge = player ?? throw new ArgumentNullException(nameof(player)); control = gameplayControl ?? throw new ArgumentNullException(nameof(gameplayControl));
             dialogue = conversation ?? throw new ArgumentNullException(nameof(conversation));
-            captureCheckpoint = checkpointCapture ?? throw new ArgumentNullException(nameof(checkpointCapture));
             unlockAbility = abilityUnlock ?? throw new ArgumentNullException(nameof(abilityUnlock)); stopChase = haltChase ?? throw new ArgumentNullException(nameof(haltChase));
-            dialogue.Ended += OnFinalDialogueEnded;
+            if (!bridge.IsCurrentActor(actor, bridge.ActorGeneration)) throw new InvalidOperationException("Stage must bind the current session Actor.");
+            foreach (var sensor in sceneSensors) sensor.BindPlayer(bridge);
+            foreach (var floor in sceneFloors) floor.BindPlayer(bridge);
         }
-        public void BindChaseStart(Func<StageService, bool> start) => tryStartChase = start ?? throw new ArgumentNullException(nameof(start));
+        public void BindChaseStart(Func<StageService, bool> ready, Func<StageService, bool> capture, Func<StageService, bool> start)
+        {
+            canStartChase = ready ?? throw new ArgumentNullException(nameof(ready));
+            captureBeforeChase = capture ?? throw new ArgumentNullException(nameof(capture));
+            tryStartChase = start ?? throw new ArgumentNullException(nameof(start));
+        }
         public void BindCheckpointCapture(Func<CheckpointMarker, PlayerFacade, bool> capture)
             => captureMarker = capture ?? throw new ArgumentNullException(nameof(capture));
         public void BindDialogueTable(IDialogueTableService table)
             => dialogueTable = table ?? throw new ArgumentNullException(nameof(table));
+        public void BindFinalDialogueStart(Func<StageTrigger, PlayerFacade, long, string, bool> start,
+            GameSessionService session, Func<bool> currentStage)
+        {
+            ClearFinalDialogue(true);
+            tryStartFinalDialogue = start ?? throw new ArgumentNullException(nameof(start));
+            boundRound = session ?? throw new ArgumentNullException(nameof(session));
+            isCurrentStage = currentStage ?? throw new ArgumentNullException(nameof(currentStage));
+        }
         /// <summary>T10 owns Player death / current-owned Shell return. Stage validates current Actor before dispatch.</summary>
         public void BindFallRequests(Func<PlayerFacade, PlayerDebris, bool> request)
             => fallRequest = request ?? throw new ArgumentNullException(nameof(request));
@@ -162,10 +159,10 @@ namespace Cooked.Level
             if (checkpoints != null) ValidateReferences(checkpoints, "체크포인트 목록");
             if (enemies != null) ValidateReferences(enemies, "일반 적 목록");
             sceneCheckpoints = FindComponents<CheckpointMarker>(); sceneEnemies = FindComponents<EnemyActor>();
-            poses.Clear();
-            var resolvedProgress = ResolvePoints(progressPathPoints, progressWaypoints, "진행 경로");
+            sceneSensors = FindComponents<EnemyContactSensor>(); sceneFloors = FindComponents<DamageFloorPlatform>();
+            var resolvedProgress = ResolvePoints(progressPathPoints, "진행 경로");
             progressPath = resolvedProgress.Length > 1 ? new Cooked.Chase.ChasePath(resolvedProgress) : null;
-            resolvedChaseWaypoints = ResolvePoints(chasePathPoints, chaseWaypoints, "추격 경로");
+            resolvedChaseWaypoints = ResolvePoints(chasePathPoints, "추격 경로");
             if (resolvedChaseWaypoints.Length > 1) _ = new Cooked.Chase.ChasePath(resolvedChaseWaypoints);
             if (chaseRetreatGate != null) SceneComponentLookup.RequireSameScene(this, chaseRetreatGate, "추격 퇴로");
             if (chaseStartPoint != null)
@@ -176,17 +173,15 @@ namespace Cooked.Level
                 progressOrigin = chaseStartPoint.position; progressDirection = chaseStartPoint.right;
                 resolvedChaseStartProgress = progressPath != null ? progressPath.Project(progressOrigin) : 0;
             }
-            else resolvedChaseStartProgress = chaseStartProgress;
-            if (!float.IsFinite(resolvedChaseStartProgress)) throw new InvalidOperationException("추격 시작선은 유한해야 합니다.");
-            foreach (var point in sceneCheckpoints)
+            else
             {
-                if (point == null || string.IsNullOrWhiteSpace(point.CheckpointId) || poses.ContainsKey(point.CheckpointId))
-                    throw new InvalidOperationException("Invalid/duplicate checkpoint in " + StageId);
-                poses.Add(point.CheckpointId, point.Pose);
+                if (resolvedChaseWaypoints.Length > 1) throw new InvalidOperationException("추격 경로가 있으면 실제 추격 시작 지점을 연결하세요.");
+                resolvedChaseStartProgress = 0;
             }
-            if (InitialCheckpoint == null) throw new InvalidOperationException("Missing initial Marker: " + StageId);
+            if (!float.IsFinite(resolvedChaseStartProgress)) throw new InvalidOperationException("추격 시작선은 유한해야 합니다.");
+            foreach (var point in sceneCheckpoints) _ = point.Pose;
             SceneComponentLookup.RequireSameScene(this, InitialCheckpoint, "초기 체크포인트");
-            if (!poses.ContainsKey(InitialCheckpointId)) throw new InvalidOperationException("Initial Marker is outside this scene: " + StageId);
+            if (!ContainsCheckpoint(InitialCheckpoint)) throw new InvalidOperationException("Initial Marker is outside this scene: " + StageId);
         }
         private void ValidateReferences<T>(T[] references, string fieldName) where T : Component
         {
@@ -197,9 +192,9 @@ namespace Cooked.Level
                 if (!unique.Add(reference)) throw new InvalidOperationException(fieldName + ": 중복 연결입니다.");
             }
         }
-        private Vector3[] ResolvePoints(Transform[] references, Vector3[] legacy, string fieldName)
+        private Vector3[] ResolvePoints(Transform[] references, string fieldName)
         {
-            if (references == null || references.Length == 0) return legacy == null ? Array.Empty<Vector3>() : (Vector3[])legacy.Clone();
+            if (references == null || references.Length == 0) return Array.Empty<Vector3>();
             if (references.Length < 2) throw new InvalidOperationException(fieldName + ": 두 지점 이상 연결하세요.");
             var points = new Vector3[references.Length];
             var unique = new HashSet<Transform>();
@@ -212,8 +207,6 @@ namespace Cooked.Level
             }
             return points;
         }
-        public bool TryGetCheckpointPose(string id, out Pose pose)
-        { if (poses.Count == 0) RebuildRegistry(); return poses.TryGetValue(id ?? string.Empty, out pose); }
         public bool CanDispatch(PlayerFacade candidate) => isActiveAndEnabled && bound && candidate != null && candidate.isActiveAndEnabled && candidate == actor && !actor.IsDead &&
             flow != null && flow.Snapshot.State == FlowState.Playing && !flow.Snapshot.IsBusy && control != null && !control.State.WorldPaused;
         public bool TryDispatch(StageTrigger trigger, PlayerFacade candidate)
@@ -224,11 +217,11 @@ namespace Cooked.Level
             if (!CanDispatch(candidate)) return false;
             switch (trigger.Kind)
             {
-                case StageTriggerKind.Enter: eventBus.Publish(new StageEnteredEvent(StageId, trigger.Value)); return true;
+                case StageTriggerKind.Enter: StageEntered?.Invoke(this); return true;
                 case StageTriggerKind.Checkpoint:
-                    var marker = trigger.Checkpoint != null ? trigger.Checkpoint : GetCheckpoint(trigger.Value);
+                    var marker = trigger.Checkpoint;
                     if (marker == null || marker.gameObject.scene != gameObject.scene || Array.IndexOf(sceneCheckpoints, marker) < 0) return false;
-                    return captureMarker != null ? captureMarker(marker, candidate) : captureCheckpoint != null && captureCheckpoint(marker.CheckpointId, candidate);
+                    return captureMarker != null && captureMarker(marker, candidate);
                 case StageTriggerKind.UnlockForm:
                 case StageTriggerKind.UnlockTear:
                     if (!TryResolveDialogue(trigger, true, out var notice)) return false;
@@ -238,9 +231,13 @@ namespace Cooked.Level
                 case StageTriggerKind.Fall: return TryDispatchFall(trigger, candidate, null);
                 case StageTriggerKind.Chase: return TryStartChaseAtBodyPosition();
                 case StageTriggerKind.Escape:
-                    if (finalPending || finalStarted || (resolvedChaseWaypoints.Length > 1 && !chaseAccepted) ||
+                    if (finalPending || finalStarted || endingPending || (resolvedChaseWaypoints.Length > 1 && !chaseAccepted) ||
+                        bridge == null || !bridge.IsCurrentActor(candidate, bridge.ActorGeneration) || tryStartFinalDialogue == null ||
+                        boundRound == null || !boundRound.IsActive || isCurrentStage == null || !isCurrentStage() ||
                         !TryResolveDialogue(trigger, false, out var exitCode)) return false;
-                    finalActor = candidate; finalCode = exitCode;
+                    finalActor = candidate; finalActorGeneration = bridge.ActorGeneration; finalTrigger = trigger; finalCode = exitCode;
+                    finalSelection = trigger.Dialogue; finalTable = finalSelection.Table; finalTableService = dialogueTable;
+                    finalConversation = dialogue; finalRound = boundRound; finalRoundId = boundRound.RoundId; finalBindingRevision = bindingRevision;
                     finalPending = true; return true; // Resolve after all physics contacts and chase capture for this frame.
                 default: return false;
             }
@@ -254,8 +251,7 @@ namespace Cooked.Level
                 code = dialogueTable.RequireSelection(trigger.Dialogue);
                 return true;
             }
-            code = trigger.Value; // Hidden pre-T11 compatibility only; no new manual key authoring.
-            return optional || !string.IsNullOrWhiteSpace(code);
+            return optional;
         }
         public bool TryDispatchFall(StageTrigger trigger, PlayerFacade candidate, PlayerDebris shell)
         {
@@ -267,7 +263,7 @@ namespace Cooked.Level
                 if (form == null || form.OwnedDebris != shell || shell.Owner != form) return false;
                 return fallRequest != null && fallRequest(candidate, shell);
             }
-            return fallRequest != null ? fallRequest(candidate, null) : bridge != null && bridge.ForceDeath(Vector3.zero, skipPresentation: true) > 0;
+            return fallRequest != null && fallRequest(candidate, null);
         }
         private bool WholeBodyPastStart(out bool found)
         {
@@ -294,39 +290,114 @@ namespace Cooked.Level
         private bool TryStartChaseAtBodyPosition()
         {
             if (chaseAccepted) return true;
-            if (chaseStartInProgress || !chaseApproachObserved || !WholeBodyPastStart(out _) || tryStartChase == null || chaseRetreatGate == null || !chaseRetreatGate.CanClose(actor)) return false;
+            if (chaseStartInProgress || !chaseApproachObserved || !WholeBodyPastStart(out _) || tryStartChase == null || chaseRetreatGate == null || !chaseRetreatGate.CanClose(actor) || canStartChase == null || captureBeforeChase == null) return false;
             chaseStartInProgress = true; long revision = bindingRevision;
             try
             {
-                if (!tryStartChase(this) || revision != bindingRevision || !CanDispatch(actor)) return false;
+                if (!CommitChaseStart(
+                    () => revision == bindingRevision && CanDispatch(actor) && canStartChase(this),
+                    () => captureBeforeChase(this),
+                    () => revision == bindingRevision && CanDispatch(actor) && chaseRetreatGate.CanClose(actor) && tryStartChase(this))) return false;
+                if (revision != bindingRevision || !CanDispatch(actor)) return false;
                 chaseAccepted = true;
                 if (!TryCloseChaseRetreatGate()) throw new InvalidOperationException("Accepted chase gate cannot close without moving Actor.");
                 ChaseStarted?.Invoke(this); return true;
             }
             finally { chaseStartInProgress = false; }
         }
+        /// <summary>Live acceptance uses this order; a refused save cannot start Chase or close the gate.</summary>
+        public static bool CommitChaseStart(Func<bool> ready, Func<bool> save, Func<bool> start)
+        {
+            if (ready == null || save == null || start == null) throw new ArgumentNullException("Chase acceptance callbacks are required.");
+            return ready() && save() && start();
+        }
         private void LateUpdate()
         {
+            if (endingPending)
+            {
+                if (!IsFinalContextCurrent(true) ||
+                    (dialogue.Outcome != DialogueOutcome.Completed && dialogue.Outcome != DialogueOutcome.Skipped) ||
+                    dialogue.IsActive) { ClearFinalDialogue(true); return; }
+                if (control.State.WorldPaused || control.State.PresentationPaused) return;
+                var endingFlow = flow;
+                ClearFinalDialogue(false);
+                if (!endingFlow.Request(new FlowRequest(FlowCommand.Escape))) throw new InvalidOperationException("Final dialogue completed but Ending was rejected.");
+                return;
+            }
+            if (finalStarted)
+            {
+                if (!IsFinalContextCurrent(true)) ClearFinalDialogue(true);
+                return;
+            }
             if (!finalPending) return;
-            if (!bound || finalActor == null || finalActor != actor || actor.IsDead) { finalPending = false; finalActor = null; return; }
+            if (!IsFinalContextCurrent(false)) { ClearFinalDialogue(true); return; }
             if (!CanDispatch(finalActor)) return;
             stopChase(); // ChaseRuntimeDriver runs earlier; capture/death has priority over arrival.
+            if (!IsFinalContextCurrent(false)) { ClearFinalDialogue(true); return; }
             if (dialogue.IsActive) return;
-            long revision = bindingRevision;
-            finalStarted = true;
-            if (!tryStartSafeDialogue(finalCode)) { finalStarted = false; throw new InvalidOperationException("Final dialogue could not start: " + finalCode); }
-            if (!bound || revision != bindingRevision || actor != finalActor || actor.IsDead) { dialogue.Cancel(); return; }
-            finalDialogueSession = dialogue.SessionId; finalPending = false;
+            try
+            {
+                // 시작 통지 중 완료/Skip도 예상 회차에만 연결한다. 반환 뒤의 현재 ID를 채택하지 않는다.
+                finalDialogueSession = DialogueService.NextSessionId(finalConversation.SessionId);
+                finalPending = false; finalStarted = true;
+                finalConversation.Ended += OnFinalDialogueEnded;
+                if (!tryStartFinalDialogue(finalTrigger, finalActor, finalActorGeneration, finalCode) || !IsFinalContextCurrent(true))
+                { ClearFinalDialogue(true); return; }
+                if (finalStarted && !finalConversation.IsActive) OnFinalDialogueEnded(finalConversation.Outcome);
+            }
+            catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, () => ClearFinalDialogue(true)); }
         }
+        /// <summary>같은 종료 접촉의 선택 자산·Code·Actor·판만 준비 및 완료 경계를 통과한다.</summary>
+        private bool IsFinalContextCurrent(bool published)
+        {
+            if (!bound || !isActiveAndEnabled || finalBindingRevision != bindingRevision || isCurrentStage == null || !isCurrentStage() ||
+                finalRound == null || !ReferenceEquals(finalRound, boundRound) || !finalRound.IsActive || finalRound.RoundId != finalRoundId ||
+                finalActor == null || finalActor != actor || !finalActor.isActiveAndEnabled || finalActor.IsDead || bridge == null ||
+                !bridge.IsCurrentActor(finalActor, finalActorGeneration) || finalTrigger == null || !finalTrigger.isActiveAndEnabled ||
+                finalTrigger.Kind != StageTriggerKind.Escape || finalTrigger.Owner != this || finalTrigger.gameObject.scene != gameObject.scene ||
+                finalSelection == null || !ReferenceEquals(finalTrigger.Dialogue, finalSelection) || finalTable == null ||
+                !ReferenceEquals(finalSelection.Table, finalTable) || !string.Equals(finalSelection.Code, finalCode, StringComparison.Ordinal) ||
+                finalConversation == null || !ReferenceEquals(dialogue, finalConversation) || !ReferenceEquals(dialogueTable, finalTableService) ||
+                flow == null || flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy ||
+                (published && finalConversation.SessionId != finalDialogueSession)) return false;
+            try { return string.Equals(finalTableService.RequireSelection(finalSelection), finalCode, StringComparison.Ordinal); }
+            catch (FormatException) { return false; } // 현재 작성 선택이 바뀌어 유효하지 않으면 이 예약만 거절한다.
+        }
+        internal bool MatchesFinalDialogueRequest(GameSessionService session, DialogueService conversation, IDialogueTableService table,
+            StageTrigger trigger, PlayerFacade source, long generation, string code)
+            => finalStarted && IsFinalContextCurrent(false) && ReferenceEquals(session, finalRound) &&
+                ReferenceEquals(conversation, finalConversation) && ReferenceEquals(table, finalTableService) && trigger == finalTrigger && source == finalActor &&
+                generation == finalActorGeneration && string.Equals(code, finalCode, StringComparison.Ordinal) &&
+                DialogueService.NextSessionId(conversation.SessionId) == finalDialogueSession;
         private void OnFinalDialogueEnded(DialogueOutcome outcome)
         {
-            if (!finalStarted || dialogue == null || dialogue.SessionId != finalDialogueSession) return;
+            if (!finalStarted) return;
+            if (!IsFinalContextCurrent(true) || (outcome != DialogueOutcome.Completed && outcome != DialogueOutcome.Skipped))
+            { ClearFinalDialogue(true); return; }
+            finalConversation.Ended -= OnFinalDialogueEnded;
             finalStarted = false;
-            if ((outcome != DialogueOutcome.Completed && outcome != DialogueOutcome.Skipped) || finalActor == null || finalActor != actor || !CanDispatch(finalActor)) return;
-            finalActor = null;
-            if (!flow.Request(new FlowRequest(FlowCommand.Escape))) throw new InvalidOperationException("Final dialogue completed but Ending was rejected.");
+            // Reserve only: ChaseRuntimeDriver.LateUpdate(200) must run before Stage.LateUpdate(500).
+            endingPending = true;
         }
-        /// <summary>Explicit initial arrangement, no saved world DTO. Call with roots inactive and Actor released.</summary>
+        private void ClearFinalDialogue(bool cancelCurrent)
+        {
+            var conversation = finalConversation;
+            long sessionId = finalDialogueSession;
+            if (conversation != null) conversation.Ended -= OnFinalDialogueEnded;
+            finalPending = finalStarted = endingPending = false;
+            finalActor = null; finalTrigger = null; finalCode = null; finalSelection = null; finalTable = null;
+            finalTableService = null; finalConversation = null; finalRound = null;
+            finalDialogueSession = finalActorGeneration = finalRoundId = finalBindingRevision = 0;
+            // 다른 시작이 이미 게시한 새 회차를 취소하지 않는다. 장부는 DialogueService 소유다.
+            if (cancelCurrent && conversation != null && conversation.IsActive && conversation.SessionId == sessionId) conversation.Cancel();
+        }
+        /// <summary>Warm authored activeSelf once before hiding Stage roots; no Actor is attached yet.</summary>
+        public void PrepareInitialSources()
+        {
+            if (IsInitialPreparationComplete) return;
+            foreach (var pickup in FindComponents<TearFragment>()) pickup.PrepareSource();
+        }
+        /// <summary>Restore initial arrangement with roots hidden and Actor released; no saved world DTO.</summary>
         public void ResetForRetry()
         {
             Dispose(); RebuildRegistry();
@@ -354,11 +425,15 @@ namespace Cooked.Level
         {
             bound = false; bindingRevision++;
             chaseApproachObserved = chaseAccepted = chaseStartInProgress = false;
-            if (dialogue != null) dialogue.Ended -= OnFinalDialogueEnded;
-            foreach (var enemy in sceneEnemies) if (enemy != null) enemy.BindTarget(null);
-            actor = null; bridge = null; control = null; dialogue = null; dialogueTable = null; eventBus = null; flow = null;
-            tryStartSafeDialogue = null; tryStartChase = null; captureCheckpoint = null; captureMarker = null; unlockAbility = null; fallRequest = null; stopChase = null;
-            ChaseStarted = null; finalPending = finalStarted = false; finalActor = null; finalCode = null; finalDialogueSession = 0;
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => ClearFinalDialogue(true));
+            foreach (var sensor in sceneSensors) if (sensor != null) SessionCleanup.Attempt(errors, sensor.UnbindPlayer);
+            foreach (var floor in sceneFloors) if (floor != null) SessionCleanup.Attempt(errors, floor.UnbindPlayer);
+            actor = null; bridge = null; control = null; dialogue = null; dialogueTable = null; flow = null;
+            boundRound = null; isCurrentStage = null;
+            tryStartSafeDialogue = null; tryStartFinalDialogue = null; tryStartChase = null; canStartChase = null; captureBeforeChase = null; captureMarker = null; unlockAbility = null; fallRequest = null; stopChase = null;
+            ChaseStarted = null; StageEntered = null;
+            SessionCleanup.ThrowIfAny(errors, "Stage connection release failed.");
         }
         private void OnDisable() => Dispose();
         private void OnDestroy() => Dispose();

@@ -11,6 +11,10 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("안내 위치")] private RectTransform anchor;
         [Tooltip("상호작용 F 안내를 표시할 TMP 텍스트입니다.")]
         [SerializeField, InspectorLabel("F 안내")] private TMP_Text label;
+#if UNITY_EDITOR
+        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
+        public void Configure(CanvasGroup g, RectTransform a, TMP_Text text) { group = g; anchor = a; label = text; }
+#endif
         protected override void Refresh()
         {
             if (group == null) return; group.alpha = Model != null && Model.Visible ? 1 : 0; group.blocksRaycasts = false;
