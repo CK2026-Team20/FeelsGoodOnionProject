@@ -125,7 +125,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 1868384417}
+    m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 1403317076360663002, guid: 1d5e509fa5a6ceb4d9c7da35ae1ea1b9, type: 3}
       propertyPath: m_LocalPosition.x
@@ -145,15 +145,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1403317076360663002, guid: 1d5e509fa5a6ceb4d9c7da35ae1ea1b9, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 1403317076360663002, guid: 1d5e509fa5a6ceb4d9c7da35ae1ea1b9, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 1403317076360663002, guid: 1d5e509fa5a6ceb4d9c7da35ae1ea1b9, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 1403317076360663002, guid: 1d5e509fa5a6ceb4d9c7da35ae1ea1b9, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -187,11 +187,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 182909f552c15ca79d180ec865e51093, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Audio.AudioRuntimeHost
---- !u!4 &70943296 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1403317076360663002, guid: 1d5e509fa5a6ceb4d9c7da35ae1ea1b9, type: 3}
-  m_PrefabInstance: {fileID: 70943294}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &205544994
 GameObject:
   m_ObjectHideFlags: 0
@@ -218,12 +213,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 205544994}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1868384417}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &205544996
 MonoBehaviour:
@@ -1044,12 +1039,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1547377897}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1868384417}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!81 &1547377899
 AudioListener:
@@ -1194,7 +1189,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Integration.AppComposition
   bootstrap: {fileID: 1868384416}
   installation: {fileID: 11400000, guid: a5be07157c90e954fa58e3f77f514a56, type: 2}
-  ui: {fileID: 2109316081}
+  ui: {fileID: 0}
+  optionsView: {fileID: 2109316082}
+  fadeView: {fileID: 2109316081}
   audio: {fileID: 70943295}
   presentationCamera: {fileID: 1547377900}
 --- !u!114 &1868384416
@@ -1222,11 +1219,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2109316082}
-  - {fileID: 70943296}
-  - {fileID: 205544995}
-  - {fileID: 1547377898}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1988631651
@@ -1249,7 +1242,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 1868384417}
+    m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 1154335029261405674, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_Name
@@ -1273,15 +1266,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8600989337894045964, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 8600989337894045964, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 8600989337894045964, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 8600989337894045964, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1302,20 +1295,26 @@ PrefabInstance:
   m_SourcePrefab: {fileID: 100100000, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
 --- !u!114 &2109316081 stripped
 MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2452577668516938259, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
+  m_CorrespondingSourceObject: {fileID: 684659900037394228, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
   m_PrefabInstance: {fileID: 2109316080}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b8ed4335f5b41ee85ba5311e2725fb5, type: 3}
+  m_Script: {fileID: 11500000, guid: d0835c79e3a84994b5d8e550eafd267e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.UI.GlobalUiRoot
---- !u!4 &2109316082 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 8600989337894045964, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.UI.FadeView
+--- !u!114 &2109316082 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4404107753116821164, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
   m_PrefabInstance: {fileID: 2109316080}
   m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 161df98890c04ce49d029e399a603847, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.UI.OptionsView
 --- !u!114 &2135545832
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1335,3 +1334,7 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1868384417}
+  - {fileID: 2109316080}
+  - {fileID: 70943294}
+  - {fileID: 205544995}
+  - {fileID: 1547377898}

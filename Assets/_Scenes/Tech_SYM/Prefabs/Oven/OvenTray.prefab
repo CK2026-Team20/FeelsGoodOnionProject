@@ -37,6 +37,8 @@ Transform:
   m_Children:
   - {fileID: 2998930521518409158}
   - {fileID: 8155865530431994905}
+  - {fileID: 5488813201049164683}
+  - {fileID: 6115557473029706957}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!54 &3460294647755023750
@@ -125,8 +127,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df6118f38d7b92848850148e11205019, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Interaction.InteractionPromptAnchor
-  localOffset: {x: 0, y: 0.65, z: -1.15}
-  interactionLocalOffset: {x: 0, y: 0.1, z: -0.66}
+  promptPoint: {fileID: 5488813201049164683}
+  interactionPoint: {fileID: 6115557473029706957}
 --- !u!114 &8114601354635943753
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140,9 +142,40 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.OvenTray.OvenTrayObject
   operationMode: 0
-  travelOffset: {x: 0, y: 0, z: -3}
-  hingeEulerOffset: {x: 0, y: 90, z: 0}
+  closedPose: {fileID: 0}
+  openPose: {fileID: 0}
   moveDuration: 0.5
+--- !u!1 &1563159444549824766
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5488813201049164683}
+  m_Layer: 0
+  m_Name: OvenTray_promptPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5488813201049164683
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1563159444549824766}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.65, z: -1.15}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5345931845672492954}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5423426884161716537
 GameObject:
   m_ObjectHideFlags: 0
@@ -323,3 +356,34 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &7026778693304027827
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6115557473029706957}
+  m_Layer: 0
+  m_Name: OvenTray_interactionPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6115557473029706957
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7026778693304027827}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.1, z: -0.66}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5345931845672492954}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

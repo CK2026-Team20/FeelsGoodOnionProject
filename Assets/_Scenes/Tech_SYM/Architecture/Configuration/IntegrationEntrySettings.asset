@@ -14,14 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Integration.IntegrationEntrySettings
   entries:
   - stageId: 1_Stage
-    checkpointId: P_START
+    checkpointId: 
+    scenePath: Assets/_Scenes/Tech_SYM/Architecture/Prototype/1_Stage.unity
+    stageScene:
+      runtimePath: Assets/_Scenes/Tech_SYM/Architecture/Prototype/1_Stage.unity
+      scene: {fileID: 102900000, guid: d6a12341baf452344970b1264c41bcd5, type: 3}
     fragments: 0
     abilities: 
   - stageId: 03_2_Stage
-    checkpointId: S2_ENTRY
+    checkpointId: 
+    scenePath: Assets/_Scenes/Tech_SYM/Architecture/Stages/03_2_Stage.unity
+    stageScene:
+      runtimePath: Assets/_Scenes/Tech_SYM/Architecture/Stages/03_2_Stage.unity
+      scene: {fileID: 102900000, guid: 0976bb43372fc764abeb62f1707ef821, type: 3}
     fragments: 5
     abilities: 0000000001000000i
   - stageId: 03_3_Stage
-    checkpointId: S3_ENTRY
+    checkpointId: 
+    scenePath: Assets/_Scenes/Tech_SYM/Architecture/Stages/03_3_Stage.unity
+    stageScene:
+      runtimePath: Assets/_Scenes/Tech_SYM/Architecture/Stages/03_3_Stage.unity
+      scene: {fileID: 102900000, guid: e6cbac29730c07947ba88cec78f8f019, type: 3}
     fragments: 5
     abilities: 0000000001000000i

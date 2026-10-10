@@ -225,8 +225,8 @@ GameObject:
   - component: {fileID: 5402213474510634925}
   - component: {fileID: 4010484561393588325}
   - component: {fileID: 5034911446950011849}
-  - component: {fileID: 1768850252210981418}
   - component: {fileID: 6511242891037298213}
+  - component: {fileID: 5333587836001316382}
   m_Layer: 0
   m_Name: Bubble
   m_TagString: Untagged
@@ -292,19 +292,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &1768850252210981418
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3759884378293145000}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0d787af924b7d7742a9546ac6615e8d8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Interaction.UIScaleTween
-  duration: 0.18
 --- !u!225 &6511242891037298213
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -317,3 +304,18 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &5333587836001316382
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3759884378293145000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70156fdbb02b4e4096ac3559ca239c19, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.UI.WorldPromptView
+  group: {fileID: 6511242891037298213}
+  anchor: {fileID: 5402213474510634925}
+  label: {fileID: 7095000573607236333}

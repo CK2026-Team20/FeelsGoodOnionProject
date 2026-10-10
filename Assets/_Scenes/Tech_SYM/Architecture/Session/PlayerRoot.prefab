@@ -72,7 +72,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1958361304106634321}
   - component: {fileID: 3859407028670473134}
-  - component: {fileID: 7757673879890462058}
   m_Layer: 0
   m_Name: PlayerRoot
   m_TagString: Untagged
@@ -108,20 +107,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f16143e385b04575aa7151fbcf0a28d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.GameplayInputRouter
---- !u!114 &7757673879890462058
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3440022693776916199}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 79fe17a5dc734d8cac3a2d24ff9cc87e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.ActorFallGuard
-  actor: {fileID: 1943717181655477925}
-  killHeight: -10
 --- !u!1 &3685739800287238239
 GameObject:
   m_ObjectHideFlags: 0
@@ -519,6 +504,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.PlayerDamagePresentation
   player: {fileID: 1943717181655477925}
+  visualRoot: {fileID: 4518552140602201270}
+  cameraAnchor: {fileID: 6483507360010238018}
   targets:
   - {fileID: 2547691128465308132}
   - {fileID: 353194877039689296}
