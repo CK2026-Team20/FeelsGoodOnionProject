@@ -34,9 +34,19 @@ namespace Cooked.Integration
         }
         public static void RequireSameScene(Component owner, Component reference, string fieldName)
         {
-            if (owner == null || reference == null || !owner.gameObject.scene.IsValid() ||
-                !owner.gameObject.scene.isLoaded || owner.gameObject.scene != reference.gameObject.scene)
-                throw new InvalidOperationException(fieldName + ": 같은 로드된 씬의 실물 참조를 연결하세요.");
+            if (owner == null)
+                throw new InvalidOperationException(fieldName + ": 참조를 검사할 컴포넌트가 없습니다.");
+            if (reference == null)
+                throw new InvalidOperationException(fieldName + ": 씬 오브젝트의 실제 컴포넌트를 연결하세요. 연결 대상이 비어 있습니다.");
+            var ownerScene = owner.gameObject.scene;
+            var referenceScene = reference.gameObject.scene;
+            if (!ownerScene.IsValid() || !referenceScene.IsValid() || ownerScene != referenceScene)
+                throw new InvalidOperationException(fieldName + ": 같은 씬의 컴포넌트를 연결하세요. 검사 대상 '" +
+                    owner.name + "'의 씬: '" + ownerScene.path + "', 연결 대상 '" + reference.name +
+                    "'의 씬: '" + referenceScene.path + "'.");
+            if (!ownerScene.isLoaded)
+                throw new InvalidOperationException(fieldName + ": 씬 '" + ownerScene.path +
+                    "'의 로딩이 완료되지 않았습니다. 씬 간 조립은 Start 또는 씬 로드 완료 후 실행하세요.");
         }
         /// <summary>World targets may share a static rotated/scaled parent, but must not travel with an Actor or mover.</summary>
         public static void RequireFixedPoint(Component owner, Transform point, string fieldName)

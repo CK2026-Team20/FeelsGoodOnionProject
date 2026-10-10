@@ -41,14 +41,19 @@ namespace Cooked.Integration
         public Camera OutputCamera => presentationCamera;
         public CinemachineBrain OutputBrain { get; private set; }
         public PlayerCameraController OutputController { get; private set; }
-        private void Awake()
+        // Scene references exist during Awake, but the scene is not yet guaranteed loaded.
+        // Compose after sceneLoaded so the same-scene and output-singleton checks are valid.
+        private void Start()
         {
             try
             {
                 if (bootstrap == null || installation == null || optionsView == null || fadeView == null || audio == null || presentationCamera == null)
                     throw new InvalidOperationException("Bootstrap composition dependencies are incomplete.");
-                foreach (var reference in new Component[] { bootstrap, optionsView, fadeView, audio, presentationCamera })
-                    SceneComponentLookup.RequireSameScene(this, reference, "App 연결");
+                SceneComponentLookup.RequireSameScene(this, bootstrap, "앱 시작 담당");
+                SceneComponentLookup.RequireSameScene(this, optionsView, "옵션 화면");
+                SceneComponentLookup.RequireSameScene(this, fadeView, "페이드 화면");
+                SceneComponentLookup.RequireSameScene(this, audio, "소리 담당");
+                SceneComponentLookup.RequireSameScene(this, presentationCamera, "출력 카메라");
                 if (SceneComponentLookup.RequireSingle<Camera>(gameObject.scene) != presentationCamera ||
                     SceneComponentLookup.RequireSingle<CinemachineBrain>(gameObject.scene).gameObject != presentationCamera.gameObject ||
                     SceneComponentLookup.RequireSingle<AudioListener>(gameObject.scene).gameObject != presentationCamera.gameObject)
