@@ -1,7 +1,6 @@
 using System.Collections;
 using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEngine;
-using UnityEngine.Serialization;
 using System;
 using Cooked.Authoring;
 
@@ -19,13 +18,10 @@ namespace FeelsGoodOnion.TechSYM.Features
         [SerializeField, InspectorLabel("붕괴 애니메이터")] private Animator collapseAnimator;
         [Tooltip("지지 Collider와 같은 물리 객체의 접촉 전달자입니다. 루트 컨트롤러와 물리 자식을 연결합니다.")]
         [SerializeField, InspectorLabel("지지 접촉")] private PlatformContacts physicalContacts;
-        [FormerlySerializedAs("wiggleDuration")]
         [Tooltip("붕괴 전 경고 시간을 조절합니다(초, 최소 0.02). 초기값은 1초이며 종료 즉시 지지를 제거합니다.")]
         [SerializeField, InspectorLabel("경고 시간"), Min(.02f)] private float warningEndSeconds = 1f;
-        [FormerlySerializedAs("wiggleAngle")]
         [Tooltip("경고 중 Visual 회전 크기(도)입니다. 0이면 흔들리지 않습니다.")]
         [SerializeField, InspectorLabel("흔들림 각도"), Min(0f)] private float shakeAngleDegrees = 4f;
-        [FormerlySerializedAs("wiggleFrequency")]
         [Tooltip("경고 중 초당 흔들림 횟수입니다. 최소 0.1입니다.")]
         [SerializeField, InspectorLabel("흔들림 횟수"), Min(0.1f)] private float shakeFrequency = 8f;
         private PlatformPresentation presentation;
@@ -35,6 +31,9 @@ namespace FeelsGoodOnion.TechSYM.Features
         private float warningElapsed;
         private int version;
         public CollapsePhase Phase { get; private set; } = CollapsePhase.Ready;
+        /// <summary>Animator 없이 경고 Tween이 회전하는 실제 외형과 그 자식을 판별한다.</summary>
+        public bool OwnsMovingVisual(Transform point) => visual != null && point != null &&
+            (point == visual || point.IsChildOf(visual));
         private void Awake()
         {
             OnValidate();

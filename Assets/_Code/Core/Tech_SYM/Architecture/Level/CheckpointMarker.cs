@@ -9,13 +9,8 @@ namespace Cooked.Level
         private Transform respawnPoint;
         [SerializeField, InspectorLabel("시작 카메라 구간"), Tooltip("초기 등장 위치의 실제 CameraZoneTrigger를 연결하세요.")]
         private CameraZoneTrigger initialCameraZone;
-        // T11 migrates native references; T10 then removes the legacy string consumers. T12 removes these hidden fields.
-        [SerializeField, HideInInspector] private string checkpointId;
-        [SerializeField, HideInInspector] private CameraZoneData cameraZone;
-        [SerializeField, HideInInspector] private Vector3 bodyOffset = new Vector3(0f, 1.03f, 0f);
         public Transform RespawnPoint => respawnPoint;
         public CameraZoneTrigger InitialCameraZone => initialCameraZone;
-        public string CheckpointId => string.IsNullOrWhiteSpace(checkpointId) ? "marker:" + GetEntityId() : checkpointId;
         public CameraZoneRequest CameraZone
         {
             get

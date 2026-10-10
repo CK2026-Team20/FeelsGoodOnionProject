@@ -20,11 +20,6 @@ namespace Cooked.Foundation
         public IGameFlowService Flow => flow;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetRuntime() { active = null; }
-        public void ConfigureDialogueTable(TextAsset asset)
-        {
-            if (initialized) throw new InvalidOperationException("Bootstrapper already initialized.");
-            dialogueTable = asset;
-        }
         /// <summary>Call synchronously from the integration composition root. All app dependencies must be registered.</summary>
         public void Initialize(ServiceLocator appServices, SceneCatalog catalog, BootRoute route)
         {

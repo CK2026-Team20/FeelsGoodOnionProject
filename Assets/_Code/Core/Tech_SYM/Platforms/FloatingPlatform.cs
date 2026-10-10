@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
-using UnityEngine.Serialization;
 using Cooked.Authoring;
 
 namespace FeelsGoodOnion.TechSYM.Platforms
@@ -15,7 +14,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         [Tooltip("착지할 때 아래로 눌리는 거리(m).")]
         [SerializeField, InspectorLabel("눌림 깊이"), Min(0f)] private float landingDepth = 0.12f;
         [Tooltip("아래로 눌리는 시간(초).")]
-        [FormerlySerializedAs("sinkSeconds")]
         [SerializeField, InspectorLabel("눌림 시간"), Min(0.02f)] private float actionSeconds = 0.25f;
         [Tooltip("아래로 눌리는 곡선.")]
         [SerializeField, InspectorLabel("눌림 곡선")] private MotionEase actionEase = MotionEase.OutQuad;
@@ -23,10 +21,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         [Tooltip("부유 기준 높이보다 위로 올라갈 목표 거리(m). Back/Elastic 곡선은 이 높이를 더 넘을 수 있습니다.")]
         [SerializeField, InspectorLabel("반동 높이"), Min(0f)] private float overshootHeight = 0.12f;
         [Tooltip("눌린 위치에서 위쪽 목표 높이까지 올라가는 시간(초).")]
-        [FormerlySerializedAs("bounceSeconds")]
         [SerializeField, InspectorLabel("반동 시간"), Min(0.02f)] private float reactionSeconds = 1.2f;
         [Tooltip("위쪽 목표 높이로 올라가는 곡선.")]
-        [FormerlySerializedAs("ease")]
         [SerializeField, InspectorLabel("반동 곡선")] private MotionEase reactionEase = MotionEase.OutBack;
         [Header("복귀")]
         [Tooltip("위쪽 목표 높이에서 부유 기준 높이로 정착하는 시간(초).")]

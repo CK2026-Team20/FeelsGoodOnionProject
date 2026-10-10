@@ -107,12 +107,5 @@ namespace Cooked.Audio
             return purpose == AudioCuePurpose.Death ? AudioCueKind.Transition : AudioCueKind.World;
         }
 
-        // 기존 Builder 및 T11 직렬화 이관에만 사용한다. 새 Inspector는 문자열 키를 받지 않는다.
-        public static AudioCuePurpose RequirePurpose(string id)
-        {
-            foreach (AudioCuePurpose purpose in Enum.GetValues(typeof(AudioCuePurpose)))
-                if (purpose != AudioCuePurpose.None && ForPurpose(purpose) == id) return purpose;
-            throw new ArgumentException("기존 소리 ID에 대응하는 용도가 없습니다: " + id, nameof(id));
-        }
     }
 }

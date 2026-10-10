@@ -51,10 +51,14 @@ namespace Cooked.Integration
             if (owner == null || point == null || !owner.gameObject.scene.IsValid() || !owner.gameObject.scene.isLoaded ||
                 owner.gameObject.scene != point.gameObject.scene || !global::Cooked.Level.CameraZoneRequest.IsFinite(point.position)) return false;
             for (var parent = point; parent != null; parent = parent.parent)
+            {
                 if (parent.GetComponent<Rigidbody>() != null || parent.GetComponent<Animator>() != null ||
                     parent.GetComponent<Animation>() != null || parent.GetComponent<EnemyActor>() != null ||
                     parent.GetComponent<PlayerFacade>() != null || parent.GetComponent<PlayerDebris>() != null ||
                     parent.GetComponent<ChaseRuntimeDriver>() != null || parent.GetComponent<ChaseSwarmPresentation>() != null) return false;
+                var shattered = parent.GetComponent<ShatteredPlatform>();
+                if (shattered != null && shattered.OwnsMovingVisual(point)) return false;
+            }
             // Tear's sensor may be a sibling of the point. Read its explicit moving Root once within this hierarchy,
             // rather than searching every loaded scene or inferring motion from controller type names.
             foreach (var pickup in point.root.GetComponentsInChildren<TearFragment>(true))

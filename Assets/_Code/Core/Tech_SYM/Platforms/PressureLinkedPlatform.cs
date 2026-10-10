@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 using Cooked.Authoring;
 
 namespace FeelsGoodOnion.TechSYM.Platforms
@@ -19,7 +18,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         [Tooltip("눌렸을 때 도달할 고정 지점을 연결합니다. 움직이는 몸체 밖에 두며 녹색 경로의 끝입니다.")]
         [SerializeField, InspectorLabel("목표 지점")] private Transform targetPoint;
         [Tooltip("버튼을 놓았을 때의 복귀 속도(m/s). 버튼 시간과 별개입니다.")]
-        [FormerlySerializedAs("moveSpeed")]
         [SerializeField, InspectorLabel("복귀 속도"), Min(0.01f)] private float returnSpeed = 1f;
         private KinematicPlatformMotion motion;
         public PressurePlatePlatform Plate => pressurePlate;

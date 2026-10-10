@@ -53,8 +53,6 @@ namespace Cooked.Contracts
         bool IsActive { get; }
         bool TryStart(string dialogueCode);
         void Cancel();
-        // Runtime ledger only. Integration supplies codes for abilities actually removed on retry.
-        void ForgetCompletedCodes(IEnumerable<string> dialogueCodes);
         void ResetRound();
     }
 }

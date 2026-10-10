@@ -16,15 +16,6 @@ namespace Cooked.Cinematics
         private CinematicService service;
         private CinematicViewModel viewModel;
         private bool changingLifetime;
-#if UNITY_EDITOR
-        // Temporary Editor field setter for the retained Builder. T12 removes both after T11 reference migration.
-        public void Configure(CinematicCatalog catalog, CinematicView view)
-        {
-            if (changingLifetime || service != null) throw new InvalidOperationException("Shutdown CinematicHost before reconfiguring it.");
-            this.catalog = catalog != null ? catalog : throw new ArgumentNullException(nameof(catalog));
-            this.view = view != null ? view : throw new ArgumentNullException(nameof(view));
-        }
-#endif
         public ICinematicService Service => service ?? throw new InvalidOperationException("Initialize CinematicHost first.");
 
         public ICinematicService Initialize(IGameplayControlService control)

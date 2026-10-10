@@ -36,13 +36,6 @@ namespace Cooked.Integration
         private GameSessionRuntime runtime;
         private CoreWorldBinding world;
         private bool releasing;
-        public void Configure(SessionActorHost actorHost, DialogueView dialogue, CinematicHost cinematicHost,
-            IntegrationEntrySettings entrySettings, CoreUiBinding uiBinding, LevelCameraService levelCamera,
-            ChaseRuntimeDriver chaseDriver, CinemachineCamera side, CinemachineCamera quarter)
-        {
-            actor = actorHost; dialogueView = dialogue; cinematic = cinematicHost; entries = entrySettings;
-            ui = uiBinding; cameraService = levelCamera; chase = chaseDriver; sideCamera = side; quarterCamera = quarter;
-        }
         public GameSessionRuntime CreateSession(ServiceLocator app, SceneCatalog catalog, AudioFlowBinding audioFlow,
             Camera output, CinemachineBrain brain, PlayerCameraController controller)
         {

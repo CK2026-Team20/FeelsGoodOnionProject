@@ -4,7 +4,6 @@ using Cooked.Authoring;
 using Cooked.Session;
 using Cooked.UI;
 using UnityEngine;
-using UnityEngine.Serialization;
 namespace Cooked.Integration
 {
     /// <summary>Owns the Core HUD/prompt references and their view models for one session.</summary>
@@ -12,7 +11,7 @@ namespace Cooked.Integration
     {
         [SerializeField, InspectorLabel("게임 HUD"), Tooltip("체력·조각·해금 상태를 표시할 HudView를 연결하세요.")]
         private HudView hud;
-        [SerializeField, FormerlySerializedAs("independentPrompt"), InspectorLabel("월드 F 안내"), Tooltip("통합 또는 독립 씬에서 사용할 하나의 WorldPromptView를 연결하세요.")]
+        [SerializeField, InspectorLabel("월드 F 안내"), Tooltip("통합 또는 독립 씬에서 사용할 하나의 WorldPromptView를 연결하세요.")]
         private WorldPromptView prompt;
         [SerializeField, InspectorLabel("월드 안내 Canvas"), Tooltip("월드 F 안내가 있는 Canvas를 연결하세요.")]
         private Canvas worldCanvas;

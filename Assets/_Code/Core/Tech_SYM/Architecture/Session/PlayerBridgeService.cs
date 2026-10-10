@@ -89,14 +89,7 @@ namespace Cooked.Session
             UpwardKnockbackSpeed = upwardKnockbackSpeed;
             control.Changed += OnControlChanged;
         }
-        // T10 소비 이관 후 T12 제거: 기존 통합 생성자만 위한 임시 호환. 독립 모드에는 사용하지 않는다.
-        public PlayerBridgeService(IGameplayControlService control, IGameSessionService session, IGameEventBus eventBus)
-            : this(control, session, LegacyRetry(eventBus)) { }
-        private static Func<PlayerFacade, long, bool> LegacyRetry(IGameEventBus bus)
-        {
-            if (bus == null) throw new ArgumentNullException(nameof(bus));
-            return (source, generation) => { bus.Publish(new FlowRequestedEvent(new FlowRequest(FlowCommand.RetryCheckpoint))); return true; };
-        }
+
         public void Attach(PlayerFacade value)
         {
             ThrowIfDisposed();
