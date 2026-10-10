@@ -56,6 +56,12 @@ namespace Cooked.Dialogue
         public float AutoRemaining => autoDelay?.Remaining ?? 0;
         public float CooldownRemaining => cooldown?.Remaining ?? 0;
         public bool IsCompleted(string code) => !disposed && code != null && completedCodes.Contains(code);
+        /// <summary>시작 전 예상 회차와 실제 게시가 같은 증가 규칙을 사용하며 overflow는 시작 실패로 처리한다.</summary>
+        public static long NextSessionId(long current)
+        {
+            if (current < 0) throw new ArgumentOutOfRangeException(nameof(current));
+            return checked(current + 1);
+        }
 
         public bool TryStart(string dialogueCode)
             => TryStartCore(dialogueCode, false, null);
@@ -83,9 +89,10 @@ namespace Cooked.Dialogue
                 // 메모 강제 닫기의 관찰자가 Actor/Stage/옵션/수명을 바꿔도 게시 전에 거절한다.
                 bool prepared = prepare == null || prepare();
                 if (!prepared || disposed || optionsPaused || revision != lifecycleRevision) { ReleaseLeases(); return false; }
+                long nextSession = NextSessionId(SessionId);
                 rows = found;
                 rowIndex = 0;
-                SessionId++;
+                SessionId = nextSession;
                 Outcome = DialogueOutcome.None;
                 history.Clear();
                 AutoEnabled = false;

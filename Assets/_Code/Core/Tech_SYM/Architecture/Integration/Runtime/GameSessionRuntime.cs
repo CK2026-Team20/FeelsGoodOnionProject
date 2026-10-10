@@ -203,22 +203,21 @@ namespace Cooked.Integration
         public bool TryStartFinalDialogue(StageService owner, StageTrigger trigger, PlayerFacade source,
             long generation, string expectedCode)
         {
-            if (!IsCurrentDialogueSource(owner, source, generation) || trigger == null) return false;
-            var selection = trigger.Dialogue;
-            if (!IsFinalContact()) return false;
+            if (!IsCurrentDialogueSource(owner, source, generation)) return false;
             var table = scope.Get<IDialogueTableService>();
-            string code = table.RequireSelection(selection);
-            if (!string.Equals(code, expectedCode, StringComparison.Ordinal)) return false;
-            return Dialogue.TryStartFinalDialogue(code, () => PrepareDialogueStart(owner, source, generation,
-                () => IsFinalContact() && string.Equals(table.RequireSelection(selection), code, StringComparison.Ordinal)));
-
-            bool IsFinalContact() => owner.CanDispatch(source) && trigger.isActiveAndEnabled &&
-                trigger.Kind == StageTriggerKind.Escape && trigger.Owner == owner &&
-                trigger.gameObject.scene == owner.gameObject.scene && ReferenceEquals(trigger.Dialogue, selection);
+            if (!owner.MatchesFinalDialogueRequest(Session, Dialogue, table, trigger, source, generation, expectedCode)) return false;
+            return Dialogue.TryStartFinalDialogue(expectedCode, () => PrepareDialogueStart(owner, source, generation,
+                () => owner.MatchesFinalDialogueRequest(Session, Dialogue, table, trigger, source, generation, expectedCode)));
+        }
+        internal bool IsCurrentStage(IStageService owner)
+        {
+            if (disposed || !Session.IsActive || owner == null || ActiveStageId == null) return false;
+            try { return ReferenceEquals(ActiveStage, owner); }
+            catch (InvalidOperationException) { return false; } // 현재 등록 Stage가 해제/파괴되면 낡은 접촉을 거절한다.
         }
         private bool IsCurrentDialogueSource(IStageService owner, PlayerFacade source, long generation)
             => CanAcceptWorldRequest && owner != null && source != null &&
-                ReferenceEquals(ActiveStage, owner) && Player.IsCurrentActor(source, generation);
+                IsCurrentStage(owner) && Player.IsCurrentActor(source, generation);
         private bool PrepareDialogueStart(IStageService owner, PlayerFacade source, long generation,
             Func<bool> finalContact = null)
         {

@@ -87,7 +87,8 @@ namespace Cooked.Integration
                 var active = stage;
                 stage.Initialize(flow, actor, code => runtime.TryStartSafeDialogue(active.StageId, code));
                 stage.BindFinalDialogueStart((trigger, source, generation, code) =>
-                    runtime.TryStartFinalDialogue(active, trigger, source, generation, code));
+                    runtime.TryStartFinalDialogue(active, trigger, source, generation, code),
+                    runtime.Session, () => runtime.IsCurrentStage(active));
                 stage.BindRequests(runtime.Player, control, runtime.Dialogue,
                     (ability, code) => Unlock(active, ability, code), StopChase);
                 stage.BindCheckpointCapture((marker, source) => runtime.TryCaptureCheckpoint(active.StageId, marker, source));

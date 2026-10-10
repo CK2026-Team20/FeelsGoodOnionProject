@@ -12,6 +12,7 @@ namespace Cooked.Session
         private AbilityMask unlockedAbilities;
         private bool disposed;
         public bool IsActive { get; private set; }
+        public long RoundId { get; private set; }
         public CheckpointSnapshot InitialConfiguration { get { RequireActive(); return initialConfiguration; } }
         public bool HasCheckpoint => IsActive && checkpoint.HasValue;
         public CheckpointSnapshot Checkpoint
@@ -31,9 +32,11 @@ namespace Cooked.Session
             ThrowIfDisposed();
             if (IsActive) throw new InvalidOperationException("이미 활성화된 세션입니다.");
             var initial = Validate(initialConfiguration);
+            long nextRound = checked(RoundId + 1);
             this.initialConfiguration = initial;
             checkpoint = null;
             unlockedAbilities = initial.UnlockedAbilities;
+            RoundId = nextRound;
             IsActive = true;
             NotifyChanged(nameof(Begin));
         }
