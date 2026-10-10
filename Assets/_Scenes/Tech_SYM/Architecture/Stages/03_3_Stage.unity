@@ -522,7 +522,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 0
-  value: 
 --- !u!65 &155493697
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -955,7 +954,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &394539337
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1527,7 +1525,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &598567353
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2068,12 +2065,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   respawnPoint: {fileID: 190325440}
   initialCameraZone: {fileID: 1220613203}
-  checkpointId: S3_ENTRY
-  cameraZone:
-    Id: 03_3_Stage_S3_ENTRY
-    Movement: 1
-    AlignmentOffset: {x: 0, y: 0, z: 0}
-  bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &921524923
 Transform:
   m_ObjectHideFlags: 0
@@ -2121,12 +2112,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   respawnPoint: {fileID: 652730438}
   initialCameraZone: {fileID: 1724121936}
-  checkpointId: S3_END
-  cameraZone:
-    Id: 03_3_Stage_S3_END
-    Movement: 1
-    AlignmentOffset: {x: 0, y: 0, z: 0}
-  bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &948667591
 Transform:
   m_ObjectHideFlags: 0
@@ -5030,10 +5015,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 1220613205}
-  zone:
-    Id: 
-    Movement: 0
-    AlignmentOffset: {x: 0, y: 0, z: 0}
 --- !u!65 &1220613204
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6036,10 +6017,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 1724121938}
-  zone:
-    Id: 
-    Movement: 0
-    AlignmentOffset: {x: 0, y: 0, z: 0}
 --- !u!65 &1724121937
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6129,7 +6106,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &1753575301
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6237,7 +6213,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &1808447551
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6374,7 +6349,6 @@ MonoBehaviour:
     code: POPO
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &1865830561
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7632,15 +7606,6 @@ MonoBehaviour:
   progressPathPoints: []
   chaseStartPoint: {fileID: 1099916993}
   chaseRetreatGate: {fileID: 1024930370}
-  stageId: 03_3_Stage
-  initialCheckpointId: S3_ENTRY
-  chaseWaypoints:
-  - {x: 28, y: 0, z: 30}
-  - {x: 18, y: 0, z: 30.000002}
-  - {x: 6, y: 0, z: 30.000002}
-  - {x: -6, y: 0, z: 30.000004}
-  chaseStartProgress: 18
-  progressWaypoints: []
 --- !u!4 &2109316082
 Transform:
   m_ObjectHideFlags: 0

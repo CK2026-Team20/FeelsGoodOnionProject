@@ -2614,7 +2614,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 318828357}
   once: 0
-  value: 
 --- !u!65 &2146570258
 BoxCollider:
   m_ObjectHideFlags: 0

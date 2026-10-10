@@ -474,7 +474,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &195120950
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -549,7 +548,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &238253429
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -899,10 +897,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 353051106}
-  zone:
-    Id: 
-    Movement: 0
-    AlignmentOffset: {x: 0, y: 0, z: 0}
 --- !u!65 &353051105
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1331,12 +1325,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   respawnPoint: {fileID: 2056408424}
   initialCameraZone: {fileID: 920362548}
-  checkpointId: S1_SKILL
-  cameraZone:
-    Id: 
-    Movement: 1
-    AlignmentOffset: {x: -20, y: -2.3, z: 0}
-  bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &482348753
 Transform:
   m_ObjectHideFlags: 0
@@ -2187,7 +2175,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &763704125
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3065,12 +3052,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CheckpointMarker
   respawnPoint: {fileID: 2009504424}
   initialCameraZone: {fileID: 353051104}
-  checkpointId: S1_START
-  cameraZone:
-    Id: 
-    Movement: 1
-    AlignmentOffset: {x: -2, y: 0, z: 0}
-  bodyOffset: {x: 0, y: 1.03, z: 0}
 --- !u!4 &830977231
 Transform:
   m_ObjectHideFlags: 0
@@ -3616,10 +3597,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
   alignmentPoint: {fileID: 920362550}
-  zone:
-    Id: 
-    Movement: 0
-    AlignmentOffset: {x: 0, y: 0, z: 0}
 --- !u!65 &920362549
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6465,11 +6442,6 @@ MonoBehaviour:
   progressPathPoints: []
   chaseStartPoint: {fileID: 1790676031}
   chaseRetreatGate: {fileID: 0}
-  stageId: 03_1_Stage
-  initialCheckpointId: S1_START
-  chaseWaypoints: []
-  chaseStartProgress: 18
-  progressWaypoints: []
 --- !u!4 &1612306505
 Transform:
   m_ObjectHideFlags: 0
@@ -7630,7 +7602,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &2013279580
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7705,7 +7676,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 0
-  value: 
 --- !u!65 &2049348178
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7897,7 +7867,6 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
-  value: 
 --- !u!65 &2134351012
 BoxCollider:
   m_ObjectHideFlags: 0
