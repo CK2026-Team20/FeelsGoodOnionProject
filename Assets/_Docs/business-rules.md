@@ -62,3 +62,7 @@ HUD는HP3/조각0..5와 세션의 Q/E 해금을 구독한다. 해금 전 alpha0.
 - 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
 - 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
 - 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위 2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만이다. 이전 9개 파일의 한정 허가는 종료됐으며 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다.
+
+## 2026-10-10 포포 최종 대화 재생 예외
+
+2026-10-10 사용자 직접 선택: “2번 예외를 허용하는 방안으로 지속합니다”. 포포 최종 대화만 Completed/Skipped 기록이 있어도 재도착 시 첫 행부터 새 대화 회차로 다시 재생할 수 있다. 일반 안내 대화의 완료 장부는 유지하며 반복을 허용하지 않는다. 예외는 실제 포포 종료 트리거(StageTriggerKind.Escape) 접촉과 현재 활성 Stage·살아 있는 Actor·세대·회차 검증을 통과한 경로에만 사용한다. 다시 재생한 최종 대화의 Completed/Skipped만 엔딩을 한 번 예약하며, 같은 프레임 사망·포획, Cancelled, 낡은 callback은 엔딩으로 연결하지 않는다. Options/로그/입력·해제 계약은 동일하다.

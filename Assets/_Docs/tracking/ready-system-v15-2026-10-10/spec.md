@@ -137,3 +137,7 @@ Locator는 타입 등록·조회·scope 소유·Dispose, Composition은 구체 �
 제품 동작/권한/데이터 모델의 미결 선택은 없다. 승인 후 작업은 plan의 각 gate로 확인한다. 실제 리소스가 아직 없는 HudIconGraphic은 조건 충족 전 삭제 대기, 사람의 새 prefab/플레이는 사람의 다음 작업으로 명시한다. engineering 구현·비 Play 검사·수동 리소스/플레이 완료를 서로 다른 상태로 보고한다.
 
 planning-index/지역 지침, 변경 소스와 최소 소유 자산 이관, script별 최종 필요성/삭제 근거, 사람이 보는 최종 제작 guide/Inspector 대응표, 이전·신규 HMS 변경 설명, 코드 리뷰·검증 결과가 있어야 한다. 실제 무단 보호 diff/Missing Script/해제 실패를 남겨 놓고 완료라고 하지 않는다. 현재 READY 문서 검증 완료는 이 후속 구현 완료와 구별한다.
+
+## 2026-10-10 포포 최종 대화 재생 예외
+
+2026-10-10 사용자 직접 선택: “2번 예외를 허용하는 방안으로 지속합니다”. 포포 최종 대화만 Completed/Skipped 기록이 있어도 재도착 시 첫 행부터 새 대화 회차로 다시 재생할 수 있다. 일반 안내 대화의 완료 장부는 유지하며 반복을 허용하지 않는다. 예외는 실제 포포 종료 트리거(StageTriggerKind.Escape) 접촉과 현재 활성 Stage·살아 있는 Actor·세대·회차 검증을 통과한 경로에만 사용한다. 다시 재생한 최종 대화의 Completed/Skipped만 엔딩을 한 번 예약하며, 같은 프레임 사망·포획, Cancelled, 낡은 callback은 엔딩으로 연결하지 않는다. Options/로그/입력·해제 계약은 동일하다.
