@@ -62,4 +62,4 @@ F11은 이번 실제 진입에서 확인한 Bootstrap/Actor 출력2·Listener2 �
 
 ## V1.5 실행 대기 조건
 
-HudIconGraphic은 실제 하트 Sprite/Image 리소스와 사람의 HUD 조립 후 삭제한다. 연결 전 기존 표시를 유지한다. 실제 clip 재생·전체 수동 플레이는 사람이 확인하며 에이전트는 Play를 실행하지 않는다. HMS Tooltip 전수 보완·보호 씬 Missing Script는 이번 두 파일 허가로 수정하지 않는다.
+HudIconGraphic은 실제 하트·Q/E·조각 Sprite/Image 리소스로 현재12소비를 모두 이관하고 사람의 HUD 조립이 끝난 뒤 삭제한다. 연결 전 기존 표시를 유지한다. 실제 clip 재생·전체 수동 플레이는 사람이 확인하며 에이전트는 Play를 실행하지 않는다. 이번 승인 HMS3파일은 Playback 우선순위/설명, Controller 설명, CharacterMovement readonly 접지각 getter/설명만이다. HMS Tooltip 전수 보완·보호 씬 Missing Script를 이 최소 허가로 수정하지 않는다.
