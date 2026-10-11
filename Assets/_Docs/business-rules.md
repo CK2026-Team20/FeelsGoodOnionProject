@@ -1,12 +1,12 @@
 # 현재 확정 게임 규칙
 
-> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
 
-> 현행 목표는 V1.5 실행 명세다. 구현 완료는 tracking/status.md와 실제 증거로 판단한다.
+> 현재 목표는 V1.6과 후속 직접 선택이다. 자산 연결·실행 완료는 별도 검증한다.
 
 ## 플레이어와 상호작용
 
-방향키 이동, Space 점프, Q 형태 전환, E 눈물, F 상호작용을 사용한다. Side는 X, Quarter는 XZ 이동이며 두 폼의 속도는5m/s다. 대각선 입력으로 속도가 늘지 않으며 공중 조향과 손을 뗀 뒤 감속을 지원한다. 접지 상태의 새 Space 입력만 기본3m/작은2m 점프를 실행한다. 선입력·이중 점프는 없다.
+방향키 이동, Space 점프, Q 형태 전환, E 눈물, F 상호작용을 사용한다. Side는 X, Corridor와 Quarter는 XZ 이동이며 두 폼의 속도는5m/s다. 대각선 입력으로 속도가 늘지 않으며 공중 조향과 손을 뗀 뒤 감속을 지원한다. 접지 상태의 새 Space 입력만 기본3m/작은2m 점프를 실행한다. 선입력·이중 점프는 없다.
 
 Q는 즉시 작은 폼으로 바뀌면서 껍질 한 개를 남긴다. 작은 상태의 Q는 공간 검사가 성공할 때 껍질 회수와 기본 복귀를 한 행동으로 처리한다. 거리는 제한하지 않는다. 공간 부족이면 둘 다 보존하고 이동 후 다시 Q를 눌러야 한다. 실제 성공한 크기 전환 사이 Q입력은1초 제한이며 표현 완료와 무관하다. 별도 회수 키는 없다. 이동·점프는 가능하다.
 
@@ -44,22 +44,15 @@ HP최대3, 피해당1, 모든 피해원의 공통 무적2초를 사용한다. �
 
 Opening/Ending은 순서 있는 원화 한 장과 하단 문구를 컷4초씩 자동 표시한다. 클릭/Enter 다음 컷은 없고 전체 Skip을 제공한다. 컷 수4개 제한·분할·scale 호환은 제거한다. 옵션은 월드와 표시 시계를 모두 멈추고 닫을 때 자기 제한만 해제한다. Esc/X가 같은 닫기 명령이며 수동 Retry/Resume버튼·이어하기는 없다. 음량은 유한0..1, 기본1/.7/1과 PlayerPrefs를 사용하고 기존 저장 실패 시 런타임값 보존·다음 저장 재시도를 유지한다.
 
-App에 출력 Camera/Brain/Listener를 각1개 두고, Core Side/Quarter가상 카메라는 Actor를 명시적으로 추적한다. 전환은 트리거로 시작하며0.6초 기본값과 완료까지 PC입력 제한을 사용한다. 실제 Brain과 Side Z정렬이 끝난 뒤 축을 확정한다. Back/Corridor·Actor 자식 리그·두 출력 교대는 제거한다. 초기 모드는 배치 설정에서 결정하며 checkpoint에 저장하지 않는다.
+App 출력 Camera/Brain/AudioListener는 각 1개다. Core의 서로 다른 Side·Corridor·Quarter 세 CinemachineCamera와 구도·우선순위·추적 대상·경계·전환은 LevelCameraService가 소유한다. Brain이 출력하고 서비스는 최종 위치도 Stage의 cameraBounds 안으로 제한한다. Side(1)는 X, Corridor(2)와 Quarter(3)는 XZ 이동이다. HMS PlayerCameraController는 기존 독립 네 rig용이며 통합 분리 Bind/Preview/Commit/Unbind 확장은 사용하지 않는다.
+
+CameraZoneTrigger의 실제 접촉과 현재 Actor·Stage·구간 세대를 확인한다. 통로 차단이 있는 전환은 실물 safeAnchor로 플레이어를 먼저 보정한 뒤 blockerTarget으로 차단 Rigidbody를 이동하며 둘 다 DOMove를 사용한다. 기본 전환 시간은 0.6초이고 각 이동 시간·Ease는 구간 설정이다. 실제 이동과 Brain 블렌드 완료 후 이동축을 확정하고 자기 입력 차단을 반환한다. 옵션/메모 정지, 취소·사망·Actor/Stage 교체 시 자기 작업 해제와 오래된 요청 거절을 유지한다.
 
 HUD는HP3/조각0..5와 세션의 Q/E 해금을 구독한다. 해금 전 alpha0.3, 기존 트리거 수락 후 alpha1을 유지하고 snapshot 마스크 복원 때 같은 상태 원본으로 음영과 실행 수락 조건을 갱신한다. CPID·Recover·거리 Instruction 폐기 소비를 제거했다. 초기 CP/Zone은 실제 Marker/Trigger 참조이고 구형 생성 ID를 사람이 입력하지 않는다. 화면은 ScreenSpaceOverlay, F 안내는 별도 WorldSpaceCanvas에 유효 대상1개다. Core 최초1회/등록 Stage3개 전부 additive 선로딩 뒤 retry·Title·다음 판에 같은 씬을 유지하고 Title 씬은 새 게임 때 언로드할 수 있다. 정확한6씬 진입 정책과 사람의 독립 씬 진입 경로는 유지한다. 에이전트는 Play 및 Player 실행을 하지 않는다. 실제 clip 재생·전체 동선·빌드 UI/UX·QA/FunQA는 사람의 확인 범위다.
 
-## 2026-10-10 현행 V1.5 기준
+## 적용 경계
 
-현재 시스템 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.5.docx`다. 최신 직접 지시 → V1.5 활성 본문 → 기존 구현 순서로 적용한다. 승인된 실행 명세는 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/spec.md`, 구현·검증 상태는 tracking/status.md다. 이전 버전과 당시 실행 증거는 보존하되 현행 정책으로 승계하지 않는다.
-
-- 체크포인트는 현재 ActorBody 월드 위치·보유 조각·해금 마스크 세 항목만 원자 저장한다. 첫 유효 저장 전 상태를 구별하고 같은 물리 Marker 재접촉은 갱신하지 않는다. 추격 트리거 접촉 진입·퇴로 안전 확인 뒤 시작 직전에 현재 상태를 저장한다(2026-10-11 직접 지시: 전신 통과·진행 경로 제거). 사망은 같은 Stage 초기 재준비 후 마지막 세 값을 복원하며, 완료/Skipped 대화 장부는 능력 복원 때문에 지우지 않는다.
-- 현재 목표는 응집형 Prototype Stage 한 곳에서 전체 게임 흐름 1회다. Stage 1→2→3 자동 연결을 추가하지 않으며 등록 씬과 향후 본편의 독립 진입을 보존한다.
-- 위치·끝점·경로·대상은 실제 Transform/컴포넌트/자산을 드래그한다. 속도·시간·높이·방향은 명확한 수치/선택으로 남긴다. 한국어 이름과 Tooltip은 무엇을 연결/조절하는지 짧게 설명하고 필요한 단위·0·좌표계·기즈모만 덧붙인다.
-- 씬 관리자·카메라·Canvas·월드 오브젝트는 독립 씬 루트다. 빈 Root/Render/Collider 규칙은 개별 기능 프리팹에 적용한다. HMS ActorBody 동거, Shell 실제 물리 Root, 움직이는 Rigidbody 아래 Render의 예외를 명시한다. 눈물은 수집 Root와 Collider가 함께 움직인다.
-- 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
-- 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
-- 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
-- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명, CharacterMovement.cs의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 한 개와 설명이다. 실제 Inspector 접지각을 읽으며 원래 필드·기본값·Range·접지 동작은 보존한다. 이전9파일 허가는 종료됐고 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다. 추후 PR에 변경 의도와 한계를 명시한다.
+V1.5 원본과 당시 실행 이력은 과거 자료로 보존한다. 현재 규칙은 위 V1.6 본문과 최신 직접 선택이며 파일 쓰기 권한은 security.md 및 개별 작업 지시를 따른다. HudIconGraphic은 하트뿐 아니라 Q/E와 눈물 조각을 포함한 6개 Graphic 소비 전체를 실제 리소스로 이관하고 참조0을 확인한 뒤 삭제한다.
 
 ## 2026-10-10 포포 최종 대화 재생 예외
 

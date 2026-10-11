@@ -1,8 +1,8 @@
 # 오프닝·엔딩
 
-2026-10-10 최신 목표는 Assets/_Docs/planning-index.md와 ready-system-v15-2026-10-10 명세를 따른다. 이 문서는 구현 완료 기록이 아니다. 기존 지침의 다른 동작을 새 목표로 승계하지 않는다. 보호 원본/메타/아트 수정은 파일별 허가가 필요하다.
+현재 기준은 Assets/_Docs/planning-index.md의 V1.6과 최신 직접 지시다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
 
-목표는 순서 있는 Cut catalog/단일 시계/VM/View의 원화1장+하단문구, 컷4초 자동·전체Skip이다. Timeline Artwork Track/Clip/FrameBridge와4패널/Scale 호환·일회성 보정은 소비 자산 이관 뒤 제거한다. Timeline 패키지/타인 자산은 삭제하지 않는다.
+목표는 순서 있는 Cut catalog/단일 시계/VM/View의 원화1장+하단문구, 컷4초 자동·전체Skip이다. 현재 연출 소스는 Cut catalog/Service/VM/View 경로를 사용한다. 과거 Timeline Artwork Track/Clip/FrameBridge와4패널/Scale 호환 소스는 현재 구현 경로가 아니며, 자산 이관 완료 여부는 별도 증거로 확인한다. Timeline 패키지/타인 자산은 삭제하지 않는다.
 
 Prepare→Play→Hide, Completed/Skipped/Cancelled 차이와 마지막 컷의 Hide전 유지, 옵션 정지의 남은 시간·Skip차단, 이전revision 콜백 무시를 지킨다. View는 VM 명령/표시만 소유한다. 클릭/Enter로 다음 컷을 넘기지 않고 Skip입력을 아래 게임에 흘리지 않는다.
 

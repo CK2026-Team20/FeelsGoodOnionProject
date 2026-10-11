@@ -1,6 +1,6 @@
 # 실행 및 검증 절차
 
-> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
 
 ## 준비
 
@@ -42,11 +42,11 @@ unity pipeline list --format json
 
 끝난 뒤 검증이 소유한 임시 오브젝트·이벤트·정지 차단을 정리한다. Play를 시작하거나 Stop할 필요가 없는 비 Play 검사로 수행한다. 원래 scene setup와 startScene 복원, dirty 상태, 컴파일, Console와 보호 파일 diff를 확인한다. 자동 저장 변경은 원인·전후 diff를 기록하여 커밋에 포함한다. 명령·실행 시각·결과 JSON·케이스·소스 해시·실패 원인은 보존한다.
 
-최신 시스템의 실제 비 Play 검사와 사람 확인 목록은 tracking/ready-system-v15-2026-10-10/테스트 및 검증 항목.md에서 추적한다. ready-platform-hms-cleanup의 결과는 이전 실행 이력이다. 제어된 서비스 요청·런타임 위치 이동 검사, 실제 InputSystem 전체 동선, Windows 빌드, 팀 실제 실행과 FunQA를 따로 판정한다. 이전 editor-entry-hms 및 T9 결과와 캡처는 당시 실행 이력이다.
+현행 검증 상태와 증거 경로는 tracking/status.md에서 확인한다. ready-system-v15-2026-10-10의 검증 문서는 당시 실행 이력이다. ready-platform-hms-cleanup의 결과는 이전 실행 이력이다. 제어된 서비스 요청·런타임 위치 이동 검사, 실제 InputSystem 전체 동선, Windows 빌드, 팀 실제 실행과 FunQA를 따로 판정한다. 이전 editor-entry-hms 및 T9 결과와 캡처는 당시 실행 이력이다.
 
 ## 팀 검증 인계
 
-QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스트 엑셀과 Cooked! FunQA DOCX 한 개를 제공한다. 현재 V1.5 실행에서는 요청 없이 QA/FunQA 문서를 새로 작성하거나 평가하지 않는다. 기존 원본·당시 인계 기록은 보존한다. 기능 케이스 작성·유지는 프로그래머 책임이며 QA는 제공된 원본 서식의 FunQA를 직접 작성한다. 현재 제공 파일과 문서 검증은 [QA 인계 명세](tracking/2026-10-05-functional-qa-spec.md)를 참조한다.
+QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스트 엑셀과 Cooked! FunQA DOCX 한 개를 제공한다. 현재 작업에서는 요청 없이 QA/FunQA 문서를 새로 작성하거나 평가하지 않는다. 기존 원본·당시 인계 기록은 보존한다. 기능 케이스 작성·유지는 프로그래머 책임이며 QA는 제공된 원본 서식의 FunQA를 직접 작성한다. 현재 제공 파일과 문서 검증은 [QA 인계 명세](tracking/2026-10-05-functional-qa-spec.md)를 참조한다.
 
 빌드 ID·소스/명세 버전·실행 파일 경로·해상도·입력 장치·처음부터 진입 또는 체크포인트 조건·알려진 제한을 확정해 전달한다. 현재 존재하는 과거 exe를 새 소스 빌드로 간주하지 않는다. 긴 진행 경로가 필요한 케이스에는 도달 순서와 대상명을 제공하고, 테스트용 진입 기능이 없으면 그 제약을 기록한다. 임의의 새 검증 씬이나 보호 자산 변경을 인계 문서 작성 과정에서 수행하지 않는다.
 
@@ -64,7 +64,7 @@ QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스�
 
 ## 새 목표 검증 범위와 준비 상태
 
-현행 V1.5 검증은 [테스트 및 검증 항목](tracking/ready-system-v15-2026-10-10/테스트%20및%20검증%20항목.md)에서 명령·시각·Source/DLL/빌드 식별·평가 실패·미평가 범위를 확인한다. 실제 비 Play 결과와 사람의 수동 동선 판정은 구분한다. 아래 2026-10-06~07의 V1.1 관찰은 당시 실행 기록으로 보존하며 이번 통과로 승계하지 않는다. 당시 원문은 tracking/ready-system-v11-refactor-2026-10-06/테스트 및 검증 항목.md와 output/Tech_SYM/verification/system-v11-refactor-2026-10-07/T10-final-verified-snapshot.json에 있다.
+현행 V1.6 검증의 명령·시각·Source/DLL/빌드 식별·실패·미평가 범위는 tracking/status.md에서 연결한 실제 증거로 확인한다. 자산 이관·최종 검증의 완료 여부는 담당자의 결과 전까지 확정하지 않는다. 아래 V1.1 관찰과 ready-system-v15-2026-10-10 검증 기록은 당시 이력으로 보존하며 현재 통과로 승계하지 않는다.
 
 ### Windows 빌드 설정 감사 주의 (2026-10-05 T9의 과거 관찰)
 명시 여섯 씬 BuildPipeline.BuildPlayer는 성공했으나 최초 실행에서 Unity 자체가 GraphicsSettings 형식을 정규화하고 InputSystem preloadedAssets 및 UnityConnect m_Enabled를 디스크에 기록했다. 엔진 결과 Succeeded와 ProjectSettings 불변 gate 실패를 분리한다. baseline의 GraphicsSettings 복사본을 native load/save한 바이트는 현재 파일과 동일하므로 형식 변환으로 재현됐다. PlayerSettings.preloadedAssets와 Connect.m_Enabled의 본 검사 부수 변경은 원래 값으로만 native API 복원했다. raw 파일 해시는 줄바꿈/형식 차이 때문에 baseline과 달라 raw 불변 PASS가 아니다. 근거 t9-windows-first-build.json, t9-build-settings-restoration.json.

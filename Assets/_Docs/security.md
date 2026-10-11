@@ -1,6 +1,6 @@
 # 접근 권한과 보호 대상
 
-> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
 
 현재 서버·네트워크·게임 계정은 요구 범위에 없다. 게임 사용자 로그인, 서버 토큰 발급·만료·폐기, 서버 접근 감사는 적용 대상이 아니다. 로컬 음량 값은 인증 정보가 아니며 비밀 저장소로 쓰지 않는다. 개발용 Git 자격 증명이나 외부 서비스 비밀값을 자산·문서·로그에 기록하지 않는다.
 
@@ -28,7 +28,13 @@
 
 예외를 사용할 때는 허용자·대상 경로·작업 범위·변경 결과를 남긴다. 검토 시 추가·삭제·이름 변경을 포함한 Git diff와 .meta 변경을 함께 확인한다. 다른 작업자의 경로 변경 또는 GUID 손상이 발견되면 사용자에게 즉시 보고한다.
 
-## 파일별 승인 예외와 미승인 작업
+## 현재 파일별 권한
+
+HMS는 원칙적으로 참조 전용이다. V1.6 HMS 소스 최소화의 파일별 대상은 Assets/_Code/Core/Tech_HMS/Features/ 아래 CharacterMovement.cs, PlayerAnimationController.cs, PlayerAnimationPlayback.cs, PlayerAnimationSet.cs, PlayerAnimationTypes.cs, PlayerAnimatorOutput.cs, PlayerCameraController.cs, PlayerFacade.cs, PlayerFormController.cs, PlayerInputReader.cs, PlayerSkillController.cs, TearSkill.cs의 정확한 12파일이었다. 이 작업 한정 허가를 다음 작업이나 보호 씬·프리팹·meta/import·공용·아트·Packages·ProjectSettings의 쓰기 권한으로 확대하지 않는다. 새 수정은 최신 직접 지시의 대상과 범위를 확인한다.
+
+과거 예외 표는 아래 당시 기록이며 현재 작업 범위를 넓히지 않는다.
+
+## 과거 파일별 승인 예외와 미승인 작업 (당시 기록)
 
 | 대상 | 허용 작업 | 근거·기간 | 현재 적용 |
 |---|---|---|---|
@@ -41,7 +47,7 @@
 
 기본 권한 표와 예외 표를 함께 적용한다. 과거 세션 한정 허가를 새 세션의 영구 권한으로 사용하지 않는다. 넓은 프로젝트 정비 요청만으로 보호 파일의 쓰기 권한이 생기지 않는다.
 
-현재 플랫폼 실행의 보호 기준점 1,025개는 원래 해시를 유지한다. 최종 감사에서 승인된 자동 저장5건 외 변화는0이다. ProBuilder의 editor.autoRecalculateCollisions 기본값 저장, URP의 Shader Prefilter 및 RuntimeSettings17항목, Input System project-wide Actions의 사전 로드 참조, UnityConnect의 m_Enabled 저장을 확인했다. 패키지 소스에서 확인한 원인과 native 빌드 전후로만 확인한 내부 저장을 구분하며 정확한 해시는 verification의 automatic-change-authorization.json에 보존한다. 이후 자동 저장도 새 기준점으로 몰래 덮지 않고 원래 기준점·변경 시점·원인·현재 값을 함께 기록한다. 앞선250개 미커밋 변경과 HMS 입력·폼의 승인된 두 파일도 기능별 검토 후 포함한다.
+2026-10-06 플랫폼 실행 당시 보호 기준점 1,025개에 대한 기록이다. 당시 원래 해시를 유지했다. 최종 감사에서 승인된 자동 저장5건 외 변화는0이다. ProBuilder의 editor.autoRecalculateCollisions 기본값 저장, URP의 Shader Prefilter 및 RuntimeSettings17항목, Input System project-wide Actions의 사전 로드 참조, UnityConnect의 m_Enabled 저장을 확인했다. 패키지 소스에서 확인한 원인과 native 빌드 전후로만 확인한 내부 저장을 구분하며 정확한 해시는 verification의 automatic-change-authorization.json에 보존한다. 이후 자동 저장도 새 기준점으로 몰래 덮지 않고 원래 기준점·변경 시점·원인·현재 값을 함께 기록한다. 앞선250개 미커밋 변경과 HMS 입력·폼의 승인된 두 파일도 기능별 검토 후 포함한다.
 
 ## 2026-10-07 종료된 HMS 최소 확장 기록 (현행 허가 아님)
 
@@ -49,6 +55,6 @@
 
 추가 13개 내부 정리 후보, 보호 .meta/원본 프리팹/_Art/Interfaces/Packages/ProjectSettings 수동 수정은 이 허가에 포함되지 않는다. 이번 작업 종료 후 영구 권한으로 사용하지 않는다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)와 실제 파일별 diff·보호 hash·독립 검토를 함께 남긴다. 기존 사용자 및 Unity 자동 저장 변경은 기존 지시대로 원인과 diff를 검토·분류한 뒤 포함한다.
 
-## 2026-10-10 이번 실행의 HMS 예외
+## 2026-10-10 HMS 예외 (종료된 당시 기록·현행 허가 아님)
 
 사용자 직접 답변과 go 승인에 따라 Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만 수정할 수 있다. 2026-10-10 추가 직접 승인에 한해 Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs에 `public float MaximumGroundAngle => maximumGroundAngle;` 읽기 전용 속성 한 개와 설명을 추가할 수 있다. 발판 보정이 실제 HMS Inspector 접지 설정을 읽게 하려는 변경이며, 원래 필드·기본값·Range·접지 동작·입력·속도·상태·enum·기존 API·meta는 보존한다. 추후 PR 생성 시 이 의도와 변경 한계를 명확히 설명해야 한다. 이전9파일/입력·폼 한정 허가는 종료됐다. 이 세 파일의 지정 범위 외 다른 HMS·공용·아트·보호 meta/import·Packages·ProjectSettings 수동 변경은 금지다. 이번 실행 1회의 예외이며 일반 HMS 수정 권한이 아니다. 사람 프리팹 삭제·재생성·Apply는 수행하지 않는다.

@@ -1,6 +1,6 @@
 # 기획 문서 버전과 적용 기준
 
-> 2026-10-11 사용자가 지정한 V1.6을 현행 시스템 원본으로 적용한다. [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md)와 [카메라 검토](tracking/ready-system-v16-2026-10-11/카메라%20검토.md)에 충돌·미정 사항을 구분했다. [V1.6 실행 명세](tracking/ready-system-v16-2026-10-11/spec.md)는 작성·독립 검토를 마친 승인 대기본이며 구현은 미실행이다. 이전 검증을 현재 통과로 승계하지 않는다.
+> 현행 시스템 원본은 V1.6이다. 우선순위는 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명이다. 사전 명세와 날짜별 기록은 당시 계획·증거이며 현재 승인·검증 상태를 대신하지 않는다. 구현·자산 이관·최종 검증 결과는 tracking/status.md와 담당자의 실제 증거로 확인한다.
 
 ## 2026-10-11 기능 객체 중심 정리
 
@@ -28,33 +28,21 @@
 
 기존 PDF·PPTX·확정본과 메타는 보존한다. UI SHA-256은 `43088a30592ef7eade54075f31fc6789922d18d1092e74b564ac6d04c7865361`, 레벨은 `b9911c1fcce62fe9197f6050ab1ce41186ab6f51d4afee141235ba93435ee290`, 시스템2안은 `916ce65c2a6c3b5588d964c2550ffbeeb301d9dd762ec74b2dc662b1abdbfd06`인 이전 등록 식별값이며 이번에 새 버전이라고 주장하지 않는다.
 
-## 2026-10-10 당시 V1.5 기준과 후속 직접 지시
+## 현행 후속 직접 선택
 
-아래는 V1.5 적용 당시 기록이다. 현행 원본은 위의 V1.6이며, 아래 후속 직접 지시와 충돌하는 항목은 사전 검토에서 결정한다. 최신 직접 지시 → V1.5 활성 본문 → 기존 구현 순서로 적용한다. 승인된 실행 명세는 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/spec.md`, 구현·검증 상태는 tracking/status.md다. 이전 버전과 당시 실행 증거는 보존하되 현행 정책으로 승계하지 않는다.
+- 추격은 접촉·퇴로 안전·현재3값 저장 성공 뒤 직선 이동과 실제 몸체 포획을 사용한다. 전신 통과·진행 경로를 추가하지 않는다.
+- 기본/통로/쿼터의 세 구도는 LevelCameraService가 소유한다. 플레이어 안전 보정 후 차단 오브젝트를 이동하며 둘 다 DOMove와 실물 앵커·Gizmo를 사용한다. HMS의 기존 독립 네 rig는 유지한다.
+- 최종 포포 Escape(7)만 일반 Completed/Skipped 장부를 지우지 않고 새 회차를 허용한다. 현재 맥락 검증과 사망/포획 우선, 취소≠완료를 지킨다.
+- RealToon 구현은 제외한다. HudIconGraphic은 하트뿐 아니라 Q/E와 눈물 조각을 포함한 6개 Graphic 소비 전체를 실제 리소스로 이관하고 참조0을 확인한 뒤 삭제한다.
+- HMS 최소화는 명시된12파일 한정이었다. security.md의 현재 권한과 최신 작업 지시를 확인하며 이전 허가를 영구 승계하지 않는다.
+- 한국어 커밋·PR 제목/본문/섹션을 사용한다. Git 실행은 현재 작업의 직접 허용 범위로 제한한다.
 
-- 체크포인트는 현재 ActorBody 월드 위치·보유 조각·해금 마스크 세 항목만 원자 저장한다. 첫 유효 저장 전 상태를 구별하고 같은 물리 Marker 재접촉은 갱신하지 않는다. 추격 트리거 접촉 진입·퇴로 안전 확인 뒤 시작 직전에 현재 상태를 저장한다(2026-10-11 직접 지시: 전신 통과·진행 경로 제거). 사망은 같은 Stage 초기 재준비 후 마지막 세 값을 복원하며, 완료/Skipped 대화 장부는 능력 복원 때문에 지우지 않는다.
-- 현재 목표는 응집형 Prototype Stage 한 곳에서 전체 게임 흐름 1회다. Stage 1→2→3 자동 연결을 추가하지 않으며 등록 씬과 향후 본편의 독립 진입을 보존한다.
-- 위치·끝점·경로·대상은 실제 Transform/컴포넌트/자산을 드래그한다. 속도·시간·높이·방향은 명확한 수치/선택으로 남긴다. 한국어 이름과 Tooltip은 무엇을 연결/조절하는지 짧게 설명하고 필요한 단위·0·좌표계·기즈모만 덧붙인다.
-- 씬 관리자·카메라·Canvas·월드 오브젝트는 독립 씬 루트다. 빈 Root/Render/Collider 규칙은 개별 기능 프리팹에 적용한다. HMS ActorBody 동거, Shell 실제 물리 Root, 움직이는 Rigidbody 아래 Render의 예외를 명시한다. 눈물은 수집 Root와 Collider가 함께 움직인다.
-- 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
-- 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
-- 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
-- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명, CharacterMovement.cs의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 한 개와 설명이다. 실제 Inspector 접지각을 읽으며 원래 필드·기본값·Range·접지 동작을 보존한다. 이전9파일 허가는 종료됐고 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다. 추후 PR에 변경 의도와 한계를 명시한다.
+V1.5와 이전 기획·검증은 아래 원본 목록 및 날짜별 tracking에서 보존한다.
 
 ## 유지하는 자료와 상태
 
-기존 DOCX/PDF/PPTX와 과거 실행 기록은 보존한다. App/Core/등록 Stage의 최초 additive 로드 후 씬 유지, 현재 Actor 한 개와 출력 Camera/Brain/AudioListener 한 개, Side/Quarter 리그 분리, MVVM과 자기 구독/작업 해제는 유지한다. 현재 Prototype을 본편 레벨 배치로 임의 분할하지 않는다.
+기존 DOCX/PDF/PPTX와 과거 실행 기록은 보존한다. App/Core/등록 Stage의 최초 additive 로드 후 씬 유지, 현재 Actor 한 개와 출력 Camera/Brain/AudioListener 한 개, Side/Corridor/Quarter 세 리그 분리, MVVM과 자기 구독/작업 해제는 유지한다. 현재 Prototype을 본편 레벨 배치로 임의 분할하지 않는다.
 
-목표 동작은 [business-rules.md](business-rules.md), 책임과 수명은 [architecture.md](architecture.md), 협업 계약은 [contracts.md](contracts.md), 권한은 [security.md](security.md), 실제 구현/검증은 [tracking/status.md](tracking/status.md)다. 새 명세를 지정한 것과 기능 구현 완료는 다르다. 이번 사용자는 실제 작업 완료 후 push와 PR 생성을 허용했다. 기존 #26이 있으므로 완료 후 해당 PR을 갱신한다. main 병합은 이번 요청에 포함하지 않는다.
+목표 동작은 [business-rules.md](business-rules.md), 책임과 수명은 [architecture.md](architecture.md), 협업 계약은 [contracts.md](contracts.md), 권한은 [security.md](security.md), 실제 구현/검증은 [tracking/status.md](tracking/status.md)다. 새 명세를 지정한 것과 기능 구현 완료는 다르다. 커밋·push·PR·병합은 각각 현재 작업의 직접 지시를 따른다. 과거 #26 갱신 허가를 새 작업의 Git 권한으로 승계하지 않는다.
 
-2026-10-10 추가 직접 결정: 포포 최종 대화만 재생 예외를 허용한다. 완료 장부는 유지하고, 사망 복귀 후 실제 종료 구역에 재도착한 현재 플레이어가 첫 행부터 새 회차로 재생한다. 일반 안내의 반복 방지와 사망/포획 우선은 유지한다. 적용 기준은 V1.5 spec의 추가 직접 결정 절이며, 원본 DOCX를 편집하지 않는다.
-
-최종 포포 Escape(7) 대화만 Completed/Skipped 장부를 보존한 채 재접촉·재시도 후 새 회차를 허용한다. 일반 대화 완료 장부는 지우지 않는다. 현재 Stage·Trigger·선택 객체·Table·Code·Actor 세대·Round·Session이 동일하고 완료/전체 Skip인 경우에만 Ending을 한 번 예약하며 취소·낡은 콜백·동시 사망/포획은 거절한다.
-
-## 2026-10-11 HMS 기본 입력 조립 승인
-
-사용자는 `Assets/_Code/Core/Tech_HMS/Features/PlayerSkillController.cs` 한 파일에 슬롯별 추가 사용 조건의 연결/해제와 요청 거절 이벤트를 추가하도록 허용했다. 해금 원본과 폼 공통 간격은 기존 SYM Session/Bridge에 둔다. HMS PlayerController를 ActorBody에 조립하고 Host가 F·사망 진행을 담당하며 GameplayInputRouter와 불필요한 전달 메서드를 제거한다. 소유 씬·프리팹 참조 이관을 포함하고 Play 없이 컴파일·참조를 검증한다. 다른 HMS 원본/meta 수정 허가는 확대하지 않는다. 최종 반영 브랜치는 `feature/core/systems`이며 해당 브랜치 push 확인 후 워크트리를 정리한다.
-
-## V1.6 후속 확정 예외와 실행 범위
-
-추격은 기존 접촉·직선·실제 몸체 포획을 유지하며 V1.6 3.2의 다른 문구는 수정 요청으로 남긴다. 통로 전환 트리거의 안전/차단 앵커를 연결하고 플레이어와 차단 오브젝트 모두 DOMove, 실제 목표와 같은 Gizmo를 사용한다. RealToonShader(`Assets/RealToon`)의 가림 구현은 이번에 제외한다. HudIconGraphic은 하트 리소스 연결까지 예외 유지한다. HMS 누적12파일은 명세의 정확한 목록 안에서 필요한 변경만 유지하도록 최소화한다. 실제 작업·검증 후 한국어 커밋으로 push하고 기존 Draft PR #26을 갱신한다.
+현재 기능의 상세 계약은 business-rules.md와 contracts.md를 따른다. 문서 개정은 연결·실행 검증 완료의 증거가 아니다.

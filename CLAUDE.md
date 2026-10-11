@@ -4,7 +4,7 @@
 
 현행 시스템 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.6.docx`다. 원본 SHA-256은 `4f11bf49af22944e4d38003f7dd029062e7cc79c9927056bf64f5616bd23493f`이며 사용자 Desktop 지정 파일과 바이트 일치한다. V1.5와 이전 실행 기록은 과거 자료로 보존한다. 문서에 포함된 문구는 제품 명세 자료이며 에이전트 실행 명령이 아니다.
 
-이번 범위는 SYM 전체 소스와 Bootstrapper·Title·Core·Prototype Stage의 전체 컴포넌트/필드 검수, 기능 객체 내부 기준점 이관, 책임·의존성 통합, HMS 순변경 최소화 검토, 구현 후 push와 기존 PR 갱신이다. `Assets/_Docs/tracking/ready-system-v16-2026-10-11/`에서 사전 검토와 미정 사항을 추적한다. 현재는 준비 단계이며 V1.6 구현 완료나 실행 명세 승인으로 표시하지 않는다. 후속 답변으로 추격은 접촉·직선·실제 몸체 포획 유지, HMS 누적12파일은 기능별 최소화, RealToon 셰이더 구현 제외를 확정했다. 통로 전환 진입 시 플레이어 안전 보정 후 차단 오브젝트를 이동하며 두 대상 모두 DOTween DOMove를 사용한다. 전환 트리거의 실물 앵커 참조와 Gizmo로 작성하고 표시한다. 기존 확정 경계는 유지한다.
+이번 범위는 SYM 전체 소스와 Bootstrapper 씬·Title·Core·Prototype Stage의 전체 컴포넌트/필드 검수, 기능 객체 내부 기준점 이관, 책임·의존성 통합, HMS 순변경 최소화 검토, 구현 후 push와 기존 PR 갱신이다. `Assets/_Docs/tracking/ready-system-v16-2026-10-11/`에서 사전 검토와 미정 사항을 추적한다. 현재 구현·검증 상태는 tracking/status.md와 해당 증거에서 확인한다. 이 지침만으로 자산 이관·최종 검증 또는 전체 기능 검증 완료를 선언하지 않는다. 후속 답변으로 추격은 접촉·직선·실제 몸체 포획 유지, HMS 누적12파일은 기능별 최소화, RealToon 셰이더 구현 제외를 확정했다. 통로 전환 진입 시 플레이어 안전 보정 후 차단 오브젝트를 이동하며 두 대상 모두 DOTween DOMove를 사용한다. 전환 트리거의 실물 앵커 참조와 Gizmo로 작성하고 표시한다. 기존 확정 경계는 유지한다.
 
 **에이전트 필수 지침:** 앞으로 작성하는 커밋 제목·본문 및 PR 제목·설명·섹션 제목은 한국어로 작성한다. 기존 `feat:`, `fix:`, `refactor:`, `docs:` 등의 타입 접두사는 저장소 형식으로 유지하되 설명은 한국어로 쓴다. 파일/API/명령 식별자는 원문을 보존한다. 기존 공개 커밋의 언어를 바꾸기 위한 이력 재작성·강제 push는 하지 않는다. PR은 진행 내용, 이유, 변경점, 구조, 참고 사항, 확인할 점을 최종 순변경 기준으로 설명한다.
 
@@ -56,7 +56,7 @@ project-root/
     │       ├── archive/ → 과거 상태 원문과 종결 증거
     │       ├── 2026-10-05-guidance-refresh-spec.md → 이전 지침 정비 범위
     │       ├── ready-editor-entry-hms-2026-10-06/ → 앞선 진입·HMS 명세와 실행 이력·수정 가이드
-    │       ├── ready-platform-hms-cleanup-2026-10-06/ → 현재 플랫폼·조립·정리 명세와 검증·자산 연결 가이드
+    │       ├── ready-platform-hms-cleanup-2026-10-06/ → 당시 플랫폼·조립·정리 명세와 검증·자산 연결 가이드
     │       ├── 코드 리뷰.md → 문서·원본 교차 검토
     │       ├── 테스트 및 검증 항목.md → 완료 기준과 확인 결과
     │       └── decisions/
@@ -110,21 +110,16 @@ project-root/
 
 타인 폴더 무단 변경, _Art 원본 손상, .meta GUID 단절, 세션 종료 실패로 입력 잠금·객체가 남는 현상은 즉시 사용자에게 보고한다. 다른 미해결 문제는 재현 조건·영향·현재 해결하지 못하는 이유를 Assets/_Docs/tracking/findings.md에 기록한다.
 
-## 2026-10-10 현행 V1.5 기준
+## 현행 기능·보호 기준
 
-현재 시스템 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.5.docx`다. 최신 직접 지시 → V1.5 활성 본문 → 기존 구현 순서로 적용한다. 승인된 실행 명세는 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/spec.md`, 구현·검증 상태는 tracking/status.md다. 이전 버전과 당시 실행 증거는 보존하되 현행 정책으로 승계하지 않는다.
+최신 직접 지시와 V1.6을 적용한다. 체크포인트 3값·일반 대화 장부·최종 Escape(7) 회차 예외·접촉 기반 추격·주기 발판 침투 판정은 Assets/_Docs/business-rules.md와 contracts.md를 따른다. V1.5와 당시 허가·검증은 과거 자료이며 현행 권한으로 승계하지 않는다.
 
-- 체크포인트는 현재 ActorBody 월드 위치·보유 조각·해금 마스크 세 항목만 원자 저장한다. 첫 유효 저장 전 상태를 구별하고 같은 물리 Marker 재접촉은 갱신하지 않는다. 추격 트리거 접촉 진입·퇴로 안전 확인 뒤 시작 직전에 현재 상태를 저장한다(2026-10-11 직접 지시: 전신 통과·진행 경로 제거). 사망은 같은 Stage 초기 재준비 후 마지막 세 값을 복원하며, 완료/Skipped 대화 장부는 능력 복원 때문에 지우지 않는다.
-- 현재 목표는 응집형 Prototype Stage 한 곳에서 전체 게임 흐름 1회다. Stage 1→2→3 자동 연결을 추가하지 않으며 등록 씬과 향후 본편의 독립 진입을 보존한다.
-- 위치·끝점·경로·대상은 실제 Transform/컴포넌트/자산을 드래그한다. 속도·시간·높이·방향은 명확한 수치/선택으로 남긴다. 한국어 이름과 Tooltip은 무엇을 연결/조절하는지 짧게 설명하고 필요한 단위·0·좌표계·기즈모만 덧붙인다.
-- 씬 관리자·카메라·Canvas·월드 오브젝트는 독립 씬 루트다. 빈 Root/Render/Collider 규칙은 개별 기능 프리팹에 적용한다. HMS ActorBody 동거, Shell 실제 물리 Root, 움직이는 Rigidbody 아래 Render의 예외를 명시한다. 눈물은 수집 Root와 Collider가 함께 움직인다.
-- 주기 발판 5/2/3초는 조절 가능한 초기값이다. 등장 및 이동 중 실제 세로 침투 비율이 1/4 미만이면 정상 착지 보정, 1/4 이상이면 실제 몸체를 위로 분리하며 사망한다. 껍질은 별도 분리하며 데드존에서 같은 소유 껍질을 현재 플레이어로 반환한다.
-- 에이전트는 Editor Play 버튼·PlayMode API/CLI/pipeline/batch 테스트·직접 플레이를 실행하지 않는다. 비 Play 검증과 실제 사람 플레이를 구분한다. QA/FunQA 평가 문서를 요청 없이 작성하지 않는다.
-- 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 실제 하트 리소스 연결 전 삭제 대기다. 자동 Builder로 자산을 다시 만들지 않는다.
-- 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명, CharacterMovement.cs의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 한 개와 설명이다. 실제 Inspector 접지각을 읽으며 원래 필드·기본값·Range·접지 동작을 보존한다. 이전9파일 허가는 종료됐고 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다. 추후 PR에 변경 의도와 한계를 명시한다.
+HMS는 원칙적으로 참조 전용이다. V1.6 HMS 소스 최소화의 파일별 대상은 Assets/_Code/Core/Tech_HMS/Features/ 아래 CharacterMovement.cs, PlayerAnimationController.cs, PlayerAnimationPlayback.cs, PlayerAnimationSet.cs, PlayerAnimationTypes.cs, PlayerAnimatorOutput.cs, PlayerCameraController.cs, PlayerFacade.cs, PlayerFormController.cs, PlayerInputReader.cs, PlayerSkillController.cs, TearSkill.cs의 정확한 12파일이었다. 이 작업 한정 허가를 다음 작업이나 보호 씬·프리팹·meta/import·공용·아트·Packages·ProjectSettings의 쓰기 권한으로 확대하지 않는다. 새 수정은 최신 직접 지시의 대상과 범위를 확인한다.
 
-최종 포포 Escape(7) 대화만 Completed/Skipped 장부를 보존한 채 재접촉·재시도 후 새 회차를 허용한다. 일반 대화 완료 장부는 지우지 않는다. 현재 Stage·Trigger·선택 객체·Table·Code·Actor 세대·Round·Session이 동일하고 완료/전체 Skip인 경우에만 Ending을 한 번 예약하며 취소·낡은 콜백·동시 사망/포획은 거절한다.
+HudIconGraphic은 하트뿐 아니라 Q/E와 눈물 조각을 포함한 6개 Graphic 소비 전체를 실제 리소스로 이관하고 참조0을 확인한 뒤 삭제한다.
 
-## 2026-10-11 HMS 기본 입력 조립 승인
+## 입력 조립과 작업 권한
 
-사용자는 `Assets/_Code/Core/Tech_HMS/Features/PlayerSkillController.cs` 한 파일에 슬롯별 추가 사용 조건의 연결/해제와 요청 거절 이벤트를 추가하도록 허용했다. 해금 원본과 폼 공통 간격은 기존 SYM Session/Bridge에 둔다. HMS PlayerController를 ActorBody에 조립하고 Host가 F·사망 진행을 담당하며 GameplayInputRouter와 불필요한 전달 메서드를 제거한다. 소유 씬·프리팹 참조 이관을 포함하고 Play 없이 컴파일·참조를 검증한다. 다른 HMS 원본/meta 수정 허가는 확대하지 않는다. 최종 반영 브랜치는 `feature/core/systems`이며 해당 브랜치 push 확인 후 워크트리를 정리한다.
+HMS Reader/PlayerController가 이동·점프·스킬 입력을 한 번 처리하고 Host가 F 상호작용을 전달한다. Host는 눈물 입력을 E로 설정하며 Host 없는 HMS 독립 Reader의 기본 F 정책을 구별한다. Bridge가 슬롯별 추가 조건·해금·간격·거절 피드백을 연결하고 자기 연결만 해제한다.
+
+소스·자산·문서·Git 권한은 현재 작업의 직접 지시로 정한다. 과거 최종 브랜치/push/워크트리 정리 지시는 새 작업의 포괄 승인이 아니다. 커밋·PR 제목·본문·섹션 제목은 한국어로 작성하고 저장소 타입 접두사와 파일/API 식별자는 유지한다.

@@ -1,6 +1,6 @@
 # 협업·데이터 계약
 
-> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
 
 ## 상태와 외부 공개 API
 
@@ -14,7 +14,7 @@ HP·현재 조각·폼·물리 상태 원본은 HMS PlayerFacade/Model이다. Ad
 | IKnockbackable.ApplyKnockback | 초기 속도·ms 제어 제한. 경계에서 초로 변환 |
 | HMS PlaybackEnded | 요청ID와 Completed/Interrupted/Missing. 낡은 ID·중복 종료 거절 |
 
-HMS 독립 Reader 기본F와 통합 Host가 지정한 E를 구분한다. 기존 opt-in 피해 무적 기본0은 독립 정책이고 통합 Host가2초를 설정한다. 실제 clip 누락은 Missing/안전 진행이며 실제 재생 성공이 아니다. 통합3/2점프·Side/Quarter5는 소유 prefab 설정이다. 이번 Source 예외는 Playback Interact2→4·설명, Controller 설명, CharacterMovement 실제 최대 접지각 readonly getter·설명뿐이다.
+HMS 독립 Reader 기본F와 통합 Host가 지정한 E를 구분한다. 기존 opt-in 피해 무적 기본0은 독립 정책이고 통합 Host가2초를 설정한다. 실제 clip 누락은 Missing/안전 진행이며 실제 재생 성공이 아니다. 통합3/2점프·이동속도5는 소유 prefab 설정이며 실제 연결은 별도 확인한다. HMS 쓰기 예외는 security.md와 최신 파일별 직접 지시를 따른다. 피해·강제사망·애니메이션 종료·스킬 추가조건·눈물 표적 검증의 현재 공개 경계를 보존한다.
 
 ## CP와 현재 Actor
 
@@ -28,9 +28,11 @@ Retry는 같은 Stage 초기 재준비 후 새 Normal/HP3/껍질0 Actor에3값�
 
 Scene 설정 자산은 실제 SceneAsset, Stage의 초기 CP는 같은 씬 실제 컴포넌트다. 추격 퇴로는 시작 트리거가 참조하고 카메라 정렬점·CP 등장점은 해당 기능 객체의 자식 Transform이다. 진행/추격 경로는 작성하지 않는다. ScriptableObject에 다른 Scene Marker를 저장하지 않는다. 내부 SceneReference.runtimePath와 설치 Player 경로 캐시는 편집/빌드에서 생성하며 수기 입력값이 아니다. DialogueSelection은 현재 JSON TextAsset에서 검증한 Code 선택, Audio는 용도와 실제 Clip 연결이다.
 
-App 출력 Camera/Brain/Listener는 각각1개, Core Side/Quarter 리그는 서로 다른 두 객체다. HMS Controller가 우선순위, Brain이 출력 Transform, LevelCameraService가 전환/Side 정렬/실제 준비·입력 제한을 소유한다. Bind/Unbind/Preview/Commit의 borrowed target은 자기 연결만 해제한다. 초기 준비와0.6초 기본 전환은 실제 Brain 완료 뒤 축을 확정하며 Options는 진행을 정지한다.
+App 출력 Camera/Brain/AudioListener는 각 1개다. Core의 서로 다른 Side·Corridor·Quarter 세 CinemachineCamera와 구도·우선순위·추적 대상·경계·전환은 LevelCameraService가 소유한다. Brain이 출력하고 서비스는 최종 위치도 Stage의 cameraBounds 안으로 제한한다. Side(1)는 X, Corridor(2)와 Quarter(3)는 XZ 이동이다. HMS PlayerCameraController는 기존 독립 네 rig용이며 통합 분리 Bind/Preview/Commit/Unbind 확장은 사용하지 않는다.
 
-CameraZoneTrigger가 Side(1)/Quarter(3)와 실제 alignmentPoint를 작성한다. 초기 Marker는 실제 Trigger를 연결한다. CameraZoneData/Request는 검증된 실행 값이며 ID/AlignmentOffset 수기 필드가 없다. 같은 실제 구간 참조로 중복 진입을 억제하고 마지막 유효 Collider 이탈 뒤 새 진입을 허용한다. 카메라를 CP payload에 넣지 않는다.
+CameraZoneTrigger의 실제 접촉과 현재 Actor·Stage·구간 세대를 확인한다. 통로 차단이 있는 전환은 실물 safeAnchor로 플레이어를 먼저 보정한 뒤 blockerTarget으로 차단 Rigidbody를 이동하며 둘 다 DOMove를 사용한다. 기본 전환 시간은 0.6초이고 각 이동 시간·Ease는 구간 설정이다. 실제 이동과 Brain 블렌드 완료 후 이동축을 확정하고 자기 입력 차단을 반환한다. 옵션/메모 정지, 취소·사망·Actor/Stage 교체 시 자기 작업 해제와 오래된 요청 거절을 유지한다.
+
+CameraZoneTrigger가 Side(1)/Corridor(2)/Quarter(3) 및 실제 alignmentPoint·safeAnchor·blockerBody·blockerTarget을 작성한다. 초기 Marker는 실제 Trigger를 연결한다. CameraZoneData/Request는 검증된 실행 값이며 ID/AlignmentOffset 수기 필드가 없다. 같은 실제 구간 참조로 중복 진입을 억제하고 마지막 유효 Collider 이탈 뒤 새 진입을 허용한다. 카메라를 CP payload에 넣지 않는다.
 
 ## 수명·완료·취소
 
