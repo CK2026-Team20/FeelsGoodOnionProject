@@ -49,7 +49,7 @@ namespace Cooked.Integration
             {
                 var cinematics = cinematic.Initialize(app.Get<IGameplayControlService>());
                 runtime = new GameSessionRuntime(app, catalog, actor, dialogueView, cinematics, entries);
-                ui.Bind(runtime);
+                ui.Bind(runtime, cinematic.transform);
                 world = new CoreWorldBinding(runtime, cameraService, chase, ui, app.Get<IGameFlowService>(),
                     app.Get<IGameplayControlService>(), app.Get<IDialogueTableService>(), app.Get<IAudioService>(), audioFlow,
                     app.Get<ISceneService>(), output, brain, controller, sideCamera, quarterCamera);
