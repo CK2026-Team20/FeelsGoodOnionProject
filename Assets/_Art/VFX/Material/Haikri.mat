@@ -197,8 +197,8 @@ Material:
     - _AlphaTransitionMapSecondTextureSliceCount: 4
     - _AlphaTransitionMapSliceCount: 4
     - _AlphaTransitionMode: 1
-    - _AlphaTransitionProgress: 0.5
-    - _AlphaTransitionProgressCoord: 0
+    - _AlphaTransitionProgress: 0
+    - _AlphaTransitionProgressCoord: 11
     - _AlphaTransitionProgressCoordSecondTexture: 0
     - _AlphaTransitionProgressSecondTexture: 0
     - _AlphaTransitionSecondTextureBlendMode: 0
@@ -328,7 +328,7 @@ Material:
     - _Surface: 0
     - _TintAreaMode: 1
     - _TintBlendRate: 1
-    - _TintBlendRateCoord: 0
+    - _TintBlendRateCoord: 31
     - _TintColorMode: 0
     - _TintMap3DProgress: 0
     - _TintMap3DProgressCoord: 0
@@ -375,7 +375,7 @@ Material:
     - _EmissionMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _FlowMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _TintColor: {r: 31.626793, g: 31.626793, b: 31.626793, a: 1}
+    - _TintColor: {r: 9.082411, g: 9.082411, b: 9.082411, a: 1}
     - _TintMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
