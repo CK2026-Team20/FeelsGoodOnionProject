@@ -110,6 +110,9 @@ namespace Cooked.Level
         private IDisposable inputLease;
         private PlayerBridgeService.CorrectionOwnership correction;
         private Tween playerTween, blockerTween;
+        private Rigidbody ownedBlockerBody;
+        private CameraZoneTrigger ownedBlockerZone;
+        private long ownedBlockerRequest, ownedBlockerBinding;
         private PlayerFacade acceptedActor;
         private long actorGeneration, requestGeneration, zoneRevision;
         private bool initialSelection, motionsComplete, viewCommitted, playerMoveSubmitted, blockerMoveSubmitted, unbinding, cancellingTransition;
@@ -328,7 +331,9 @@ namespace Cooked.Level
                         {
                             if (!CurrentZone.IsBlockerPathSafe(acceptedActor, correction.Body.position)) throw new InvalidOperationException("보정 후 차단 경로가 막혔습니다.");
                             State = CameraTransitionState.MovingBlocker;
-                            blockerTween = CurrentZone.BlockerBody.DOMove(blockerGoal, CurrentZone.BlockerMoveSeconds)
+                            ownedBlockerBody = CurrentZone.BlockerBody; ownedBlockerZone = CurrentZone;
+                            ownedBlockerRequest = generation; ownedBlockerBinding = CurrentZone.BindingRevision;
+                            blockerTween = ownedBlockerBody.DOMove(blockerGoal, CurrentZone.BlockerMoveSeconds)
                                 .SetEase(CurrentZone.BlockerEase).SetUpdate(UpdateType.Manual).Pause();
                         }
                         else { motionsComplete = true; State = CameraTransitionState.WaitingForCamera; }
@@ -337,7 +342,9 @@ namespace Cooked.Level
                     {
                         blockerTween = null;
                         if (!IsCurrent(generation)) return;
-                        CurrentZone.MarkBlockerCompleted(); motionsComplete = true; State = CameraTransitionState.WaitingForCamera;
+                        CurrentZone.MarkBlockerCompleted();
+                        ownedBlockerBody = null; ownedBlockerZone = null; // 실제 물리 도착 후에는 보류 이동 소유권도 끝난다.
+                        motionsComplete = true; State = CameraTransitionState.WaitingForCamera;
                     }
                 }
                 brain.ManualUpdate(Time.frameCount, initialCut ? -1 : Time.deltaTime);
@@ -380,7 +387,10 @@ namespace Cooked.Level
             cancellingTransition = true;
             try
             {
-                ++requestGeneration;
+                long cancelledRequest = requestGeneration++;
+                var oldBlockerBody = ownedBlockerBody; ownedBlockerBody = null;
+                var oldBlockerZone = ownedBlockerZone; ownedBlockerZone = null;
+                long oldBlockerRequest = ownedBlockerRequest, oldBlockerBinding = ownedBlockerBinding;
                 var oldPlayerTween = playerTween; playerTween = null;
                 var oldBlockerTween = blockerTween; blockerTween = null;
                 var oldCorrection = correction; correction = null;
@@ -392,6 +402,18 @@ namespace Cooked.Level
                 var errors = new List<Exception>();
                 SessionCleanup.Attempt(errors, () => oldPlayerTween?.Kill(false));
                 SessionCleanup.Attempt(errors, () => oldBlockerTween?.Kill(false));
+                SessionCleanup.Attempt(errors, () =>
+                {
+                    // Kill은 이미 PhysX에 제출한 MovePosition을 지우지 않는다. 자기 수락 객체/세대만 flush한다.
+                    if (oldBlockerBody == null || oldBlockerZone == null || oldBlockerRequest != cancelledRequest ||
+                        oldBlockerZone.BindingRevision != oldBlockerBinding ||
+                        !ReferenceEquals(oldBlockerZone, oldZone) || !ReferenceEquals(oldBlockerZone.BlockerBody, oldBlockerBody)) return;
+                    Vector3 position = oldBlockerBody.position;
+                    Quaternion rotation = oldBlockerBody.rotation;
+                    oldBlockerBody.position = position;
+                    oldBlockerBody.rotation = rotation;
+                    oldBlockerBody.transform.SetPositionAndRotation(position, rotation);
+                });
                 SessionCleanup.Attempt(errors, () => oldCorrection?.Dispose());
                 SessionCleanup.Attempt(errors, () => oldZone?.RequestCancelled());
                 if (!unbinding && committedCamera != null)
