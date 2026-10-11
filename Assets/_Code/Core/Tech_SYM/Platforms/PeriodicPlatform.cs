@@ -173,6 +173,13 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 if (player == null && shell == null) continue;
                 if (player != null && (other != body.GetComponent<CapsuleCollider>() || !bridge.IsCurrentActor(player, generation))) continue;
                 if (shell != null && (other != body.GetComponent<BoxCollider>() || !bridge.OwnsDebris(shell))) continue;
+                // 현재 보정 writer는 실제 교차 후보일 때만 반환한다. 단순 근접/바닥 접촉은 보정을 중단하지 않는다.
+                if (player != null && bridge.HasCorrectionOwner && Physics.ComputePenetration(support, supportPose.position,
+                    supportPose.rotation, other, other.transform.position, other.transform.rotation, out _, out _))
+                {
+                    bridge.CancelCorrection();
+                    if (!bridge.IsCurrentActor(expected, generation)) continue;
+                }
                 Pose bodyShapePose = PhysicsPose(other);
                 // Move 통지는 운반 이전이다. 실제 접지/윗면 접촉을 가진 탑승자는 이번 운반 의도를 존중한다.
                 bool normalTop = moving && IsSupportedPassenger(other);

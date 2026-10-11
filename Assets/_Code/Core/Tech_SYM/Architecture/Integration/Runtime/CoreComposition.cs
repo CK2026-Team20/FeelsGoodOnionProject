@@ -29,21 +29,17 @@ namespace Cooked.Integration
         [SerializeField, InspectorLabel("카메라 구간 담당")] private LevelCameraService cameraService;
         [Tooltip("추격 무리와 실제 포획을 갱신할 Core의 ChaseRuntimeDriver입니다.")]
         [SerializeField, InspectorLabel("추격 담당")] private ChaseRuntimeDriver chase;
-        [Tooltip("Core에 유지할 Side 가상 카메라입니다. App 출력의 HMS 담당이 우선순위를 결정합니다.")]
-        [SerializeField, InspectorLabel("사이드 카메라")] private CinemachineCamera sideCamera;
-        [Tooltip("Core에 유지할 Quarter 가상 카메라입니다. Side와 다른 가상 카메라를 연결하세요.")]
-        [SerializeField, InspectorLabel("쿼터 카메라")] private CinemachineCamera quarterCamera;
         private GameSessionRuntime runtime;
         private CoreWorldBinding world;
         private bool releasing;
         public GameSessionRuntime CreateSession(ServiceLocator app, SceneCatalog catalog, AudioFlowBinding audioFlow,
-            Camera output, CinemachineBrain brain, PlayerCameraController controller)
+            Camera output, CinemachineBrain brain)
         {
             if (runtime != null || world != null || releasing) throw new InvalidOperationException("Core still owns a session or unfinished release.");
             if (actor == null || dialogueView == null || cinematic == null || entries == null || ui == null ||
-                cameraService == null || chase == null || sideCamera == null || quarterCamera == null || sideCamera == quarterCamera)
+                cameraService == null || chase == null)
                 throw new InvalidOperationException("Core composition references are incomplete.");
-            foreach (var reference in new Component[] { actor, dialogueView, cinematic, ui, cameraService, chase, sideCamera, quarterCamera })
+            foreach (var reference in new Component[] { actor, dialogueView, cinematic, ui, cameraService, chase })
                 SceneComponentLookup.RequireSameScene(this, reference, "Core 연결");
             try
             {
@@ -52,7 +48,7 @@ namespace Cooked.Integration
                 ui.Bind(runtime, cinematic.transform);
                 world = new CoreWorldBinding(runtime, cameraService, chase, ui, app.Get<IGameFlowService>(),
                     app.Get<IGameplayControlService>(), app.Get<IDialogueTableService>(), app.Get<IAudioService>(), audioFlow,
-                    app.Get<ISceneService>(), output, brain, controller, sideCamera, quarterCamera);
+                    app.Get<ISceneService>(), output, brain);
                 runtime.BindStageLifecycle(world.PrepareStage);
                 runtime.BindActorViewReadiness(() => cameraService.IsViewReady);
                 return runtime;

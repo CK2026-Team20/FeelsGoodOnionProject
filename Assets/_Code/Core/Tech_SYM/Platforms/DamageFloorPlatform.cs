@@ -68,6 +68,23 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             try { return bridge.Damage(surface.ClosestPoint(other.bounds.center)); }
             finally { resolving = false; }
         }
+        private void FixedUpdate()
+        {
+            // Kinematic 보정 중 static/kinematic 표면은 Collision callback을 주지 않을 수 있다.
+            if (bridge == null || !bridge.HasCorrectionOwner || bridge.PhysicsPaused || actorBody == null ||
+                physicalContacts == null || physicalContacts.Surface == null) return;
+            var surface = physicalContacts.Surface;
+            if (!surface.enabled || !surface.gameObject.activeInHierarchy ||
+                Physics.GetIgnoreCollision(surface, actorBody) ||
+                Physics.GetIgnoreLayerCollision(surface.gameObject.layer, actorBody.gameObject.layer)) return;
+            PlayerBridgeService.CapsuleGeometry(actorBody, out var a, out var b, out float radius);
+            foreach (var hit in Physics.CapsuleCastAll(a + Vector3.up * .01f, b + Vector3.up * .01f, radius, Vector3.down, .02f, ~0, QueryTriggerInteraction.Ignore))
+                if (hit.collider == surface)
+                { TryDamageContact(actorBody, Time.fixedTimeAsDouble); return; }
+            if (Physics.ComputePenetration(surface, surface.transform.position, surface.transform.rotation,
+                actorBody, actorBody.transform.position, actorBody.transform.rotation, out _, out _))
+                TryDamageContact(actorBody, Time.fixedTimeAsDouble);
+        }
         public void ResetForRetry() => physicalContacts?.ResetForRetry();
         private void OnDisable()
         {

@@ -28,7 +28,7 @@ namespace Cooked.Integration
         private FadeViewModel fadeModel;
         [Tooltip("앱의 음악·효과음을 재생할 AudioRuntimeHost입니다.")]
         [SerializeField, InspectorLabel("소리 담당")] private AudioRuntimeHost audio;
-        [Tooltip("모든 화면을 출력하는 앱의 단일 Camera입니다. 같은 오브젝트의 Brain·AudioListener·분리 리그 HMS 카메라 담당을 연결하고 앱 종료까지 켜 둡니다.")]
+        [Tooltip("모든 화면을 출력하는 앱의 단일 Camera입니다. 같은 오브젝트에 Brain과 AudioListener를 두고 앱 종료까지 켜 둡니다.")]
         [SerializeField, InspectorLabel("출력 카메라")] private Camera presentationCamera;
         private ServiceLocator services;
         private SceneCatalog catalog;
@@ -48,10 +48,7 @@ namespace Cooked.Integration
         }
         private AudioListener presentationListener;
         private bool subscribed;
-        public ServiceLocator Services => services;
-        public Camera OutputCamera => presentationCamera;
-        public CinemachineBrain OutputBrain { get; private set; }
-        public PlayerCameraController OutputController { get; private set; }
+        private CinemachineBrain outputBrain;
         // Scene references exist during Awake, but the scene is not yet guaranteed loaded.
         // Compose after sceneLoaded so the same-scene and output-singleton checks are valid.
         private void Start()
@@ -75,10 +72,9 @@ namespace Cooked.Integration
                 if (listeners.Length != 1)
                     throw new InvalidOperationException("App presentation Camera requires one AudioListener on the same object.");
                 presentationListener = listeners[0];
-                OutputBrain = presentationCamera.GetComponent<CinemachineBrain>();
-                OutputController = presentationCamera.GetComponent<PlayerCameraController>();
-                if (OutputBrain == null || OutputController == null)
-                    throw new InvalidOperationException("App output requires Brain and separated HMS controller.");
+                outputBrain = presentationCamera.GetComponent<CinemachineBrain>();
+                if (outputBrain == null)
+                    throw new InvalidOperationException("앱 출력 카메라에는 CinemachineBrain이 필요합니다.");
                 catalog = installation.CreateCatalog();
                 if (gameObject.scene.path != catalog.BootstrapPath)
                     throw new InvalidOperationException("앱 조립자는 설치 자산의 Bootstrap 씬에 있어야 합니다.");
@@ -101,7 +97,7 @@ namespace Cooked.Integration
                 runtime = new GameRuntimeService(() =>
                 {
                     loadedCore = SceneComponentLookup.RequireSingle<CoreComposition>(catalog.CorePath);
-                    return loadedCore.CreateSession(services, catalog, audio.Binding, OutputCamera, OutputBrain, OutputController);
+                    return loadedCore.CreateSession(services, catalog, audio.Binding, presentationCamera, outputBrain);
                 });
                 runtime.BindSessionRelease(old =>
                 {
@@ -149,8 +145,7 @@ namespace Cooked.Integration
             if (presentationCamera == null || presentationCamera.gameObject.scene != gameObject.scene) return;
             presentationCamera.enabled = visible;
             if (presentationListener != null) presentationListener.enabled = visible;
-            if (OutputBrain != null) OutputBrain.enabled = visible;
-            if (OutputController != null) OutputController.enabled = visible;
+            if (outputBrain != null) outputBrain.enabled = visible;
         }
         private void SceneLoaded(Scene scene, LoadSceneMode mode)
         {

@@ -28,8 +28,6 @@ namespace Cooked.Integration
         private readonly ISceneService scenes;
         private readonly Camera output;
         private readonly CinemachineBrain brain;
-        private readonly PlayerCameraController controller;
-        private readonly CinemachineCamera side, quarter;
         private StageService stage;
         private readonly List<MemoUIController> memos = new List<MemoUIController>();
         private readonly List<StageTrigger> chaseTriggers = new List<StageTrigger>();
@@ -41,13 +39,12 @@ namespace Cooked.Integration
         public CoreWorldBinding(GameSessionRuntime runtime, LevelCameraService camera, ChaseRuntimeDriver chase,
             CoreUiBinding ui, IGameFlowService flow, IGameplayControlService control, IDialogueTableService dialogueTable,
             IAudioService audio, AudioFlowBinding audioFlow, ISceneService scenes, Camera output,
-            CinemachineBrain brain, PlayerCameraController controller, CinemachineCamera side, CinemachineCamera quarter)
+            CinemachineBrain brain)
         {
             this.runtime = runtime; this.camera = camera; this.chase = chase; this.ui = ui; this.flow = flow;
             this.control = control; this.dialogueTable = dialogueTable; this.audio = audio; this.audioFlow = audioFlow; this.scenes = scenes;
-            this.output = output; this.brain = brain; this.controller = controller; this.side = side; this.quarter = quarter;
-            if (output == null || brain == null || controller == null || output.gameObject != brain.gameObject ||
-                output.gameObject != controller.gameObject || side == null || quarter == null || side == quarter)
+            this.output = output; this.brain = brain;
+            if (output == null || brain == null || output.gameObject != brain.gameObject)
                 throw new ArgumentException("World requires explicit App output and distinct Core rigs.");
             runtime.CheckpointCaptured += OnCheckpointCaptured;
             runtime.ActorReady += BindActor; runtime.ActorRemoving += UnbindActor;
@@ -110,8 +107,7 @@ namespace Cooked.Integration
                 periodicPlatforms.AddRange(stage.FindComponents<PeriodicPlatform>());
                 foreach (var periodic in periodicPlatforms)
                     periodic.BindMaterialization(runtime.Player);
-                camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), controller,
-                    brain, side, quarter, runtime.Player.CameraTarget, runtime.Player.BodyTransform);
+                camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), brain, stage, flow);
                 ui.SetActorCamera(output);
                 CameraZoneRequest? resolved = null;
                 cameraZones.AddRange(stage.FindComponents<CameraZoneTrigger>());

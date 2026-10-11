@@ -195,8 +195,9 @@ namespace Cooked.Chase
             if (state == State.Running && (snapshot.State != FlowState.Playing || snapshot.IsBusy)) Stop();
         }
         private bool Reject(string reason) { LastRejection = reason; return false; }
-        private static bool UsableBody(CapsuleCollider body) => body != null && body.enabled &&
-            body.gameObject.activeInHierarchy && !body.isTrigger && body.attachedRigidbody != null && !body.attachedRigidbody.isKinematic;
+        private bool UsableBody(CapsuleCollider body) => body != null && body.enabled &&
+            body.gameObject.activeInHierarchy && !body.isTrigger && body.attachedRigidbody != null && (!body.attachedRigidbody.isKinematic ||
+                (bridge != null && bridge.HasCorrectionOwner && bridge.IsCurrentActor(body.attachedRigidbody.GetComponent<PlayerFacade>(), bridge.ActorGeneration)));
         private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
         private static void ValidateBox(BoxCollider box)
         {
