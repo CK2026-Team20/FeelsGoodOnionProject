@@ -9,7 +9,7 @@ namespace Cooked.Chase
     public enum ChaseVisualPhase { Hidden, Appearing, Looping, Exiting }
     public enum ChaseVisualOutcome { None, Completed, Cancelled }
 
-    /// <summary>Owns visual tweens only. Root position and capture still come from the distance model.</summary>
+    /// <summary>Owns visual tweens only. The driver owns root movement and physical capture.</summary>
     [DisallowMultipleComponent]
     public sealed class ChaseSwarmPresentation : MonoBehaviour
     {
@@ -23,7 +23,6 @@ namespace Cooked.Chase
         [SerializeField, InspectorLabel("상하 편도 시간"), Min(.01f)] private float bobHalfPeriod = .32f;
         [Tooltip("기본 외형 위치에서 위로 흔들리는 거리입니다(로컬 단위, 0 이상). 0이면 상하 흔들림을 만들지 않습니다.")]
         [SerializeField, InspectorLabel("상하 높이"), Min(0)] private float bobHeight = .06f;
-        private ChaseService service;
         private IGameplayControlService control;
         private GameObject boundVisual;
         private Tween transitionTween, bobTween;
@@ -33,39 +32,35 @@ namespace Cooked.Chase
         public ChaseVisualPhase Phase { get; private set; }
         public ChaseVisualOutcome LastTransitionOutcome { get; private set; }
 
-        public void Bind(ChaseService value, IGameplayControlService gameplayControl)
+        public void Bind(IGameplayControlService gameplayControl)
         {
-            if (value == null) throw new ArgumentNullException(nameof(value));
             if (gameplayControl == null) throw new ArgumentNullException(nameof(gameplayControl));
             if (visual == null || visual.transform == transform || !visual.transform.IsChildOf(transform) ||
                 visual.GetComponentsInChildren<Collider>(true).Length != 0 ||
                 visual.GetComponentsInChildren<Rigidbody>(true).Length != 0 ||
                 !ValidDuration(appearSeconds) || !ValidDuration(exitSeconds) ||
-                !ValidDuration(bobHalfPeriod) || !ChaseSettings.IsFinite(bobHeight) || bobHeight < 0)
+                !ValidDuration(bobHalfPeriod) || !float.IsFinite(bobHeight) || bobHeight < 0)
                 throw new InvalidOperationException("Invalid Chase visual binding or tween settings.");
             for (var parent = visual.transform.parent; parent != transform; parent = parent.parent)
                 if (parent.GetComponent<Collider>() != null || parent.GetComponent<Rigidbody>() != null)
                     throw new InvalidOperationException("추격 외형은 물리 몸체 밖의 외형 자식이어야 합니다.");
             Unbind();
             boundVisual = visual;
-            service = value;
             control = gameplayControl;
             restPosition = boundVisual.transform.localPosition;
             restScale = boundVisual.transform.localScale;
             hasRestPose = true;
             boundVisual.SetActive(false);
             LastTransitionOutcome = ChaseVisualOutcome.None;
-            service.Changed += Render;
             control.Changed += OnControlChanged;
-            Render(service.Snapshot);
         }
 
         /// <summary>Only the owner driver ticks these handles; never calls global DOTween.ManualUpdate.</summary>
         public void Tick(float scaledDelta, float unscaledDelta)
         {
-            if (service == null || control == null) return;
-            if (!ChaseSettings.IsFinite(scaledDelta) || scaledDelta < 0 ||
-                !ChaseSettings.IsFinite(unscaledDelta) || unscaledDelta < 0)
+            if (control == null) return;
+            if (!float.IsFinite(scaledDelta) || scaledDelta < 0 ||
+                !float.IsFinite(unscaledDelta) || unscaledDelta < 0)
                 throw new ArgumentOutOfRangeException(nameof(scaledDelta));
             bool exiting = Phase == ChaseVisualPhase.Exiting;
             bool paused = exiting ? control.State.PresentationPaused : control.State.WorldPaused;
@@ -86,9 +81,7 @@ namespace Cooked.Chase
             if (transitionTween != null || bobTween != null) LastTransitionOutcome = ChaseVisualOutcome.Cancelled;
             KillOwned(ref transitionTween);
             KillOwned(ref bobTween);
-            if (service != null) service.Changed -= Render;
             if (control != null) control.Changed -= OnControlChanged;
-            service = null;
             control = null;
             Phase = ChaseVisualPhase.Hidden;
             var releasedVisual = boundVisual;
@@ -104,20 +97,17 @@ namespace Cooked.Chase
             }
             hasRestPose = false;
         }
-        private void Render(ChaseSnapshot state)
+        public void Show()
         {
-            if (boundVisual == null) return;
-            if (state.State == ChaseState.Running)
-            {
-                transform.position = state.SwarmPosition;
-                if (Phase == ChaseVisualPhase.Hidden) BeginAppearance();
-            }
-            else if (state.State == ChaseState.Caught || state.State == ChaseState.Stopped || state.State == ChaseState.Faulted)
-            {
-                if (state.State == ChaseState.Caught) transform.position = state.SwarmPosition;
-                if (Phase == ChaseVisualPhase.Appearing || Phase == ChaseVisualPhase.Looping) BeginExit();
-            }
-            else if (state.State == ChaseState.Disposed) Unbind();
+            if (boundVisual == null || control == null)
+                throw new InvalidOperationException("Chase presentation is not bound.");
+            if (Phase == ChaseVisualPhase.Hidden) BeginAppearance();
+        }
+
+        public void Hide()
+        {
+            if (boundVisual != null && (Phase == ChaseVisualPhase.Appearing || Phase == ChaseVisualPhase.Looping))
+                BeginExit();
         }
 
         private void BeginAppearance()
@@ -132,7 +122,7 @@ namespace Cooked.Chase
                 .SetEase(Ease.OutQuad).SetUpdate(UpdateType.Manual, false).SetAutoKill(true).SetRecyclable(false)
                 .OnComplete(() =>
                 {
-                    if (version != generation || service == null) return;
+                    if (version != generation || control == null) return;
                     transitionTween = null;
                     Phase = ChaseVisualPhase.Looping;
                     LastTransitionOutcome = ChaseVisualOutcome.Completed;
@@ -157,7 +147,7 @@ namespace Cooked.Chase
                 .SetEase(Ease.InQuad).SetUpdate(UpdateType.Manual, true).SetAutoKill(true).SetRecyclable(false)
                 .OnComplete(() =>
                 {
-                    if (version != generation || service == null) return;
+                    if (version != generation || control == null) return;
                     transitionTween = null;
                     Phase = ChaseVisualPhase.Hidden;
                     LastTransitionOutcome = ChaseVisualOutcome.Completed;
@@ -172,7 +162,7 @@ namespace Cooked.Chase
             SetPaused(transitionTween, Phase == ChaseVisualPhase.Exiting ? state.PresentationPaused : state.WorldPaused);
             SetPaused(bobTween, state.WorldPaused);
         }
-        private static bool ValidDuration(float value) => ChaseSettings.IsFinite(value) && value > 0;
+        private static bool ValidDuration(float value) => float.IsFinite(value) && value > 0;
         private static void SetPaused(Tween tween, bool paused)
         {
             if (tween == null || !tween.IsActive()) return;

@@ -71,7 +71,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1958361304106634321}
-  - component: {fileID: 3859407028670473134}
   m_Layer: 0
   m_Name: PlayerRoot
   m_TagString: Untagged
@@ -95,18 +94,6 @@ Transform:
   - {fileID: 3040905417003151012}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3859407028670473134
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3440022693776916199}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f16143e385b04575aa7151fbcf0a28d2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.GameplayInputRouter
 --- !u!1 &3685739800287238239
 GameObject:
   m_ObjectHideFlags: 0
@@ -259,6 +246,7 @@ GameObject:
   - component: {fileID: 4091494993687155123}
   - component: {fileID: 5923541674506385215}
   - component: {fileID: 2680084503640675786}
+  - component: {fileID: 5922411530676881932}
   m_Layer: 0
   m_Name: ActorBody
   m_TagString: Untagged
@@ -540,6 +528,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerVisualController
   playerVisualRoot: {fileID: 4518552140602201270}
+--- !u!114 &5922411530676881932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8755916027795869297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7530312256ebc5846a7f81b12578fc36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
 --- !u!1001 &1380170214365373140
 PrefabInstance:
   m_ObjectHideFlags: 0

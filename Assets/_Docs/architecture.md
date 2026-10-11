@@ -11,7 +11,7 @@ Unity6000.6.0f1의 로컬 플레이 게임이다. 현행은 V1.5와 사용자 �
 | 한 판 | GameSessionRuntime·GameSessionService·CoreWorldBinding·Dialogue·VM | App 부모의 새 scope. Retry는 유지, Title은 Release/Dispose, 다음 새 게임은 새 범위 |
 | Stage | StageService와 각 발판/장치/적/수집 owner | 처음 등록 Stage들을 additive 로드. 활성 Stage 하나만 Actor와 연결. Retry는 초기 재준비 |
 | Actor | SessionActorHost / HMS Facade·Form·Movement·Model | 비활성 Player prefab을 생성해 의존 연결 후 활성화. 교체 전에 빌린 참조·자기 구독·작업 해제 |
-| 입력/제한 | HMS Reader·GameplayInputRouter / GameplayControlService | 실제 입력1개 경로. Options/메모/대화가 자기 토큰만 반환 |
+| 입력/제한 | HMS Reader·PlayerController / Host의 F / GameplayControlService | 실제 입력1개 경로. Options/메모/대화가 자기 토큰만 반환 |
 | 화면 | ViewModel 상태·Command / View | View는 입력/표현만. VM은 View 참조 없음. 재Bind에서 자기 구독 해제 |
 | 외부 장치/작업 | Scene/Audio/Settings/DOTween/Animator 어댑터 | 만든 작업·범위만 취소/해제. 빌린 Actor·Camera·Source를 임의 파괴하지 않음 |
 
@@ -22,6 +22,14 @@ HP·현재 조각·폼·운동은 HMS가 소유한다. Session이 보유하는 �
 ServiceLocator는 Type 등록/조회·부모 조회·scope 소유·역순 Dispose만 한다. App/Core 조립자는 실제 구체 서비스 생성·Unity 오브젝트 참조·초기화 순서와 부분 실패 회수를 맡는다. 소비자는 작은 계약을 명시적으로 주입받는다. 로케이터가 Camera/물리/UI·게임 상태를 모두 생성하는 거대 전역 객체가 되지 않는다. 같은 인스턴스 별칭은 한 번만 해제하고 부모 소유 객체를 자식 scope가 재소유하지 않는다.
 
 CoreWorldBinding은 Actor/Stage 교체 때 실제 재바인딩·카메라 초기 준비·추격 저장·최종 대화 예약/해제를 조정한다. 단순 전달과 다르다. 같은 수명 참조만 전달하던 GameUiRoot/GlobalUiRoot·범용 버스·표시 래퍼는 원본 owner로 합쳤다. 자동 Builder12개와 중복 runtime/계약10개를 삭제했고, HudIconGraphic은 실제 리소스/모든 Graphic 소비 이관 전까지 유지한다.
+
+## 지역 기능 소유권 (2026-10-11)
+
+StageService의 직렬화 설정은 초기 체크포인트와 스테이지 음악 두 개다. 체크포인트/적 중복 목록, 추격·진행 경로, 시작선과 퇴로 참조를 제거했다. Stage는 공유 진행/최종 대화 수명과 재시도 조정을 유지하고 적 인스턴스 배열은 보유하지 않는다. 재시도 시 씬을 조회하여 각 적 소유자에게 초기 위치·기절 상태 복구를 요청한다.
+
+StageTrigger가 추격 접촉, 퇴로 참조와 안전 검사, 저장 후 시작 순서를 맡는다. CoreWorldBinding은 현재 추격 실행기와 저장 명령만 연결한다. ChaseRuntimeDriver는 X 이동·현재 Actor 판정·실제 전면 Box 포획·종료를 소유하고 ChaseSwarmPresentation은 외형 tween만 소유한다. 기존 ChaseDefinition 설정 자산은 GUID를 유지한다. ChaseService/Model/Path/Settings/IChaseActor 다섯 중간 소스는 삭제했다.
+
+별도 Enter 트리거는 제거했다. 처음부터 초기 CheckpointMarker로 등장하며 스테이지 음악은 BindActor 때 한 번 설정한다. 카메라 정렬점과 체크포인트 등장점은 각 소유 컴포넌트의 자식이다. 부모에 상대적인 배치를 유지하고 소비 시 Transform.position으로 월드 위치를 전달한다.
 
 ## 한 판 흐름
 

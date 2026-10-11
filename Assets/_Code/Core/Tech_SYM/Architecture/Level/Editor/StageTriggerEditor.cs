@@ -17,6 +17,7 @@ namespace Cooked.Level.Editor
             if (mixed || request == StageTriggerKind.Checkpoint) Draw("checkpoint");
             if (mixed || request == StageTriggerKind.UnlockForm || request == StageTriggerKind.UnlockTear ||
                 request == StageTriggerKind.Dialogue || request == StageTriggerKind.Escape) Draw("dialogue");
+            if (mixed || request == StageTriggerKind.Chase) Draw("chaseRetreatGate");
             if (mixed || request == StageTriggerKind.Fall)
             {
                 Draw("independentHost");

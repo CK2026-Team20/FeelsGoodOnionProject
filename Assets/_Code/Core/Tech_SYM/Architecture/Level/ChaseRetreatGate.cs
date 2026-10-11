@@ -37,7 +37,7 @@ namespace Cooked.Level
                 if (collider.enabled && !collider.isTrigger && collider.gameObject.activeInHierarchy && clearance.Intersects(collider.bounds)) return false;
             return true;
         }
-        // The StageService acceptance boundary calls this only after Chase.Start returned true.
+        // The owning start trigger calls this after saving and accepting Chase.TryStart.
         public bool TryClose(PlayerFacade actor)
         {
             if (IsClosed) return true;

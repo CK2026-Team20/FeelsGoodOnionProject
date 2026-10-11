@@ -1,5 +1,13 @@
 # 열린 문제와 검증 제한
 
+## 2026-10-11 구조 정리에서 확인한 잔여 사항
+
+- HMS 생산36개 감사에서 통합 PrototypePlayerAnimations 자산의 템플릿/클립, 공용 PlayerAnimations의 실제 클립 미연결을 확인했다. 이동 정상과 실제 애니메이션 출력 완료는 별개다. 사람의 리소스 제공/연결 및 보호 원본 경계를 지키므로 이번에 임의 생성하지 않는다.
+- 2026-10-11 HMS 기본 입력 이관: PlayerController를 조립하고 GameplayInputRouter를 삭제했다. Host는 F/사망 진행, Bridge는 모달/해금/공통 폼 쿨다운/피드백을 연결한다. HMS 카메라 필드 null은 런타임 Bind 및 독립 모드 용도와 구분한다.
+- Editor 첫 import/씬 저장 중 URP GlobalSettings.m_RuntimeSettings가 빈 목록으로 자동 저장됐다. 수동 변경은 없으며 기존 자동 변경 보존 지침에 따라 diff를 보존했다. 실제 빌드 렌더링을 이번 작업에서 평가하지 않았다.
+- 직선 추격의 실제 포획/일시정지/재시도/포포 경합은 Play 금지에 따라 미실행이다. 전체 Unity 컴파일·native 배치/참조 검사는 통과했다. 상세는 [검증 기록](structure-simplification-2026-10-11/테스트%20및%20검증%20항목.md).
+
+
 ## 현재 V1.5의 남은 조건
 
 | 항목 | 실제 영향 | 담당/종료 조건 |

@@ -12,6 +12,28 @@ using UnityEngine;
 public class PlayerSkillController : MonoBehaviour
 {
     private SkillSlot[] slots;
+    private Func<int, PlayerSkillBlockReason> additionalCondition;
+
+    /// <summary>외부 소유자의 슬롯별 추가 조건을 연결합니다. 검사 함수는 상태를 변경하지 않아야 합니다.</summary>
+    /// <remarks>미연결 시 기존 조건만 적용합니다. 다른 소유자의 조건을 덮어쓰지 않습니다.</remarks>
+    public void BindAdditionalCondition(Func<int, PlayerSkillBlockReason> condition)
+    {
+        if (condition == null) throw new ArgumentNullException(nameof(condition));
+        if (additionalCondition != null && additionalCondition != condition)
+            throw new InvalidOperationException("추가 스킬 조건이 이미 연결되어 있습니다.");
+        additionalCondition = condition;
+    }
+
+    /// <summary>자신이 연결한 조건만 해제합니다. 이전 소유자가 새 연결을 지우지 않습니다.</summary>
+    public void UnbindAdditionalCondition(Func<int, PlayerSkillBlockReason> condition)
+    {
+        if (additionalCondition == condition) additionalCondition = null;
+    }
+
+    /// <summary>TryUse가 요청을 거절했을 때 슬롯과 사유를 한 번 전달합니다.</summary>
+    /// <remarks>조건 조회와 수락 후 준비 취소는 이 이벤트를 발생시키지 않습니다.</remarks>
+    public event Action<int, PlayerSkillBlockReason> UseRejected;
+
     /// <summary>장착된 스킬의 발동이 확정되고 슬롯에 쿨다운을 적용한 뒤 스킬 종류를 전달합니다.</summary>
     /// <remarks>스킬 슬롯을 구독하므로 형태 전환으로 장착 스킬이 교체되어도 발동을 전달합니다.</remarks>
     public event Action<PlayerSkillId> SkillActivated;
@@ -126,6 +148,10 @@ public class PlayerSkillController : MonoBehaviour
         PlayerSkillBlockReason reason = commonConditionChecker();
         if (reason != PlayerSkillBlockReason.None) return reason;
         
+        // 세션 등 외부 소유자의 추가 조건. 미연결 상태는 기존 동작을 유지합니다.
+        reason = additionalCondition?.Invoke(slotIndex) ?? PlayerSkillBlockReason.None;
+        if (reason != PlayerSkillBlockReason.None) return reason;
+
         // 각 스킬의 세부 조건 검사
         return slots[slotIndex].GetBlockReason();
     }
@@ -139,9 +165,10 @@ public class PlayerSkillController : MonoBehaviour
     public bool TryUse(int slotIndex, out PlayerSkillBlockReason blockReason)
     {
         blockReason = GetBlockReason(slotIndex);
-        if (blockReason != PlayerSkillBlockReason.None) return false;
-
-        return slots[slotIndex].TryUse(out blockReason);
+        bool accepted = blockReason == PlayerSkillBlockReason.None &&
+            slots[slotIndex].TryUse(out blockReason);
+        if (!accepted) NotifyUseRejected(slotIndex, blockReason);
+        return accepted;
     }
 
     /// <summary>
@@ -178,6 +205,8 @@ public class PlayerSkillController : MonoBehaviour
 
     private void OnDestroy()
     {
+        additionalCondition = null;
+        UseRejected = null;
         if (!IsInitialized) return;
 
         foreach (SkillSlot slot in slots)
@@ -192,6 +221,17 @@ public class PlayerSkillController : MonoBehaviour
     private void HandleSkillActivated(PlayerSkill skill)
     {
         SkillActivated?.Invoke(skill.Id);
+    }
+
+    private void NotifyUseRejected(int slotIndex, PlayerSkillBlockReason reason)
+    {
+        var handlers = UseRejected;
+        if (handlers == null) return;
+        foreach (Action<int, PlayerSkillBlockReason> handler in handlers.GetInvocationList())
+        {
+            try { handler(slotIndex, reason); }
+            catch (Exception error) { Debug.LogException(error, this); }
+        }
     }
 
     private SkillSlot GetSlot(int slotIndex)

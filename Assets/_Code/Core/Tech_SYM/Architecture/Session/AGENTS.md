@@ -4,6 +4,6 @@
 
 사망은 같은 Stage의 초기 배치·기믹·소비 조각 Root/Collider를 재준비하고 저장 위치·조각·마스크를 새 Normal/HP3 Actor에 복원한다. Stage 출처별 능력 초기화는 사용하지 않는다. 완료/Skipped 대화 장부는 한 판 동안 유지한다. 일반 안내는 Cancelled만 재시작 가능하고 최종 포포 Escape(7)만 장부를 지우지 않은 새 회차를 허용한다. 추가 재등장 무적·월드 저장 등록자를 만들지 않는다.
 
-HMS HP/폼/운동은 Facade/ActorBody가, Actor 생성·제거는 SessionActorHost가 소유한다. Reader/Router 각 하나, 공개 스킬/API와 입력 차단 토큰을 사용한다. 실제 visualRoot/cameraAnchor를 연결하며 ActorRemoving 전에 빌린 참조를 해제한다. 깊은 끼임은 몸체 분리와 Dead 종결 후 Retry 한 번, 데드존은 HP/무적을 무시한다. 독립 모드에 통합 Retry를 추가하지 않는다.
+HMS HP/폼/운동은 Facade/ActorBody가, Actor 생성·제거는 SessionActorHost가 소유한다. HMS Reader/PlayerController 각 하나(같은 ActorBody), Host가 F 입력 처리, 공개 스킬/API와 입력 차단 토큰을 사용한다. 실제 visualRoot/cameraAnchor를 연결하며 ActorRemoving 전에 빌린 참조를 해제한다. 깊은 끼임은 몸체 분리와 Dead 종결 후 Retry 한 번, 데드존은 HP/무적을 무시한다. 독립 모드에 통합 Retry를 추가하지 않는다.
 
 현행 공통 규칙은 Assets/_Docs/planning-index.md와 루트 AGENTS.md를 따른다. 에이전트 Play는 금지하며 구현/검증 상태는 tracking/status.md다.
