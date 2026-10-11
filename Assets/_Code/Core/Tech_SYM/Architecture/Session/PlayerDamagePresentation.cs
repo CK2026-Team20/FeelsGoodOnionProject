@@ -7,10 +7,9 @@ namespace Cooked.Session
 {
     /// <summary>실제 외형·카메라 지점을 제공하고 양수 Damaged 이벤트만 표시합니다. 게임 판정과 공유 머테리얼은 변경하지 않습니다.</summary>
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(PlayerFacade))]
     public sealed class PlayerDamagePresentation : MonoBehaviour
     {
-        [SerializeField, InspectorLabel("플레이어"), Tooltip("피격 이벤트를 받을 같은 ActorBody의 PlayerFacade를 연결합니다.")]
-        private PlayerFacade player;
         [SerializeField, InspectorLabel("외형 루트"), Tooltip("기본·작은 외형을 담은 ActorBody의 직계 자식을 연결합니다. HMS Form과 같은 VisualRoot를 사용합니다.")]
         private Transform visualRoot;
         [SerializeField, InspectorLabel("카메라 지점"), Tooltip("카메라가 따라갈 ActorBody의 별도 직계 자식을 연결합니다.")]
@@ -63,13 +62,12 @@ namespace Cooked.Session
             // 잘못된 새 연결은 기존 구독과 표시를 해제하기 전에 거절합니다.
             if (source != null) ValidateReferences(source);
             Unbind();
-            player = source;
             if (!isActiveAndEnabled || source == null) return;
             boundPlayer = source;
             boundPlayer.Damaged += OnDamaged;
         }
 
-        private void OnEnable() => Bind(player);
+        private void OnEnable() => Bind(GetComponent<PlayerFacade>());
         private void OnDisable() => Unbind();
         private void OnDestroy() => Unbind();
         public void Unbind()

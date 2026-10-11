@@ -23,7 +23,7 @@ namespace Cooked.Foundation.Editor
         }
         static BootstrapPlayModeHook()
         {
-            Bootstrapper.EditorRouteResolver = ConsumeRoute;
+            AppComposition.EditorRouteResolver = ConsumeRoute;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             EditorApplication.projectChanged += ScheduleArm;
             EditorApplication.quitting += RestoreTemporarySettings;
@@ -150,7 +150,6 @@ namespace Cooked.Foundation.Editor
             SessionState.SetString(Key + "OwnedStart", AssetDatabase.GetAssetPath(startScene));
             EditorSceneManager.playModeStartScene = startScene;
         }
-        public static BootRoute ResolveRoute(string sourcePath, SceneCatalog catalog) => BootstrapEntryRoute.Resolve(sourcePath, catalog);
         private static BootRoute ConsumeRoute(BootRoute fallback)
         {
             if (!SessionState.GetBool(Key + "RoutePending", false)) return fallback;

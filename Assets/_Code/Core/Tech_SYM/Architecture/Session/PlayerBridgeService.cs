@@ -55,7 +55,6 @@ namespace Cooked.Session
         private Action<int> fragmentsHandler;
         private Action<PlayerForm> formHandler;
         private PlayerForm lastCommittedForm;
-        private Func<EnemyActor, Collider> hurtColliderResolver;
         public PlayerFacade Actor => actor;
         public long ActorGeneration => actorGeneration;
         public bool SeparationPending => separationPending;
@@ -63,10 +62,6 @@ namespace Cooked.Session
         public Transform VisualRoot { get; private set; }
         public event Action Dying;
         public event Action<AbilityId, PlayerSkillBlockReason> AbilityRejected;
-        // T5/T9 may inject EnemyActor.HurtCollider when its read-only public contract is available.
-        // Until then the existing authored contract requires one direct-child Trigger Box at BodyPosition.
-        public void SetEnemyHurtColliderResolver(Func<EnemyActor, Collider> resolver)
-        { ThrowIfDisposed(); hurtColliderResolver = resolver ?? throw new ArgumentNullException(nameof(resolver)); }
         public bool HasActor => actor != null;
         public Transform CameraTarget { get; private set; }
         public Transform BodyTransform => actor != null ? actor.transform : null;
@@ -109,7 +104,13 @@ namespace Cooked.Session
                 value.GetComponent<CapsuleCollider>() == null || value.GetComponent<PlayerSkillController>() == null ||
                 value.GetComponent<PlayerFormController>() == null)
                 throw new InvalidOperationException("현재 ActorBody의 HMS 이동·물리·스킬·폼 연결이 필요합니다.");
+            long detachedGeneration = unchecked(actorGeneration + 1);
             Detach();
+            // 해제 통지가 수명을 끝내거나 연결 세대를 바꿨다면 바깥 요청은 새 구독을 얻지 않습니다.
+            ThrowIfDisposed();
+            if (actor != null || actorGeneration != detachedGeneration)
+                throw new InvalidOperationException("플레이어 해제 중 연결 세대가 변경되어 이전 연결 요청을 취소합니다.");
+            if (value == null) throw new InvalidOperationException("플레이어 해제 통지 중 새 연결 대상이 제거되었습니다.");
             actor = value;
             model = actor.Model;
             skills = actor.GetComponent<PlayerSkillController>();
@@ -169,8 +170,20 @@ namespace Cooked.Session
             skills.SkillActivated += skillActivatedHandler;
             OnControlChanged(control.State);
             var errors = new List<Exception>();
-            SessionCleanup.Notify(errors, ActorChanged);
-            SessionCleanup.Notify(errors, Changed, Snapshot);
+            var actorListeners = ActorChanged;
+            if (actorListeners != null)
+                foreach (Action listener in actorListeners.GetInvocationList())
+                {
+                    if (disposed || !MatchesActor(attachedActor, generation, actor, actorGeneration)) break;
+                    SessionCleanup.Attempt(errors, listener);
+                }
+            var stateListeners = Changed;
+            if (stateListeners != null)
+                foreach (Action<PlayerSnapshot> listener in stateListeners.GetInvocationList())
+                {
+                    if (disposed || !MatchesActor(attachedActor, generation, actor, actorGeneration)) break;
+                    SessionCleanup.Attempt(errors, () => listener(Snapshot));
+                }
             SessionCleanup.ThrowIfAny(errors, "Actor attach observer failure.");
         }
         public void Detach()
@@ -710,11 +723,6 @@ namespace Cooked.Session
             if (IsCurrentActor(source, generation) && (requestRetry == null || !requestRetry(source, generation)))
                 Debug.LogWarning("현재 Actor의 사망 종결을 한 번 처리했지만 Retry 소비자가 없거나 요청을 거절했습니다. 독립 모드는 자동 Retry를 추가하지 않습니다.");
         }
-        private Collider ResolveHurtCollider(EnemyActor enemy)
-        {
-            if (hurtColliderResolver != null) return hurtColliderResolver(enemy);
-            return enemy == null ? null : enemy.HurtCollider;
-        }
         private bool IsSelfCollider(Collider shape)
             => shape.transform.IsChildOf(actor.transform) ||
                 (shape.attachedRigidbody != null && shape.attachedRigidbody.gameObject == actor.gameObject);
@@ -722,7 +730,7 @@ namespace Cooked.Session
         {
             if (disposed || actor == null || !(target is EnemyActor enemy) || !enemy.isActiveAndEnabled ||
                 candidate == null || IsSelfCollider(candidate)) return false;
-            Collider body = ResolveHurtCollider(enemy);
+            Collider body = enemy.HurtCollider;
             // EnemyContactSensor is the body contact relay; its presence does NOT exclude a hurt body.
             if (body == null || candidate != body || !body.enabled || !body.gameObject.activeInHierarchy) return false;
             Vector3 delta = body.bounds.center - origin;
@@ -737,7 +745,7 @@ namespace Cooked.Session
                 var hitEnemy = shape.GetComponentInParent<EnemyActor>();
                 if (hitEnemy != null)
                 {
-                    if (ResolveHurtCollider(hitEnemy) != shape) continue; // actual sensors, not body relay
+                    if (hitEnemy.HurtCollider != shape) continue; // actual sensors, not body relay
                 }
                 else if (shape.isTrigger) continue; // nonphysical interaction/detection volumes
                 return shape == body; // first physical body/wall/object must be the candidate body
@@ -761,7 +769,7 @@ namespace Cooked.Session
                 SessionCleanup.Attempt(errors, () => session.Changed -= OnSessionChanged);
                 SessionCleanup.Attempt(errors, Detach);
             }
-            finally { Changed = null; ActorChanged = null; AbilitySucceeded = null; AbilityRejected = null; Dying = null; hurtColliderResolver = null; }
+            finally { Changed = null; ActorChanged = null; AbilitySucceeded = null; AbilityRejected = null; Dying = null; }
             SessionCleanup.ThrowIfAny(errors, "Player bridge disposal completed with teardown failures.");
         }
         private void RequireActor() { ThrowIfDisposed(); if (!HasActor) throw new InvalidOperationException("No player actor attached."); }

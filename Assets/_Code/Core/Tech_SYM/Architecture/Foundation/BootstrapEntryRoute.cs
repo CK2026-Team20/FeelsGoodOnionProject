@@ -19,7 +19,7 @@ namespace Cooked.Foundation
             sourcePath == BootstrapPath || sourcePath == TitlePath || sourcePath == CorePath ||
             sourcePath == PrototypePath || sourcePath == Stage2Path || sourcePath == Stage3Path;
 
-        // SceneAsset 기반 읽기 계약. 이전 overload는 미이관 Editor hook의 호환용이다.
+        // 설치 자산에 등록된 실제 씬 경로를 확인합니다.
         public static bool IsTarget(string sourcePath, SceneCatalog catalog)
         {
             if (catalog == null) throw new ArgumentNullException(nameof(catalog));
@@ -44,11 +44,5 @@ namespace Cooked.Foundation
             return true;
         }
 
-        /// <summary>Compatibility mapping only. Use TryResolve/IsTarget to decide whether to intercept Play.</summary>
-        public static BootRoute Resolve(string sourcePath, SceneCatalog catalog)
-        {
-            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
-            return TryResolve(sourcePath, catalog, out var route) ? route : new BootRoute(false, null);
-        }
     }
 }

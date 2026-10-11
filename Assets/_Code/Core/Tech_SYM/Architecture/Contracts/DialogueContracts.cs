@@ -48,11 +48,4 @@ namespace Cooked.Contracts
         string RequireCode(string dialogueCode);
         string RequireSelection(DialogueSelection selection);
     }
-    public interface IDialogueService : IDisposable
-    {
-        bool IsActive { get; }
-        bool TryStart(string dialogueCode);
-        void Cancel();
-        void ResetRound();
-    }
 }
