@@ -26,18 +26,34 @@ namespace Cooked.Cinematics
         public void Bind(CinematicViewModel value)
         {
             if (!IsConfigured) throw new InvalidOperationException("CinematicView serialized bindings are incomplete.");
-            Unsubscribe();
+            if (!ReferenceEquals(viewModel, value)) Unbind();
             viewModel = value;
             try { if (isActiveAndEnabled) Subscribe(); Refresh(); }
             catch { Unbind(); throw; }
         }
         public void Unbind()
         {
+            var previous = viewModel;
             try { Unsubscribe(); }
-            finally { viewModel = null; Refresh(); }
+            finally
+            {
+                viewModel = null;
+                try { Clear(); }
+                finally { previous?.CancelPresentation(); }
+            }
         }
         private void OnEnable() { Subscribe(); Refresh(); }
-        private void OnDisable() { try { Unsubscribe(); } finally { Clear(); } }
+        private void OnDisable()
+        {
+            // Host가 활성인 View 단독 Disable도 자기 VM을 통해 현재 표시를 취소한다.
+            // VM 소유권은 Host에 남겨 재활성 시 같은 바인딩으로 새 연출을 표시한다.
+            try { Unsubscribe(); }
+            finally
+            {
+                try { Clear(); }
+                finally { viewModel?.CancelPresentation(); }
+            }
+        }
         private void OnDestroy() { Unbind(); }
         private void OnRectTransformDimensionsChange() { if (viewModel != null) Refresh(); }
         private void Subscribe()

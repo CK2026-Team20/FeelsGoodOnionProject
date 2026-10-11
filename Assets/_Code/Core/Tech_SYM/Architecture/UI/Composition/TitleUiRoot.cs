@@ -1,19 +1,19 @@
 using System;
 using System.Collections.Generic;
-using Cooked.Authoring;
 using Cooked.Contracts;
 using Cooked.Session;
 using UnityEngine;
 namespace Cooked.UI
 {
+    [RequireComponent(typeof(TitleView))]
     public sealed class TitleUiRoot : MonoBehaviour
     {
-        [SerializeField, InspectorLabel("타이틀 화면"), Tooltip("새 게임·설정·종료 버튼이 있는 TitleView를 연결하세요.")]
         private TitleView view;
         private TitleViewModel model;
         public void Bind(IGameFlowService flow, OptionsService options, Action quit)
         {
-            if (view == null) throw new InvalidOperationException("TitleUiRoot에 TitleView를 연결하세요.");
+            if (view == null) view = GetComponent<TitleView>();
+            if (view == null) throw new InvalidOperationException("TitleUiRoot와 같은 오브젝트에 TitleView가 필요합니다.");
             if (flow == null) throw new ArgumentNullException(nameof(flow));
             if (options == null) throw new ArgumentNullException(nameof(options));
             if (quit == null) throw new ArgumentNullException(nameof(quit));

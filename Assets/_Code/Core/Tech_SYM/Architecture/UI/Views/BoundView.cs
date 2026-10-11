@@ -10,6 +10,7 @@ namespace Cooked.UI
         public void Bind(T model)
         {
             if (model != null && model.IsDisposed) throw new ObjectDisposedException(nameof(model));
+            if (model != null) ValidateReferences();
             if (ReferenceEquals(Model, model)) { if (isActiveAndEnabled) Connect(); Refresh(); return; }
             Unbind(); Model = model;
             try { if (isActiveAndEnabled) Connect(); Refresh(); }
@@ -24,6 +25,7 @@ namespace Cooked.UI
         private void Connect()
         {
             if (connected || Model == null || Model.IsDisposed) return;
+            ValidateReferences();
             connected = true; Model.PropertyChanged += OnChanged;
             try { ConnectInputs(); }
             catch (Exception error)
@@ -45,6 +47,7 @@ namespace Cooked.UI
         protected virtual void OnDisable() => Disconnect();
         protected virtual void OnDestroy() => Unbind();
         protected virtual void ConnectInputs() { }
+        protected virtual void ValidateReferences() { }
         protected virtual void DisconnectInputs() { }
         protected abstract void Refresh();
     }

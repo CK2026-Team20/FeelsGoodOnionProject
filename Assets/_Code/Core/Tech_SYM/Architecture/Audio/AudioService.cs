@@ -154,7 +154,20 @@ namespace Cooked.Audio
         public void Dispose()
         {
             if (disposed) return;
-            StopAll(); disposed = true; crossfade.Dispose();
+            // 종료 중 재진입과 이미 예약된 완료를 외부 정리보다 먼저 차단한다.
+            disposed = true;
+            transitionRevision++;
+            targetChannel = -1;
+            CurrentMusicId = null;
+            var errors = new List<Exception>();
+            try { crossfade.Cancel(); } catch (Exception error) { errors.Add(error); }
+            for (int i = 0; i < ChannelCount; i++)
+            {
+                try { StopVoice(i, true); }
+                catch (Exception error) { errors.Add(new InvalidOperationException($"오디오 채널 {i} 종료 실패.", error)); }
+            }
+            try { crossfade.Dispose(); } catch (Exception error) { errors.Add(error); }
+            if (errors.Count > 0) throw new AggregateException("오디오 종료 중 일부 자원 정리에 실패했습니다.", errors);
         }
 
         private bool TryCue(string id, bool isMusic, out AudioCue cue)
@@ -175,10 +188,10 @@ namespace Cooked.Audio
             driver.Start(channel, cue.Id, cue.Kind == AudioCueKind.Music);
             RefreshPause(channel);
         }
-        private void StopVoice(int channel)
+        private void StopVoice(int channel, bool allowDestroyedSource = false)
         {
-            driver.Stop(channel);
             voices[channel].Cue = null; voices[channel].Envelope = 0; voices[channel].Paused = false;
+            driver.Stop(channel, allowDestroyedSource);
         }
         private void RefreshPause(int channel)
         {

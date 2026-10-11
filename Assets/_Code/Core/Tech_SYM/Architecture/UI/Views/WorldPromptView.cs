@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using Cooked.Authoring;
@@ -11,6 +12,11 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("안내 위치")] private RectTransform anchor;
         [Tooltip("상호작용 F 안내를 표시할 TMP 텍스트입니다.")]
         [SerializeField, InspectorLabel("F 안내")] private TMP_Text label;
+        protected override void ValidateReferences()
+        {
+            if (group == null || anchor == null || label == null)
+                throw new InvalidOperationException("WorldPromptView의 안내 화면·위치·F 안내를 연결하세요.");
+        }
         protected override void Refresh()
         {
             if (group == null) return; group.alpha = Model != null && Model.Visible ? 1 : 0; group.blocksRaycasts = false;
