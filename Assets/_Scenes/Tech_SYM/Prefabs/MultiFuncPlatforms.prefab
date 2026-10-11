@@ -1190,7 +1190,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1563eb773c528840831d4a6d18b855f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.PlayerDamagePresentation
-  player: {fileID: 2256454908842267139}
   visualRoot: {fileID: 8799748308725473334}
   cameraAnchor: {fileID: 3368947479273038722}
   targets:
