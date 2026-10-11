@@ -93,7 +93,7 @@ namespace Cooked.Foundation
                 }
                 var completion = new OperationResult();
                 execution = new OwnedTransition(CoroutineOperationRunner.Run(
-                    Transition(sequence, current.Token, completion), completion,
+                    Transition(sequence, cancellation.Token, cancellation, startedRevision, completion), completion,
                     error => log($"Flow execution failed: {error}")));
                 schedule(execution);
                 return true;
@@ -105,13 +105,14 @@ namespace Cooked.Foundation
                 if (disposed || revision != startedRevision) return false;
                 var abandoned = execution; execution = null;
                 try { abandoned?.Dispose(); } catch (Exception cleanupError) { log(cleanupError.ToString()); }
-                current?.Dispose(); current = null;
+                ReleaseCancellation(cancellation, startedRevision);
                 try { fade.SetCoveredImmediate(); } catch (Exception overlayError) { log(overlayError.ToString()); }
                 Publish(FlowState.Faulted, false, e.ToString());
                 return false;
             }
         }
-        private IEnumerator Transition(Func<CancellationToken, IEnumerator> sequence, CancellationToken token, OperationResult completion)
+        private IEnumerator Transition(Func<CancellationToken, IEnumerator> sequence, CancellationToken token,
+            CancellationTokenSource cancellation, long startedRevision, OperationResult completion)
         {
             var result = new OperationResult();
             IEnumerator guarded = CompleteSequence(sequence, token, result);
@@ -126,8 +127,8 @@ namespace Cooked.Foundation
                 if (disposed) { completion.Cancel(); yield break; }
                 if (recovery.Status != OperationStatus.Succeeded)
                 {
+                    ReleaseCancellation(cancellation, startedRevision);
                     Publish(FlowState.Faulted, false, reason + "\n" + recovery.Error);
-                    current?.Dispose(); current = null;
                     completion.Fail(reason + "\n" + recovery.Error);
                     yield break; // retain lock leases until a successful title recovery
                 }
@@ -135,13 +136,20 @@ namespace Cooked.Foundation
             try { ReleaseTransitionLeases(); }
             catch (Exception error)
             {
+                ReleaseCancellation(cancellation, startedRevision);
                 Publish(FlowState.Faulted, false, error.ToString());
                 throw;
             }
-            finally { current?.Dispose(); current = null; }
+            finally { ReleaseCancellation(cancellation, startedRevision); }
             if (disposed) { completion.Cancel(); yield break; }
             Publish(Snapshot.State, false, Snapshot.Error);
             completion.Succeed();
+        }
+        private void ReleaseCancellation(CancellationTokenSource owned, long ownedRevision)
+        {
+            // Faulted 통지가 새 전환을 시작해도 이전 전환은 자기 CTS만 해제합니다.
+            if (revision == ownedRevision && ReferenceEquals(current, owned)) current = null;
+            owned.Dispose();
         }
         private IEnumerator CompleteSequence(Func<CancellationToken, IEnumerator> sequence, CancellationToken token, OperationResult result)
         {
