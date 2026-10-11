@@ -30,9 +30,11 @@ Material:
   - N_F_LLI_ON
   - N_F_O_ON
   - N_F_RDC_ON
+  - N_F_RELGI_ON
   - N_F_SCT_ON
   - N_F_SS_ON
   - N_F_TRANSAFFSHA_ON
+  - N_F_USETLB_ON
   - _UVSET_UV0
   m_InvalidKeywords: []
   m_LightmapFlags: 0
@@ -42,7 +44,7 @@ Material:
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
-  m_LockedProperties: 
+  m_LockedProperties: _N_F_LLI
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -197,7 +199,7 @@ Material:
     - _DstBlendAlpha: 0
     - _DynamicNoisyOutline: 0
     - _EnvironmentReflections: 1
-    - _EnvironmentalLightingIntensity: 1
+    - _EnvironmentalLightingIntensity: 0.5
     - _FarDistanceMaxWidth: 0.5
     - _FresnelEdge: 0
     - _Frost: 0
@@ -222,7 +224,7 @@ Material:
     - _LightAffectRimLightColor: 0
     - _LightAffectShadow: 1
     - _LightFalloffAffectShadowT: 0
-    - _LightFalloffSoftness: 1
+    - _LightFalloffSoftness: 0.008
     - _LightIntensity: 1
     - _MCIALO: 0
     - _MCapIntensity: 1
@@ -304,7 +306,7 @@ Material:
     - _PointSpotlightIntensity: 0
     - _PresAdju: 1
     - _QueueOffset: 0
-    - _RELG: 0
+    - _RELG: 1
     - _RQSO: 0
     - _ReceiveShadows: 1
     - _ReduSha: 0.5
@@ -369,7 +371,7 @@ Material:
     - _TriPlaTile: 1
     - _UVSet: 0
     - _UseSecondaryCutout: 0
-    - _UseTLB: 0
+    - _UseTLB: 1
     - _VertexColorBlueAffectOutlineWitdh: 0
     - _VertexColorGreenControlSelfShadowThreshold: 0
     - _VertexColorRedControlSmoothObjectNormal: 0
