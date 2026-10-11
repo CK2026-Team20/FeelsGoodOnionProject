@@ -327,7 +327,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Chase.ChaseRuntimeDriver
   definition: {fileID: 11400000, guid: bc5b9096de9837d48abebe15d71c0ca0, type: 2}
-  presentation: {fileID: 2342389790384718845}
 --- !u!114 &2342389790384718845
 MonoBehaviour:
   m_ObjectHideFlags: 0

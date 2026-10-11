@@ -734,8 +734,6 @@ MonoBehaviour:
   ui: {fileID: 1012075371}
   cameraService: {fileID: 2109316083}
   chase: {fileID: 70943295}
-  sideCamera: {fileID: 2109316084}
-  quarterCamera: {fileID: 2109316081}
 --- !u!114 &1012075371
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -752,7 +750,6 @@ MonoBehaviour:
   prompt: {fileID: 1547377899}
   worldCanvas: {fileID: 1547377900}
   dialogueMount: {fileID: 1547377902}
-  cinematicMount: {fileID: 1547377898}
 --- !u!4 &1012075373
 Transform:
   m_ObjectHideFlags: 0
@@ -1363,17 +1360,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 98550eec5e116ca43ad94bab55d88fda, type: 3}
---- !u!114 &2109316081 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5343029368913800738, guid: 98550eec5e116ca43ad94bab55d88fda, type: 3}
-  m_PrefabInstance: {fileID: 2109316080}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
 --- !u!114 &2109316083 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5129296775242276336, guid: 98550eec5e116ca43ad94bab55d88fda, type: 3}
@@ -1385,17 +1371,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cedd47ab185ec374e9e17e28813d1d44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.LevelCameraService
---- !u!114 &2109316084 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5224527645789048292, guid: 98550eec5e116ca43ad94bab55d88fda, type: 3}
-  m_PrefabInstance: {fileID: 2109316080}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

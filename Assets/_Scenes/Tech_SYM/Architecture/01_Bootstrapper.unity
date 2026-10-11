@@ -1023,7 +1023,6 @@ GameObject:
   - component: {fileID: 1547377900}
   - component: {fileID: 1547377899}
   - component: {fileID: 1547377902}
-  - component: {fileID: 1547377901}
   m_Layer: 0
   m_Name: BootstrapCamera
   m_TagString: MainCamera
@@ -1105,26 +1104,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!114 &1547377901
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1547377897}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 07b2370774df0f748abe295ed7e0e2bf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraController
-  useSeparatedRig: 1
-  movementModeController: {fileID: 0}
-  sideCamera: {fileID: 0}
-  quarterCamera: {fileID: 0}
-  backCamera: {fileID: 0}
-  backFixedCamera: {fileID: 0}
-  selectedPriority: 20
-  standbyPriority: 10
 --- !u!114 &1547377902
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1354,7 +1354,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb3b27ca0f674289b7fd3af591b92aa3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.UI.TitleUiRoot
-  view: {fileID: 4354272317335988555}
 --- !u!114 &4354272317335988555
 MonoBehaviour:
   m_ObjectHideFlags: 0
