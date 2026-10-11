@@ -137,6 +137,9 @@ namespace Cooked.Level
         public void Bind(PlayerBridgeService bridge, IGameplayControlService gameplayControl,
             PlayerMovementModeController movementModes, CinemachineBrain outputBrain, StageService owner, IGameFlowService flowService)
         {
+            // lease 반환의 동기 알림에서 옛 해제가 진행 중인 서비스에 새 구독을 설치하지 않는다.
+            if (unbinding || cancellingTransition)
+                throw new InvalidOperationException("카메라 연결 해제·취소 중에는 재바인딩할 수 없습니다. 해제 호출이 끝난 뒤 다시 연결하세요.");
             Transform cameraTarget = bridge?.CameraTarget, actorBody = bridge?.BodyTransform;
             if (bridge == null || gameplayControl == null || movementModes == null || outputBrain == null ||
                 sideCamera == null || corridorCamera == null || quarterCamera == null || sideCamera == corridorCamera ||
@@ -184,7 +187,8 @@ namespace Cooked.Level
         {
             if (!float.IsFinite(percent.x) || !float.IsFinite(percent.y) || percent.x < 0 || percent.x > 100 || percent.y < 0 || percent.y > 100)
                 throw new ArgumentOutOfRangeException(nameof(percent));
-            return percent / 100f - Vector2.one * .5f;
+            // PositionComposer.ScreenToOrtho는 Rect Y를 위쪽 원점으로 해석한다.
+            return new Vector2(percent.x / 100f - .5f, .5f - percent.y / 100f);
         }
         public static PlayerMovementMode ResolveMode(CameraZoneRequest zone) => zone.Movement switch
         {
