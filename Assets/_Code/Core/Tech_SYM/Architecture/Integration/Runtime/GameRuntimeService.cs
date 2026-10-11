@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using Cooked.Contracts;
 using Cooked.Session;
@@ -91,11 +92,34 @@ namespace Cooked.Integration
                 var old = session;
                 // The outer lifetime is protected inside this iterator. Foundation unwinds it on
                 // nested MoveNext/Dispose failure, so cleanup does not depend on normal resumption.
-                yield return SessionShutdownOperation.Run(old.DespawnActor, old.Dispose,
+                yield return ShutdownOwnedSession(old.DespawnActor, old.Dispose,
                     () => ReleaseSession(old), result);
                 yield break;
             }
             if (pendingRelease != null) ReleaseSession(pendingRelease);
+            result.Succeed();
+        }
+        private static IEnumerator ShutdownOwnedSession(Func<IEnumerator> despawn, Action dispose, Action release, OperationResult result)
+        {
+            if (despawn == null || dispose == null || release == null || result == null)
+                throw new ArgumentNullException("Shutdown requires lifecycle callbacks and a result.");
+            try
+            {
+                yield return despawn();
+            }
+            finally
+            {
+                Exception disposeError = null;
+                try { dispose(); }
+                catch (Exception error) { disposeError = error; }
+                try { release(); }
+                catch (Exception releaseError)
+                {
+                    if (disposeError != null) throw new AggregateException("Session dispose and release failed.", disposeError, releaseError);
+                    throw;
+                }
+                if (disposeError != null) ExceptionDispatchInfo.Capture(disposeError).Throw();
+            }
             result.Succeed();
         }
         public void Dispose()

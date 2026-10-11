@@ -5,7 +5,7 @@ using Cooked.Contracts;
 namespace Cooked.Dialogue
 {
     /// <summary>Owns conversation rules, history, timers and its own input lease. No Unity/UI dependency.</summary>
-    public sealed class DialogueService : IDialogueService
+    public sealed class DialogueService : IDisposable
     {
         private readonly IDialogueTableService table;
         private readonly IGameplayControlService control;
@@ -71,7 +71,7 @@ namespace Cooked.Dialogue
             => TryStartCore(dialogueCode, false, prepare);
 
         /// <summary>최종 접촉을 검증한 조립자 전용 경로. 장부를 지우지 않고 새 대화를 시작한다.
-        /// 일반 IDialogueService 소비자에게는 이 재생 예외를 노출하지 않는다.</summary>
+        /// 일반 대화 시작은 완료 장부를 계속 존중한다.</summary>
         public bool TryStartFinalDialogue(string dialogueCode, Func<bool> prepare = null)
             => TryStartCore(dialogueCode, true, prepare);
 

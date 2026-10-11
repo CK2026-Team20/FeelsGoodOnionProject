@@ -14,7 +14,7 @@ using UnityEngine;
 namespace Cooked.Level
 {
     [DefaultExecutionOrder(500), DisallowMultipleComponent]
-    public sealed class StageService : MonoBehaviour, IStageService
+    public sealed class StageService : MonoBehaviour, IDisposable
     {
         [SerializeField, InspectorLabel("초기 체크포인트"), Tooltip("새 진입 위치를 정할 같은 씬의 CheckpointMarker를 연결하세요. 완료 저장과는 별개입니다.")]
         private CheckpointMarker initialCheckpoint;

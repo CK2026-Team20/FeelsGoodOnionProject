@@ -78,11 +78,4 @@ namespace Cooked.Contracts
         void RestoreFragments(int fragments);
         void SetDepthMovementAllowed(bool allowed);
     }
-    public interface IStageService : IDisposable
-    {
-        string StageId { get; }
-        global::Cooked.Level.CheckpointMarker InitialCheckpoint { get; }
-        Pose InitialPose { get; }
-        bool ContainsCheckpoint(global::Cooked.Level.CheckpointMarker marker);
-    }
 }

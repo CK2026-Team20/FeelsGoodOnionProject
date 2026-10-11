@@ -212,7 +212,6 @@ namespace Cooked.Session
                 independentSession.Begin(new CheckpointSnapshot(facade.transform.position, facade.Model.CurrentSkillFragment, AbilityMask.Both));
                 bridge = new PlayerBridgeService(control, independentSession, requestRetry: null,
                     horizontalKnockbackSpeed: HorizontalKnockbackSpeed, upwardKnockbackSpeed: UpwardKnockbackSpeed);
-                bridge.SetEnemyHurtColliderResolver(enemy => enemy.HurtCollider);
                 reader.SetTearSkillBinding("<Keyboard>/e");
                 actorRoot = independentActor;
                 bridge.Attach(facade); bridge.Dying += OnIndependentDying;

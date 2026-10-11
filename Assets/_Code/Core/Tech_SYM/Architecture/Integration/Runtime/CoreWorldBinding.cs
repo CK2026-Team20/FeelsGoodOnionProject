@@ -57,8 +57,7 @@ namespace Cooked.Integration
         {
             token.ThrowIfCancellationRequested();
             if (runtime.Player.HasActor) { result.Fail("Release Actor before Stage reset."); yield break; }
-            var item = runtime.Stages.Require(stageId) as StageService;
-            if (item == null) { result.Fail("Unexpected Stage implementation."); yield break; }
+            var item = runtime.Stages.Require(stageId);
             var path = runtime.Stages.ScenePath(stageId);
             try
             {
@@ -82,7 +81,7 @@ namespace Cooked.Integration
             if (stage != null || observing) throw new InvalidOperationException("Old world bindings remain.");
             var actor = runtime.Player.Actor;
             if (actor == null) throw new InvalidOperationException("Spawned Actor missing.");
-            stage = (StageService)runtime.ActiveStage;
+            stage = runtime.ActiveStage;
             try
             {
                 foreach (var item in runtime.Stages.Stages) scenes.SetRootsActive(runtime.Stages.ScenePath(item.StageId), item.StageId == runtime.ActiveStageId);

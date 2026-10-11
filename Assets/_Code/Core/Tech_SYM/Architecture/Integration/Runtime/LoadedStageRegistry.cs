@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Cooked.Contracts;
+using Cooked.Level;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -11,19 +12,19 @@ namespace Cooked.Integration
     public sealed class LoadedStageRegistry
     {
         private readonly SceneCatalog catalog;
-        private readonly Dictionary<string, IStageService> stages = new Dictionary<string, IStageService>(StringComparer.Ordinal);
+        private readonly Dictionary<string, StageService> stages = new Dictionary<string, StageService>(StringComparer.Ordinal);
         public LoadedStageRegistry(SceneCatalog catalog) { this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog)); }
-        public IReadOnlyCollection<IStageService> Stages => new List<IStageService>(stages.Values).AsReadOnly();
+        public IReadOnlyCollection<StageService> Stages => new List<StageService>(stages.Values).AsReadOnly();
         public void Refresh(string expectedStageId = null)
         {
-            var next = new Dictionary<string, IStageService>(StringComparer.Ordinal);
+            var next = new Dictionary<string, StageService>(StringComparer.Ordinal);
             foreach (string path in catalog.StagePaths)
             {
                 var scene = SceneManager.GetSceneByPath(path);
                 if (!scene.IsValid() || !scene.isLoaded) continue;
-                IStageService found = null;
+                StageService found = null;
                 foreach (var behaviour in SceneComponentLookup.FindAll<MonoBehaviour>(scene))
-                    if (behaviour is IStageService stage)
+                    if (behaviour is StageService stage)
                     {
                         if (found != null) throw new InvalidOperationException("Multiple Stage services: " + path);
                         found = stage;
@@ -41,10 +42,10 @@ namespace Cooked.Integration
             stages.Clear();
             foreach (var pair in next) stages.Add(pair.Key, pair.Value);
         }
-        public IStageService Require(string stageId)
+        public StageService Require(string stageId)
         {
             if (!stages.TryGetValue(stageId, out var stage)) throw new InvalidOperationException("Unknown loaded Stage: " + stageId);
-            if (stage is UnityEngine.Object obj && obj == null) throw new InvalidOperationException("Stage registry contains a destroyed component: " + stageId);
+            if (stage == null) throw new InvalidOperationException("Stage registry contains a destroyed component: " + stageId);
             return stage;
         }
         public string ScenePath(string stageId)
