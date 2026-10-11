@@ -54,8 +54,8 @@ namespace Cooked.Dialogue
             if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
             if (viewModel.IsDisposed) throw new ObjectDisposedException(nameof(viewModel));
             if (!isActiveAndEnabled) throw new InvalidOperationException("DialogueView는 활성 상태에서 바인딩하세요.");
-            if (ReferenceEquals(model, viewModel)) { Present(); return; }
             ValidateReferences();
+            if (ReferenceEquals(model, viewModel)) { Present(); return; }
             Unbind();
             lifetime = new CancellationTokenSource();
             model = viewModel;
@@ -197,7 +197,7 @@ namespace Cooked.Dialogue
         private void ValidateReferences()
         {
             if (rootGroup == null || logGroup == null || speaker == null || body == null || autoLabel == null || history == null || nextMarker == null ||
-                panelButton == null || autoButton == null || historyButton == null || logCloseButton == null || logScroll == null || skipButton == null)
+                panelButton == null || autoButton == null || historyButton == null || logCloseButton == null || logScroll == null || logScroll.content == null || skipButton == null)
                 throw new InvalidOperationException("DialogueView prefab references are incomplete.");
             if (panelButton == skipButton || autoButton == skipButton || historyButton == skipButton || logCloseButton == skipButton ||
                 panelButton == autoButton || panelButton == historyButton || panelButton == logCloseButton ||

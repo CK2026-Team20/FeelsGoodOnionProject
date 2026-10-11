@@ -92,9 +92,10 @@ namespace Cooked.Audio
         public void StopMusic()
         {
             RequireAlive();
-            CancelCrossfade();
-            StopVoice(0); StopVoice(1);
-            targetChannel = -1; CurrentMusicId = null;
+            var errors = new List<Exception>();
+            StopMusicTransition(errors);
+            StopVoices(0, UiChannel, false, errors);
+            if (errors.Count > 0) throw new AggregateException("음악 정지 실패.", errors);
         }
 
         public void PlaySfx(string cueId)
@@ -126,13 +127,18 @@ namespace Cooked.Audio
         public void ClearWorldSfx()
         {
             RequireAlive();
-            for (int i = FirstWorldChannel; i < ChannelCount; i++) StopVoice(i);
+            var errors = new List<Exception>();
+            StopVoices(FirstWorldChannel, ChannelCount, false, errors);
+            if (errors.Count > 0) throw new AggregateException("월드 효과음 정지 실패.", errors);
         }
 
         public void StopAll()
         {
-            RequireAlive(); StopMusic();
-            for (int i = 2; i < ChannelCount; i++) StopVoice(i);
+            RequireAlive();
+            var errors = new List<Exception>();
+            StopMusicTransition(errors);
+            StopVoices(0, ChannelCount, false, errors);
+            if (errors.Count > 0) throw new AggregateException("전체 오디오 정지 실패.", errors);
         }
 
         public void SetPauseState(bool world, bool presentation)
@@ -154,7 +160,31 @@ namespace Cooked.Audio
         public void Dispose()
         {
             if (disposed) return;
-            StopAll(); disposed = true; crossfade.Dispose();
+            // 종료 중 재진입과 이미 예약된 완료를 외부 정리보다 먼저 차단한다.
+            disposed = true;
+            var errors = new List<Exception>();
+            StopMusicTransition(errors);
+            StopVoices(0, ChannelCount, true, errors);
+            try { crossfade.Dispose(); } catch (Exception error) { errors.Add(error); }
+            if (errors.Count > 0) throw new AggregateException("오디오 종료 중 일부 자원 정리에 실패했습니다.", errors);
+        }
+
+        private void StopMusicTransition(List<Exception> errors)
+        {
+            transitionRevision++;
+            targetChannel = -1;
+            CurrentMusicId = null;
+            try { crossfade.Cancel(); } catch (Exception error) { errors.Add(error); }
+        }
+
+        // 정상 정지와 폐기가 같은 채널 정리를 사용하되, 파괴 출력 허용은 폐기에만 적용한다.
+        private void StopVoices(int first, int endExclusive, bool allowDestroyedSource, List<Exception> errors)
+        {
+            for (int i = first; i < endExclusive; i++)
+            {
+                try { StopVoice(i, allowDestroyedSource); }
+                catch (Exception error) { errors.Add(new InvalidOperationException($"오디오 채널 {i} 정지 실패.", error)); }
+            }
         }
 
         private bool TryCue(string id, bool isMusic, out AudioCue cue)
@@ -175,10 +205,10 @@ namespace Cooked.Audio
             driver.Start(channel, cue.Id, cue.Kind == AudioCueKind.Music);
             RefreshPause(channel);
         }
-        private void StopVoice(int channel)
+        private void StopVoice(int channel, bool allowDestroyedSource = false)
         {
-            driver.Stop(channel);
             voices[channel].Cue = null; voices[channel].Envelope = 0; voices[channel].Paused = false;
+            driver.Stop(channel, allowDestroyedSource);
         }
         private void RefreshPause(int channel)
         {

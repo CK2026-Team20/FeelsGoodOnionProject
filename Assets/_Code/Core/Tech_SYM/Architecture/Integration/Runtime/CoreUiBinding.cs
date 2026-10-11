@@ -17,8 +17,6 @@ namespace Cooked.Integration
         private Canvas worldCanvas;
         [SerializeField, InspectorLabel("대화 부모"), Tooltip("게임 중 대화 화면을 표시할 RectTransform을 연결하세요.")]
         private RectTransform dialogueMount;
-        [SerializeField, InspectorLabel("연출 부모"), Tooltip("게임 HUD와 독립적으로 유지할 연출 화면의 RectTransform을 연결하세요.")]
-        private RectTransform cinematicMount;
         private Camera gameplayCamera;
         private GameSessionRuntime runtime;
         private PlayerBridgeService independentPlayer;
@@ -26,17 +24,14 @@ namespace Cooked.Integration
         private HudViewModel hudModel;
         private WorldPromptViewModel promptModel;
         private bool unbinding;
-        public WorldPromptViewModel Prompt => promptModel;
-        public RectTransform DialogueMount => dialogueMount;
-        public RectTransform CinematicMount => cinematicMount;
-        public Camera GameplayCamera => gameplayCamera;
-        public void Bind(GameSessionRuntime value)
+        public void Bind(GameSessionRuntime value, Transform actualCinematicHost)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
             if (unbinding) throw new InvalidOperationException("Core UI is unbinding.");
-            if (hud == null || prompt == null || worldCanvas == null || dialogueMount == null || cinematicMount == null || dialogueMount == cinematicMount)
+            if (hud == null || prompt == null || worldCanvas == null || dialogueMount == null || actualCinematicHost == null ||
+                actualCinematicHost == dialogueMount || actualCinematicHost.IsChildOf(dialogueMount))
                 throw new InvalidOperationException("CoreUiBinding의 HUD·월드 안내·Canvas·서로 다른 대화/연출 부모를 연결하세요.");
-            foreach (var reference in new Component[] { hud, prompt, worldCanvas, dialogueMount, cinematicMount })
+            foreach (var reference in new Component[] { hud, prompt, worldCanvas, dialogueMount, actualCinematicHost })
                 SceneComponentLookup.RequireSameScene(this, reference, "Core 화면 연결");
             Unbind();
             try

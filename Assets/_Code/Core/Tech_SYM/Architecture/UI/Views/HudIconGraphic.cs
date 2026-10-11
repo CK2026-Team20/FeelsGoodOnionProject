@@ -4,7 +4,8 @@ using UnityEngine;
 using UnityEngine.UI;
 namespace Cooked.UI
 {
-    // Small vector HUD artwork. No source texture/import changes or runtime asset allocation.
+    // 실제 리소스 연결 전 임시 표시 예외. 하트 3개·Q/E 2개·눈물 1개 소비와
+    // HudView 채움 표시를 모두 이관하고 GUID/중첩 override 참조가 0일 때 소스와 meta를 제거한다.
     [RequireComponent(typeof(CanvasRenderer))]
     public sealed class HudIconGraphic : MaskableGraphic
     {
