@@ -1,5 +1,7 @@
 # 구현 경계에서 확인할 사항
 
+> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+
 ## Actor와 같은 의미의 위치
 
 현재 위치는 PlayerFacade가 있는 실제 ActorBody의 월드 중심이다. 빈 관리 PlayerRoot나 Render Transform으로 CP·껍질 복귀·스킬 중심을 계산하지 않는다. ActorBody 아래 VisualRoot/CameraAnchor를 연결하고 실제 몸체·Collider 이동과 외형/추적이 함께 움직이게 한다. Root scale을 Form 전환 때 다시 줄여 Collider 전환과 이중 적용하지 않는다.

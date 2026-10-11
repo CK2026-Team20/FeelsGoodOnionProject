@@ -1,5 +1,7 @@
 # 개발·협업 기준
 
+> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+
 ## 작업 순서와 근거
 
 사용자가 지정한 DryForge 스킬과 승인된 작업 범위를 따른다. 요구가 이미 명확한 작은 수정·읽기 전용 분석은 필요한 기준만 적용하고 전체 준비·이관 절차를 반복하지 않는다. 큰 변경은 명세·실행 계획·독립 검토를 적용한다. 명시적인 사용자 지시·소유권 제한과 충돌하면 사용자 지시를 우선하며 수정 권한을 넓혀 해석하지 않는다. 프로젝트 공통 문서는 프로젝트 루트 기준 Assets/_Docs/에서 읽고 작성·갱신한다. 루트 진입 지침과 모듈별 AGENTS.md의 위치는 바꾸지 않는다.
@@ -102,3 +104,7 @@ Unity 실행 변경에는 컴파일, Missing Script/직렬화 참조, 변경한 
 - 이번 HMS 예외는 PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명, CharacterMovement.cs의 `MaximumGroundAngle => maximumGroundAngle` 읽기 전용 속성 한 개와 설명이다. 실제 Inspector 접지각을 읽으며 원래 필드·기본값·Range·접지 동작을 보존한다. 이전9파일 허가는 종료됐고 다른 보호 원본·meta/import/Packages/ProjectSettings 수정 권한을 확대하지 않는다. 추후 PR에 변경 의도와 한계를 명시한다.
 
 최종 포포 Escape(7) 대화만 Completed/Skipped 장부를 보존한 채 재접촉·재시도 후 새 회차를 허용한다. 일반 대화 완료 장부는 지우지 않는다. 현재 Stage·Trigger·선택 객체·Table·Code·Actor 세대·Round·Session이 동일하고 완료/전체 Skip인 경우에만 Ending을 한 번 예약하며 취소·낡은 콜백·동시 사망/포획은 거절한다.
+
+## 커밋과 PR 작성 언어
+
+2026-10-11 직접 지시. 에이전트가 새로 작성하는 커밋 제목·본문과 PR 제목·설명·섹션은 반드시 한국어로 쓴다. 저장소의 타입 접두사와 코드/파일/명령 식별자만 원문을 유지한다. 기존 공개 커밋은 임의 재작성하지 않는다. PR에는 진행 내용·이유·변경점·구조·참고 사항·확인할 점을 설명하고 실제 수행한 검증과 미실행 항목을 구별한다.

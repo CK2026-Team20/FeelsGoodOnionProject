@@ -1,6 +1,6 @@
 # 기획 문서 버전과 적용 기준
 
-> 2026-10-10 V1.5와 같은 대화의 직접 답변을 적용한다. [실행 명세](tracking/ready-system-v15-2026-10-10/spec.md)가 이전 버전의 충돌 규칙을 대체한다. 구현/실행 완료는 [상태](tracking/status.md)와 실제 검증 증거로 판단한다.
+> 2026-10-11 사용자가 지정한 V1.6을 현행 시스템 원본으로 적용한다. [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md)와 [카메라 검토](tracking/ready-system-v16-2026-10-11/카메라%20검토.md)에 충돌·미정 사항을 구분했다. [V1.6 실행 명세](tracking/ready-system-v16-2026-10-11/spec.md)는 작성·독립 검토를 마친 승인 대기본이며 구현은 미실행이다. 이전 검증을 현재 통과로 승계하지 않는다.
 
 ## 2026-10-11 기능 객체 중심 정리
 
@@ -18,7 +18,8 @@
 
 | 문서 | 역할 | 식별/적용 |
 |---|---|---|
-| [Cooked_시스템_기획서_V.1.5.docx](Cooked_시스템_기획서_V.1.5.docx) | 최신 시스템 자료 | SHA-256 `d5698cbc3e50bcb1a4ea8c4f31eae325b43af7221bbcc97a150fdb8b28aa8ebe`; Desktop 지정 원본과 바이트 일치 |
+| [Cooked_시스템_기획서_V.1.6.docx](Cooked_시스템_기획서_V.1.6.docx) | 최신 시스템 자료 | SHA-256 `4f11bf49af22944e4d38003f7dd029062e7cc79c9927056bf64f5616bd23493f`; Desktop 지정 원본과 바이트 일치 |
+| [Cooked_시스템_기획서_V.1.5.docx](Cooked_시스템_기획서_V.1.5.docx) | 이전 비교/이력 | SHA-256 `d5698cbc3e50bcb1a4ea8c4f31eae325b43af7221bbcc97a150fdb8b28aa8ebe`; Desktop 지정 원본과 바이트 일치 |
 | [Cooked_시스템_기획서_V.1.1.docx](Cooked_시스템_기획서_V.1.1.docx) | 이전 비교/이력 | SHA-256 `00ca888a929966eeb02e7b7319cf766230a173c4c99876cea946ee0204b7a26c`; Desktop 지정 파일과 바이트 일치 |
 | [Cooked!_UI기획서Ver1.0.pdf](Cooked!_UI기획서Ver1.0.pdf) | 화면 흐름/배치 자료 | 7쪽; 새 시스템의 입력/정지/버튼 재정의 우선 |
 | [Cooked!_레벨디자인ver1.1.pptx](Cooked!_레벨디자인ver1.1.pptx) | 향후 본편 배치 자료 | 14슬라이드; 현재 기능 응집 프로토타입의 분할/배치를 강제하지 않음 |
@@ -27,9 +28,9 @@
 
 기존 PDF·PPTX·확정본과 메타는 보존한다. UI SHA-256은 `43088a30592ef7eade54075f31fc6789922d18d1092e74b564ac6d04c7865361`, 레벨은 `b9911c1fcce62fe9197f6050ab1ce41186ab6f51d4afee141235ba93435ee290`, 시스템2안은 `916ce65c2a6c3b5588d964c2550ffbeeb301d9dd762ec74b2dc662b1abdbfd06`인 이전 등록 식별값이며 이번에 새 버전이라고 주장하지 않는다.
 
-## 2026-10-10 현행 V1.5 기준
+## 2026-10-10 당시 V1.5 기준과 후속 직접 지시
 
-현재 시스템 원본은 `Assets/_Docs/Cooked_시스템_기획서_V.1.5.docx`다. 최신 직접 지시 → V1.5 활성 본문 → 기존 구현 순서로 적용한다. 승인된 실행 명세는 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/spec.md`, 구현·검증 상태는 tracking/status.md다. 이전 버전과 당시 실행 증거는 보존하되 현행 정책으로 승계하지 않는다.
+아래는 V1.5 적용 당시 기록이다. 현행 원본은 위의 V1.6이며, 아래 후속 직접 지시와 충돌하는 항목은 사전 검토에서 결정한다. 최신 직접 지시 → V1.5 활성 본문 → 기존 구현 순서로 적용한다. 승인된 실행 명세는 `Assets/_Docs/tracking/ready-system-v15-2026-10-10/spec.md`, 구현·검증 상태는 tracking/status.md다. 이전 버전과 당시 실행 증거는 보존하되 현행 정책으로 승계하지 않는다.
 
 - 체크포인트는 현재 ActorBody 월드 위치·보유 조각·해금 마스크 세 항목만 원자 저장한다. 첫 유효 저장 전 상태를 구별하고 같은 물리 Marker 재접촉은 갱신하지 않는다. 추격 트리거 접촉 진입·퇴로 안전 확인 뒤 시작 직전에 현재 상태를 저장한다(2026-10-11 직접 지시: 전신 통과·진행 경로 제거). 사망은 같은 Stage 초기 재준비 후 마지막 세 값을 복원하며, 완료/Skipped 대화 장부는 능력 복원 때문에 지우지 않는다.
 - 현재 목표는 응집형 Prototype Stage 한 곳에서 전체 게임 흐름 1회다. Stage 1→2→3 자동 연결을 추가하지 않으며 등록 씬과 향후 본편의 독립 진입을 보존한다.
@@ -44,7 +45,7 @@
 
 기존 DOCX/PDF/PPTX와 과거 실행 기록은 보존한다. App/Core/등록 Stage의 최초 additive 로드 후 씬 유지, 현재 Actor 한 개와 출력 Camera/Brain/AudioListener 한 개, Side/Quarter 리그 분리, MVVM과 자기 구독/작업 해제는 유지한다. 현재 Prototype을 본편 레벨 배치로 임의 분할하지 않는다.
 
-목표 동작은 [business-rules.md](business-rules.md), 책임과 수명은 [architecture.md](architecture.md), 협업 계약은 [contracts.md](contracts.md), 권한은 [security.md](security.md), 실제 구현/검증은 [tracking/status.md](tracking/status.md)다. 새 명세를 지정한 것과 기능 구현 완료는 다르다. 원격 push/PR/main 병합은 별도 지시 없이는 수행하지 않는다.
+목표 동작은 [business-rules.md](business-rules.md), 책임과 수명은 [architecture.md](architecture.md), 협업 계약은 [contracts.md](contracts.md), 권한은 [security.md](security.md), 실제 구현/검증은 [tracking/status.md](tracking/status.md)다. 새 명세를 지정한 것과 기능 구현 완료는 다르다. 이번 사용자는 실제 작업 완료 후 push와 PR 생성을 허용했다. 기존 #26이 있으므로 완료 후 해당 PR을 갱신한다. main 병합은 이번 요청에 포함하지 않는다.
 
 2026-10-10 추가 직접 결정: 포포 최종 대화만 재생 예외를 허용한다. 완료 장부는 유지하고, 사망 복귀 후 실제 종료 구역에 재도착한 현재 플레이어가 첫 행부터 새 회차로 재생한다. 일반 안내의 반복 방지와 사망/포획 우선은 유지한다. 적용 기준은 V1.5 spec의 추가 직접 결정 절이며, 원본 DOCX를 편집하지 않는다.
 
@@ -53,3 +54,7 @@
 ## 2026-10-11 HMS 기본 입력 조립 승인
 
 사용자는 `Assets/_Code/Core/Tech_HMS/Features/PlayerSkillController.cs` 한 파일에 슬롯별 추가 사용 조건의 연결/해제와 요청 거절 이벤트를 추가하도록 허용했다. 해금 원본과 폼 공통 간격은 기존 SYM Session/Bridge에 둔다. HMS PlayerController를 ActorBody에 조립하고 Host가 F·사망 진행을 담당하며 GameplayInputRouter와 불필요한 전달 메서드를 제거한다. 소유 씬·프리팹 참조 이관을 포함하고 Play 없이 컴파일·참조를 검증한다. 다른 HMS 원본/meta 수정 허가는 확대하지 않는다. 최종 반영 브랜치는 `feature/core/systems`이며 해당 브랜치 push 확인 후 워크트리를 정리한다.
+
+## V1.6 후속 확정 예외와 실행 범위
+
+추격은 기존 접촉·직선·실제 몸체 포획을 유지하며 V1.6 3.2의 다른 문구는 수정 요청으로 남긴다. 통로 전환 트리거의 안전/차단 앵커를 연결하고 플레이어와 차단 오브젝트 모두 DOMove, 실제 목표와 같은 Gizmo를 사용한다. RealToonShader(`Assets/RealToon`)의 가림 구현은 이번에 제외한다. HudIconGraphic은 하트 리소스 연결까지 예외 유지한다. HMS 누적12파일은 명세의 정확한 목록 안에서 필요한 변경만 유지하도록 최소화한다. 실제 작업·검증 후 한국어 커밋으로 push하고 기존 Draft PR #26을 갱신한다.

@@ -1,5 +1,7 @@
 # 실행 및 검증 절차
 
+> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+
 ## 준비
 
 Windows에서 Unity 6000.6.0f1과 Windows 빌드 지원을 설치하고 저장소를 준비한다. 프로젝트 경로는 아래 예시를 실제 체크아웃으로 바꾼다. 패키지는 Packages/manifest.json과 packages-lock.json에 맞춰 Unity가 복원한다. 문서 확인만을 위해 업그레이드하거나 자산 생성 메뉴를 실행하지 않는다.

@@ -1,5 +1,7 @@
 # 협업·데이터 계약
 
+> 2026-10-11 현행 시스템 원본은 [V1.6](Cooked_시스템_기획서_V.1.6.docx)이다. 아래 V1.5 동작·검증 설명은 기존 구현 자료이며 V1.6 구현 완료를 뜻하지 않는다. 새 변경과 미정 정책은 [사전 검토](tracking/ready-system-v16-2026-10-11/코드%20리뷰.md), 적용 우선순위는 [planning-index](planning-index.md)를 따른다. 소유권·Play 금지·미저장 작업 보호는 유지한다.
+
 ## 상태와 외부 공개 API
 
 HP·현재 조각·폼·물리 상태 원본은 HMS PlayerFacade/Model이다. AddSkillFragments는 실제 추가량, TryConsumeSkillFragments는 충분한 보유량에서 성공 여부다. Bridge/UI에 별도 가변 원본을 만들지 않는다. Attach/Detach는 빌린 Model/Actor/Transform과 자기 이벤트·요청을 연결/해제하며 observer 오류가 다른 해제를 막지 않는다.
