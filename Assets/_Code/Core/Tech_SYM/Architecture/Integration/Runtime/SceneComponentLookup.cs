@@ -61,9 +61,11 @@ namespace Cooked.Integration
             for (var parent = point; parent != null; parent = parent.parent)
             {
                 if (parent.GetComponent<Rigidbody>() != null || parent.GetComponent<Animator>() != null ||
-                    parent.GetComponent<Animation>() != null || parent.GetComponent<EnemyActor>() != null ||
+                    parent.GetComponent<Animation>() != null ||
                     parent.GetComponent<PlayerFacade>() != null || parent.GetComponent<PlayerDebris>() != null ||
                     parent.GetComponent<ChaseRuntimeDriver>() != null || parent.GetComponent<ChaseSwarmPresentation>() != null) return false;
+                var enemy = parent.GetComponent<EnemyActor>();
+                if (enemy != null && enemy.MotionBody != null && point.IsChildOf(enemy.MotionBody)) return false;
                 var shattered = parent.GetComponent<ShatteredPlatform>();
                 if (shattered != null && shattered.OwnsMovingVisual(point)) return false;
             }
