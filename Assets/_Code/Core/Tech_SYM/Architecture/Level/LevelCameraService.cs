@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cooked.Authoring;
 using Cooked.Contracts;
 using Cooked.Session;
@@ -111,7 +112,7 @@ namespace Cooked.Level
         private Tween playerTween, blockerTween;
         private PlayerFacade acceptedActor;
         private long actorGeneration, requestGeneration, zoneRevision;
-        private bool initialSelection, motionsComplete, viewCommitted, playerMoveSubmitted, blockerMoveSubmitted, unbinding;
+        private bool initialSelection, motionsComplete, viewCommitted, playerMoveSubmitted, blockerMoveSubmitted, unbinding, cancellingTransition;
         private Vector3 playerGoal, blockerGoal;
         private CinemachineBlendDefinition previousBlend;
         private CinemachineBlenderSettings previousCustomBlends;
@@ -123,8 +124,12 @@ namespace Cooked.Level
         public bool IsTransitioning => State >= CameraTransitionState.Accepted && State <= CameraTransitionState.WaitingForCamera;
         public bool IsViewReady => viewCommitted && !IsTransitioning && HasBinding && modes.IsInitialized && modes.CurrentMode == requestedMode && SelectionComplete;
         public Exception TransitionFailure { get; private set; }
+        /// <summary>수락 전 거절은 진행 중 작업의 State/TransitionFailure와 별개다.</summary>
+        public string LastRejectionReason { get; private set; }
+        public CameraZoneTrigger LastRejectedZone { get; private set; }
+        private readonly HashSet<(CameraZoneTrigger source, long binding, string reason)> reportedRejections = new();
         public CameraZoneTrigger CurrentZone { get; private set; }
-        private bool HasBinding => !unbinding && player != null && player.HasActor && modes != null && modes.isActiveAndEnabled &&
+        private bool HasBinding => !unbinding && !cancellingTransition && player != null && player.HasActor && modes != null && modes.isActiveAndEnabled &&
             brain != null && brain.isActiveAndEnabled && target != null && body != null && side != null && corridor != null && quarter != null && stage != null && stage.IsBound;
         private bool SelectionComplete => requestedCamera != null && ReferenceEquals(brain.ActiveVirtualCamera, requestedCamera) && !brain.IsBlending;
         private bool Paused => control.State.WorldPaused || control.State.PresentationPaused || Time.timeScale <= 0;
@@ -206,8 +211,10 @@ namespace Cooked.Level
             source.ValidateSetup();
             Vector3 goal = source.PlayerGoal(player.Actor.GetComponent<Rigidbody>().position);
             bool move = !snap && !source.BlockerCompleted && (source.HasBlocker || zone.Movement == CameraMovementMode.Side);
-            if (move && (!player.IsCorrectionPathSafe(goal) || !source.IsBlockerPathSafe(player.Actor, goal))) return;
+            string unsafeReason = move ? UnsafePathReason(source, player.Actor, goal) : null;
+            if (unsafeReason != null) { RejectZone(source, unsafeReason); return; }
             long generation = ++requestGeneration;
+            LastRejectionReason = null; LastRejectedZone = null;
             CurrentZone = source; zoneRevision = source.BindingRevision; requestedMode = ResolveMode(zone); TransitionFailure = null;
             acceptedActor = player.Actor; actorGeneration = player.ActorGeneration;
             playerGoal = goal; blockerGoal = source.HasBlocker ? source.BlockerGoal : Vector3.zero;
@@ -218,9 +225,15 @@ namespace Cooked.Level
                 var lease = control.BlockGameplay("카메라·통로 전환");
                 if (!IsCurrent(generation)) { lease.Dispose(); return; }
                 inputLease = lease; player.ClearInput();
-                if (!snap && (!source.HasActualContact(acceptedActor) || (move &&
-                    (!player.IsCorrectionPathSafe(goal) || !source.IsBlockerPathSafe(acceptedActor, goal)))))
-                { CancelTransition(false); return; }
+                if (!snap && !source.HasActualContact(acceptedActor)) { CancelTransition(false); return; }
+                unsafeReason = move ? UnsafePathReason(source, acceptedActor, goal) : null;
+                if (unsafeReason != null)
+                {
+                    // 이미 수락한 작업은 실행 실패다. 시작 전 거절과 구분한다.
+                    Fail(new InvalidOperationException(unsafeReason));
+                    LogRejectionOnce(source, "수락 후 안전 재검사 실패: " + unsafeReason);
+                    return;
+                }
                 requestedCamera = zone.Movement == CameraMovementMode.Side ? side : zone.Movement == CameraMovementMode.Corridor ? corridor : quarter;
                 foreach (var camera in Cameras) { camera.Follow = null; camera.LookAt = null; camera.Priority = camera == requestedCamera ? 20 : 0; }
                 Settings(requestedCamera).Apply(requestedCamera);
@@ -242,6 +255,25 @@ namespace Cooked.Level
                 else State = CameraTransitionState.WaitingForCamera;
             }
             catch (Exception error) { if (generation == requestGeneration) Fail(error); throw; }
+        }
+        private string UnsafePathReason(CameraZoneTrigger source, PlayerFacade candidate, Vector3 goal)
+        {
+            if (!player.IsCorrectionPathSafe(goal))
+                return "플레이어 보정 목표 또는 이동 경로가 안전하지 않습니다. 실제 Capsule, 안전 앵커 높이, 바닥·통로·닫힌 차단체를 확인하세요.";
+            if (!source.IsBlockerPathSafe(candidate, goal))
+                return "차단체 목표 또는 이동 경로가 안전하지 않습니다. 차단 목표·장애물·플레이어 안전 범위를 확인하세요.";
+            return null;
+        }
+        private void RejectZone(CameraZoneTrigger source, string reason)
+        {
+            LastRejectedZone = source; LastRejectionReason = reason;
+            LogRejectionOnce(source, reason);
+        }
+        private void LogRejectionOnce(CameraZoneTrigger source, string reason)
+        {
+            // Stay 및 겹친 여러 구간을 번갈아 검사해도 각 바인딩/사유당 한 번만 기록한다.
+            if (reportedRejections.Add((source, source.BindingRevision, reason)))
+                Debug.LogWarning($"카메라 구간 '{source.name}': {reason}", source);
         }
         private bool IsCurrent(long generation) => generation == requestGeneration && IsTransitioning && HasBinding &&
             player.IsCurrentActor(acceptedActor, actorGeneration) && !acceptedActor.IsDead &&
@@ -327,21 +359,45 @@ namespace Cooked.Level
             if (complete && tween.IsActive()) tween.Kill(false);
             return complete;
         }
-        private void Fail(Exception error) { TransitionFailure = error; CancelTransition(true); }
+        private void Fail(Exception error)
+        {
+            TransitionFailure = error;
+            try { CancelTransition(true); }
+            catch (Exception cleanup)
+            {
+                TransitionFailure = new AggregateException("카메라 전환 실패와 자원 복원 오류입니다.", error, cleanup);
+                throw TransitionFailure;
+            }
+        }
         private void ReleaseLease() { var lease = inputLease; inputLease = null; lease?.Dispose(); }
         private void CancelTransition(bool failed)
         {
-            ++requestGeneration;
-            playerTween?.Kill(false); playerTween = null; blockerTween?.Kill(false); blockerTween = null;
-            correction?.Dispose(); correction = null;
-            State = failed ? CameraTransitionState.Failed : CameraTransitionState.Cancelled;
-            initialSelection = false; motionsComplete = false; viewCommitted = false;
-            CurrentZone?.RequestCancelled();
-            if (!unbinding && committedCamera != null)
+            if (cancellingTransition) return;
+            cancellingTransition = true;
+            try
             {
-                foreach (var camera in Cameras) if (camera != null) { camera.Priority = camera == committedCamera ? 20 : 0; camera.Follow = camera == committedCamera ? target : null; }
+                ++requestGeneration;
+                var oldPlayerTween = playerTween; playerTween = null;
+                var oldBlockerTween = blockerTween; blockerTween = null;
+                var oldCorrection = correction; correction = null;
+                var oldLease = inputLease; inputLease = null;
+                var oldZone = CurrentZone;
+                State = failed ? CameraTransitionState.Failed : CameraTransitionState.Cancelled;
+                initialSelection = false; motionsComplete = false; viewCommitted = false;
+                // 먼저 무효화한다. Dispose/OnKill/제어 통지가 실패해도 나머지 자기 자원을 끝까지 반환한다.
+                var errors = new List<Exception>();
+                SessionCleanup.Attempt(errors, () => oldPlayerTween?.Kill(false));
+                SessionCleanup.Attempt(errors, () => oldBlockerTween?.Kill(false));
+                SessionCleanup.Attempt(errors, () => oldCorrection?.Dispose());
+                SessionCleanup.Attempt(errors, () => oldZone?.RequestCancelled());
+                if (!unbinding && committedCamera != null)
+                    foreach (var camera in Cameras)
+                        if (camera != null) SessionCleanup.Attempt(errors, () =>
+                        { camera.Priority = camera == committedCamera ? 20 : 0; camera.Follow = camera == committedCamera ? target : null; });
+                SessionCleanup.Attempt(errors, () => oldLease?.Dispose());
+                SessionCleanup.ThrowIfAny(errors, "카메라 전환 취소 후 일부 자원 복원에서 오류가 발생했습니다.");
             }
-            ReleaseLease();
+            finally { cancellingTransition = false; }
         }
         private void OnActorChanged() => Unbind();
         private void OnDying() => CancelTransition(false);
@@ -370,6 +426,7 @@ namespace Cooked.Level
                     brain.DefaultBlend = previousBlend; brain.CustomBlends = previousCustomBlends;
                     brain.UpdateMethod = previousUpdate; brain.BlendUpdateMethod = previousBlendUpdate; brain.IgnoreTimeScale = previousIgnoreTimeScale;
                 }
+                reportedRejections.Clear(); LastRejectionReason = null; LastRejectedZone = null;
                 player = null; control = null; flow = null; stage = null; modes = null; brain = null;
                 side = corridor = quarter = requestedCamera = committedCamera = null; target = body = null; bounds = null; CurrentZone = null;
                 if (cleanupError != null) throw cleanupError;

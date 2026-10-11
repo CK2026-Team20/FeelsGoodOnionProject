@@ -73,8 +73,10 @@ namespace Cooked.Session
             internal void Cancel()
             {
                 // Stop the owning tween before returning physics, even on partial acquisition failure.
-                try { cancelled?.Invoke(); }
-                finally { Dispose(); }
+                var errors = new List<Exception>();
+                SessionCleanup.Attempt(errors, () => cancelled?.Invoke());
+                SessionCleanup.Attempt(errors, Dispose);
+                SessionCleanup.ThrowIfAny(errors, "Actor 보정 취소·복원 오류입니다.");
             }
             public void Dispose()
             {
@@ -82,20 +84,17 @@ namespace Cooked.Session
                 if (owner == null) return;
                 bridge = null;
                 if (ReferenceEquals(owner.correction, this)) owner.correction = null;
-                // Restore the captured body, never a replacement Actor.
-                if (body != null)
-                {
-                    body.position = body.position; // 아직 적용되지 않은 MovePosition 목표를 현재 실제 pose로 폐기한다.
-                    body.isKinematic = kinematic; body.constraints = constraints;
-                    if (passenger != null) passenger.enabled = passengerEnabled;
-                    if (movement != null) movement.enabled = movementEnabled;
-                    if (!kinematic)
-                    {
-                        body.linearVelocity = new Vector3(0, velocity.y, 0);
-                        body.angularVelocity = angularVelocity;
-                        body.WakeUp();
-                    }
-                }
+                // 빌린 각 자원은 독립적으로 복원한다. 앞선 native setter가 실패해도 뒤 자원을 건너뛰지 않는다.
+                var errors = new List<Exception>();
+                SessionCleanup.Attempt(errors, () => { if (body != null) body.position = body.position; });
+                SessionCleanup.Attempt(errors, () => { if (body != null) body.isKinematic = kinematic; });
+                SessionCleanup.Attempt(errors, () => { if (body != null) body.constraints = constraints; });
+                SessionCleanup.Attempt(errors, () => { if (passenger != null) passenger.enabled = passengerEnabled; });
+                SessionCleanup.Attempt(errors, () => { if (movement != null) movement.enabled = movementEnabled; });
+                SessionCleanup.Attempt(errors, () => { if (body != null && !body.isKinematic) body.linearVelocity = new Vector3(0, velocity.y, 0); });
+                SessionCleanup.Attempt(errors, () => { if (body != null && !body.isKinematic) body.angularVelocity = angularVelocity; });
+                SessionCleanup.Attempt(errors, () => { if (body != null && !body.isKinematic) body.WakeUp(); });
+                SessionCleanup.ThrowIfAny(errors, "Actor 보정 소유권 반환 후 일부 물리 복원이 실패했습니다.");
             }
         }
         public CorrectionOwnership TryAcquireCorrection(PlayerFacade expected, long generation, Action cancelled)
