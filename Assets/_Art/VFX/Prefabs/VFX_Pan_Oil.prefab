@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3971848781419163711}
   m_Layer: 0
-  m_Name: PanOil
+  m_Name: VFX_Pan_Oil
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

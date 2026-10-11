@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 8363194977823528126}
   - component: {fileID: 3787148538107425671}
   m_Layer: 0
-  m_Name: Jump
+  m_Name: VFX_Jump_Dust
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

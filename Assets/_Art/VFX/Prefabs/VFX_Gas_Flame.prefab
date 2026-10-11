@@ -16562,7 +16562,7 @@ GameObject:
   - component: {fileID: 4262448173932229898}
   - component: {fileID: 5284201140651193557}
   m_Layer: 0
-  m_Name: Gas
+  m_Name: VFX_Gas_Flame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

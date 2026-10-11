@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Ring 1
+  m_Name: MAT_Ring_Soft
   m_Shader: {fileID: 4800000, guid: 1bc5c6a70411243779ce486a98012125, type: 3}
   m_Parent: {fileID: 2100000, guid: 611ceed855371874988cc93f96dbf431, type: 2}
   m_ModifiedSerializedProperties: 0
