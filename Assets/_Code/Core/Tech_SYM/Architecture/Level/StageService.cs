@@ -18,6 +18,19 @@ namespace Cooked.Level
     {
         [SerializeField, InspectorLabel("초기 체크포인트"), Tooltip("새 진입 위치를 정할 같은 씬의 CheckpointMarker를 연결하세요. 완료 저장과는 별개입니다.")]
         private CheckpointMarker initialCheckpoint;
+        [SerializeField, InspectorLabel("카메라 경계"), Tooltip("최종 카메라 위치를 제한할 같은 씬의 활성 BoxCollider입니다. 플레이어를 막지 않도록 Trigger로 작성하세요.")]
+        private BoxCollider cameraBounds;
+        public BoxCollider CameraBounds
+        {
+            get
+            {
+                SceneComponentLookup.RequireSameScene(this, cameraBounds, "카메라 경계");
+                if (cameraBounds == null || !cameraBounds.enabled || !cameraBounds.gameObject.activeInHierarchy || !cameraBounds.isTrigger)
+                    throw new InvalidOperationException("카메라 경계에는 활성 Trigger BoxCollider가 필요합니다.");
+                return cameraBounds;
+            }
+        }
+        public event Action Releasing;
         [SerializeField, InspectorLabel("스테이지 음악"), Tooltip("이 씬에서 재생할 음악 용도를 선택하세요. 기존 AudioCueCatalog의 AudioClip을 사용합니다.")]
         private AudioCuePurpose stageMusicPurpose = AudioCuePurpose.Stage1Music;
         private CheckpointMarker[] sceneCheckpoints = Array.Empty<CheckpointMarker>();
@@ -292,6 +305,7 @@ namespace Cooked.Level
             bound = false; bindingRevision++;
             chaseAccepted = false;
             var errors = new List<Exception>();
+            SessionCleanup.Notify(errors, Releasing);
             SessionCleanup.Attempt(errors, () => ClearFinalDialogue(true));
             foreach (var sensor in sceneSensors) if (sensor != null) SessionCleanup.Attempt(errors, sensor.UnbindPlayer);
             foreach (var floor in sceneFloors) if (floor != null) SessionCleanup.Attempt(errors, floor.UnbindPlayer);

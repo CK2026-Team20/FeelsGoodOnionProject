@@ -30,6 +30,130 @@ namespace Cooked.Session
         private PlayerSkill observedTear;
         private CharacterMovement movement;
         private Rigidbody actorBody;
+        private CorrectionOwnership correction;
+        private bool cancellingCorrection;
+        public bool HasCorrectionOwner => correction != null && correction.IsCurrent;
+
+        /// <summary>카메라 작업만 운동 writer를 빌린다. 접지/대기 외력은 HMS Disable 계약으로 폐기하고
+        /// 현재 점프의 수직 속도는 복원한다. 피해는 이 소유권을 먼저 취소한 뒤 HMS에 전달한다.</summary>
+        public sealed class CorrectionOwnership : IDisposable
+        {
+            private PlayerBridgeService bridge;
+            private readonly PlayerFacade source;
+            private readonly long generation;
+            private readonly Rigidbody body;
+            private readonly CharacterMovement movement;
+            private readonly PlatformPassenger passenger;
+            private readonly bool passengerEnabled, movementEnabled, kinematic;
+            private readonly Vector3 velocity, angularVelocity;
+            private readonly RigidbodyConstraints constraints;
+            private readonly Action cancelled;
+            public Rigidbody Body => body;
+            public bool IsCurrent => bridge != null && ReferenceEquals(bridge.correction, this) &&
+                bridge.IsCurrentActor(source, generation) && !source.IsDead;
+            internal CorrectionOwnership(PlayerBridgeService owner, Action onCancelled)
+            {
+                bridge = owner; source = owner.actor; generation = owner.actorGeneration;
+                body = owner.actorBody; movement = owner.movement;
+                passenger = source.GetComponent<PlatformPassenger>();
+                passengerEnabled = passenger != null && passenger.enabled;
+                movementEnabled = movement.enabled; kinematic = body.isKinematic;
+                velocity = body.linearVelocity; angularVelocity = body.angularVelocity; constraints = body.constraints;
+                cancelled = onCancelled;
+            }
+            internal void Acquire()
+            {
+                // Publish owner before callbacks from component disable can re-enter the Bridge.
+                movement.enabled = false;
+                if (!IsCurrent) throw new InvalidOperationException("보정 소유권 획득 중 Actor가 바뀌었습니다.");
+                if (passengerEnabled) passenger.enabled = false;
+                body.isKinematic = true;
+                body.constraints = constraints & ~RigidbodyConstraints.FreezePosition;
+            }
+            internal void Cancel()
+            {
+                // Stop the owning tween before returning physics, even on partial acquisition failure.
+                try { cancelled?.Invoke(); }
+                finally { Dispose(); }
+            }
+            public void Dispose()
+            {
+                var owner = bridge;
+                if (owner == null) return;
+                bridge = null;
+                if (ReferenceEquals(owner.correction, this)) owner.correction = null;
+                // Restore the captured body, never a replacement Actor.
+                if (body != null)
+                {
+                    body.position = body.position; // 아직 적용되지 않은 MovePosition 목표를 현재 실제 pose로 폐기한다.
+                    body.isKinematic = kinematic; body.constraints = constraints;
+                    if (passenger != null) passenger.enabled = passengerEnabled;
+                    if (movement != null) movement.enabled = movementEnabled;
+                    if (!kinematic)
+                    {
+                        body.linearVelocity = new Vector3(0, velocity.y, 0);
+                        body.angularVelocity = angularVelocity;
+                        body.WakeUp();
+                    }
+                }
+            }
+        }
+        public CorrectionOwnership TryAcquireCorrection(PlayerFacade expected, long generation, Action cancelled)
+        {
+            ThrowIfDisposed();
+            if (cancelled == null) throw new ArgumentNullException(nameof(cancelled));
+            if (correction != null || cancellingCorrection || issuingMovementCommand || separationPending || PhysicsPaused || !HasLiveActor ||
+                !IsCurrentActor(expected, generation)) return null;
+            var ownership = new CorrectionOwnership(this, cancelled);
+            correction = ownership;
+            try { ownership.Acquire(); }
+            catch { ownership.Cancel(); throw; }
+            return ownership.IsCurrent ? ownership : null;
+        }
+        public void CancelCorrection()
+        {
+            if (cancellingCorrection) return;
+            cancellingCorrection = true;
+            try { correction?.Cancel(); }
+            finally { cancellingCorrection = false; }
+        }
+
+        /// <summary>현재 실제 Capsule 크기/회전으로 목적지와 전 구간을 검사한다. 바닥의 단순 접촉은 허용한다.</summary>
+        public bool IsCorrectionPathSafe(Vector3 goal)
+        {
+            if (!HasLiveActor || !Finite(goal)) return false;
+            var capsule = actor.GetComponent<CapsuleCollider>();
+            if (capsule == null || !capsule.enabled || capsule.isTrigger || capsule.attachedRigidbody != actorBody) return false;
+            var delta = goal - actorBody.position;
+            CapsuleGeometry(capsule, out var a, out var b, out var radius);
+            const float skin = .002f;
+            bool Obstacle(Collider other) => other != null && !IsSelfCollider(other) && !other.isTrigger &&
+                !Physics.GetIgnoreLayerCollision(capsule.gameObject.layer, other.gameObject.layer) && !Physics.GetIgnoreCollision(capsule, other);
+            foreach (var other in Physics.OverlapCapsule(a + delta, b + delta, radius, ~0, QueryTriggerInteraction.Ignore))
+                if (Obstacle(other) && Physics.ComputePenetration(capsule, actorBody.position + delta, actorBody.rotation,
+                    other, other.transform.position, other.transform.rotation, out _, out float depth) && depth > skin) return false;
+            if (delta.sqrMagnitude > skin * skin)
+                foreach (var hit in Physics.CapsuleCastAll(a, b, Mathf.Max(radius - skin, .0001f), delta.normalized,
+                    delta.magnitude, ~0, QueryTriggerInteraction.Ignore))
+                    if (Obstacle(hit.collider)) return false;
+            return true;
+        }
+        internal static void CapsuleGeometry(CapsuleCollider capsule, out Vector3 a, out Vector3 b, out float radius)
+        {
+            var scale = capsule.transform.lossyScale;
+            scale = new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+            int axis = capsule.direction;
+            float along = scale[axis];
+            radius = capsule.radius * Mathf.Max(scale[(axis + 1) % 3], scale[(axis + 2) % 3]);
+            float half = Mathf.Max(0, capsule.height * along * .5f - radius);
+            var physical = capsule.attachedRigidbody;
+            bool sameBody = physical != null && physical.transform == capsule.transform;
+            Quaternion rotation = sameBody ? physical.rotation : capsule.transform.rotation;
+            Vector3 origin = sameBody ? physical.position : capsule.transform.position;
+            Vector3 direction = rotation * (axis == 0 ? Vector3.right : axis == 1 ? Vector3.up : Vector3.forward);
+            Vector3 center = origin + rotation * Vector3.Scale(capsule.center, capsule.transform.lossyScale);
+            a = center + direction * half; b = center - direction * half;
+        }
         private Component separationOwner;
         private PlayerFacade separationActor;
         private long separationGeneration;
@@ -191,6 +315,7 @@ namespace Cooked.Session
             if (detaching) return;
             detaching = true;
             var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, CancelCorrection);
             var oldModel = model;
             var oldActor = actor;
             var oldSkills = skills;
@@ -318,6 +443,7 @@ namespace Cooked.Session
         }
         private void OnSessionChanged()
         {
+            if (!session.IsActive) CancelCorrection();
             RefreshInputRestriction();
             if (!session.IsActive && skills != null) skills.CancelAll();
         }
@@ -341,12 +467,16 @@ namespace Cooked.Session
             => !disposed && !detaching && session.IsActive && actor != null && actor.isActiveAndEnabled &&
                 MatchesActor(expected, generation, actor, actorGeneration);
         private bool HasLiveActor => IsCurrentActor(actor, actorGeneration) && !actor.IsDead &&
-            movement != null && movement.isActiveAndEnabled && actorBody != null && !actorBody.isKinematic;
+            movement != null && actorBody != null && (correction != null || (movement.isActiveAndEnabled && !actorBody.isKinematic));
 
         /// <summary>인자는 피해원의 월드 위치다. 방향/세기는 모든 일반 피해원이 이 한 규칙을 사용한다.</summary>
         public int Damage(Vector3 sourcePosition)
         {
             ThrowIfDisposed();
+            if (PhysicsPaused) return 0;
+            var beforeCorrection = actor; long beforeGeneration = actorGeneration;
+            try { CancelCorrection(); } catch (Exception error) { Debug.LogException(error); } // 정리 통지 오류가 실제 피해를 무적으로 바꾸지 않는다.
+            if (!IsCurrentActor(beforeCorrection, beforeGeneration)) return 0;
             if (!HasLiveActor || PhysicsPaused) return 0;
             Vector3 velocity = CommonKnockback(sourcePosition, actorBody.position, FacingDirection,
                 movement.AllowHorizontalMovement, movement.AllowDepthMovement, HorizontalKnockbackSpeed, UpwardKnockbackSpeed);
@@ -394,6 +524,10 @@ namespace Cooked.Session
         public int ForceDeath(Vector3 knockbackVelocity, bool skipPresentation = false)
         {
             ThrowIfDisposed();
+            if (PhysicsPaused) return 0;
+            var beforeCorrection = actor; long beforeGeneration = actorGeneration;
+            try { CancelCorrection(); } catch (Exception error) { Debug.LogException(error); } // 정리 통지 오류가 실제 피해를 무적으로 바꾸지 않는다.
+            if (!IsCurrentActor(beforeCorrection, beforeGeneration)) return 0;
             if (!HasLiveActor || PhysicsPaused) return 0;
             PlayerFacade expected = actor;
             long generation = actorGeneration;
@@ -417,6 +551,8 @@ namespace Cooked.Session
                 (fatal && (correction.x != 0 || correction.z != 0 || correction.y <= 0)) || !float.IsFinite(seconds) || seconds <= 0)
                 throw new ArgumentOutOfRangeException(nameof(correction), "실제 상향 몸체 보정과 양수 분리 시간/요청 소유자가 필요합니다. 깊은 분리는 수직만 사용합니다.");
             if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused || separationPending) return false;
+            CancelCorrection();
+            if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused) return false;
             if (!fatal)
             {
                 // 실제 몸체 pose만 한 번 보정한다. HMS 속도·외력·점프·접촉·착지 예약은 그대로 소비한다.
@@ -642,6 +778,7 @@ namespace Cooked.Session
         }
         private void OnHealthChanged(int current, int maximum)
         {
+            if (current <= 0) CancelCorrection();
             var observedActor = actor;
             long observedGeneration = actorGeneration;
             var errors = new List<Exception>();
