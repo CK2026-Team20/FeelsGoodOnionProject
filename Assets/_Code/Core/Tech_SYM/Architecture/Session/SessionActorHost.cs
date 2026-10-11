@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Cooked.Contracts;
 using FeelsGoodOnion.TechSYM.Interaction;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Cooked.Level;
 using Cooked.Authoring;
 using Cooked.Integration;
@@ -13,6 +14,7 @@ using FeelsGoodOnion.TechSYM.Platforms;
 namespace Cooked.Session
 {
     /// <summary>InGameCore owns this host; retry replaces only its actor, not the host or UI.</summary>
+    [DefaultExecutionOrder(-100)]
     public sealed class SessionActorHost : MonoBehaviour
     {
         [Tooltip("세션에 생성할 플레이어 루트 프리팹입니다. 병합 PlayerFacade·물리·외형 연결이 준비된 프리팹을 지정하세요.")]
@@ -42,6 +44,7 @@ namespace Cooked.Session
         private PlayerBridgeService bridge;
         private IGameplayControlService control;
         private GameObject actorRoot;
+        private PlayerInputReader inputReader;
         private bool releasing, shutdown, spawning;
         public GameObject ActorRoot => actorRoot;
         public bool ActorModesReady
@@ -80,8 +83,7 @@ namespace Cooked.Session
                 ValidateInputOwnership(actorRoot);
                 var actor = actorRoot.GetComponentInChildren<PlayerFacade>(true);
                 var reader = actorRoot.GetComponentInChildren<PlayerInputReader>(true);
-                var router = actorRoot.GetComponentInChildren<GameplayInputRouter>(true);
-                if (actor == null || reader == null || router == null) throw new InvalidOperationException("Actor prefab dependencies missing.");
+                if (actor == null || reader == null) throw new InvalidOperationException("Actor prefab dependencies missing.");
                 reader.SetTearSkillBinding("<Keyboard>/e");
                 actor.transform.SetPositionAndRotation(pose.position, pose.rotation);
                 if (actorRoot.GetComponentsInChildren<Camera>(true).Length != 0 ||
@@ -103,7 +105,8 @@ namespace Cooked.Session
                 bridge.RestoreFragments(fragments);
                 actor.Heal(actor.Model.MaxHP);
                 Interaction = new PlayerInteractionService(bridge);
-                router.Initialize(reader, bridge, Interaction, control);
+                inputReader = reader;
+                bridge.SetInputHostEnabled(isActiveAndEnabled);
                 InteractionChanged?.Invoke(Interaction);
                 if (actorRoot != createdRoot || bridge == null || !bridge.HasActor)
                     throw new InvalidOperationException("Actor was released during spawn notification.");
@@ -128,6 +131,7 @@ namespace Cooked.Session
             var oldInteraction = Interaction;
             var oldBridge = bridge;
             actorRoot = null;
+            inputReader = null;
             Interaction = null;
             try
             {
@@ -146,7 +150,6 @@ namespace Cooked.Session
                 if (oldInteraction != null) SessionCleanup.Attempt(errors, oldInteraction.Dispose);
                 if (oldRoot != null)
                 {
-                    SessionCleanup.Attempt(errors, () => oldRoot.GetComponentInChildren<GameplayInputRouter>(true)?.Unbind());
                     SessionCleanup.Attempt(errors, () =>
                     {
                         var form = oldRoot.GetComponentInChildren<PlayerFormController>(true);
@@ -168,10 +171,13 @@ namespace Cooked.Session
         }
         public static void ValidateInputOwnership(GameObject root)
         {
-            if (root.GetComponentsInChildren<PlayerController>(true).Length != 0)
-                throw new InvalidOperationException("Legacy input controllers must not be installed in the architecture actor.");
-            if (root.GetComponentsInChildren<PlayerInputReader>(true).Length != 1 || root.GetComponentsInChildren<GameplayInputRouter>(true).Length != 1)
-                throw new InvalidOperationException("Actor requires one input reader and one gameplay router.");
+            var readers = root.GetComponentsInChildren<PlayerInputReader>(true);
+            var controllers = root.GetComponentsInChildren<PlayerController>(true);
+            var actors = root.GetComponentsInChildren<PlayerFacade>(true);
+            if (readers.Length != 1 || controllers.Length != 1 || actors.Length != 1 ||
+                readers[0].gameObject != actors[0].gameObject || controllers[0].gameObject != actors[0].gameObject ||
+                !controllers[0].enabled || !readers[0].enabled)
+                throw new InvalidOperationException("Actor requires one enabled HMS reader/controller on its Facade object.");
             foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
                 if (behaviour != null && (behaviour.GetType().Name == "TestPlayerFunc" || behaviour.GetType().Name == "PlayerSkillHUD" || behaviour.GetType().Name == "TestPlayerMovementMode"))
                     throw new InvalidOperationException("Legacy debug input component found in actor.");
@@ -179,9 +185,12 @@ namespace Cooked.Session
         private void Start()
         { started = true; StartIndependent(); }
         private void OnEnable()
-        { if (started && !shutdown && independentActor != null && bridge == null) StartIndependent(); }
+        {
+            if (started && !shutdown && independentActor != null && bridge == null) StartIndependent();
+            bridge?.SetInputHostEnabled(true);
+        }
         private void OnDisable()
-        { if (ownsIndependentServices) ReleaseSession(); }
+        { bridge?.SetInputHostEnabled(false); if (ownsIndependentServices) ReleaseSession(); }
         private void StartIndependent()
         {
             if (independentActor == null) return;
@@ -193,8 +202,7 @@ namespace Cooked.Session
                 ValidateInputOwnership(independentActor);
                 var facade = independentActor.GetComponentInChildren<PlayerFacade>(true);
                 var reader = independentActor.GetComponentInChildren<PlayerInputReader>(true);
-                var router = independentActor.GetComponentInChildren<GameplayInputRouter>(true);
-                if (facade == null || reader == null || router == null) throw new InvalidOperationException("Independent Actor dependencies missing.");
+                if (facade == null || reader == null) throw new InvalidOperationException("Independent Actor dependencies missing.");
                 independentControl = new GameplayControlService(); control = independentControl;
                 independentSession = new GameSessionService();
                 SceneComponentLookup.RequireSameScene(this, facade, "독립 플레이어");
@@ -215,7 +223,8 @@ namespace Cooked.Session
                     memo.Initialize(control);
                 }
                 Interaction.BindOverlays(independentMemos);
-                router.Initialize(reader, bridge, Interaction, control);
+                inputReader = reader;
+                bridge.SetInputHostEnabled(isActiveAndEnabled);
                 independentUi.BindIndependent(bridge, Interaction, independentCamera);
                 independentSensors = SceneComponentLookup.FindAll<EnemyContactSensor>(gameObject.scene);
                 independentFloors = SceneComponentLookup.FindAll<DamageFloorPlatform>(gameObject.scene);
@@ -248,10 +257,26 @@ namespace Cooked.Session
         }
         private void Update()
         {
-            // T06 owns separation advancement via MovementUpdated. Host only polls its single death completion.
-            if (!shutdown && !releasing && !spawning && actorRoot != null && bridge != null && bridge.HasActor &&
-                control != null && !control.State.WorldPaused && !control.State.PresentationPaused)
-                bridge.TickDeathPresentation();
+            if (shutdown || releasing || spawning || actorRoot == null || bridge == null || !bridge.HasActor || control == null) return;
+            var currentBridge = bridge;
+            var currentInteraction = Interaction;
+            long generation = currentBridge.ActorGeneration;
+            currentBridge.RefreshInputRestriction();
+            // F must run before HMS Update, including modal close while gameplay is blocked.
+            bool pressed = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
+            if (pressed && !currentBridge.InputSuppressedThisFrame && !control.State.PresentationPaused &&
+                currentInteraction != null && currentInteraction.TryCloseOverlay())
+                currentBridge.SuppressInputForCurrentFrame();
+            else if (pressed && !currentBridge.InputSuppressedThisFrame && inputReader != null &&
+                inputReader.CanReadInput && currentBridge.CanAct)
+                currentInteraction?.TryInteract();
+            // Interaction observers can release or replace the actor synchronously.
+            if (bridge != currentBridge || currentBridge.ActorGeneration != generation || !currentBridge.HasActor) return;
+            currentInteraction?.Refresh();
+            if (bridge != currentBridge || currentBridge.ActorGeneration != generation || !currentBridge.HasActor) return;
+            // T06 advances separation via MovementUpdated. Only Host polls death completion.
+            if (!control.State.WorldPaused && !control.State.PresentationPaused)
+                currentBridge.TickDeathPresentation();
         }
         private void OnIndependentDying()
         {

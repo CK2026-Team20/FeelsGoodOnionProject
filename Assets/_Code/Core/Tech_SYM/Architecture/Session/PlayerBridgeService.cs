@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Cooked.Session
 {
-    /// <summary>Compatibility boundary: gameplay commands are issued by GameplayInputRouter.</summary>
+    /// <summary>Connects session policy and presentation to the HMS actor; HMS owns gameplay input.</summary>
     public sealed class PlayerBridgeService : IPlayerBridgeService
     {
         // Matches the existing HMS Facade's form/tear slots; never reinitializes its controller.
@@ -39,7 +39,12 @@ namespace Cooked.Session
         private double lastSeparationPhysicsTime = double.NegativeInfinity;
         private Action movementHandler;
         private PlayerMovementModeController movementMode;
-        private bool deathReported, disposed, detaching, pendingTear, pendingForm;
+        private bool deathReported, disposed, detaching;
+        private bool inputHostEnabled = true;
+        private int suppressInputThroughFrame = -1;
+        private Func<int, PlayerSkillBlockReason> skillCondition;
+        private Action<int, PlayerSkillBlockReason> skillRejectedHandler;
+        private Action<PlayerSkillId> skillActivatedHandler;
         private bool deathPending, deathReady, deathInterrupted, deathNotified, skipDeathPresentation;
         private int deathFrame;
         private long actorGeneration, deathBaselineRequestId, deathRequestId;
@@ -88,6 +93,7 @@ namespace Cooked.Session
             HorizontalKnockbackSpeed = horizontalKnockbackSpeed;
             UpwardKnockbackSpeed = upwardKnockbackSpeed;
             control.Changed += OnControlChanged;
+            session.Changed += OnSessionChanged;
         }
 
         public void Attach(PlayerFacade value)
@@ -114,7 +120,7 @@ namespace Cooked.Session
             observedTear = skills.GetEquippedSkill(TearSlot);
             CameraTarget = presentation.CameraAnchor;
             VisualRoot = presentation.VisualRoot;
-            deathReported = false; pendingTear = false; pendingForm = false;
+            deathReported = false;
             deathPending = deathReady = deathInterrupted = deathNotified = skipDeathPresentation = false;
             deathRequestId = 0; nextFormChangeTime = 0;
             long generation = ++actorGeneration;
@@ -144,7 +150,23 @@ namespace Cooked.Session
             model.HealthChanged += healthHandler;
             model.SkillFragmentChanged += fragmentsHandler;
             form.FormChanged += formHandler;
-            if (observedTear != null) observedTear.Activated += OnTearActivated;
+            skillCondition = slot => IsCurrentActor(attachedActor, generation)
+                ? CheckSkillCondition(slot) : PlayerSkillBlockReason.Unavailable;
+            skillRejectedHandler = (slot, reason) =>
+            {
+                if (IsCurrentActor(attachedActor, generation) && slot == FormSlot)
+                    RejectAbility(AbilityId.FormChange, reason);
+            };
+            skillActivatedHandler = id =>
+            {
+                if (!IsCurrentActor(attachedActor, generation)) return;
+                if (id == PlayerSkillId.Tear) NotifyAbility(AbilityId.Tear);
+                else if (id == PlayerSkillId.Shrink || id == PlayerSkillId.RestoreForm)
+                    NotifyAbility(AbilityId.FormChange);
+            };
+            skills.BindAdditionalCondition(skillCondition);
+            skills.UseRejected += skillRejectedHandler;
+            skills.SkillActivated += skillActivatedHandler;
             OnControlChanged(control.State);
             var errors = new List<Exception>();
             SessionCleanup.Notify(errors, ActorChanged);
@@ -169,6 +191,10 @@ namespace Cooked.Session
             var oldHealth = healthHandler;
             var oldFragments = fragmentsHandler;
             var oldFormHandler = formHandler;
+            var oldSkillCondition = skillCondition;
+            var oldSkillRejected = skillRejectedHandler;
+            var oldSkillActivated = skillActivatedHandler;
+            skillCondition = null; skillRejectedHandler = null; skillActivatedHandler = null;
             ++actorGeneration;
             ClearSeparation();
             deathPending = deathReady = deathInterrupted = deathNotified = skipDeathPresentation = false;
@@ -177,7 +203,6 @@ namespace Cooked.Session
             bool hadActor = oldModel != null;
             actor = null; model = null; skills = null; movement = null; movementMode = null; form = null; observedTear = null;
             actorBody = null; movementHandler = null; CameraTarget = null; VisualRoot = null;
-            pendingTear = false; pendingForm = false;
             try
             {
                 if (oldMovement != null && oldMovementHandler != null)
@@ -189,7 +214,12 @@ namespace Cooked.Session
                     SessionCleanup.Attempt(errors, () => oldModel.SkillFragmentChanged -= oldFragments);
                 }
                 if (oldForm != null) SessionCleanup.Attempt(errors, () => oldForm.FormChanged -= oldFormHandler);
-                if (oldTear != null) SessionCleanup.Attempt(errors, () => oldTear.Activated -= OnTearActivated);
+                if (oldSkills != null)
+                {
+                    SessionCleanup.Attempt(errors, () => oldSkills.UnbindAdditionalCondition(oldSkillCondition));
+                    SessionCleanup.Attempt(errors, () => oldSkills.UseRejected -= oldSkillRejected);
+                    SessionCleanup.Attempt(errors, () => oldSkills.SkillActivated -= oldSkillActivated);
+                }
                 if (oldActor != null)
                 {
                     SessionCleanup.Attempt(errors, () => oldActor.SetInputBlocked(true));
@@ -228,59 +258,24 @@ namespace Cooked.Session
                 throw new InvalidOperationException("HMS movement mode is not ready.");
             ClearInput();
         }
-        public void Move(Vector3 input)
-        {
-            if (!CanAct) { ClearInput(); return; }
-            input.x = movement.AllowHorizontalMovement ? input.x : 0;
-            input.z = movement.AllowDepthMovement ? input.z : 0;
-            Vector3 world = new Vector3(input.x, 0, actor.AllowDepthMovement ? input.z : 0);
-            actor.SetMoveInput(Vector3.ClampMagnitude(world, 1));
-        }
         public void ClearInput() { if (actor != null) actor.ClearInput(); }
-        public bool Jump() { if (!CanAct || movement == null || !movement.IsGrounded) return false; actor.RequestJump(); return true; }
-        /// <returns>Request accepted. Preparation may still cancel; only AbilitySucceeded is an audio success signal.</returns>
-        public bool Tear()
+        private PlayerSkillBlockReason CheckSkillCondition(int slot)
         {
-            if (!CanUse(AbilityId.Tear) || observedTear == null || observedTear.IsInUse) return false;
-            pendingTear = true;
-            try
+            if (!CanAct) return PlayerSkillBlockReason.Unavailable;
+            if (slot == TearSlot && !session.IsUnlocked(AbilityId.Tear)) return PlayerSkillBlockReason.Unavailable;
+            if (slot == FormSlot)
             {
-                bool accepted = actor.TryUseTearSkill(out _);
-                if (!accepted) pendingTear = false;
-                return accepted;
+                if (!session.IsUnlocked(AbilityId.FormChange)) return PlayerSkillBlockReason.Unavailable;
+                if (Time.time < nextFormChangeTime) return PlayerSkillBlockReason.Cooldown;
             }
-            catch { pendingTear = false; throw; }
-        }
-        public bool ChangeForm()
-        {
-            if (!CanUse(AbilityId.FormChange)) return false;
-            if (Time.time < nextFormChangeTime) return RejectAbility(AbilityId.FormChange, PlayerSkillBlockReason.Cooldown);
-            var current = skills.GetEquippedSkill(FormSlot);
-            if (current != null && current.IsInUse) return false;
-            pendingForm = true;
-            try
-            {
-                bool accepted = actor.TryUseFormChangeSkill(out var reason);
-                if (!accepted) { pendingForm = false; RejectAbility(AbilityId.FormChange, reason); }
-                return accepted;
-            }
-            catch { pendingForm = false; throw; }
-        }
-        private void OnTearActivated(PlayerSkill skill)
-        {
-            if (!pendingTear || disposed || !ReferenceEquals(skill, observedTear)) return;
-            pendingTear = false;
-            // HMS invokes Activated after fragment payment, before applying the AoE stun.
-            NotifyAbility(AbilityId.Tear);
+            return PlayerSkillBlockReason.None;
         }
         private void OnFormChanged(PlayerForm value)
         {
             if (disposed || value == lastCommittedForm) return;
             lastCommittedForm = value;
             nextFormChangeTime = Time.time + 1f; // Only a committed size change starts this gate.
-            if (!pendingForm) return;
-            pendingForm = false;
-            NotifyAbility(AbilityId.FormChange);
+
         }
         private void NotifyAbility(AbilityId ability)
         {
@@ -289,13 +284,35 @@ namespace Cooked.Session
             // Never let a failing Audio/View observer interrupt TearSkill before ApplyStun.
             if (errors.Count > 0) Debug.LogException(new AggregateException("Ability presentation observer failed: " + ability, errors));
         }
-        private bool CanUse(AbilityId ability) => CanAct && session.IsUnlocked(ability);
-        private void OnControlChanged(ControlState state)
+        public bool InputSuppressedThisFrame => Time.frameCount <= suppressInputThroughFrame;
+        public void SuppressInputForCurrentFrame()
+        {
+            suppressInputThroughFrame = Time.frameCount;
+            RefreshInputRestriction();
+        }
+        public void SetInputHostEnabled(bool enabled)
+        {
+            inputHostEnabled = enabled;
+            SuppressInputForCurrentFrame();
+        }
+        // Host calls before HMS PlayerController.Update; this is the sole session input-block writer.
+        public void RefreshInputRestriction()
         {
             if (!HasActor) return;
-            bool blocked = state.GameplayBlocked || state.WorldPaused;
+            bool blocked = disposed || detaching || !inputHostEnabled || !session.IsActive ||
+                control.State.GameplayBlocked || control.State.WorldPaused || InputSuppressedThisFrame;
             actor.SetInputBlocked(blocked);
-            if (blocked) { pendingTear = false; pendingForm = false; actor.ClearInput(); skills.CancelAll(); }
+        }
+        private void OnSessionChanged()
+        {
+            RefreshInputRestriction();
+            if (!session.IsActive && skills != null) skills.CancelAll();
+        }
+        private void OnControlChanged(ControlState state)
+        {
+            SuppressInputForCurrentFrame();
+            if (!HasActor) return;
+            if (state.GameplayBlocked || state.WorldPaused) { actor.ClearInput(); skills.CancelAll(); }
             if (separationPending && !state.WorldPaused && !state.PresentationPaused) ScheduleSeparationVelocity();
         }
         private bool RejectAbility(AbilityId ability, PlayerSkillBlockReason reason)
@@ -621,7 +638,6 @@ namespace Cooked.Session
             {
                 if (!deathPending) BeginDeathObservation(skipDeathPresentation);
                 deathNotified = true;
-                pendingTear = pendingForm = false;
                 SessionCleanup.Attempt(errors, () => actor.ClearInput());
                 SessionCleanup.Attempt(errors, skills.CancelAll);
                 SessionCleanup.Notify(errors, Dying);
@@ -742,6 +758,7 @@ namespace Cooked.Session
             try
             {
                 SessionCleanup.Attempt(errors, () => control.Changed -= OnControlChanged);
+                SessionCleanup.Attempt(errors, () => session.Changed -= OnSessionChanged);
                 SessionCleanup.Attempt(errors, Detach);
             }
             finally { Changed = null; ActorChanged = null; AbilitySucceeded = null; AbilityRejected = null; Dying = null; hurtColliderResolver = null; }

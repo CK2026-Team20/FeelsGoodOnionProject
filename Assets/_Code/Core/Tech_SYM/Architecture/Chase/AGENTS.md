@@ -1,9 +1,9 @@
 # 추격
 
-경로 투영·진행 거리·포획은 Chase가, 전신 통과·퇴로 안전·현재 상태 저장·포포 최종 대화는 Stage/Session 연결이 맡는다. 실제 Transform 경로와 시작 지점을 작성한다.
+2026-10-11 직접 지시: 시작 트리거 접촉 → 퇴로 안전/시작 가능 → 현재 상태 저장 성공 → 추격 시작/문 닫힘. 전신 통과, 진행 경로, 추격 경로와 경로상 포획 간격은 사용하지 않는다.
 
-전신 통과와 안전 확인 후 현재 위치·조각·해금 마스크 저장에 성공해야 한 번 시작한다. 초기 뒤 간격8m, 속도4m/s, 높이를 제외한 포획 간격0.8m는 조절 초기값이다. 옵션/메모 자기 월드정지를 유지하고 낡은 Actor를 거절한다. 최종 대화 Completed/Skipped는 Ending, Cancelled는 미완료이며 포획이 우선한다.
+ChaseRuntimeDriver는 시작 시 플레이어 뒤8m의 Y/Z를 고정하고 월드 +X로 이동하며 실제 Physics 자식 BoxCollider와 현재 Actor CapsuleCollider의 접촉/상대 이동 sweep으로 포획한다. 같은 프레임 포획은 Stage의 최종 대화보다 먼저 처리한다. 옵션/메모 정지, 낡은 Actor 거절, 공통 ForceDeath와 자기 구독 해제를 유지한다. ChaseSwarmPresentation은 외형 tween만, ChaseDefinition은 속도 설정만 맡는다.
+
+지역 퇴로와 시작 수락은 StageTrigger 소유다. 최종 포포 대화는 Stage의 기존 세대/회차/선택 검증과 Completed/Skipped 장부를 보존한다. 완료/Skipped만 Ending이며 취소·낡은 callback·동시 사망/포획은 거절한다.
 
 현행 공통 규칙은 Assets/_Docs/planning-index.md와 루트 AGENTS.md를 따른다. 에이전트 Play는 금지하며 구현/검증 상태는 tracking/status.md다.
-
-최종 포포 Escape(7)만 완료 장부와 별개로 새 회차를 허용한다. 실제 Trigger·선택 객체·Table·Code·활성 Stage·Actor 세대·Round·Session을 수락 전후 및 완료 callback에서 검증하고 Completed/Skipped에서만 Ending을 한 번 예약한다. 동일 프레임 사망/포획이 우선이고 Cancelled/낡은 callback은 현재 판에 전달하지 않는다.

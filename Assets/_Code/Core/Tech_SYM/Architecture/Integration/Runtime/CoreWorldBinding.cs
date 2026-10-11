@@ -32,6 +32,7 @@ namespace Cooked.Integration
         private readonly CinemachineCamera side, quarter;
         private StageService stage;
         private readonly List<MemoUIController> memos = new List<MemoUIController>();
+        private readonly List<StageTrigger> chaseTriggers = new List<StageTrigger>();
         private readonly List<CameraZoneTrigger> cameraZones = new List<CameraZoneTrigger>();
         private readonly List<PeriodicPlatform> periodicPlatforms = new List<PeriodicPlatform>();
         private AbilityMask observedUnlocks;
@@ -97,10 +98,12 @@ namespace Cooked.Integration
                 stage.BindDialogueTable(dialogueTable);
                 stage.BindFallRequests((source, shell) => runtime.Player.IsCurrentActor(source, runtime.Player.ActorGeneration) &&
                     (shell != null ? runtime.Player.ReturnOwnedDebris(shell) : runtime.Player.ForceDeath(Vector3.zero, skipPresentation: true) > 0));
-                stage.BindChaseStart(s => chase.CanStart(s.StageId, s.ChaseWaypoints, s.Actor),
-                    s => runtime.TryCaptureBeforeChase(s, s.Actor),
-                    s => chase.TryStart(s.StageId, s.ChaseWaypoints, s.Actor));
-                stage.StageEntered += OnStage;
+                foreach (var trigger in stage.FindComponents<StageTrigger>())
+                    if (trigger.Kind == StageTriggerKind.Chase && trigger.Owner == stage)
+                    {
+                        trigger.BindChase(chase, source => runtime.TryCaptureBeforeChase(active, source));
+                        chaseTriggers.Add(trigger);
+                    }
                 stage.ChaseStarted += OnChaseStarted;
                 foreach (var memo in stage.FindComponents<MemoUIController>())
                 { memo.Initialize(control); memos.Add(memo); }
@@ -148,9 +151,7 @@ namespace Cooked.Integration
             return string.IsNullOrWhiteSpace(code) || runtime.Dialogue.IsCompleted(code) || runtime.TryStartSafeDialogue(owner.StageId, code);
         }
         private void StopChase()
-        { chase.Service?.Stop(ChaseStopReason.Arrival); audioFlow.SetChaseActive(false); }
-        private void OnStage(StageService owner)
-        { if (owner == stage && observing) audioFlow.SetStage(owner.StageMusicPurpose); }
+        { chase.Stop(); audioFlow.SetChaseActive(false); }
         private void OnCheckpointCaptured()
         { if (observing) audio.PlaySfx(AudioCueIds.Checkpoint); }
         private void OnChaseStarted(StageService value) => audioFlow.SetChaseActive(true);
@@ -186,11 +187,12 @@ namespace Cooked.Integration
             // unloading this Stage during app shutdown, when scene lookup is invalid.
             foreach (var zone in cameraZones) if (zone != null) SessionCleanup.Attempt(errors, zone.ResetForRetry);
             cameraZones.Clear();
+            foreach (var trigger in chaseTriggers) if (trigger != null) SessionCleanup.Attempt(errors, trigger.UnbindChase);
+            chaseTriggers.Clear();
             foreach (var periodic in periodicPlatforms) if (periodic != null) SessionCleanup.Attempt(errors, () => periodic.BindMaterialization(null));
             periodicPlatforms.Clear();
             if (stage != null)
             {
-                stage.StageEntered -= OnStage;
                 stage.ChaseStarted -= OnChaseStarted;
                 SessionCleanup.Attempt(errors, stage.Dispose);
             }

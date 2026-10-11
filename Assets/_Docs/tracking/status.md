@@ -2,6 +2,12 @@
 
 2026-10-11. 현행은 V1.5 활성 본문과 사용자 후속 직접 선택이다. 승인된 [spec](ready-system-v15-2026-10-10/spec.md)과 [plan](ready-system-v15-2026-10-10/plan.md)을 구현하고 실제 소스·소유 참조를 이관했다. 이전 버전의 Play·빌드·QA 수치는 아래 당시 이력으로만 보존하며 이번 통과로 승계하지 않는다.
 
+## 2026-10-11 기능 객체 중심 구조 정리
+
+이번 직접 지시에 따른 [명세](structure-simplification-2026-10-11/기능%20명세서.md), [코드 리뷰](structure-simplification-2026-10-11/코드%20리뷰.md), [검증](structure-simplification-2026-10-11/테스트%20및%20검증%20항목.md)를 적용했다. 추격은 접촉 트리거와 +X 직선 이동/전면 Box 포획으로 바뀌었고 경로·전신 통과 및 중간5소스를 제거했다. Stage 작성필드는 초기 CP/음악2개다. 퇴로는 시작 트리거가, 카메라/CP 앵커는 소유 객체의 자식이 된다. 기존 Enter4개·경로점16개를 제거하고22개 기준점 월드 좌표를 보존했다. HUD 미사용 필드와 Host Inspector를 정리하고 HMS36소스를 감사했다.
+
+해당 작업트리 Unity 전체 컴파일과4Stage/Core 비 Play native 연결 검사는 통과했다. 실제 포획·retry·한 판 Play/빌드는 미실행이다. 애니메이션 리소스 누락과 HMS 입력 우회 경계는 [감사](structure-simplification-2026-10-11/HMS%20연결%20검토.md)에 기록했다. LFS 원본 복원 및 Editor URP 자동 저장 diff를 검토했고 기존 사용자 폰트 변경을 보존했다. Git 커밋/원격 작업은 하지 않았다. 아래 이전 구현·검증은 당시 이력이며 새 추격의 Play 성공으로 승계하지 않는다.
+
 ## 2026-10-11 조립 시작·종료 오류 후속 수정
 
 제품 Source는 `6dd87e4fad53f9af523498f47292def3ba3a117e`이며 로컬 `feature/core/systems`에 반영했다. 앞선 `c2c3b6b`에서 App 조립을 Awake에서 Start로 옮긴 뒤, 사람이 실행한 Console을 읽어 장치·적의 로드 중 참조 거절과 종료 시 Stage 재검색 예외를 확인했다. `Flow revision 1: LoadingGame, busy=True` 자체는 정상 상태 Log다.
@@ -118,3 +124,7 @@ TMP 폰트의 앞선 자동 glyph/atlas 변경은 diff를 보존·검토했다. 
 이전 Windows000106의 빌드 Succeeded/errors0/warnings73·입력 두 판 및 UI/물리43검사 등은 [T9 최종 검증](2026-10-05-T9-최종검증.md)과 [T9 실행기록](2026-10-05-T9-실행기록.md)의 당시 증거다. 이번 소스의 새 빌드로 주장하지 않는다. 이전 상태 전체 원문은 [보관본](archive/2026-10-05-before-guidance-refresh/status.md)에 있다.
 
 게임은 기능 응집 Prototype/1_Stage를 사용하며 Stage2/3 직접 진입 계약을 유지한다. 앱 재시작 후 진행 저장·서버·네트워크·본편 추가 배치는 현재 요구로 확정하지 않았다. 열린 문제는 [findings.md](findings.md), 권한은 [security.md](../security.md)를 확인한다.
+
+## 2026-10-11 HMS 기본 입력 이관
+
+HMS PlayerController 조립, Host의 F/사망 진행, Bridge의 모달/슬롯 정책/피드백 연결과 Router 삭제를 완료했다. 비 Play 컴파일·프리팹2/씬4 참조·API9 검사가 통과했다. 실제 Play는 미실행이다. [검증 기록](structure-simplification-2026-10-11/HMS%20입력%20조립%20검증.md)을 따른다.

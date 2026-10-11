@@ -6,7 +6,7 @@
 
 움직이는 발판은 하나의 KinematicPlatformMotion이 실제 Rigidbody를 이동한다. Render는 Body 아래, 시작/끝·닫힘/열림·경로 Marker는 Body 밖이다. 조작/안내 Point는 손잡이를 따라가야 하므로 Body의 자식이 될 수 있다. 고정 목적 Point와 현재 조작 위치를 혼동하지 않는다. Shattered는 Animator 없는 경고 Shake도 Visual을 움직인다. 그 Visual/자식의 고정 Point를 거절하고 static 논리 Root의 Marker 형제는 허용한다.
 
-Chase visual은 자기 Root의 strict child·physics-free만 수락한다. 잘못된 Bind는 Unbind 이전에 거절하고 실제 수락한 boundVisual만 복원/숨긴다. Inspector가 이후 다른 외형을 가리켜도 borrowed 수락 객체의 해제 책임을 잃지 않는다. 포획은 경로 모델로 판정하며 메시 bob을 충돌 진실로 쓰지 않는다.
+Chase visual은 자기 Root의 strict child·physics-free만 수락한다. 잘못된 Bind는 Unbind 이전에 거절하고 실제 수락한 boundVisual만 복원/숨긴다. Inspector가 이후 다른 외형을 가리켜도 borrowed 수락 객체의 해제 책임을 잃지 않는다. 포획은 실제 Physics 자식 BoxCollider와 현재 Actor의 물리 CapsuleCollider로 판정하며 메시 bob을 충돌 진실로 쓰지 않는다. ChaseRuntimeDriver가 +X 이동과 포획을 함께 담당한다.
 
 TearFragment는 Sensor와 같은 GameObject에서 Trigger를 받되 pickupRoot 전체를 Tween한다. 같은 Root/센서를 소비하고 최대5에서는 남긴다. Stage 재준비는 비활성 Root까지 찾아 초기 pose/Collider/소비 플래그를 복구한다. 수집 객체의 새 저장 ID나 별도 pooled 교체를 추가하지 않는다.
 
@@ -20,7 +20,7 @@ Shell 끼임은 플레이어 사망으로 변환하지 않는다. 현재 Form의
 
 ## CP와 최종 대화 맥락
 
-Stage 초기 Marker는 첫 진입 위치이고 완료 Snapshot이 아니다. 실제 접촉 당시 현재 위치·조각·마스크를 전부 검증하고 교체한다. 같은 실제 Marker 재접촉 억제를 Actor 교체로 비우지 않는다. 추격 전신 통과·퇴로 안전을 먼저 보고 저장 성공 뒤 시작한다. 저장 실패가 문 닫힘·추격 시작으로 이어지지 않아야 한다.
+Stage 초기 Marker는 첫 진입 위치이고 완료 Snapshot이 아니다. 실제 접촉 당시 현재 위치·조각·마스크를 전부 검증하고 교체한다. 같은 실제 Marker 재접촉 억제를 Actor 교체로 비우지 않는다. 추격 트리거 진입·퇴로 안전을 먼저 보고 저장 성공 뒤 시작한다. 전신 통과 및 진행 경로 투영은 2026-10-11 직접 지시로 제거했다. 저장 실패가 문 닫힘·추격 시작으로 이어지지 않아야 한다.
 
 일반 대화 Completed/Skipped 장부와 능력 마스크 rollback은 수명이 다르다. 해금을 복원해도 안내 완료 기록은 지우지 않는다. 최종 포포만 사용자가 선택한 재실행 예외이며 Code 전체 장부를 Clear해서 해결하지 않는다. 한 회차의 Stage·Trigger·선택 객체·Table·Code·Actor세대·Round·예상 Session을 캡처하고 준비/시작/종료/예약 실행에서 재검증한다. 값이 같은 다른 선택 객체, 같은 위치의 다른 Marker, 같은 Code의 다른 판을 같은 요청으로 취급하지 않는다.
 
@@ -28,7 +28,7 @@ Stage 초기 Marker는 첫 진입 위치이고 완료 Snapshot이 아니다. 실
 
 ## UI·작업·해제
 
-Reader/Router는 하나의 입력을 Bridge로 한 번 전달한다. View 버튼 OnClick에 이미 VM에 연결한 게임 명령을 다시 등록하지 않는다. Auto/Log/Options는 표시 시계와 예약 잔여시간을 정확히 소유하며 로그 닫힘 뒤 Auto를 자동 재개하지 않는다. 메모 Opening F닫기와 Closing 제한, 중첩 Options의 자기 토큰 반환을 보존한다.
+HMS Reader/PlayerController가 이동·점프·스킬 입력을 한 번 처리한다. Host는 F만 처리하고 Bridge는 슬롯 사용 조건·모달 제한·피드백을 연결한다. View 버튼 OnClick에 이미 VM에 연결한 게임 명령을 다시 등록하지 않는다. Auto/Log/Options는 표시 시계와 예약 잔여시간을 정확히 소유하며 로그 닫힘 뒤 Auto를 자동 재개하지 않는다. 메모 Opening F닫기와 Closing 제한, 중첩 Options의 자기 토큰 반환을 보존한다.
 
 타이틀 복귀·사망·Actor 파괴·Dispose는 생성한 Coroutine/Tween·예약·이벤트를 취소/해제한다. 부분 초기화 실패에도 이미 획득한 자원을 정리하고 실패를 성공처럼 반환하지 않는다. CoroutineOperationRunner의 nested iterator/finally, SessionShutdownOperation의 집계 해제는 실제 책임이 있어 유지한다. App scope disposing 중 이미 파괴된 Core와 정상 실행 중 Core 누락을 같은 성공으로 취급하지 않는다.
 

@@ -9,7 +9,7 @@ namespace Cooked.Level
     {
         [SerializeField, InspectorLabel("카메라 방식"), Tooltip("이 구간의 측면 또는 쿼터뷰 방식을 선택하세요.")]
         private CameraMovementMode mode = CameraMovementMode.Side;
-        [SerializeField, InspectorLabel("정렬 지점"), Tooltip("같은 씬의 고정 Transform을 연결하세요. 측면은 이 지점의 월드 Z에 정렬하며 파란 구로 표시됩니다.")]
+        [SerializeField, InspectorLabel("정렬 지점"), Tooltip("이 트리거 아래의 정렬 Transform을 연결하세요. 측면은 이 지점의 월드 Z에 정렬하며 파란 구로 표시됩니다.")]
         private Transform alignmentPoint;
         private LevelCameraService cameraService;
         private PlayerFacade actor;
@@ -28,7 +28,8 @@ namespace Cooked.Level
         public Vector3 AlignmentPosition => ResolvedZone.AlignmentPosition;
         private Vector3 ResolveAlignment()
         {
-            if (alignmentPoint == null) throw new System.InvalidOperationException("같은 씬의 실제 카메라 정렬 Transform을 연결하세요.");
+            if (alignmentPoint == null || alignmentPoint == transform || !alignmentPoint.IsChildOf(transform))
+                throw new System.InvalidOperationException("이 카메라 트리거의 자식 정렬 Transform을 연결하세요.");
             SceneComponentLookup.RequireFixedPoint(this, alignmentPoint, "정렬 지점");
             return alignmentPoint.position;
         }

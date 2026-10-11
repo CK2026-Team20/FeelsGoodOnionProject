@@ -405,17 +405,6 @@ PrefabInstance:
       addedObject: {fileID: 795894590}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a24df59bdf17b874086bafc2dd98a9ec, type: 3}
---- !u!114 &123034037 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2492422943514009054, guid: a24df59bdf17b874086bafc2dd98a9ec, type: 3}
-  m_PrefabInstance: {fileID: 123034036}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8ea574d531d75ec42a4801e48bfaaeff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Enemies.EnemyActor
 --- !u!4 &123034038 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4458559846967882501, guid: a24df59bdf17b874086bafc2dd98a9ec, type: 3}
@@ -474,6 +463,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &195120950
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -548,6 +538,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &238253429
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -779,6 +770,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &286320328
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 286320329}
+  m_Layer: 0
+  m_Name: AlignmentAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &286320329
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 286320328}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 920362550}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &297958622
 GameObject:
   m_ObjectHideFlags: 0
@@ -896,7 +918,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
-  alignmentPoint: {fileID: 353051106}
+  alignmentPoint: {fileID: 1942041614}
 --- !u!65 &353051105
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -930,7 +952,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1942041614}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &384661116
@@ -1339,6 +1362,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 938732318}
+  - {fileID: 2056408424}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &493226694
@@ -2175,6 +2199,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &763704125
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3066,6 +3091,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 766341701}
+  - {fileID: 2009504424}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!43 &854492318
@@ -3596,7 +3622,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 1
-  alignmentPoint: {fileID: 920362550}
+  alignmentPoint: {fileID: 286320329}
 --- !u!65 &920362549
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3630,7 +3656,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 286320329}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &927304244
@@ -6433,15 +6460,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageService
   initialCheckpoint: {fileID: 830977230}
   stageMusicPurpose: 3
-  checkpoints:
-  - {fileID: 830977230}
-  - {fileID: 482348752}
-  enemies:
-  - {fileID: 123034037}
-  chasePathPoints: []
-  progressPathPoints: []
-  chaseStartPoint: {fileID: 1790676031}
-  chaseRetreatGate: {fileID: 0}
 --- !u!4 &1612306505
 Transform:
   m_ObjectHideFlags: 0
@@ -7093,37 +7111,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 27, y: 1, z: 4}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!1 &1790676030
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1790676031}
-  m_Layer: 0
-  m_Name: "03_1_Stage_\uCD94\uACA9\uC2DC\uC791\uC120"
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1790676031
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1790676030}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 18, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1826014780
 GameObject:
   m_ObjectHideFlags: 0
@@ -7156,6 +7143,37 @@ Transform:
   - {fileID: 1787719212}
   - {fileID: 1345932993}
   m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1942041613
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1942041614}
+  m_Layer: 0
+  m_Name: AlignmentAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1942041614
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1942041613}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 353051106}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1979959848
 GameObject:
@@ -7542,12 +7560,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2009504423}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2, y: 1.03, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.03, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 830977231}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2013279577
 GameObject:
@@ -7602,6 +7620,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &2013279580
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7622,80 +7641,6 @@ BoxCollider:
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1.5, y: 2, z: 1.5}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!1 &2049348175
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2049348176}
-  - component: {fileID: 2049348178}
-  - component: {fileID: 2049348177}
-  m_Layer: 0
-  m_Name: EnterTrigger
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2049348176
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2049348175}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 18, y: 4, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2049348177
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2049348175}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 22e1dbaa1e21f394d845b40436a5c01f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageTrigger
-  stage: {fileID: 1612306504}
-  kind: 0
-  checkpoint: {fileID: 0}
-  dialogue:
-    table: {fileID: 0}
-    code: 
-  independentHost: {fileID: 0}
-  once: 0
---- !u!65 &2049348178
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2049348175}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 36, y: 8, z: 4}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2056408423
 GameObject:
@@ -7721,12 +7666,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2056408423}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 20, y: 3.33, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.03, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 482348753}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2060905420
 GameObject:
@@ -7867,6 +7812,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &2134351012
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7899,7 +7845,6 @@ SceneRoots:
   - {fileID: 861802283}
   - {fileID: 830977231}
   - {fileID: 2013279578}
-  - {fileID: 2049348176}
   - {fileID: 493226695}
   - {fileID: 1381185748}
   - {fileID: 2134351010}
@@ -7919,12 +7864,9 @@ SceneRoots:
   - {fileID: 1156048113}
   - {fileID: 35559846}
   - {fileID: 238253427}
-  - {fileID: 1790676031}
-  - {fileID: 2009504424}
   - {fileID: 353051106}
   - {fileID: 254696702}
   - {fileID: 969079643}
-  - {fileID: 2056408424}
   - {fileID: 920362550}
   - {fileID: 1265624482}
   - {fileID: 1700388798}

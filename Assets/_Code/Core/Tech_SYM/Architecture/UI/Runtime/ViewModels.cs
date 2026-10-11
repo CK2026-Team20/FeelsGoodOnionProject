@@ -50,8 +50,6 @@ namespace Cooked.UI
     {
         private readonly IPlayerBridgeService bridge; private readonly IGameSessionService session;
         public bool Visible { get; private set; } = true;
-        public string Health => bridge.HasActor ? $"체력  {bridge.Snapshot.Health} / {bridge.Snapshot.MaxHealth}" : "체력  —";
-        public string Fragments => bridge.HasActor ? $"눈물 조각  {bridge.Snapshot.Fragments} / {bridge.Snapshot.MaxFragments}" : "눈물 조각  —";
         public string FragmentCount => bridge.HasActor ? $"{bridge.Snapshot.Fragments}/{bridge.Snapshot.MaxFragments}" : "—/—";
         public float HeartFill(int slot)
         {
@@ -62,9 +60,6 @@ namespace Cooked.UI
         }
         public bool FormUnlocked => session.IsActive && session.IsUnlocked(AbilityId.FormChange);
         public bool TearUnlocked => session.IsActive && session.IsUnlocked(AbilityId.Tear);
-        public string Abilities => "이동 방향키 · 점프 Space · 상호작용 F" +
-            (session.IsUnlocked(AbilityId.FormChange) ? " · 형태 전환 Q" : "") +
-            (session.IsUnlocked(AbilityId.Tear) ? " · 눈물 E" : "");
         public HudViewModel(IPlayerBridgeService bridge, IGameSessionService session)
         {
             this.bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));

@@ -960,6 +960,7 @@ GameObject:
   - component: {fileID: 1583984140978079334}
   - component: {fileID: 4666931562335962367}
   - component: {fileID: 2761391174508196570}
+  - component: {fileID: 4792847051734198656}
   m_Layer: 0
   m_Name: Player_HMS
   m_TagString: Player
@@ -1197,6 +1198,18 @@ MonoBehaviour:
   - {fileID: 7675896248993782018}
   duration: 0.15
   damageColor: {r: 1, g: 0, b: 0, a: 1}
+--- !u!114 &4792847051734198656
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3777115693667901944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7530312256ebc5846a7f81b12578fc36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
 --- !u!1 &3834480361415993265
 GameObject:
   m_ObjectHideFlags: 0
@@ -2324,7 +2337,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3930614096325087545}
-  - component: {fileID: 2054751724254036428}
   - component: {fileID: 8618306476758955406}
   - component: {fileID: 3721380482251218573}
   m_Layer: 0
@@ -2352,18 +2364,6 @@ Transform:
   - {fileID: 4477803415636353422}
   m_Father: {fileID: 5500414475690877281}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2054751724254036428
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5569553690061215328}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f16143e385b04575aa7151fbcf0a28d2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.GameplayInputRouter
 --- !u!114 &8618306476758955406
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,103 +1,212 @@
-using Cooked.Authoring;
 using System;
-using System.Collections.Generic;
+using Cooked.Authoring;
 using Cooked.Contracts;
 using Cooked.Session;
 using UnityEngine;
 
 namespace Cooked.Chase
 {
-    /// <summary>Explicit composition/tick entry point; Integration owns this prefab's lifetime.</summary>
-    [DefaultExecutionOrder(200)]
+    /// <summary>One straight chase per Initialize. Owns movement and capture; the trigger saves before TryStart.</summary>
+    [DefaultExecutionOrder(200)] // Capture precedes the final Stage's LateUpdate(500) ending reservation.
     [DisallowMultipleComponent]
     public sealed class ChaseRuntimeDriver : MonoBehaviour
     {
-        [Tooltip("추격 속도와 시작 거리 조건을 제공하는 설정 자산입니다. 무리의 밸런스는 이 자산에서 조절하세요.")]
-        [SerializeField, InspectorLabel("추격 설정")] private ChaseDefinition definition = null;
-        [Tooltip("추격 무리의 등장·상하 움직임·퇴장 외형을 표현할 컴포넌트입니다. 포획 판정 자체는 바꾸지 않습니다.")]
-        [SerializeField, InspectorLabel("무리 표현")] private ChaseSwarmPresentation presentation = null;
-        private IPlayerBridgeService bridge;
-        private string reportedFailure;
-        private ChasePath route;
-        public ChaseService Service { get; private set; }
+        [SerializeField, InspectorLabel("추격 설정"), Tooltip("월드 +X 방향의 추격 속도를 제공하는 자산입니다.")]
+        private ChaseDefinition definition;
+        [SerializeField, InspectorLabel("무리 표현"), Tooltip("같은 루트의 등장·상하 움직임·퇴장 표현을 연결하세요.")]
+        private ChaseSwarmPresentation presentation;
+
+        private enum State { Uninitialized, Ready, Running, Stopped, Caught }
+        private State state;
+        private PlayerBridgeService bridge;
+        private IGameplayControlService control;
+        private IGameFlowService flow;
+        private ChaseSwarmPresentation boundPresentation;
+        private BoxCollider frontCollider;
+        private CapsuleCollider actorCollider;
+        private PlayerFacade actor;
+        private long actorGeneration;
+        private Vector3 swarmPosition, previousActorPosition;
+        private float speed;
         public string LastRejection { get; private set; }
+        public long AttemptVersion { get; private set; }
+        public bool IsRunningAttempt(long version, PlayerFacade candidate) => version == AttemptVersion &&
+            state == State.Running && actor == candidate && bridge != null && bridge.IsCurrentActor(candidate, actorGeneration);
 
         public void Initialize(IPlayerBridgeService playerBridge, IGameplayControlService control,
             IGameFlowService flow)
         {
             Shutdown();
-            if (definition == null || presentation == null) throw new InvalidOperationException("Chase prefab bindings are missing.");
-            Cooked.Integration.SceneComponentLookup.RequireSameScene(this, presentation, "무리 표현");
-            bridge = playerBridge ?? throw new ArgumentNullException(nameof(playerBridge));
-            if (!(bridge is PlayerBridgeService owner)) throw new ArgumentException("Chase needs the current session death owner.");
-            Service = new ChaseService(bridge, control, flow, definition.CreateSettings(), velocity => owner.ForceDeath(velocity));
-            reportedFailure = null;
-            LastRejection = null;
-            try { presentation.Bind(Service, control); }
+            if (!(playerBridge is PlayerBridgeService owner))
+                throw new ArgumentException("Chase needs the current session death owner.", nameof(playerBridge));
+            if (control == null) throw new ArgumentNullException(nameof(control));
+            if (flow == null) throw new ArgumentNullException(nameof(flow));
+            if (definition == null || presentation == null || presentation.transform != transform || !presentation.isActiveAndEnabled)
+                throw new InvalidOperationException("추격 설정과 같은 루트의 활성 무리 표현을 연결하세요.");
+            // Reuse the actual authored physics child. Never create a collider or guess by object name.
+            var colliders = GetComponentsInChildren<Collider>(true);
+            if (colliders.Length != 1 || !(colliders[0] is BoxCollider box) || box.transform == transform ||
+                !box.enabled || !box.gameObject.activeInHierarchy || !box.isTrigger ||
+                GetComponentsInChildren<Rigidbody>(true).Length != 0 || GetComponentInParent<Rigidbody>() != null)
+                throw new InvalidOperationException("추격 루트에는 Rigidbody 없이 활성 자식 Trigger BoxCollider 하나가 필요합니다.");
+            float configuredSpeed = definition.Speed;
+            ValidateBox(box);
+            try
+            {
+                boundPresentation = presentation;
+                boundPresentation.Bind(control);
+                frontCollider = box;
+                bridge = owner;
+                this.control = control;
+                this.flow = flow;
+                speed = configuredSpeed;
+                state = State.Ready;
+                LastRejection = null;
+                flow.Changed += OnFlowChanged;
+            }
             catch { Shutdown(); throw; }
         }
 
-        /// <summary>
-        /// Integration calls this from StageService.BindChaseStart's acceptance callback.
-        /// ChaseStarted is an AFTER-success audio notification, never the start command.
-        /// Level closes its rear gate only on true.
-        /// Never call it every frame to reposition an existing swarm.
-        /// </summary>
-        public bool TryStart(string stageId, IReadOnlyList<Vector3> waypoints, PlayerFacade actor)
+        public bool CanStart(PlayerFacade candidate)
         {
-            if (!isActiveAndEnabled || Service == null || bridge == null)
-                return Reject("Chase driver has not been initialized or enabled.");
-            if (actor == null || bridge.Actor != actor || !bridge.IsCurrentActor(actor, bridge.ActorGeneration))
-                return Reject("Stage Actor does not match the current session Actor.");
-            bool accepted = Service.Start(stageId, waypoints, new PlayerActor(actor));
-            if (accepted) route = new ChasePath(waypoints);
-            LastRejection = Service.LastRejection;
-            return accepted;
+            LastRejection = null;
+            if (!isActiveAndEnabled || state != State.Ready || bridge == null)
+                return Reject("추격이 초기화되지 않았거나 이미 시작/종료됐습니다.");
+            if (flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy ||
+                control.State.WorldPaused || control.State.PresentationPaused)
+                return Reject("게임 진행 중에만 추격을 시작할 수 있습니다.");
+            if (candidate == null || !bridge.IsCurrentActor(candidate, bridge.ActorGeneration) || candidate.IsDead)
+                return Reject("현재 세션의 살아 있는 플레이어가 필요합니다.");
+            var body = candidate.GetComponent<CapsuleCollider>();
+            if (!UsableBody(body) || !Finite(candidate.transform.position))
+                return Reject("플레이어의 실제 물리 CapsuleCollider와 유효한 위치가 필요합니다.");
+            if (frontCollider == null || !frontCollider.enabled || !frontCollider.gameObject.activeInHierarchy ||
+                boundPresentation == null || !boundPresentation.isActiveAndEnabled)
+                return Reject("추격 물리 자식 또는 표현이 비활성화됐습니다.");
+            return true;
         }
 
-
-        public bool CanStart(string stageId, IReadOnlyList<Vector3> waypoints, PlayerFacade candidate)
+        public bool TryStart(PlayerFacade candidate)
         {
-            if (!isActiveAndEnabled || Service == null || bridge == null || candidate == null ||
-                !bridge.IsCurrentActor(candidate, bridge.ActorGeneration)) return false;
-            return Service.CanStart(stageId, waypoints, new PlayerActor(candidate));
+            if (!CanStart(candidate)) return false;
+            long version = ++AttemptVersion;
+            actor = candidate;
+            actorGeneration = bridge.ActorGeneration;
+            actorCollider = candidate.GetComponent<CapsuleCollider>();
+            previousActorPosition = actorCollider.transform.position;
+            swarmPosition = candidate.transform.position - Vector3.right * 8f;
+            transform.position = swarmPosition; // Y/Z are captured once, never follow the actor afterward.
+            state = State.Running;
+            try { boundPresentation.Show(); }
+            catch { if (IsRunningAttempt(version, candidate)) Stop(); throw; }
+            return IsRunningAttempt(version, candidate);
         }
 
         private void LateUpdate()
         {
-            Service?.Tick(Time.deltaTime, Time.frameCount);
-            if (Service != null) presentation.Tick(Time.deltaTime, Time.unscaledDeltaTime);
-            if (Service != null && route != null && Service.Snapshot.State == ChaseState.Running)
+            if (state == State.Uninitialized) return;
+            if (state == State.Running)
             {
-                float p = Service.Snapshot.SwarmProgress;
-                var direction = route.Evaluate(Mathf.Min(route.Length, p + .1f)) - route.Evaluate(Mathf.Max(0,p - .1f));
-                if (direction.sqrMagnitude > .0001f) transform.rotation = Quaternion.FromToRotation(Vector3.right,direction.normalized);
+                if (flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy ||
+                    !bridge.IsCurrentActor(actor, actorGeneration) || actor.IsDead || !UsableBody(actorCollider))
+                    Stop();
+                else if (control.State.WorldPaused || control.State.PresentationPaused)
+                    previousActorPosition = actorCollider.transform.position;
+                else
+                {
+                    try { Advance(Time.deltaTime); }
+                    catch { Stop(); throw; }
+                }
             }
-            if (Service != null && Service.Failure != null && Service.Failure != reportedFailure)
+            // ForceDeath observers may synchronously Shutdown this driver.
+            if (state != State.Uninitialized) boundPresentation.Tick(Time.deltaTime, Time.unscaledDeltaTime);
+        }
+
+        private void Advance(float deltaTime)
+        {
+            if (!float.IsFinite(deltaTime) || deltaTime < 0) throw new ArgumentOutOfRangeException(nameof(deltaTime));
+            if (frontCollider == null || !frontCollider.enabled || !frontCollider.gameObject.activeInHierarchy ||
+                boundPresentation == null || !boundPresentation.isActiveAndEnabled)
+                throw new InvalidOperationException("실행 중 추격 물리 자식 또는 표현 연결이 사라졌습니다.");
+            ValidateBox(frontCollider);
+            Vector3 actorPosition = actorCollider.transform.position;
+            Vector3 actorDelta = actorPosition - previousActorPosition;
+            Vector3 displacement = Vector3.right * (speed * deltaTime);
+            if (!Finite(actorDelta) || !Finite(swarmPosition + displacement))
+                throw new InvalidOperationException("추격 이동 값은 유한해야 합니다.");
+            Vector3 startPosition = frontCollider.transform.position;
+            Quaternion rotation = frontCollider.transform.rotation;
+            bool caught = Touches(startPosition, rotation);
+            // Relative sweep includes actor motion through a thin box between rendered frames.
+            Vector3 relativeStart = startPosition + actorDelta;
+            Vector3 relativeMove = displacement - actorDelta;
+            caught |= Touches(relativeStart, rotation);
+            if (!caught && relativeMove.sqrMagnitude > 0)
             {
-                reportedFailure = Service.Failure;
-                Debug.LogError("[Cooked.Chase] " + reportedFailure, this);
+                // Only the sweep needs the native broadphase. Include Transform changes earlier
+                // this frame before Stage LateUpdate; explicit-pose overlap tests need no global sync.
+                if (!Physics.autoSyncTransforms) Physics.SyncTransforms();
+                Vector3 scale = frontCollider.transform.lossyScale;
+                Vector3 half = Vector3.Scale(frontCollider.size, new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z))) * .5f;
+                Vector3 center = frontCollider.transform.TransformPoint(frontCollider.center) + actorDelta;
+                foreach (var hit in Physics.BoxCastAll(center, half, relativeMove.normalized, rotation,
+                    relativeMove.magnitude, 1 << actorCollider.gameObject.layer, QueryTriggerInteraction.Collide))
+                    if (hit.collider == actorCollider) { caught = true; break; }
             }
+            swarmPosition += displacement;
+            transform.position = swarmPosition;
+            previousActorPosition = actorPosition;
+            caught |= Touches(frontCollider.transform.position, frontCollider.transform.rotation);
+            if (!caught) return;
+            // Mark terminal before any external observer runs; never send duplicate death requests.
+            state = State.Caught;
+            var deathOwner = bridge;
+            boundPresentation.Hide();
+            if (deathOwner.IsCurrentActor(actor, actorGeneration) && !actor.IsDead && deathOwner.ForceDeath(Vector3.zero) <= 0)
+                throw new InvalidOperationException("추격 포획의 공통 사망 요청이 거절됐습니다.");
+        }
+
+        private bool Touches(Vector3 position, Quaternion rotation) => Physics.ComputePenetration(
+            frontCollider, position, rotation, actorCollider, actorCollider.transform.position,
+            actorCollider.transform.rotation, out _, out _);
+
+        public void Stop()
+        {
+            if (state != State.Running && state != State.Ready) return;
+            state = State.Stopped;
+            actor = null;
+            actorCollider = null;
+            boundPresentation?.Hide();
         }
 
         public void Shutdown()
         {
-            var errors = new List<Exception>();
-            if (presentation != null) SessionCleanup.Attempt(errors, presentation.Unbind);
-            if (Service != null) SessionCleanup.Attempt(errors, Service.Dispose);
-            if (errors.Count == 0) { Service = null; bridge = null; route = null; }
-            SessionCleanup.ThrowIfAny(errors, "Chase release failed.");
+            AttemptVersion++;
+            state = State.Uninitialized;
+            if (flow != null) flow.Changed -= OnFlowChanged;
+            var released = boundPresentation;
+            boundPresentation = null;
+            bridge = null; control = null; flow = null;
+            actor = null; actorCollider = null; frontCollider = null;
+            released?.Unbind();
         }
-        private bool Reject(string message) { LastRejection = message; return false; }
+
+        private void OnFlowChanged(FlowSnapshot snapshot)
+        {
+            if (state == State.Running && (snapshot.State != FlowState.Playing || snapshot.IsBusy)) Stop();
+        }
+        private bool Reject(string reason) { LastRejection = reason; return false; }
+        private static bool UsableBody(CapsuleCollider body) => body != null && body.enabled &&
+            body.gameObject.activeInHierarchy && !body.isTrigger && body.attachedRigidbody != null && !body.attachedRigidbody.isKinematic;
+        private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
+        private static void ValidateBox(BoxCollider box)
+        {
+            Vector3 size = box.size, scale = box.transform.lossyScale;
+            if (!Finite(size) || !Finite(scale) || !Finite(box.center) || size.x <= 0 || size.y <= 0 || size.z <= 0 ||
+                Mathf.Abs(scale.x) < .0001f || Mathf.Abs(scale.y) < .0001f || Mathf.Abs(scale.z) < .0001f)
+                throw new InvalidOperationException("추격 BoxCollider 크기와 스케일은 유한하고 0보다 커야 합니다.");
+        }
         private void OnDisable() => Shutdown();
         private void OnDestroy() => Shutdown();
-
-        private sealed class PlayerActor : IChaseActor
-        {
-            private readonly PlayerFacade actor;
-            public PlayerActor(PlayerFacade actor) { this.actor = actor; }
-            public bool IsAlive => actor != null && actor.isActiveAndEnabled && !actor.IsDead;
-            public Vector3 Position => actor.transform.position;
-        }
     }
 }

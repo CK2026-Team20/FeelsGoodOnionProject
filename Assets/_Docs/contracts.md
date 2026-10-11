@@ -18,13 +18,13 @@ HMS 독립 Reader 기본F와 통합 Host가 지정한 E를 구분한다. 기존 
 
 CheckpointSnapshot은 Position(현재 ActorBody의 유한 월드 Vector3), Fragments(정수0~5), UnlockedAbilities(None0/Form1/Tear2/Both3)의 정확히 세 불변 값이다. 기존 AbilityId 번호0/1은 보존한다. 전부 검증한 뒤 원자 교체하고 실패/중단은 이전 Snapshot과 성공 사건 없음 상태를 보존한다. 첫 유효 저장 전 Snapshot이 없으며 해당 Stage의 초기 Marker/Entry를 사용한다.
 
-동일 실제 Marker 재접촉은 갱신하지 않으며 Actor 교체로 억제 상태를 지우지 않는다. 추격은 전신 통과·퇴로 안전·시작 가능 확인 뒤 현재3값 저장 성공을 먼저 요구한다. Stage/CP 참조는 실행 맥락이고 payload에 저장하지 않는다. HP·폼·껍질·세계/대화/카메라/시간·디스크 진행은 저장하지 않는다.
+동일 실제 Marker 재접촉은 갱신하지 않으며 Actor 교체로 억제 상태를 지우지 않는다. 추격 시작 트리거는 접촉 진입·퇴로 안전·시작 가능 확인 뒤 현재3값 저장 성공을 먼저 요구한다. Stage/CP 참조는 실행 맥락이고 payload에 저장하지 않는다. HP·폼·껍질·세계/대화/카메라/시간·디스크 진행은 저장하지 않는다.
 
 Retry는 같은 Stage 초기 재준비 후 새 Normal/HP3/껍질0 Actor에3값을 복원한다. 현재 해금은 Session 한 원본이며 Stage 출처별 reset이 없다. 일반 Completed/Skipped 대화 장부는 같은 판에 유지한다. Cancelled는 완료가 아니며 최종 포포 대화만 새 회차 예외다.
 
 ## Scene·Camera·위치 참조
 
-Scene 설정 자산은 실제 SceneAsset, Stage의 CP/경로/끝점은 같은 씬 실제 컴포넌트·Transform이다. ScriptableObject에 다른 Scene Marker를 저장하지 않는다. 내부 SceneReference.runtimePath와 설치 Player 경로 캐시는 편집/빌드에서 생성하며 수기 입력값이 아니다. DialogueSelection은 현재 JSON TextAsset에서 검증한 Code 선택, Audio는 용도와 실제 Clip 연결이다.
+Scene 설정 자산은 실제 SceneAsset, Stage의 초기 CP는 같은 씬 실제 컴포넌트다. 추격 퇴로는 시작 트리거가 참조하고 카메라 정렬점·CP 등장점은 해당 기능 객체의 자식 Transform이다. 진행/추격 경로는 작성하지 않는다. ScriptableObject에 다른 Scene Marker를 저장하지 않는다. 내부 SceneReference.runtimePath와 설치 Player 경로 캐시는 편집/빌드에서 생성하며 수기 입력값이 아니다. DialogueSelection은 현재 JSON TextAsset에서 검증한 Code 선택, Audio는 용도와 실제 Clip 연결이다.
 
 App 출력 Camera/Brain/Listener는 각각1개, Core Side/Quarter 리그는 서로 다른 두 객체다. HMS Controller가 우선순위, Brain이 출력 Transform, LevelCameraService가 전환/Side 정렬/실제 준비·입력 제한을 소유한다. Bind/Unbind/Preview/Commit의 borrowed target은 자기 연결만 해제한다. 초기 준비와0.6초 기본 전환은 실제 Brain 완료 뒤 축을 확정하며 Options는 진행을 정지한다.
 

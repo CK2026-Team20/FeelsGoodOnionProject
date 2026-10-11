@@ -1803,6 +1803,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &286320328
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 286320329}
+  m_Layer: 0
+  m_Name: AlignmentAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &286320329
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 286320328}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1949153521}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &314501131
 GameObject:
   m_ObjectHideFlags: 0
@@ -2218,43 +2249,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 460249959}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 35.999996, y: 1.03, z: 28.000011}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.03, z: 0}
+  m_LocalScale: {x: 0.9999998, y: 1, z: 0.9999998}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &471942593
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 471942594}
-  m_Layer: 0
-  m_Name: "03_2_Stage_\uCD94\uACA9\uC2DC\uC791\uC120"
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &471942594
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 471942593}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 36, y: 0, z: 18.000002}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1868384416}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!43 &489919937
 Mesh:
@@ -2711,7 +2711,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 3
-  alignmentPoint: {fileID: 600415419}
+  alignmentPoint: {fileID: 1942041614}
 --- !u!65 &600415418
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2745,7 +2745,8 @@ Transform:
   m_LocalPosition: {x: 36, y: 0, z: 2.0000002}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1942041614}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!43 &606558459
@@ -6354,6 +6355,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &846001042
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6885,6 +6887,7 @@ MonoBehaviour:
     code: EXPLORE_OVEN_01
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &978602365
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7491,6 +7494,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 948667590}
+  - {fileID: 1995201544}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1026345504
@@ -9706,80 +9710,6 @@ Mesh:
       - serializedVersion: 1
         m_IndexStart: 0
         m_IndexCount: 0
---- !u!1 &1681631511
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1681631512}
-  - component: {fileID: 1681631514}
-  - component: {fileID: 1681631513}
-  m_Layer: 0
-  m_Name: EnterTrigger
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1681631512
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1681631511}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 36, y: 4, z: 15.000002}
-  m_LocalScale: {x: 1.0000002, y: 1, z: 1.0000002}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1681631513
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1681631511}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 22e1dbaa1e21f394d845b40436a5c01f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageTrigger
-  stage: {fileID: 2109316081}
-  kind: 0
-  checkpoint: {fileID: 0}
-  dialogue:
-    table: {fileID: 0}
-    code: 
-  independentHost: {fileID: 0}
-  once: 0
---- !u!65 &1681631514
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1681631511}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 26, y: 8, z: 12}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1753575298
 GameObject:
   m_ObjectHideFlags: 0
@@ -9958,6 +9888,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &1784923596
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10256,6 +10187,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1547377898}
+  - {fileID: 460249960}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1872443217
@@ -10311,6 +10243,7 @@ MonoBehaviour:
     code: 
   independentHost: {fileID: 0}
   once: 1
+  chaseRetreatGate: {fileID: 0}
 --- !u!65 &1872443220
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -13549,6 +13482,37 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 8, z: 5.4}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &1942041613
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1942041614}
+  m_Layer: 0
+  m_Name: AlignmentAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1942041614
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1942041613}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 600415419}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1949153518
 GameObject:
   m_ObjectHideFlags: 0
@@ -13580,7 +13544,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.CameraZoneTrigger
   mode: 3
-  alignmentPoint: {fileID: 1949153521}
+  alignmentPoint: {fileID: 286320329}
 --- !u!65 &1949153520
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -13614,7 +13578,8 @@ Transform:
   m_LocalPosition: {x: 35.999996, y: 0, z: 28.000011}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 286320329}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!43 &1963365350
@@ -13820,12 +13785,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1995201543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 36, y: 1.03, z: 2.0000002}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.03, z: 0}
+  m_LocalScale: {x: 0.9999998, y: 1, z: 0.9999998}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1024930371}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2032630226
 GameObject:
@@ -14378,14 +14343,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageService
   initialCheckpoint: {fileID: 1024930370}
   stageMusicPurpose: 4
-  checkpoints:
-  - {fileID: 1024930370}
-  - {fileID: 1868384415}
-  enemies: []
-  chasePathPoints: []
-  progressPathPoints: []
-  chaseStartPoint: {fileID: 471942594}
-  chaseRetreatGate: {fileID: 0}
 --- !u!4 &2109316082
 Transform:
   m_ObjectHideFlags: 0
@@ -14445,7 +14402,6 @@ SceneRoots:
   - {fileID: 544388193}
   - {fileID: 1024930371}
   - {fileID: 1784923594}
-  - {fileID: 1681631512}
   - {fileID: 978602363}
   - {fileID: 1138829139}
   - {fileID: 1102332516}
@@ -14462,12 +14418,9 @@ SceneRoots:
   - {fileID: 2135545833}
   - {fileID: 921524922}
   - {fileID: 846001040}
-  - {fileID: 471942594}
-  - {fileID: 1995201544}
   - {fileID: 600415419}
   - {fileID: 426763100}
   - {fileID: 267825915}
-  - {fileID: 460249960}
   - {fileID: 1949153521}
   - {fileID: 1161669197}
   - {fileID: 1548648654}
