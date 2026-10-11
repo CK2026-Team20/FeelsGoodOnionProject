@@ -1,16 +1,15 @@
 using System;
-using Cooked.Integration;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
-    /// <summary>고정 Transform 사이의 X/Y 이동과 지형 제한을 계산하고 적 Root 전체의 위치를 작성합니다.</summary>
+    /// <summary>고정 Transform 사이의 X/Y 이동과 지형 제한을 계산하고 실제 Body의 위치만 작성합니다.</summary>
     public sealed class EnemyMotor
     {
         private const float Skin = .002f;
         private readonly BoxCollider body;
-        private readonly Transform root, patrolStart, patrolEnd;
+        private readonly Transform movingBody, patrolStart, patrolEnd;
         private readonly LayerMask terrain;
         private readonly Vector3 half, centerOffset, initialPosition;
         private readonly bool bounded;
@@ -20,37 +19,33 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private Collider[] overlaps = new Collider[16];
         private Vector3 physical;
         private bool reportedBlocked;
-        public Vector3 Origin => bounded ? RequirePoint(patrolStart, "순찰 시작점").position : initialPosition;
-        public Vector3 End => bounded ? RequirePoint(patrolEnd, "순찰 끝점").position : initialPosition;
-        public Vector3 BasePosition { get; private set; }
-        public Vector3 Facing { get; private set; }
+        private Vector3 Origin => bounded ? RequirePoint(patrolStart, "순찰 시작점").position : initialPosition;
+        private Vector3 End => bounded ? RequirePoint(patrolEnd, "순찰 끝점").position : initialPosition;
+        private Vector3 BasePosition { get; set; }
         public float MinimumY { get; }
         public float MaximumY { get; }
-        public bool FoundFloor { get; }
-        public bool FoundCeiling { get; }
         public bool IsTrapped { get; private set; }
 
         public EnemyMotor(EnemyActor owner, BoxCollider body, LayerMask terrain, Transform patrolStart,
             Transform patrolEnd, float searchDistance, float clearance)
         {
-            this.owner = owner; this.body = body; root = owner.transform; this.terrain = terrain;
+            this.owner = owner; this.body = body; movingBody = body.transform; this.terrain = terrain;
             this.patrolStart = patrolStart; this.patrolEnd = patrolEnd;
             bounded = owner.Definition.Kind == EnemyKind.Patrol;
-            initialPosition = BasePosition = physical = root.position;
+            initialPosition = BasePosition = physical = movingBody.position;
             physics = owner.gameObject.scene.GetPhysicsScene();
             if (!physics.IsValid()) throw new InvalidOperationException("적이 속한 실제 물리 씬이 필요합니다.");
-            Facing = bounded ? (owner.TowardEnd ? End - Origin : Origin - End).normalized : Vector3.zero;
             half = Vector3.Scale(body.size, body.transform.lossyScale) * .5f;
-            centerOffset = body.transform.TransformPoint(body.center) - root.position;
+            centerOffset = body.transform.TransformPoint(body.center) - movingBody.position;
             MinimumY = bounded ? Math.Min(Origin.y, End.y) : float.NegativeInfinity;
             MaximumY = bounded ? Math.Max(Origin.y, End.y) : float.PositiveInfinity;
             if (bounded)
             {
                 Vector3 center = initialPosition + centerOffset;
                 if (Cast(center, new Vector3(half.x, .001f, half.z), Vector3.down, searchDistance, out var floor))
-                { MinimumY = floor.point.y + clearance + half.y - centerOffset.y; FoundFloor = true; }
+                { MinimumY = floor.point.y + clearance + half.y - centerOffset.y; }
                 if (Cast(center, new Vector3(half.x, .001f, half.z), Vector3.up, searchDistance, out var ceiling))
-                { MaximumY = ceiling.point.y - clearance - half.y - centerOffset.y; FoundCeiling = true; }
+                { MaximumY = ceiling.point.y - clearance - half.y - centerOffset.y; }
                 if (MinimumY > MaximumY || initialPosition.y < MinimumY || initialPosition.y > MaximumY ||
                     Origin.y < MinimumY || Origin.y > MaximumY || End.y < MinimumY || End.y > MaximumY)
                     throw new InvalidOperationException("적의 초기 위치와 실제 순찰 끝점이 지형의 안전 높이 구간 안에 있어야 합니다.");
@@ -59,7 +54,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         }
         private Transform RequirePoint(Transform point, string label)
         {
-            SceneComponentLookup.RequireFixedPoint(owner, point, label);
+            owner.RequirePatrolPoint(point, label);
             return point;
         }
         private static bool Finite(Vector3 v) => float.IsFinite(v.x) && float.IsFinite(v.y) && float.IsFinite(v.z);
@@ -141,7 +136,6 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             Vector3 limited = requested;
             limited.y = Mathf.Clamp(limited.y, MinimumY, MaximumY);
             Vector3 delta = limited - BasePosition;
-            if (delta.sqrMagnitude > .000001f) Facing = delta.normalized;
             Vector3 nextPhysical = Sweep(physical, physical + delta);
             BasePosition += nextPhysical - physical;
             physical = nextPhysical;
@@ -183,7 +177,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
                 physical = Sweep(physical, desired);
             }
             BasePosition = physical;
-            root.position = physical;
+            movingBody.position = physical;
         }
     }
 }

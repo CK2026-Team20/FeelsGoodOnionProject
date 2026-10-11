@@ -30,7 +30,6 @@ namespace FeelsGoodOnion.TechSYM.Features
         private Quaternion rootLocalRotation;
         private double displayElapsed;
         private long attemptRevision;
-        public bool IsCollected => collected;
         /// <summary>The actual Root moved by this pickup; fixed-point authoring must remain outside it.</summary>
         public Transform MotionRoot => pickupRoot != null ? pickupRoot.transform : null;
         // May be called while inactive. Never use an uninitialized cache to silently skip restoration.

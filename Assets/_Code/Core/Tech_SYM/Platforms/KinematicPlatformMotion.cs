@@ -11,10 +11,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
     [DisallowMultipleComponent, DefaultExecutionOrder(-300)]
     public sealed class KinematicPlatformMotion : MonoBehaviour
     {
-        [Tooltip("실제로 이동할 PhysicsBody 자식의 Rigidbody입니다. 루트에 직접 물리를 둔 기존 배치는 같은 객체를 연결합니다. 위치·회전 작성자는 이 컴포넌트 하나입니다.")]
+        [Tooltip("고정 기능 루트 안에서 움직일 자식 Rigidbody를 연결합니다. 같은 몸체에 지지 BoxCollider와 PlatformContacts를 둡니다.")]
         [SerializeField, InspectorLabel("이동 몸체")] private Rigidbody physicsBody;
-        [Tooltip("위 물리 몸체의 지지 BoxCollider와 같은 객체에 있는 접촉 전달자입니다. 다른 물리 몸체의 접촉은 연결하지 않습니다.")]
-        [SerializeField, InspectorLabel("지지 접촉")] private PlatformContacts platformContacts;
         private Rigidbody body;
         private Vector3 authoredLocalPosition;
         private Quaternion authoredLocalRotation;
@@ -22,7 +20,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private bool rotationTween, positionTween;
         private int motionRevision;
         public Rigidbody PhysicsBody => body != null ? body : physicsBody;
-        public PlatformContacts Contacts => contacts != null ? contacts : platformContacts;
+        public PlatformContacts Contacts => contacts != null ? contacts : PhysicsBody != null ? PhysicsBody.GetComponent<PlatformContacts>() : null;
         /// <summary>실제 이동 적용 직전의 몸체/현재/다음 월드 자세. 정지·완료 통지·Reset에는 발생하지 않는다.
         /// 소비자는 몸체를 이동하지 않고 계획된 Collider 교차를 검사한다. 취소/Reset이면 낡은 이동은 적용하지 않는다.</summary>
         public event Action<Rigidbody, Pose, Pose> BeforePhysicsMove;
@@ -35,7 +33,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private Vector3 effectOrigin;
         private readonly Dictionary<Component, Vector3> effects = new Dictionary<Component, Vector3>();
         private bool conflictReported;
-        public Vector3 EffectOrigin => effectOrigin;
         private readonly HashSet<Rigidbody> carried = new HashSet<Rigidbody>();
         private PhysicsMaterial originalMaterial;
         private PhysicsMaterial motionMaterial;
@@ -44,16 +41,12 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private bool completionPending;
         private Action tweenCompleted;
         public bool IsTweening => positionTween || rotationTween;
-        public float RemainingTweenSeconds => Mathf.Max(0f, tweenDuration - tweenElapsed);
         public Vector3 Velocity { get; private set; }
-        public Vector3 PreviousVelocity { get; private set; }
-        public Vector3 Direction => Velocity.sqrMagnitude > 0.000001f ? Velocity.normalized : Vector3.zero;
-        public float Speed => Velocity.magnitude;
+        private Vector3 PreviousVelocity { get; set; }
         public Vector3 Position => PhysicsBody != null ? PhysicsBody.position : transform.position;
-        public Quaternion Rotation => PhysicsBody != null ? PhysicsBody.rotation : transform.rotation;
         public Vector3 RestPosition => body != null && body.transform.parent != null
             ? body.transform.parent.TransformPoint(authoredLocalPosition) : authoredLocalPosition;
-        public Quaternion RestRotation => body != null && body.transform.parent != null
+        private Quaternion RestRotation => body != null && body.transform.parent != null
             ? body.transform.parent.rotation * authoredLocalRotation : authoredLocalRotation;
 
         private void Reset()
@@ -68,8 +61,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private void Awake()
         {
             if (motionMaterial != null) return;
-            if (!BindPhysics(physicsBody, platformContacts))
-            { Debug.LogError("이동 발판의 PhysicsBody/Contacts를 명시적으로 연결하세요.", this); enabled = false; return; }
+            if (!BindPhysics(physicsBody))
+            { Debug.LogError("이동 몸체 자식의 Rigidbody를 연결하고 같은 객체에 지지 BoxCollider와 PlatformContacts를 배치하세요.", this); enabled = false; return; }
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.Interpolate;
@@ -87,14 +80,15 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             collider.sharedMaterial = motionMaterial;
         }
 
-        public bool BindPhysics(Rigidbody physicalBody, PlatformContacts physicalContacts)
+        private bool BindPhysics(Rigidbody physicalBody)
         {
+            var physicalContacts = physicalBody != null ? physicalBody.GetComponent<PlatformContacts>() : null;
             if (physicalBody == null || physicalContacts == null
                 || physicalContacts.GetComponent<Rigidbody>() != physicalBody
                 || physicalContacts.Surface == null || physicalContacts.Surface.attachedRigidbody != physicalBody
                 || physicalContacts.Surface.isTrigger
                 || physicalBody.GetComponent<MovingPlatform>() != null || GetComponent<MovingPlatform>() != null
-                || (physicalBody.transform != transform && !physicalBody.transform.IsChildOf(transform))) return false;
+                || (physicalBody.transform == transform || !physicalBody.transform.IsChildOf(transform))) return false;
             int drivers = (GetComponent<LinearShuttlePlatform>() != null ? 1 : 0)
                 + (GetComponent<PressurePlatePlatform>() != null ? 1 : 0)
                 + (GetComponent<PressureLinkedPlatform>() != null ? 1 : 0)
@@ -106,7 +100,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (body == physicalBody && contacts == physicalContacts) return true;
             CancelMotion();
             body = physicsBody = physicalBody;
-            contacts = platformContacts = physicalContacts;
+            contacts = physicalContacts;
             authoredLocalPosition = body.transform.localPosition;
             authoredLocalRotation = body.transform.localRotation;
             effectOrigin = body.position;
@@ -143,19 +137,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             contacts?.ResetForRetry();
         }
 
-        /// <summary>힌지의 회전도 동일한 물리 작성자가 실행한다.</summary>
-        public bool TryRotateTo(Quaternion worldDestination, float duration, Action onCompleted)
-        {
-            if (!isActiveAndEnabled || body == null || IsTweening || duration <= 0f || !float.IsFinite(duration)
-                || !ValidRotation(worldDestination)) return false;
-            if (path == MotionPath.Effect || path == MotionPath.Travel || HasTravelDriver()) { ReportConflict(); return false; }
-            rotationStart = body.rotation; rotationDestination = worldDestination;
-            tweenDuration = duration; tweenElapsed = 0f; tweenCompleted = onCompleted;
-            completionPending = false; rotationTween = true; positionTween = false; path = MotionPath.Tween;
-            ++motionRevision;
-            return true;
-        }
-
         /// <summary>이번 물리 스텝의 목표 위치 지정.</summary>
         public void MoveTo(Vector3 position)
         {
@@ -167,7 +148,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         }
 
         /// <summary>트윈 위치 적용과 탑승 속도 전달을 같은 물리 스텝에서 처리한다.</summary>
-        public bool TryTweenTo(Vector3 worldDestination, float duration, Action onCompleted)
+        private bool TryTweenTo(Vector3 worldDestination, float duration, Action onCompleted)
         {
             if (!isActiveAndEnabled || body == null || IsTweening || !Finite(worldDestination)
                 || !float.IsFinite(duration) || duration <= 0f) return false;
@@ -250,8 +231,10 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             && float.IsFinite(value.z) && float.IsFinite(value.w)
             && (double)value.x * value.x + (double)value.y * value.y + (double)value.z * value.z + (double)value.w * value.w > 0.000001;
 
-        /// <summary>고정 작성 지점은 실제 몸체와 기존 적/애니메이션 이동 계층 밖의 같은 씬에 둔다.</summary>
+        /// <summary>고정 작성 지점은 소유 기능 루트 안, 실제 몸체와 애니메이션 이동 계층 밖에 둔다.</summary>
         public bool IsFixedPoint(Transform point) => point != null && PhysicsBody != null
+            && point != transform && point.IsChildOf(transform)
+            && PhysicsBody.transform != transform && PhysicsBody.transform.IsChildOf(transform)
             && !point.IsChildOf(PhysicsBody.transform) && SceneComponentLookup.IsFixedPoint(this, point);
 
         /// <summary>실제 pose 변화 경계만 분류한다. 같은 회전의 q/-q도 정지다.</summary>

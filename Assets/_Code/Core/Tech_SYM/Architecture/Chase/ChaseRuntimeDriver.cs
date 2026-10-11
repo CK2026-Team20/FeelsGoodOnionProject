@@ -13,8 +13,6 @@ namespace Cooked.Chase
     {
         [SerializeField, InspectorLabel("추격 설정"), Tooltip("월드 +X 방향의 추격 속도를 제공하는 자산입니다.")]
         private ChaseDefinition definition;
-        [SerializeField, InspectorLabel("무리 표현"), Tooltip("같은 루트의 등장·상하 움직임·퇴장 표현을 연결하세요.")]
-        private ChaseSwarmPresentation presentation;
 
         private enum State { Uninitialized, Ready, Running, Stopped, Caught }
         private State state;
@@ -41,7 +39,8 @@ namespace Cooked.Chase
                 throw new ArgumentException("Chase needs the current session death owner.", nameof(playerBridge));
             if (control == null) throw new ArgumentNullException(nameof(control));
             if (flow == null) throw new ArgumentNullException(nameof(flow));
-            if (definition == null || presentation == null || presentation.transform != transform || !presentation.isActiveAndEnabled)
+            var presentation = GetComponent<ChaseSwarmPresentation>();
+            if (definition == null || presentation == null || !presentation.isActiveAndEnabled)
                 throw new InvalidOperationException("추격 설정과 같은 루트의 활성 무리 표현을 연결하세요.");
             // Reuse the actual authored physics child. Never create a collider or guess by object name.
             var colliders = GetComponentsInChildren<Collider>(true);

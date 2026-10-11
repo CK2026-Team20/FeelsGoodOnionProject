@@ -45,9 +45,6 @@ namespace FeelsGoodOnion.TechSYM.Features
         private float stalledElapsed;
         private float lastNormalizedTime;
 
-        public bool IsValid => visual != null && visual.gameObject.activeInHierarchy;
-        public bool TweenCompleted => ownedTween != null && ownedTween.IsActive() && ownedTween.IsComplete();
-        public bool TweenExists => ownedTween != null && ownedTween.IsActive();
         public string AnimationIssue { get; private set; }
 
         public PlatformPresentation(Transform visual, Animator animator)
@@ -80,18 +77,6 @@ namespace FeelsGoodOnion.TechSYM.Features
             ownedTween = visual.DOShakeRotation(seconds, new Vector3(degrees, 0f, degrees),
                 Mathf.Clamp(Mathf.RoundToInt(seconds * frequency), 1, 1000), 90f, true)
                 .SetEase(Ease.Linear).SetUpdate(UpdateType.Fixed, false)
-                .SetAutoKill(false).SetRecyclable(false).SetLink(visual.gameObject, LinkBehaviour.KillOnDisable);
-        }
-
-        public void Blink(float seconds, float interval)
-        {
-            CancelTween();
-            float elapsed = 0f;
-            ownedTween = DOTween.To(() => elapsed, value =>
-            {
-                elapsed = value;
-                SetVisible(Mathf.FloorToInt(value / interval) % 2 == 0);
-            }, seconds, seconds).SetEase(Ease.Linear).SetUpdate(UpdateType.Fixed, false)
                 .SetAutoKill(false).SetRecyclable(false).SetLink(visual.gameObject, LinkBehaviour.KillOnDisable);
         }
 

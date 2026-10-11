@@ -81,7 +81,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private Sequence landingTween;
         private readonly Dictionary<Rigidbody, Collider> landed = new Dictionary<Rigidbody, Collider>();
         private readonly List<Rigidbody> departed = new List<Rigidbody>();
-        public bool IsReacting => landingTween != null && landingTween.IsActive();
+        private bool IsReacting => landingTween != null && landingTween.IsActive();
 
         private void Awake()
         {

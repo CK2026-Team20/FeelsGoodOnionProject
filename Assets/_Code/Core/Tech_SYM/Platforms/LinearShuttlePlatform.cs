@@ -12,9 +12,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private const float MinimumMoveSpeed = 0.01f;
 
         [Header("이동")]
-        [Tooltip("시작 지점을 연결합니다. 움직이는 몸체 밖에 두며 청록색 경로의 시작입니다.")]
+        [Tooltip("시작 지점을 연결합니다. 기능 루트 안, 몸체 밖에 두며 청록색 경로의 시작입니다.")]
         [SerializeField, InspectorLabel("시작 지점")] private Transform startPoint;
-        [Tooltip("끝 지점을 연결합니다. 움직이는 몸체 밖에 두며 청록색 경로의 끝입니다. 시작과 같으면 정지합니다.")]
+        [Tooltip("끝 지점을 연결합니다. 기능 루트 안, 몸체 밖에 두며 청록색 경로의 끝입니다. 시작과 같으면 정지합니다.")]
         [SerializeField, InspectorLabel("끝 지점")] private Transform endPoint;
         [Tooltip("경로를 따라 이동하는 속도를 조절합니다(m/s, 최소 0.01). 양 끝에서 0.5초 기다립니다.")]
         [SerializeField, InspectorLabel("이동 속도"), Min(0.01f)] private float moveSpeed = 2f;

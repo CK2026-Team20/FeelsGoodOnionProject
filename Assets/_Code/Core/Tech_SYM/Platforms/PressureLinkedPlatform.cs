@@ -13,14 +13,13 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         [Tooltip("이 발판을 누르는 압력판을 연결합니다. 연결은 여기 한 곳에서만 작성합니다.")]
         [SerializeField, InspectorLabel("압력판")] private PressurePlatePlatform pressurePlate;
         [Header("이동")]
-        [Tooltip("복귀할 고정 시작 지점을 연결합니다. 움직이는 몸체 밖에 두며 녹색 경로의 시작입니다.")]
+        [Tooltip("복귀할 고정 시작 지점을 연결합니다. 기능 루트 안, 몸체 밖에 두며 녹색 경로의 시작입니다.")]
         [SerializeField, InspectorLabel("시작 지점")] private Transform startPoint;
-        [Tooltip("눌렸을 때 도달할 고정 지점을 연결합니다. 움직이는 몸체 밖에 두며 녹색 경로의 끝입니다.")]
+        [Tooltip("눌렸을 때 도달할 고정 지점을 연결합니다. 기능 루트 안, 몸체 밖에 두며 녹색 경로의 끝입니다.")]
         [SerializeField, InspectorLabel("목표 지점")] private Transform targetPoint;
         [Tooltip("버튼을 놓았을 때의 복귀 속도(m/s). 버튼 시간과 별개입니다.")]
         [SerializeField, InspectorLabel("복귀 속도"), Min(0.01f)] private float returnSpeed = 1f;
         private KinematicPlatformMotion motion;
-        public PressurePlatePlatform Plate => pressurePlate;
         public Vector3 StartPosition => startPoint != null ? startPoint.position : throw new InvalidOperationException("연결 발판의 시작 지점이 없습니다.");
         public Vector3 TargetPosition => targetPoint != null ? targetPoint.position : throw new InvalidOperationException("연결 발판의 목표 지점이 없습니다.");
 
@@ -75,8 +74,10 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         private void OnDrawGizmosSelected()
         {
-            Gizmos.color = Color.green;
             if (startPoint == null || targetPoint == null) return;
+            var writer = motion != null ? motion : GetComponent<KinematicPlatformMotion>();
+            Gizmos.color = writer != null && writer.IsFixedPoint(startPoint) && writer.IsFixedPoint(targetPoint)
+                ? Color.green : Color.red;
             Gizmos.DrawLine(StartPosition, TargetPosition);
             Gizmos.DrawWireCube(TargetPosition, Vector3.one * .15f);
         }

@@ -10,13 +10,13 @@ namespace FeelsGoodOnion.TechSYM.Enemies
     {
         [SerializeField, InspectorLabel("설정 자산"), Tooltip("적 종류와 이동 속도, 첫 대기 시간을 정할 자산을 연결하세요.")]
         private EnemyDefinition definition;
-        [SerializeField, InspectorLabel("몸체"), Tooltip("루트 바로 아래의 실제 몸체 Trigger를 연결하세요. 같은 객체에 접촉 센서를 둡니다.")]
+        [SerializeField, InspectorLabel("몸체"), Tooltip("고정 기능 루트 안에서 움직일 몸체 Trigger를 연결하세요. 같은 객체에 접촉 센서, 그 아래에 외형과 효과를 둡니다.")]
         private BoxCollider body;
         [SerializeField, InspectorLabel("첫 이동 방향"), Tooltip("순찰을 시작할 X 또는 Y 방향을 정합니다. 대각선은 축 방향으로 이관해야 합니다.")]
         private PatrolDirection initialDirection;
-        [SerializeField, InspectorLabel("순찰 시작점"), Tooltip("씬에 고정된 순찰 시작 Transform을 연결하세요. 움직이는 적의 자식으로 두지 않습니다. 하늘색으로 표시됩니다.")]
+        [SerializeField, InspectorLabel("순찰 시작점"), Tooltip("기능 루트 안, 몸체 밖의 고정 시작점을 연결하세요. 하늘색으로 표시하며 고정 적은 비워 둡니다.")]
         private Transform patrolStart;
-        [SerializeField, InspectorLabel("순찰 끝점"), Tooltip("씬에 고정된 순찰 끝 Transform을 연결하세요. 시작점과 같은 X 또는 Y 축에 둡니다. 하늘색으로 표시됩니다.")]
+        [SerializeField, InspectorLabel("순찰 끝점"), Tooltip("기능 루트 안, 몸체 밖의 고정 끝점을 연결하세요. 시작점과 같은 X 또는 Y 축이며 하늘색으로 표시합니다. 고정 적은 비워 둡니다.")]
         private Transform patrolEnd;
         [SerializeField, InspectorLabel("지형 레이어"), Tooltip("플랫폼과 벽을 검사할 레이어를 선택하세요. 지형 검사에서 Trigger는 제외합니다.")]
         private LayerMask terrainMask = 1;
@@ -32,14 +32,13 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private Vector3 initialPosition;
         private EnemyContactSensor contactSensor;
         public EnemyDefinition Definition => definition;
-        public EnemyMotor Motor { get; private set; }
-        public EnemyActivityState CurrentState => currentState;
+        private EnemyMotor Motor { get; set; }
         public bool IsStunned => currentState == EnemyActivityState.STUNNED;
-        public double StunRemainingSeconds => stunMilliseconds / 1000.0;
-        public bool TowardEnd => towardEnd;
         public bool IsPrepared => prepared;
-        public Vector3 BodyPosition => body != null ? body.transform.TransformPoint(body.center) : transform.position;
+        private Vector3 BodyPosition => body != null ? body.transform.TransformPoint(body.center) : transform.position;
         public BoxCollider HurtCollider => body;
+        /// <summary>위치 작성 대상입니다. 고정 Root와 그 아래 Anchors는 이동하지 않습니다.</summary>
+        public Transform MotionBody => body != null ? body.transform : null;
         public event Action<bool> StunStateChanged;
 
         private void OnEnable()
@@ -56,8 +55,8 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (definition == null || !definition.IsValid || body == null)
                 throw new InvalidOperationException("설정 자산과 실제 몸체, 유효한 설정이 필요합니다.");
-            if (body.transform.parent != transform || !body.isTrigger)
-                throw new InvalidOperationException("루트 바로 아래의 몸체 Trigger가 필요합니다.");
+            if (body.transform == transform || !body.transform.IsChildOf(transform) || !body.isTrigger)
+                throw new InvalidOperationException("고정 기능 루트 안의 별도 몸체 Trigger가 필요합니다.");
             contactSensor = body.GetComponent<EnemyContactSensor>();
             if (contactSensor == null || contactSensor.Owner != this)
                 throw new InvalidOperationException("몸체 Trigger와 같은 객체의 접촉 센서가 이 적을 소유자로 연결해야 합니다.");
@@ -67,22 +66,30 @@ namespace FeelsGoodOnion.TechSYM.Enemies
                 !UnitScale(transform.lossyScale) || !UnitScale(body.transform.lossyScale) ||
                 !UnitScale(transform.localScale) || !UnitScale(body.transform.localScale))
                 throw new InvalidOperationException("물리 루트와 몸체는 무회전·단위 배율이어야 합니다. 외형 자식만 회전/확대하세요.");
-            if (!Finite(body.size) || !Finite(body.center) || !Finite(transform.position) ||
+            if (!Finite(body.size) || !Finite(body.center) || !Finite(transform.position) || !Finite(body.transform.position) ||
                 body.size.x <= 0 || body.size.y <= 0 || body.size.z <= 0 ||
-                body.transform.localPosition.sqrMagnitude > .0001f || terrainMask.value == 0 ||
+                terrainMask.value == 0 ||
                 !EnemyDefinition.IsAxisDirection(initialDirection))
-                throw new InvalidOperationException("몸체 크기는 양수·유한값, 로컬 위치는 0, 지형 레이어는 비어 있지 않아야 하며 방향은 X/Y 축만 허용합니다.");
+                throw new InvalidOperationException("몸체 크기는 양수·유한값, 몸체 위치는 유한값, 지형 레이어는 비어 있지 않아야 하며 방향은 X/Y 축만 허용합니다.");
             if (!float.IsFinite(heightSearchDistance) || heightSearchDistance <= 0 ||
                 !float.IsFinite(surfaceClearance) || surfaceClearance < 0)
                 throw new InvalidOperationException("지형 검색 거리와 지면 간격 범위를 확인하세요.");
             if (definition.Kind == EnemyKind.Patrol)
             {
-                SceneComponentLookup.RequireFixedPoint(this, patrolStart, "순찰 시작점");
-                SceneComponentLookup.RequireFixedPoint(this, patrolEnd, "순찰 끝점");
-                towardEnd = EnemyMotor.ValidatePatrol(patrolStart.position, patrolEnd.position, transform.position, initialDirection);
+                RequirePatrolPoint(patrolStart, "순찰 시작점");
+                RequirePatrolPoint(patrolEnd, "순찰 끝점");
+                towardEnd = EnemyMotor.ValidatePatrol(patrolStart.position, patrolEnd.position, body.transform.position, initialDirection);
             }
             else towardEnd = true;
         }
+        internal void RequirePatrolPoint(Transform point, string label)
+        {
+            if (!IsPatrolPoint(point))
+                throw new InvalidOperationException(label + ": 기능 루트 안, 몸체 밖의 유효한 고정 지점을 연결하세요.");
+        }
+        private bool IsPatrolPoint(Transform point) => point != null && body != null && point != transform
+            && point.IsChildOf(transform) && !point.IsChildOf(body.transform)
+            && SceneComponentLookup.IsFixedPoint(this, point);
         private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
         private static bool UnitScale(Vector3 value) => Finite(value) && value.x > 0 && value.y > 0 && value.z > 0 &&
             (value - Vector3.one).sqrMagnitude <= .0001f;
@@ -123,10 +130,11 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             if (!initialPlacementCaptured)
             {
                 ValidateSetup();
-                initialPosition = transform.position;
+                initialPosition = body.transform.position;
                 initialPlacementCaptured = true;
             }
-            transform.position = initialPosition;
+            if (body == null) throw new InvalidOperationException("복원할 적 몸체가 없습니다.");
+            body.transform.position = initialPosition;
             ValidateSetup();
             // 복원된 실제 지형 pose를 조회한다. 자연 물리 콜백/접지를 강제로 만들지 않는다.
             if (gameObject.activeInHierarchy) Physics.SyncTransforms();
@@ -204,12 +212,12 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireCube(BodyPosition, size);
             if (definition.Kind != EnemyKind.Patrol || patrolStart == null || patrolEnd == null) return;
-            bool invalid = patrolStart.IsChildOf(transform) || patrolEnd.IsChildOf(transform);
+            bool invalid = !IsPatrolPoint(patrolStart) || !IsPatrolPoint(patrolEnd);
             try { EnemyMotor.ValidatePatrol(patrolStart.position, patrolEnd.position,
-                initialPlacementCaptured ? initialPosition : transform.position, initialDirection); }
+                initialPlacementCaptured ? initialPosition : body.transform.position, initialDirection); }
             catch (ArgumentException) { invalid = true; }
             Gizmos.color = invalid || (Motor != null && Motor.IsTrapped) ? Color.red : Color.cyan;
-            Vector3 offset = BodyPosition - transform.position;
+            Vector3 offset = BodyPosition - body.transform.position;
             Gizmos.DrawLine(patrolStart.position, patrolEnd.position);
             Gizmos.DrawWireCube(patrolStart.position + offset, size);
             Gizmos.DrawWireCube(patrolEnd.position + offset, size);
