@@ -17,6 +17,7 @@ namespace Cooked.Foundation
         private readonly Action<IEnumerator> schedule;
         private readonly Action<string> log;
         private CancellationTokenSource current;
+        private OwnedTransition execution;
         private IDisposable inputLease, worldLease;
         private bool disposed, booted, sessionInitialized;
         private long revision;
@@ -69,50 +70,78 @@ namespace Cooked.Foundation
         }
         private bool Start(FlowState state, Func<CancellationToken, IEnumerator> sequence)
         {
-            current = new CancellationTokenSource();
-            revision++;
+            var cancellation = new CancellationTokenSource();
+            current = cancellation;
+            long startedRevision = ++revision;
             // Synchronous contract: options VM releases its presentation/world/input leases here,
             // before StartCoroutine can execute even the first nested operation.
             Publish(state, true, null);
             try
             {
-                inputLease = inputLease ?? control.BlockGameplay("GameFlow");
-                worldLease = worldLease ?? control.PauseWorld("GameFlow");
-                schedule(Transition(sequence, current.Token));
+                if (disposed) return false;
+                if (inputLease == null)
+                {
+                    var acquired = control.BlockGameplay("GameFlow");
+                    if (disposed) { acquired.Dispose(); return false; }
+                    inputLease = acquired;
+                }
+                if (worldLease == null)
+                {
+                    var acquired = control.PauseWorld("GameFlow");
+                    if (disposed) { acquired.Dispose(); return false; }
+                    worldLease = acquired;
+                }
+                var completion = new OperationResult();
+                execution = new OwnedTransition(CoroutineOperationRunner.Run(
+                    Transition(sequence, current.Token, completion), completion,
+                    error => log($"Flow execution failed: {error}")));
+                schedule(execution);
                 return true;
             }
             catch (Exception e)
             {
                 log(e.ToString());
-                current.Dispose(); current = null;
+                // 동기 스케줄러/관찰자가 이미 종료하거나 다음 전환을 시작했다면 그 소유권을 건드리지 않습니다.
+                if (disposed || revision != startedRevision) return false;
+                var abandoned = execution; execution = null;
+                try { abandoned?.Dispose(); } catch (Exception cleanupError) { log(cleanupError.ToString()); }
+                current?.Dispose(); current = null;
                 try { fade.SetCoveredImmediate(); } catch (Exception overlayError) { log(overlayError.ToString()); }
                 Publish(FlowState.Faulted, false, e.ToString());
                 return false;
             }
         }
-        private IEnumerator Transition(Func<CancellationToken, IEnumerator> sequence, CancellationToken token)
+        private IEnumerator Transition(Func<CancellationToken, IEnumerator> sequence, CancellationToken token, OperationResult completion)
         {
             var result = new OperationResult();
             IEnumerator guarded = CompleteSequence(sequence, token, result);
             yield return CoroutineOperationRunner.Run(guarded, result, e => log($"Flow revision {revision}: {e}"));
-            if (disposed) yield break;
+            if (disposed) { completion.Cancel(); yield break; }
             if (result.Status != OperationStatus.Succeeded)
             {
                 string reason = result.Error ?? "Transition cancelled.";
                 Publish(FlowState.Recovering, true, reason);
                 var recovery = new OperationResult();
                 yield return CoroutineOperationRunner.Run(Recover(recovery), recovery, e => log($"Recovery revision {revision}: {e}"));
-                if (disposed) yield break;
+                if (disposed) { completion.Cancel(); yield break; }
                 if (recovery.Status != OperationStatus.Succeeded)
                 {
                     Publish(FlowState.Faulted, false, reason + "\n" + recovery.Error);
                     current?.Dispose(); current = null;
+                    completion.Fail(reason + "\n" + recovery.Error);
                     yield break; // retain lock leases until a successful title recovery
                 }
             }
-            ReleaseTransitionLeases();
-            current?.Dispose(); current = null;
+            try { ReleaseTransitionLeases(); }
+            catch (Exception error)
+            {
+                Publish(FlowState.Faulted, false, error.ToString());
+                throw;
+            }
+            finally { current?.Dispose(); current = null; }
+            if (disposed) { completion.Cancel(); yield break; }
             Publish(Snapshot.State, false, Snapshot.Error);
+            completion.Succeed();
         }
         private IEnumerator CompleteSequence(Func<CancellationToken, IEnumerator> sequence, CancellationToken token, OperationResult result)
         {
@@ -296,19 +325,65 @@ namespace Cooked.Foundation
                 try { listener(Snapshot); } catch (Exception e) { log($"Flow subscriber failed: {e}"); }
         }
         public void CancelCurrent() { if (!disposed) current?.Cancel(); }
+        private static void Attempt(List<Exception> errors, Action action)
+        { try { action(); } catch (Exception error) { errors.Add(error); } }
         private void ReleaseTransitionLeases()
         {
-            worldLease?.Dispose(); worldLease = null;
-            inputLease?.Dispose(); inputLease = null;
+            // 통지가 재진입하거나 실패해도 이미 반납한 토큰을 다시 소유하지 않습니다.
+            var world = worldLease; worldLease = null;
+            var input = inputLease; inputLease = null;
+            var errors = new List<Exception>();
+            Attempt(errors, () => world?.Dispose());
+            Attempt(errors, () => input?.Dispose());
+            if (errors.Count != 0) throw new AggregateException("전환 차단 해제 중 오류가 발생했습니다.", errors);
         }
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
-            current?.Cancel(); current?.Dispose(); current = null;
-            ReleaseTransitionLeases();
+            var cancellation = current; current = null;
+            var running = execution; execution = null;
             Snapshot = new FlowSnapshot(FlowState.Disposed, false, revision, null);
             Changed = null;
+            var errors = new List<Exception>();
+            Attempt(errors, () => cancellation?.Cancel());
+            // Unity의 StopCoroutine이 중첩 IEnumerator를 Dispose한다고 가정하지 않습니다.
+            Attempt(errors, () => running?.Dispose());
+            Attempt(errors, () => cancellation?.Dispose());
+            Attempt(errors, ReleaseTransitionLeases);
+            if (errors.Count != 0) throw new AggregateException("앱 전환 종료 중 오류가 발생했습니다.", errors);
+        }
+        /// <summary>단일 전환의 평탄화된 코루틴을 소유합니다. 실행 중 취소 재진입은 MoveNext 종료 뒤 해제합니다.</summary>
+        private sealed class OwnedTransition : IEnumerator, IDisposable
+        {
+            private IEnumerator routine;
+            private bool advancing, stopping;
+            public OwnedTransition(IEnumerator routine) { this.routine = routine; }
+            public object Current => routine?.Current;
+            public bool MoveNext()
+            {
+                if (routine == null || stopping) return false;
+                advancing = true;
+                try
+                {
+                    bool next = routine.MoveNext();
+                    if (!next) stopping = true;
+                    return next && !stopping;
+                }
+                finally
+                {
+                    advancing = false;
+                    if (stopping) Dispose();
+                }
+            }
+            public void Reset() => throw new NotSupportedException();
+            public void Dispose()
+            {
+                stopping = true;
+                if (advancing) return;
+                var owned = routine; routine = null;
+                (owned as IDisposable)?.Dispose();
+            }
         }
     }
 }

@@ -104,7 +104,13 @@ namespace Cooked.Session
                 value.GetComponent<CapsuleCollider>() == null || value.GetComponent<PlayerSkillController>() == null ||
                 value.GetComponent<PlayerFormController>() == null)
                 throw new InvalidOperationException("현재 ActorBody의 HMS 이동·물리·스킬·폼 연결이 필요합니다.");
+            long detachedGeneration = unchecked(actorGeneration + 1);
             Detach();
+            // 해제 통지가 수명을 끝내거나 연결 세대를 바꿨다면 바깥 요청은 새 구독을 얻지 않습니다.
+            ThrowIfDisposed();
+            if (actor != null || actorGeneration != detachedGeneration)
+                throw new InvalidOperationException("플레이어 해제 중 연결 세대가 변경되어 이전 연결 요청을 취소합니다.");
+            if (value == null) throw new InvalidOperationException("플레이어 해제 통지 중 새 연결 대상이 제거되었습니다.");
             actor = value;
             model = actor.Model;
             skills = actor.GetComponent<PlayerSkillController>();
@@ -164,8 +170,20 @@ namespace Cooked.Session
             skills.SkillActivated += skillActivatedHandler;
             OnControlChanged(control.State);
             var errors = new List<Exception>();
-            SessionCleanup.Notify(errors, ActorChanged);
-            SessionCleanup.Notify(errors, Changed, Snapshot);
+            var actorListeners = ActorChanged;
+            if (actorListeners != null)
+                foreach (Action listener in actorListeners.GetInvocationList())
+                {
+                    if (disposed || !MatchesActor(attachedActor, generation, actor, actorGeneration)) break;
+                    SessionCleanup.Attempt(errors, listener);
+                }
+            var stateListeners = Changed;
+            if (stateListeners != null)
+                foreach (Action<PlayerSnapshot> listener in stateListeners.GetInvocationList())
+                {
+                    if (disposed || !MatchesActor(attachedActor, generation, actor, actorGeneration)) break;
+                    SessionCleanup.Attempt(errors, () => listener(Snapshot));
+                }
             SessionCleanup.ThrowIfAny(errors, "Actor attach observer failure.");
         }
         public void Detach()

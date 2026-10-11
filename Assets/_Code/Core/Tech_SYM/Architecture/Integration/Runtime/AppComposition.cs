@@ -178,7 +178,7 @@ namespace Cooked.Integration
             Attempt(() =>
             {
                 if (services != null && !services.IsDisposed && services.TryGet<IGameFlowService>(out var flow))
-                    flow.CancelCurrent();
+                    flow.Dispose();
             });
             Attempt(StopAllCoroutines);
             if (ownsOutput) Attempt(() => SetPresentationOutput(false));
