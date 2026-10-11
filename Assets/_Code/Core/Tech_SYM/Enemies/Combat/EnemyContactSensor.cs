@@ -21,7 +21,6 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private double lastDamagePhysicsStep = double.NegativeInfinity;
         private bool resolving;
         public EnemyActor Owner => owner;
-        public int ContactCount => contacts.Count;
         public bool PhysicsPaused => bridge != null && bridge.PhysicsPaused;
         private void Awake() => shape = GetComponent<BoxCollider>();
         private void OnTriggerEnter(Collider other) => RecordContact(other, true);
@@ -34,7 +33,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (player == null) throw new ArgumentNullException(nameof(player));
             if (shape == null) shape = GetComponent<BoxCollider>();
-            if (owner == null || shape != owner.HurtCollider || !shape.isTrigger || shape.transform.parent != owner.transform)
+            if (owner == null || shape != owner.HurtCollider || !shape.isTrigger || shape.transform == owner.transform || !shape.transform.IsChildOf(owner.transform))
                 throw new InvalidOperationException("소유 적의 실제 몸체 Trigger와 같은 객체에 접촉 센서를 연결하세요.");
             if (ReferenceEquals(bridge, player)) { ClearContacts(); return; }
             UnbindPlayer();

@@ -535,24 +535,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             else if (t > 1) { t = 1; s = Clamp((uv - uw) / uu, 0, 1); }
             return (w + u * s - v * t).LengthSquared;
         }
-        public static Bounds ShapeBounds(Collider shape, Pose pose)
-        {
-            Vector3 scale = shape.transform.lossyScale;
-            if (shape is BoxCollider box)
-            {
-                Vector3 half = Vector3.Scale(box.size * .5f, Abs(scale));
-                Vector3 extent = Abs(pose.rotation * new Vector3(half.x, 0, 0)) +
-                    Abs(pose.rotation * new Vector3(0, half.y, 0)) + Abs(pose.rotation * new Vector3(0, 0, half.z));
-                return new Bounds(pose.position + pose.rotation * Vector3.Scale(box.center, scale), extent * 2f);
-            }
-            if (shape is CapsuleCollider capsule)
-            {
-                WorldCapsule(capsule, pose, out Vector3 start, out Vector3 end, out float radius);
-                Vector3 extent = Abs(end - start) * .5f + Vector3.one * radius;
-                return new Bounds((start + end) * .5f, extent * 2f);
-            }
-            throw new ArgumentException("주기 판정은 실제 Player Capsule 또는 껍질 Box만 수락합니다.", nameof(shape));
-        }
         private static Vector3 Abs(Vector3 value) => new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
         public void ResetForRetry()
         {
