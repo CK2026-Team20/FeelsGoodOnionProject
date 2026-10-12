@@ -116,3 +116,6 @@ InitTestScene*.unity*
 /AgentScripts/
 /tmp/
 /output/
+
+# Local documentation workflow state and backups
+/.dryforge/

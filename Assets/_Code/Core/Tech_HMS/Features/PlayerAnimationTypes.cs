@@ -22,7 +22,17 @@ public enum PlayerAnimationId
     /// <summary>일회성 축소 표현</summary>
     Shrink,
     /// <summary>일회성 복귀 표현</summary>
-    RestoreForm
+    RestoreForm,
+    /// <summary>일회성 장치 상호작용 표현</summary>
+    Interact
+}
+
+/// <summary>유효한 재생 요청의 종료 결과. 스킬 성공이나 FSM의 조작 제한 시간을 변경하지 않습니다.</summary>
+public enum PlayerAnimationEndReason
+{
+    Completed,
+    Interrupted,
+    Missing
 }
 
 /// <summary>재생 종류와 해당 요청의 식별값. 재생 완료 보고 시 같은 식별값을 전달합니다.</summary>

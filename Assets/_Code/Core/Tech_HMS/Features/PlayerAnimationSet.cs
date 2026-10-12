@@ -25,6 +25,8 @@ public sealed class PlayerAnimationSet : ScriptableObject
     [SerializeField] private AnimationClip tear;
     [SerializeField] private AnimationClip shrink;
     [SerializeField] private AnimationClip restoreForm;
+    [Tooltip("장치 상호작용을 한 번 표시할 비 Legacy 애니메이션 클립을 연결합니다. 비워두면 누락 결과를 알리고 기다리지 않습니다.")]
+    [SerializeField] private AnimationClip interact;
 
     /// <summary>코드가 상태 이름으로 접근할 공통 Animator Controller</summary>
     public RuntimeAnimatorController ControllerTemplate => controllerTemplate;
@@ -55,6 +57,7 @@ public sealed class PlayerAnimationSet : ScriptableObject
             case PlayerAnimationId.Land:
             case PlayerAnimationId.Tear:
             case PlayerAnimationId.Shrink:
+            case PlayerAnimationId.Interact:
             case PlayerAnimationId.RestoreForm: return null;
             default: resolved = PlayerAnimationId.Idle; break;
         }
@@ -99,6 +102,7 @@ public sealed class PlayerAnimationSet : ScriptableObject
             case PlayerAnimationId.Tear: return tear;
             case PlayerAnimationId.Shrink: return shrink;
             case PlayerAnimationId.RestoreForm: return restoreForm;
+            case PlayerAnimationId.Interact: return interact;
             default: throw new ArgumentOutOfRangeException(nameof(animation));
         }
     }

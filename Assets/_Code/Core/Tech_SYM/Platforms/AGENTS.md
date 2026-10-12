@@ -1,0 +1,15 @@
+# 물리 발판
+
+현재 기준은 Assets/_Docs/planning-index.md의 V1.6과 최신 직접 지시다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
+
+KinematicPlatformMotion은 물리 이동의 단일 작성자, PlatformContacts는 실제 윗면 콜백/점유, 종류별 컨트롤러는 진행 목적/상태를 소유한다. 신규 구조는 Root 로직과 명시적으로 주입받는 PhysicsBody/Contacts 자식이다. 현재 GetComponent/RequireComponent 및 콜백 위치를 실제 코드와 함께 이관하며 같은 물체에 HMS 이동자를 중복 조립하지 않는다.
+
+LinearShuttlePlatform은 실제 startPoint/endPoint Transform과 월드m/s, 양 종점0.5초 대기다. 이동량0은 정지이며 부모 변환은 끝점에 반영한다. FloatingPlatform은 한 착지당 눌림/반동이고 PhysicsBody의 지속 bob은 제거한다. Periodic은 조절 가능한 초기5/2/3초·생성 중 비충돌·개별 시작 위상이다. 압력은 기본PC/껍질만, 해제 복귀·재압력 반전은 현재 진행을 사용한다. DamageFloor는 피해원 자체1초 타이머 대신 플레이어 공통HP1/무적2초를 사용한다.
+
+ManualUpdate 트윈은 물리 단계에서 진행하고 비활성화/제목/Stage 제거 시 자기 작업·점유를 해제한다. 발판/장치/적 상태는 체크포인트에 저장하지 않는다. retry는 Stage 초기 재준비다.
+
+검증은 왕복·탑승·일반 물체 운반·점프/이탈 관성·정지/복귀·중간 재입력의 결합 기능으로 묶는다. 끝점 이동만으로 전체 기능 통과를 쓰지 않는다. 실제 물리 시간/모든 phase, 부모 변환·잘못된 값·재활성화·콜백 누락을 확인한다.
+
+현행 지침: Inspector 위치/대상은 실물 참조, 수치는 목적·단위가 명확한 값이다. 씬 월드 객체를 관리자 자식에 묶지 않는다. 에이전트 Play 실행·기존 프리팹 삭제/재생성/Apply·자동 Builder 실행은 금지다. 이전 실행 관찰 수는 당시 증거이고 이번 통과가 아니다.
+
+주기 발판은 실제 Collider 교차와 현재 몸체 세로 침투 비율로 판단한다. <1/4는 윗면 착지 보정, 정확히1/4 이상은 실제 ActorBody/Rigidbody/Collider 위 이동과 Dead 완료를 한 번 조정한다. 껍질은 독립 분리하고 데드존에서 같은 소유 객체를 반환한다. ShatteredPlatform의 물리 없는 Visual은 Animator가 없어도 경고 Shake로 움직이므로 고정 Marker를 하위에 두지 않는다.

@@ -1,283 +1,232 @@
 using System;
+using Cooked.Authoring;
+using Cooked.Integration;
 using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
     [DisallowMultipleComponent, DefaultExecutionOrder(-200)]
-    public sealed class EnemyActor : MonoBehaviour, IDamageable, IStunnable, IStunState
+    public sealed class EnemyActor : MonoBehaviour, IStunnable, IStunState
     {
-        [Header("Definition")]
-        [Tooltip("개체별 실행 상태는 공유하지 않는 설정 SO입니다.")]
-        [SerializeField] private EnemyDefinition definition;
-        [Tooltip("외형과 머리 센서를 함께 포함하는 실제 몸체 Trigger입니다.")]
-        [SerializeField] private BoxCollider body;
-        [Tooltip("실제 머리 윗면 안쪽의 얇은 별도 Trigger입니다.")]
-        [SerializeField] private BoxCollider head;
-        [Tooltip("감지 및 전투 대상. 씬에서 명시적으로 연결합니다.")]
-        [SerializeField] private PlayerFacade target;
-        [Tooltip("활성화 시 적용할 무적 여부입니다.")]
-        [SerializeField] private bool initiallyInvincible;
-        [Header("Patrol")]
-        [Tooltip("최초 XY 이동 방향입니다.")]
-        [SerializeField] private PatrolDirection initialDirection;
-        [Tooltip("최초 위치에서 순찰 끝점까지의 거리(m)입니다.")]
-        [SerializeField, Min(.01f)] private float patrolDistance = 3f;
-        [Tooltip("최초 위치 중심의 추격 허용 반경(m). 순찰 거리 이상이어야 합니다.")]
-        [SerializeField, Min(.01f)] private float patrolRadius = 5f;
-        [Header("Sight")]
-        [Tooltip("플레이어 감지 거리(m)입니다.")]
-        [SerializeField, Min(.01f)] private float sightDistance = 5f;
-        [Tooltip("이동 방향 중심의 전체 시야각입니다.")]
-        [SerializeField, Range(1, 360)] private float sightAngle = 120f;
-        [Header("Height")]
-        [Tooltip("플랫폼과 벽을 검사할 레이어입니다. Trigger는 제외합니다.")]
-        [SerializeField] private LayerMask terrainMask = 1;
-        [Tooltip("시작 시 위아래 플랫폼 탐색 거리(m)입니다.")]
-        [SerializeField, Min(.01f)] private float heightSearchDistance = 8f;
-        [Tooltip("플랫폼과 몸체 표면 사이 최소 간격(m)입니다.")]
-        [SerializeField, Min(0)] private float surfaceClearance = .15f;
-        [Tooltip("아래 플랫폼이 없을 때 시작점 아래로 허용할 거리(m)입니다.")]
-        [SerializeField, Min(0)] private float manualLowerDistance = 2f;
-        [Tooltip("위 플랫폼이 없을 때 시작점 위로 허용할 거리(m)입니다.")]
-        [SerializeField, Min(0)] private float manualUpperDistance = 3f;
+        [SerializeField, InspectorLabel("설정 자산"), Tooltip("적 종류와 이동 속도, 첫 대기 시간을 정할 자산을 연결하세요.")]
+        private EnemyDefinition definition;
+        [SerializeField, InspectorLabel("몸체"), Tooltip("고정 기능 루트 안에서 움직일 몸체 Trigger를 연결하세요. 같은 객체에 접촉 센서, 그 아래에 외형과 효과를 둡니다.")]
+        private BoxCollider body;
+        [SerializeField, InspectorLabel("첫 이동 방향"), Tooltip("순찰을 시작할 X 또는 Y 방향을 정합니다. 대각선은 축 방향으로 이관해야 합니다.")]
+        private PatrolDirection initialDirection;
+        [SerializeField, InspectorLabel("순찰 시작점"), Tooltip("기능 루트 안, 몸체 밖의 고정 시작점을 연결하세요. 하늘색으로 표시하며 고정 적은 비워 둡니다.")]
+        private Transform patrolStart;
+        [SerializeField, InspectorLabel("순찰 끝점"), Tooltip("기능 루트 안, 몸체 밖의 고정 끝점을 연결하세요. 시작점과 같은 X 또는 Y 축이며 하늘색으로 표시합니다. 고정 적은 비워 둡니다.")]
+        private Transform patrolEnd;
+        [SerializeField, InspectorLabel("지형 레이어"), Tooltip("플랫폼과 벽을 검사할 레이어를 선택하세요. 지형 검사에서 Trigger는 제외합니다.")]
+        private LayerMask terrainMask = 1;
+        [SerializeField, Min(.01f), InspectorLabel("지형 검색 거리"), Tooltip("위아래 지형을 찾을 거리를 정합니다(m).")]
+        private float heightSearchDistance = 8f;
+        [SerializeField, Min(0), InspectorLabel("지면 간격"), Tooltip("몸체와 위아래 지형 사이의 최소 간격을 정합니다(m). 0이면 추가 간격이 없습니다.")]
+        private float surfaceClearance = .15f;
 
-        private EnemyModel model;
-        private EnemyStateMachine states;
-        private EnemyFloatMotion floating;
-        private EnemyCombat combat;
-        private Collider targetShape;
-        private bool deathRaised;
-        private bool publishedStunState;
+        private EnemyActivityState currentState = EnemyActivityState.IDLE, resumeState = EnemyActivityState.IDLE;
+        private float idleRemaining;
+        private double stunMilliseconds;
+        private bool towardEnd = true, initialPlacementCaptured, setupFailed, prepared, publishedStunState;
+        private Vector3 initialPosition;
+        private EnemyContactSensor contactSensor;
         public EnemyDefinition Definition => definition;
-        public EnemyMotor Motor { get; private set; }
-        public EnemyState CurrentState => states?.Current ?? EnemyState.IDLE;
-        public int CurrentHealth => model?.Health ?? (definition != null ? definition.Health : 0);
-        public bool IsStunned => model != null && !model.IsDead && model.IsStunned;
-        public double StunRemainingSeconds => (model?.StunMilliseconds ?? 0) / 1000;
-        public bool IsDead => model != null && model.IsDead;
-        public bool IsReturning => states != null && states.IsReturning;
-        public Vector3 SavedPatrolPosition => states?.ResumePosition ?? transform.position;
-        public bool TowardEnd => states == null || states.TowardEnd;
-        public Vector3 BodyPosition => body != null ? body.transform.position : transform.position;
-        // Aim within the player's occupied volume and our travel band, allowing a grounded player
-        // whose pivot lies a few centimetres below the enemy's minimum floating height.
-        public Vector3 TargetPosition
-        {
-            get
-            {
-                if (target == null) return BodyPosition;
-                Vector3 point = targetShape != null ? targetShape.bounds.center : target.transform.position;
-                if (Motor != null) point.y = Mathf.Clamp(point.y, Motor.MinimumY, Motor.MaximumY);
-                return point;
-            }
-        }
-        public float FloatOffset => floating?.Offset ?? 0;
-        public event Action<EnemyActor> Died;
-        /// <summary>스턴 상태가 변경되면 알립니다. true는 적용, false는 해제입니다.</summary>
+        private EnemyMotor Motor { get; set; }
+        public bool IsStunned => currentState == EnemyActivityState.STUNNED;
+        public bool IsPrepared => prepared;
+        private Vector3 BodyPosition => body != null ? body.transform.TransformPoint(body.center) : transform.position;
+        public BoxCollider HurtCollider => body;
+        /// <summary>위치 작성 대상입니다. 고정 Root와 그 아래 Anchors는 이동하지 않습니다.</summary>
+        public Transform MotionBody => body != null ? body.transform : null;
         public event Action<bool> StunStateChanged;
 
         private void OnEnable()
         {
-            try
-            {
-                ValidateSetup();
-                targetShape = target != null ? target.GetComponent<Collider>() : null;
-                body.transform.localPosition = Vector3.zero;
-                model = new EnemyModel(definition.Health, initiallyInvincible);
-                deathRaised = false;
-                Motor = new EnemyMotor(this, body, terrainMask, EnemyDefinition.Direction(initialDirection),
-                    patrolDistance, heightSearchDistance, surfaceClearance, manualLowerDistance, manualUpperDistance);
-                floating = new EnemyFloatMotion(definition.FloatAmplitude, definition.FloatPeriod);
-                states = definition.Kind == EnemyKind.Patrol ? new EnemyStateMachine(this) : null;
-                combat = new EnemyCombat(this, body, head, target);
-            }
+            try { ResetForRetry(); }
             catch (Exception exception)
             {
-                Debug.LogError($"Enemy setup failed ({name}): {exception.Message}", this);
+                Debug.LogError($"적 '{name}'의 배치 준비에 실패했습니다: {exception.Message}", this);
+                setupFailed = true;
                 enabled = false;
             }
-            if (isActiveAndEnabled) PublishStunStateChanged();
         }
         private void ValidateSetup()
         {
-            if (definition == null || !definition.IsValid || body == null || head == null)
-                throw new InvalidOperationException("Definition, 몸체, 머리 및 유효한 설정이 필요합니다.");
-            if (body.transform.parent != transform || !head.transform.IsChildOf(body.transform) ||
-                body == head || !body.isTrigger || !head.isTrigger)
-                throw new InvalidOperationException("루트 아래 몸체 Trigger와 몸체 아래 머리 Trigger 구조가 필요합니다.");
+            if (definition == null || !definition.IsValid || body == null)
+                throw new InvalidOperationException("설정 자산과 실제 몸체, 유효한 설정이 필요합니다.");
+            if (body.transform == transform || !body.transform.IsChildOf(transform) || !body.isTrigger)
+                throw new InvalidOperationException("고정 기능 루트 안의 별도 몸체 Trigger가 필요합니다.");
+            contactSensor = body.GetComponent<EnemyContactSensor>();
+            if (contactSensor == null || contactSensor.Owner != this)
+                throw new InvalidOperationException("몸체 Trigger와 같은 객체의 접촉 센서가 이 적을 소유자로 연결해야 합니다.");
             if (GetComponentInParent<Rigidbody>() != null || GetComponentInChildren<Rigidbody>(true) != null)
                 throw new InvalidOperationException("적 및 조상/자식에 Rigidbody를 둘 수 없습니다.");
-            if (Quaternion.Angle(body.transform.rotation, Quaternion.identity) > .01f ||
-                Quaternion.Angle(head.transform.rotation, Quaternion.identity) > .01f ||
-                (transform.lossyScale - Vector3.one).sqrMagnitude > .0001f ||
-                (body.transform.lossyScale - Vector3.one).sqrMagnitude > .0001f)
-                throw new InvalidOperationException("물리 루트/몸체는 단위 스케일, Collider는 월드 축 정렬을 사용하세요. 외형 자식만 회전/확대하세요.");
-            if (body.size.x <= 0 || body.size.y <= 0 || body.size.z <= 0 || head.size.x <= 0 || head.size.y <= 0 || head.size.z <= 0)
-                throw new InvalidOperationException("몸체와 머리 Collider 크기는 양수여야 합니다.");
-            if (!FinitePositive(patrolDistance) || !FinitePositive(patrolRadius) || patrolRadius < patrolDistance ||
-                !FinitePositive(sightDistance) || !FinitePositive(heightSearchDistance) ||
-                !float.IsFinite(sightAngle) || sightAngle < 1 || sightAngle > 360 ||
-                !NonNegative(surfaceClearance) || !NonNegative(manualLowerDistance) || !NonNegative(manualUpperDistance))
-                throw new InvalidOperationException("순찰/감지/높이 설정 범위를 확인하세요.");
+            if (!AxisAligned(transform.rotation) || !AxisAligned(body.transform.rotation) ||
+                !UnitScale(transform.lossyScale) || !UnitScale(body.transform.lossyScale) ||
+                !UnitScale(transform.localScale) || !UnitScale(body.transform.localScale))
+                throw new InvalidOperationException("물리 루트와 몸체는 무회전·단위 배율이어야 합니다. 외형 자식만 회전/확대하세요.");
+            if (!Finite(body.size) || !Finite(body.center) || !Finite(transform.position) || !Finite(body.transform.position) ||
+                body.size.x <= 0 || body.size.y <= 0 || body.size.z <= 0 ||
+                terrainMask.value == 0 ||
+                !EnemyDefinition.IsAxisDirection(initialDirection))
+                throw new InvalidOperationException("몸체 크기는 양수·유한값, 몸체 위치는 유한값, 지형 레이어는 비어 있지 않아야 하며 방향은 X/Y 축만 허용합니다.");
+            if (!float.IsFinite(heightSearchDistance) || heightSearchDistance <= 0 ||
+                !float.IsFinite(surfaceClearance) || surfaceClearance < 0)
+                throw new InvalidOperationException("지형 검색 거리와 지면 간격 범위를 확인하세요.");
+            if (definition.Kind == EnemyKind.Patrol)
+            {
+                RequirePatrolPoint(patrolStart, "순찰 시작점");
+                RequirePatrolPoint(patrolEnd, "순찰 끝점");
+                towardEnd = EnemyMotor.ValidatePatrol(patrolStart.position, patrolEnd.position, body.transform.position, initialDirection);
+            }
+            else towardEnd = true;
         }
-        private static bool FinitePositive(float n) => float.IsFinite(n) && n > 0;
-        private static bool NonNegative(float n) => float.IsFinite(n) && n >= 0;
-        private void FixedUpdate()
+        internal void RequirePatrolPoint(Transform point, string label)
         {
-            // Resolve the preceding physics step before the next movement; head always wins over body.
-            combat.Resolve();
-            if (!isActiveAndEnabled || IsDead) return;
-            model.Tick(Time.fixedDeltaTime);
-            states?.Tick(Time.fixedDeltaTime);
-            floating.Tick(Time.fixedDeltaTime);
-            Motor.ApplyFloat(floating.Offset);
+            if (!IsPatrolPoint(point))
+                throw new InvalidOperationException(label + ": 기능 루트 안, 몸체 밖의 유효한 고정 지점을 연결하세요.");
+        }
+        private bool IsPatrolPoint(Transform point) => point != null && body != null && point != transform
+            && point.IsChildOf(transform) && !point.IsChildOf(body.transform)
+            && SceneComponentLookup.IsFixedPoint(this, point);
+        private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
+        private static bool UnitScale(Vector3 value) => Finite(value) && value.x > 0 && value.y > 0 && value.z > 0 &&
+            (value - Vector3.one).sqrMagnitude <= .0001f;
+        private static bool AxisAligned(Quaternion value)
+        {
+            float angle = Quaternion.Angle(value, Quaternion.identity);
+            return float.IsFinite(angle) && angle <= .01f;
+        }
+        private void FixedUpdate() => Tick(Time.fixedDeltaTime);
+
+        /// <summary>적의 상태·이동을 진행합니다. 접촉 반복 피해의 갱신자는 몸체 Sensor입니다.</summary>
+        public void Tick(float deltaSeconds)
+        {
+            if (!isActiveAndEnabled || !prepared || !float.IsFinite(deltaSeconds) || deltaSeconds <= 0 ||
+                (contactSensor != null && contactSensor.PhysicsPaused)) return;
+            float patrolSeconds = AdvanceState(definition.Kind, deltaSeconds, ref currentState, resumeState,
+                ref idleRemaining, ref stunMilliseconds);
+            if (patrolSeconds > 0) Motor.Move(definition.Speed * patrolSeconds, ref towardEnd);
+            if (!IsStunned) Motor.ApplyPosition();
             PublishStunStateChanged();
         }
         private void OnDisable()
         {
-            floating?.Dispose(); floating = null;
-            combat?.Clear(); combat = null;
-            states = null;
+            prepared = false;
+            contactSensor?.UnbindPlayer();
+            Motor = null;
+            currentState = resumeState = EnemyActivityState.IDLE;
+            stunMilliseconds = 0; idleRemaining = 0;
+            PublishStunStateChanged();
         }
-        public void BindTarget(PlayerFacade player)
+        /// <summary>같은 Stage의 최초 위치·방향·기절·접촉을 재준비합니다. 저장 payload가 아닙니다.</summary>
+        public void ResetForRetry()
         {
-            target = player;
-            targetShape = target != null ? target.GetComponent<Collider>() : null;
-            if (isActiveAndEnabled && model != null) combat = new EnemyCombat(this, body, head, target);
-        }
-        public bool IsInvincible() => model?.IsInvincible ?? initiallyInvincible;
-        public void SetInvincible(bool value) { model?.SetInvincible(value); }
-        public int Damage(int damage)
-        {
-            if (!isActiveAndEnabled || model == null) return 0;
-            int applied = model.Damage(damage);
-            if (model.IsDead) Die();
-            return applied;
+            prepared = false;
+            contactSensor?.ClearContacts();
+            Motor = null;
+            ResetState(EnemyKind.Stationary, 0, out currentState, out resumeState, out idleRemaining, out stunMilliseconds);
+            if (!initialPlacementCaptured)
+            {
+                ValidateSetup();
+                initialPosition = body.transform.position;
+                initialPlacementCaptured = true;
+            }
+            if (body == null) throw new InvalidOperationException("복원할 적 몸체가 없습니다.");
+            body.transform.position = initialPosition;
+            ValidateSetup();
+            // 복원된 실제 지형 pose를 조회한다. 자연 물리 콜백/접지를 강제로 만들지 않는다.
+            if (gameObject.activeInHierarchy) Physics.SyncTransforms();
+            Motor = new EnemyMotor(this, body, terrainMask, patrolStart, patrolEnd, heightSearchDistance, surfaceClearance);
+            ResetState(definition.Kind, definition.InitialIdle, out currentState, out resumeState, out idleRemaining, out stunMilliseconds);
+            prepared = true;
+            bool recoverFailedSetup = setupFailed;
+            setupFailed = false;
+            if (recoverFailedSetup) enabled = true;
+            PublishStunStateChanged();
         }
         public int TryStun(int stunDur)
         {
-            if (!isActiveAndEnabled || model == null) return 0;
-            int applied = model.Stun(stunDur);
-            if (applied > 0) states?.Stun();
+            if (!isActiveAndEnabled || !prepared) return 0;
+            int applied = AddStun(stunDur, ref currentState, ref resumeState, ref stunMilliseconds);
             PublishStunStateChanged();
             return applied;
         }
-        public void Stomp()
+        /// <summary>Actor가 소유한 실행 상태를 초기화하는 순수 규칙입니다. 공유 설정 자산을 변경하지 않습니다.</summary>
+        public static void ResetState(EnemyKind kind, float initialIdle, out EnemyActivityState state, out EnemyActivityState resume,
+            out float idle, out double stun)
         {
-            if (!isActiveAndEnabled || model == null || model.IsDead) return;
-            model.Kill(); Die();
+            if ((kind != EnemyKind.Stationary && kind != EnemyKind.Patrol) || !float.IsFinite(initialIdle) || initialIdle < 0)
+                throw new ArgumentOutOfRangeException(nameof(initialIdle));
+            state = kind == EnemyKind.Patrol && initialIdle == 0 ? EnemyActivityState.PATROL : EnemyActivityState.IDLE;
+            resume = state; idle = initialIdle; stun = 0;
         }
-        private void Die()
+        public static int AddStun(int milliseconds, ref EnemyActivityState state, ref EnemyActivityState resume, ref double remainingMilliseconds)
         {
-            if (deathRaised) return;
-            deathRaised = true;
-            try
+            if (milliseconds <= 0) return 0;
+            if (!double.IsFinite(remainingMilliseconds) || remainingMilliseconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(remainingMilliseconds));
+            if (state != EnemyActivityState.STUNNED) resume = state;
+            remainingMilliseconds += milliseconds;
+            state = EnemyActivityState.STUNNED;
+            return milliseconds;
+        }
+        /// <summary>이 단계에서 순찰에 쓸 시간(초)을 반환합니다. 기절 동안 대기 시계도 멈춥니다.</summary>
+        public static float AdvanceState(EnemyKind kind, float delta, ref EnemyActivityState state, EnemyActivityState resume,
+            ref float idle, ref double stun)
+        {
+            if (!float.IsFinite(delta) || delta <= 0) return 0;
+            if (state == EnemyActivityState.STUNNED)
             {
-                PublishStunStateChanged();
-                Died?.Invoke(this);
+                stun = Math.Max(0, stun - (double)delta * 1000);
+                if (stun <= .001) { stun = 0; state = resume; }
+                return 0;
             }
-            finally { gameObject.SetActive(false); }
+            if (kind == EnemyKind.Stationary) return 0;
+            if (state == EnemyActivityState.IDLE)
+            {
+                float used = Math.Min(idle, delta);
+                idle -= used;
+                if (idle > 0) return 0;
+                state = EnemyActivityState.PATROL;
+                return delta - used;
+            }
+            return state == EnemyActivityState.PATROL ? delta : 0;
         }
-        /// <summary>직전 알림과 상태가 다를 때만 이벤트를 호출합니다.</summary>
-        /// <remarks>스턴 시간 연장 시에는 중복 호출하지 않으며, 사망 및 재활성화로 해제된 상태도 반영합니다.</remarks>
         private void PublishStunStateChanged()
         {
-            bool isStunned = IsStunned;
-            if (publishedStunState == isStunned) return;
-            publishedStunState = isStunned;
-            StunStateChanged?.Invoke(isStunned);
-        }
-        public bool InPatrolRange(Vector3 point)
-        {
-            Vector3 delta = point - Motor.Origin; delta.z = 0;
-            return delta.sqrMagnitude <= patrolRadius * patrolRadius && point.y >= Motor.MinimumY && point.y <= Motor.MaximumY;
-        }
-        public bool CanChase()
-        {
-            if (target == null || !target.isActiveAndEnabled || target.IsDead || !InPatrolRange(TargetPosition)) return false;
-            if (targetShape != null && (!targetShape.enabled || targetShape.bounds.max.y < Motor.MinimumY || targetShape.bounds.min.y > Motor.MaximumY)) return false;
-            if (targetShape == null && (target.transform.position.y < Motor.MinimumY || target.transform.position.y > Motor.MaximumY)) return false;
-            Vector3 delta = TargetPosition - BodyPosition;
-            // Ignore targets on another side-scrolling lane.
-            if (Mathf.Abs(delta.z) > body.size.z * .5f + .5f) return false;
-            delta.z = 0;
-            if (delta.sqrMagnitude > sightDistance * sightDistance || Vector3.Angle(Motor.Facing, delta) > sightAngle * .5f) return false;
-            Vector3 ray = TargetPosition - BodyPosition;
-            foreach (var hit in Physics.RaycastAll(BodyPosition, ray.normalized, ray.magnitude, terrainMask, QueryTriggerInteraction.Ignore))
-                if (IsTerrainCollider(hit.collider)) return false;
-            return true;
+            bool value = IsStunned;
+            if (publishedStunState == value) return;
+            publishedStunState = value;
+            StunStateChanged?.Invoke(value);
         }
         public bool IsTerrainCollider(Collider collider) => collider != null && !collider.isTrigger &&
             !collider.transform.IsChildOf(transform) &&
             !(collider.attachedRigidbody != null && collider.attachedRigidbody.TryGetComponent<PlayerFacade>(out _));
-        public void RecordContact(Collider other, bool entered, bool isHead) => combat?.Record(other, entered, isHead);
 
         private void OnDrawGizmosSelected()
         {
             if (definition == null || body == null) return;
-            Vector3 start = Application.isPlaying && Motor != null ? Motor.Origin : transform.position;
-            Vector3 direction = EnemyDefinition.Direction(initialDirection);
             Vector3 size = Vector3.Scale(body.size, body.transform.lossyScale);
             Gizmos.color = Color.cyan;
-            Gizmos.DrawWireCube(start, size + Vector3.up * definition.FloatAmplitude * 2);
-            if (head != null)
-            {
-                Gizmos.color = Color.magenta;
-                Gizmos.DrawWireCube(head.bounds.center, head.bounds.size);
-            }
-            if (definition.Kind != EnemyKind.Patrol) return;
-            Vector3 end = start + direction * patrolDistance;
-            float min = start.y - manualLowerDistance, max = start.y + manualUpperDistance;
-            if (Application.isPlaying && Motor != null)
-            { min = Motor.MinimumY; max = Motor.MaximumY; }
-            else
-            {
-                Vector3 center = body.transform.TransformPoint(body.center);
-                float down = float.PositiveInfinity, up = float.PositiveInfinity;
-                Vector3 extents = new Vector3(size.x / 2, .001f, size.z / 2);
-                foreach (var hit in Physics.BoxCastAll(center, extents, Vector3.down, Quaternion.identity,
-                    heightSearchDistance, terrainMask, QueryTriggerInteraction.Ignore))
-                    if (IsTerrainCollider(hit.collider) && hit.distance < down)
-                    { down = hit.distance; min = hit.point.y + surfaceClearance + size.y / 2 - (center.y - start.y); }
-                foreach (var hit in Physics.BoxCastAll(center, extents, Vector3.up, Quaternion.identity,
-                    heightSearchDistance, terrainMask, QueryTriggerInteraction.Ignore))
-                    if (IsTerrainCollider(hit.collider) && hit.distance < up)
-                    { up = hit.distance; max = hit.point.y - surfaceClearance - size.y / 2 - (center.y - start.y); }
-            }
-            bool blocked = min > max || start.y < min || start.y > max || end.y < min || end.y > max;
-            foreach (var hit in Physics.BoxCastAll(body.transform.TransformPoint(body.center), size / 2, direction,
-                Quaternion.identity, patrolDistance, terrainMask, QueryTriggerInteraction.Ignore))
-                if (IsTerrainCollider(hit.collider)) { blocked = true; break; }
-            Gizmos.color = blocked ? Color.red : Color.cyan;
-            Gizmos.DrawLine(start, end);
-            Gizmos.DrawWireCube(end, size);
-            // 화살표 길이는 1초 이동 거리(경로 길이 상한)이다.
-            Vector3 arrow = start + direction * Mathf.Min(patrolDistance, definition.Speed);
-            Vector3 side = Vector3.Cross(direction, Vector3.forward) * .12f;
-            Gizmos.DrawLine(start, arrow);
-            Gizmos.DrawLine(arrow, arrow - direction * .2f + side);
-            Gizmos.DrawLine(arrow, arrow - direction * .2f - side);
-            Gizmos.color = min > max ? Color.red : Color.yellow;
-            Gizmos.DrawLine(new Vector3(start.x - patrolRadius, min, start.z), new Vector3(start.x + patrolRadius, min, start.z));
-            Gizmos.DrawLine(new Vector3(start.x - patrolRadius, max, start.z), new Vector3(start.x + patrolRadius, max, start.z));
-            Gizmos.color = Color.cyan;
-            DrawArc(start, Vector3.right, 360, patrolRadius);
-            Vector3 facing = Application.isPlaying && Motor != null ? Motor.Facing : direction;
-            Vector3 first = Quaternion.AngleAxis(-sightAngle / 2, Vector3.forward) * facing;
-            Gizmos.color = Color.green;
-            DrawArc(BodyPosition, first, sightAngle, sightDistance);
-            Gizmos.DrawLine(BodyPosition, BodyPosition + first * sightDistance);
-            Gizmos.DrawLine(BodyPosition, BodyPosition + Quaternion.AngleAxis(sightAngle, Vector3.forward) * first * sightDistance);
-        }
-        private static void DrawArc(Vector3 center, Vector3 first, float angle, float radius)
-        {
-            const int segments = 48;
-            Vector3 previous = center + first * radius;
-            for (int i = 1; i <= segments; i++)
-            {
-                Vector3 next = center + Quaternion.AngleAxis(angle * i / segments, Vector3.forward) * first * radius;
-                Gizmos.DrawLine(previous, next); previous = next;
-            }
+            Gizmos.DrawWireCube(BodyPosition, size);
+            if (definition.Kind != EnemyKind.Patrol || patrolStart == null || patrolEnd == null) return;
+            bool invalid = !IsPatrolPoint(patrolStart) || !IsPatrolPoint(patrolEnd);
+            try { EnemyMotor.ValidatePatrol(patrolStart.position, patrolEnd.position,
+                initialPlacementCaptured ? initialPosition : body.transform.position, initialDirection); }
+            catch (ArgumentException) { invalid = true; }
+            Gizmos.color = invalid || (Motor != null && Motor.IsTrapped) ? Color.red : Color.cyan;
+            Vector3 offset = BodyPosition - body.transform.position;
+            Gizmos.DrawLine(patrolStart.position, patrolEnd.position);
+            Gizmos.DrawWireCube(patrolStart.position + offset, size);
+            Gizmos.DrawWireCube(patrolEnd.position + offset, size);
+            if (Motor == null) return;
+            Gizmos.color = Color.yellow;
+            Vector3 left = Vector3.Min(patrolStart.position, patrolEnd.position) - Vector3.right * size.x;
+            Vector3 right = Vector3.Max(patrolStart.position, patrolEnd.position) + Vector3.right * size.x;
+            Gizmos.DrawLine(new Vector3(left.x, Motor.MinimumY, left.z), new Vector3(right.x, Motor.MinimumY, right.z));
+            Gizmos.DrawLine(new Vector3(left.x, Motor.MaximumY, left.z), new Vector3(right.x, Motor.MaximumY, right.z));
         }
     }
 }

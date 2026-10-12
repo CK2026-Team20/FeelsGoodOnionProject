@@ -12,6 +12,10 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     [SerializeField, Min(1)] private int maxHP = 3;
     [SerializeField, Min(0)] private int initialHP = 3;
     [SerializeField] private bool invincible;
+    [Tooltip("일반 피해가 적용된 뒤 추가 피해를 막는 시간입니다(초). 0이면 기존처럼 자동 피격 무적을 사용하지 않습니다. 통합 구성은 2초로 설정하며 수동 무적과 별도로 관리합니다.")]
+    [SerializeField, Min(0f)] private float hitInvincibilitySeconds;
+    private float hitInvincibleUntil;
+    private long damageGeneration;
 
     [Header("Future Feature Settings")]
     [SerializeField, Min(0)] private int initialSkillFragment;
@@ -293,18 +297,75 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         SkillActivated?.Invoke(skill);
     }
 
-    /// <summary>활성화 및 생존 상태를 검사하고 Model에 피해를 적용합니다. 피격 무적 시간은 자동 생성하지 않습니다.</summary>
+    /// <summary>활성화 및 생존 상태를 검사하고 Model에 피해를 적용합니다. 선택한 경우에만 공통 피격 무적을 시작합니다.</summary>
     /// <param name="damage">요청 피해량. 0 이하는 무시합니다.</param>
     /// <returns>실제 감소한 HP.</returns>
     public int Damage(int damage)
     {
         EnsureInitialized();
         if (!isActiveAndEnabled || model.IsDead || IsInvincible()) return 0;
+
+        if (damage > 0) damageGeneration++;
+
+        // HealthChanged 관찰자가 다시 피해를 요청해도 같은 피격에서 중복 적용하지 않습니다.
+        if (damage > 0 && hitInvincibilitySeconds > 0f) hitInvincibleUntil = Time.time + hitInvincibilitySeconds;
         
         int applied = model.ApplyDamage(damage);
         if (applied > 0) Damaged?.Invoke(applied);
         
         return applied;
+    }
+
+    /// <summary>피격 무적을 명시적으로 선택합니다. 0초이면 기존 독립 구성의 수동 무적만 사용합니다.</summary>
+    public void SetHitInvincibilityDuration(float seconds)
+    {
+        if (!float.IsFinite(seconds) || seconds < 0f) throw new ArgumentOutOfRangeException(nameof(seconds));
+        hitInvincibilitySeconds = seconds;
+        hitInvincibleUntil = 0f;
+    }
+
+    /// <summary>공통 Damage 판정으로 수락된 피해에만 넉백을 함께 적용합니다. 치명타도 포함합니다.</summary>
+    /// <param name="knockbackVelocity">월드 초기 속도(m/s). 방향·크기는 피해 제공자가 정합니다.</param>
+    /// <param name="controlLockDuration">조작 제한 시간(ms). 공통 Knockback 클립 길이를 전달하며 0은 추가 시간 제한 없음입니다.</param>
+    public int Damage(int damage, Vector3 knockbackVelocity, float controlLockDuration)
+    {
+        ValidateDamageKnockback(knockbackVelocity, controlLockDuration);
+        EnsureInitialized();
+        if (!movement.isActiveAndEnabled) return 0;
+        long generation = damageGeneration + 1;
+        int applied = Damage(damage);
+        // 피해 콜백 중 더 최신 피해·강제 사망·부활·해제가 발생하면 그 결과를 보존합니다.
+        if (applied > 0 && generation == damageGeneration && isActiveAndEnabled && movement.isActiveAndEnabled)
+            movement.ApplyKnockback(knockbackVelocity, controlLockDuration / 1000f);
+        return applied;
+    }
+
+    /// <summary>Deadzone・추격 포획에서 수동/피격 무적을 우회해 HP를 0으로 만들고 넉백을 적용합니다.</summary>
+    /// <remarks>기존 사망 이벤트·FSM을 사용하며 폼·HeavyState·중력·운동을 초기화하지 않습니다.</remarks>
+    /// <param name="knockbackVelocity">월드 초기 속도(m/s). 피해 제공자가 정합니다.</param>
+    /// <param name="controlLockDuration">공통 Knockback 클립에 해당하는 조작 제한 시간(ms). 0은 추가 시간 제한 없음입니다.</param>
+    /// <returns>실제로 감소한 HP. 비활성·이미 사망 상태이면 0입니다.</returns>
+    public int ForceDeath(Vector3 knockbackVelocity, float controlLockDuration)
+    {
+        ValidateDamageKnockback(knockbackVelocity, controlLockDuration);
+        EnsureInitialized();
+        if (!isActiveAndEnabled || model.IsDead || !movement.isActiveAndEnabled) return 0;
+        long generation = ++damageGeneration;
+        int applied = model.ApplyDamage(model.CurrentHP);
+        if (applied > 0)
+        {
+            if (generation == damageGeneration && isActiveAndEnabled && movement.isActiveAndEnabled)
+                movement.ApplyKnockback(knockbackVelocity, controlLockDuration / 1000f);
+            Damaged?.Invoke(applied);
+        }
+        return applied;
+    }
+
+    private static void ValidateDamageKnockback(Vector3 velocity, float duration)
+    {
+        if (!float.IsFinite(velocity.x) || !float.IsFinite(velocity.y) || !float.IsFinite(velocity.z))
+            throw new ArgumentOutOfRangeException(nameof(velocity));
+        if (!float.IsFinite(duration) || duration < 0f) throw new ArgumentOutOfRangeException(nameof(duration));
     }
     
     /// <summary>플레이어 공통 조건과 거리 조건을 확인하고 껍질을 회수</summary>
@@ -320,8 +381,8 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         return formController.TryRecoverNearbyDebris();
     }
 
-    /// <summary>명시적으로 설정한 무적 여부를 반환</summary>
-    public bool IsInvincible() => invincible;
+    /// <summary>수동 무적 또는 명시적으로 선택한 공통 피격 무적이 유효한지 반환합니다.</summary>
+    public bool IsInvincible() => invincible || (hitInvincibilitySeconds > 0f && Time.time < hitInvincibleUntil);
 
     /// <summary>외부 시스템이 무적을 설정</summary>
     /// <param name="value">무적 활성 여부</param>
@@ -395,9 +456,12 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         EnsureInitialized();
         if (!model.IsDead || health <= 0) return false;
 
+        damageGeneration++;
+
         skillController.CancelAll();
         skillPresentation.Clear();
         movement.ResetForRevive(clearGround);
+        hitInvincibleUntil = 0f;
         if (!model.TryRevive(health)) return false;
         RefreshState();
         Revived?.Invoke();
@@ -520,6 +584,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     {
         maxHP = Mathf.Max(1, maxHP);
         initialHP = Mathf.Clamp(initialHP, 0, maxHP);
+        hitInvincibilitySeconds = float.IsFinite(hitInvincibilitySeconds) ? Mathf.Max(0f, hitInvincibilitySeconds) : 0f;
         
         int maxSkillFragment = tearSkillDefinition != null ? Mathf.Max(0, tearSkillDefinition.RequiredFragments) : 0;
         initialSkillFragment = Mathf.Clamp(initialSkillFragment, 0, maxSkillFragment);
@@ -534,6 +599,8 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
     /// </remarks>
     private void OnDisable()
     {
+        damageGeneration++;
+        hitInvincibleUntil = 0f;
         ClearInput();
         skillController?.CancelAll();
         skillPresentation.Clear();
