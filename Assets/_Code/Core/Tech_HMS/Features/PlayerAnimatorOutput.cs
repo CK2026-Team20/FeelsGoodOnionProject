@@ -36,6 +36,17 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
     private int lastStartFrame;
     private readonly HashSet<PlayerAnimationId> warnedMissing = new HashSet<PlayerAnimationId>();
 
+    /// <summary>지정된 실제 Knockback 클립의 공통 조작 제한 시간(ms). 누락/Legacy이면 0이며 Idle 대체 길이를 사용하지 않습니다.</summary>
+    public float KnockbackControlLockMilliseconds
+    {
+        get
+        {
+            if (animationSet == null) return 0f;
+            AnimationClip clip = animationSet.Resolve(PlayerAnimationId.Knockback, out PlayerAnimationId resolved);
+            return clip != null && resolved == PlayerAnimationId.Knockback ? clip.length * 1000f : 0f;
+        }
+    }
+
     private static readonly int PlaybackSpeed = Animator.StringToHash("PlaybackSpeed");
 
     /// <summary>요청 담당과 형태 담당을 캐싱합니다.</summary>
@@ -75,7 +86,7 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
                 Debug.LogWarning("[Player Animation] 활성 Animator 또는 유효한 Animation Set/Controller가 없습니다. 일회성 표현은 건너뜁니다.", this);
                 warnedUnavailable = true;
             }
-            if (request.IsOneShot) requests.TryComplete(request.RequestId);
+            requests.TryReportResult(request.RequestId, PlayerAnimationEndReason.Missing);
             activeRequestId = 0;
             return;
         }
@@ -110,6 +121,7 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
                 // 공중·넉백·사망은 상태가 끝날 때까지 마지막 포즈를 유지합니다.
                 animator.Play(activeStateHash, 0, 0.99999f);
                 animator.SetFloat(PlaybackSpeed, 0f);
+                requests.TryReportResult(activeRequestId, PlayerAnimationEndReason.Completed);
             }
         }
     }
@@ -163,7 +175,7 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
         }
         if (!hasClip && request.IsOneShot)
         {
-            requests.TryComplete(request.RequestId);
+            requests.TryReportResult(request.RequestId, PlayerAnimationEndReason.Missing);
             return;
         }
         activeStateHash = Animator.StringToHash("Base Layer." + request.Animation);
@@ -171,7 +183,7 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
         {
             if (warnedMissing.Add(request.Animation)) Debug.LogWarning($"[Player Animation] Controller에 {request.Animation} 상태가 없습니다.", this);
             hasClip = false;
-            if (request.IsOneShot) requests.TryComplete(request.RequestId);
+            requests.TryReportResult(request.RequestId, PlayerAnimationEndReason.Missing);
             return;
         }
         animator.SetFloat(PlaybackSpeed, 1f);
@@ -185,6 +197,8 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
             animator.CrossFadeInFixedTime(activeStateHash, blend, 0, 0f);
         }
         lastStartFrame = Time.frameCount;
+        if (!hasClip || resolvedAnimation != request.Animation)
+            requests.TryReportResult(request.RequestId, PlayerAnimationEndReason.Missing);
     }
 
     /// <summary>생성한 Controller를 정리하고 기존 Animator 설정을 복원합니다.</summary>
@@ -208,8 +222,21 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
     /// <summary>재생 연결을 해제합니다. 재활성화 시 최신 요청을 처음부터 동기화합니다.</summary>
     private void OnDisable()
     {
-        ReleaseAnimator();
-        activeRequestId = 0;
-        savedNormalizedTime = 0f;
+        long interruptedId = activeRequestId;
+        try
+        {
+            if (requests != null && interruptedId > 0 && requests.CurrentRequest.IsOneShot &&
+                requests.CurrentRequest.RequestId == interruptedId)
+                requests.TryReportResult(interruptedId, PlayerAnimationEndReason.Interrupted);
+        }
+        finally
+        {
+            try { ReleaseAnimator(); }
+            finally
+            {
+                activeRequestId = 0;
+                savedNormalizedTime = 0f;
+            }
+        }
     }
 }

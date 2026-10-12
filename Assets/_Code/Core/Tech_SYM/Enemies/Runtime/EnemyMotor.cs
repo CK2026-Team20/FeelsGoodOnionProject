@@ -1,68 +1,110 @@
+using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
 {
-    /// <summary>축 정렬 Box 몸체의 기준 위치와 부유 위치를 합성한다. 플랫폼 운동을 전달받지 않는다.</summary>
+    /// <summary>고정 Transform 사이의 X/Y 이동과 지형 제한을 계산하고 실제 Body의 위치만 작성합니다.</summary>
     public sealed class EnemyMotor
     {
         private const float Skin = .002f;
         private readonly BoxCollider body;
-        private readonly Transform root;
+        private readonly Transform movingBody, patrolStart, patrolEnd;
         private readonly LayerMask terrain;
-        private readonly Vector3 half;
-        private readonly Vector3 centerOffset;
+        private readonly Vector3 half, centerOffset, initialPosition;
         private readonly bool bounded;
         private readonly EnemyActor owner;
+        private readonly PhysicsScene physics;
+        private RaycastHit[] hits = new RaycastHit[16];
+        private Collider[] overlaps = new Collider[16];
         private Vector3 physical;
         private bool reportedBlocked;
-        public Vector3 Origin { get; }
-        public Vector3 End { get; }
-        public Vector3 BasePosition { get; private set; }
-        public Vector3 Facing { get; private set; }
+        private Vector3 Origin => bounded ? RequirePoint(patrolStart, "순찰 시작점").position : initialPosition;
+        private Vector3 End => bounded ? RequirePoint(patrolEnd, "순찰 끝점").position : initialPosition;
+        private Vector3 BasePosition { get; set; }
         public float MinimumY { get; }
         public float MaximumY { get; }
-        public bool FoundFloor { get; }
-        public bool FoundCeiling { get; }
         public bool IsTrapped { get; private set; }
 
-        public EnemyMotor(EnemyActor owner, BoxCollider body, LayerMask terrain, Vector3 direction,
-            float distance, float searchDistance, float clearance, float lower, float upper)
+        public EnemyMotor(EnemyActor owner, BoxCollider body, LayerMask terrain, Transform patrolStart,
+            Transform patrolEnd, float searchDistance, float clearance)
         {
-            this.owner = owner; this.body = body; root = owner.transform; this.terrain = terrain;
+            this.owner = owner; this.body = body; movingBody = body.transform; this.terrain = terrain;
+            this.patrolStart = patrolStart; this.patrolEnd = patrolEnd;
             bounded = owner.Definition.Kind == EnemyKind.Patrol;
-            Origin = BasePosition = root.position;
-            End = Origin + direction * distance;
-            Facing = direction;
-            physical = body.transform.position;
+            initialPosition = BasePosition = physical = movingBody.position;
+            physics = owner.gameObject.scene.GetPhysicsScene();
+            if (!physics.IsValid()) throw new InvalidOperationException("적이 속한 실제 물리 씬이 필요합니다.");
             half = Vector3.Scale(body.size, body.transform.lossyScale) * .5f;
-            centerOffset = body.transform.TransformPoint(body.center) - root.position;
-            MinimumY = bounded ? Origin.y - lower : float.NegativeInfinity;
-            MaximumY = bounded ? Origin.y + upper : float.PositiveInfinity;
+            centerOffset = body.transform.TransformPoint(body.center) - movingBody.position;
+            MinimumY = bounded ? Math.Min(Origin.y, End.y) : float.NegativeInfinity;
+            MaximumY = bounded ? Math.Max(Origin.y, End.y) : float.PositiveInfinity;
             if (bounded)
             {
-                Vector3 center = Origin + centerOffset;
+                Vector3 center = initialPosition + centerOffset;
                 if (Cast(center, new Vector3(half.x, .001f, half.z), Vector3.down, searchDistance, out var floor))
-                {
-                    MinimumY = floor.point.y + clearance + half.y - centerOffset.y;
-                    FoundFloor = true;
-                }
+                { MinimumY = floor.point.y + clearance + half.y - centerOffset.y; }
                 if (Cast(center, new Vector3(half.x, .001f, half.z), Vector3.up, searchDistance, out var ceiling))
-                {
-                    MaximumY = ceiling.point.y - clearance - half.y - centerOffset.y;
-                    FoundCeiling = true;
-                }
-                if (MinimumY > MaximumY || Origin.y < MinimumY || Origin.y > MaximumY)
-                    throw new System.InvalidOperationException("적 시작 위치 또는 상하 높이 구간이 유효하지 않습니다.");
+                { MaximumY = ceiling.point.y - clearance - half.y - centerOffset.y; }
+                if (MinimumY > MaximumY || initialPosition.y < MinimumY || initialPosition.y > MaximumY ||
+                    Origin.y < MinimumY || Origin.y > MaximumY || End.y < MinimumY || End.y > MaximumY)
+                    throw new InvalidOperationException("적의 초기 위치와 실제 순찰 끝점이 지형의 안전 높이 구간 안에 있어야 합니다.");
             }
-            if (Overlaps(physical)) throw new System.InvalidOperationException("적 몸체가 시작부터 지형에 묻혀 있습니다.");
+            if (Overlaps(physical)) throw new InvalidOperationException("적 몸체가 시작부터 지형에 묻혀 있습니다.");
         }
-
-        private Vector3 Center(Vector3 position) => position + body.transform.TransformVector(body.center);
+        private Transform RequirePoint(Transform point, string label)
+        {
+            owner.RequirePatrolPoint(point, label);
+            return point;
+        }
+        private static bool Finite(Vector3 v) => float.IsFinite(v.x) && float.IsFinite(v.y) && float.IsFinite(v.z);
+        /// <summary>실제 점의 X/Y 축·초기 위치와 첫 방향을 검증하고 첫 목표 끝점을 반환합니다.</summary>
+        public static bool ValidatePatrol(Vector3 start, Vector3 end, Vector3 origin, PatrolDirection direction)
+        {
+            if (!Finite(start) || !Finite(end) || !Finite(origin) || !EnemyDefinition.IsAxisDirection(direction))
+                throw new ArgumentException("유한한 X/Y 순찰 지점과 축 방향이 필요합니다.");
+            Vector3 delta = end - start;
+            if (!Finite(delta)) throw new ArgumentException("순찰 구간의 길이가 유한해야 합니다.");
+            bool x = Math.Abs(delta.x) > .0001f && Math.Abs(delta.y) <= .0001f && Math.Abs(delta.z) <= .0001f;
+            bool y = Math.Abs(delta.y) > .0001f && Math.Abs(delta.x) <= .0001f && Math.Abs(delta.z) <= .0001f;
+            if ((!x && !y) || (x && direction != PatrolDirection.Left && direction != PatrolDirection.Right) ||
+                (y && direction != PatrolDirection.Up && direction != PatrolDirection.Down))
+                throw new ArgumentException("서로 다른 두 순찰 지점과 첫 방향이 같은 X 또는 Y 축에 있어야 합니다.");
+            float position = x ? origin.x : origin.y, a = x ? start.x : start.y, b = x ? end.x : end.y;
+            if (position < Math.Min(a, b) - .0001f || position > Math.Max(a, b) + .0001f ||
+                Math.Abs(origin.z - start.z) > .0001f || Math.Abs((x ? origin.y - start.y : origin.x - start.x)) > .0001f)
+                throw new ArgumentException("적의 초기 위치가 실제 순찰 선분에 있어야 합니다.");
+            Vector3 facing = EnemyDefinition.Direction(direction);
+            return (x ? delta.x * facing.x : delta.y * facing.y) > 0;
+        }
+        /// <summary>종점에 도착한 같은 단계에 방향을 반전합니다. 지형 통과 여부는 실제 Sweep이 결정합니다.</summary>
+        public static Vector3 StepPatrol(Vector3 position, Vector3 start, Vector3 end, float distance, ref bool towardEnd)
+        {
+            if (!Finite(position) || !Finite(start) || !Finite(end) || !float.IsFinite(distance) || distance < 0)
+                throw new ArgumentOutOfRangeException(nameof(distance));
+            if (distance == 0) return position;
+            Vector3 target = towardEnd ? end : start;
+            Vector3 next = Vector3.MoveTowards(position, target, distance);
+            if ((next - target).sqrMagnitude <= .00000001f) towardEnd = !towardEnd;
+            return next;
+        }
+        private Vector3 Center(Vector3 position) => position + centerOffset;
+        private int CollectOverlaps(Vector3 position)
+        {
+            int count;
+            while ((count = physics.OverlapBox(Center(position), half, overlaps, Quaternion.identity, terrain,
+                QueryTriggerInteraction.Ignore)) == overlaps.Length) Array.Resize(ref overlaps, checked(overlaps.Length * 2));
+            return count;
+        }
         private bool Overlaps(Vector3 position)
         {
-            foreach (var c in Physics.OverlapBox(Center(position), half, Quaternion.identity, terrain, QueryTriggerInteraction.Ignore))
-                if (owner.IsTerrainCollider(c) && Physics.ComputePenetration(body, position, Quaternion.identity, c, c.transform.position,
-                    c.transform.rotation, out _, out float depth) && depth > Skin) return true;
+            int count = CollectOverlaps(position);
+            for (int i = 0; i < count; i++)
+            {
+                var c = overlaps[i];
+                if (owner.IsTerrainCollider(c) && Physics.ComputePenetration(body, position, Quaternion.identity, c,
+                    c.transform.position, c.transform.rotation, out _, out float depth) && depth > Skin) return true;
+            }
             return false;
         }
         private Vector3 Sweep(Vector3 start, Vector3 end)
@@ -71,48 +113,47 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             float distance = delta.magnitude;
             if (distance < .000001f) return start;
             if (Cast(Center(start), half, delta / distance, distance + Skin, out var hit))
-                return start + delta / distance * Mathf.Max(0, hit.distance - Skin);
+                return start + delta / distance * Math.Max(0, hit.distance - Skin);
             return end;
         }
         private bool Cast(Vector3 center, Vector3 extents, Vector3 direction, float distance, out RaycastHit nearest)
         {
             nearest = default;
+            int count;
+            while ((count = physics.BoxCast(center, extents, direction, hits, Quaternion.identity, distance, terrain,
+                QueryTriggerInteraction.Ignore)) == hits.Length) Array.Resize(ref hits, checked(hits.Length * 2));
             float best = float.PositiveInfinity;
-            foreach (var hit in Physics.BoxCastAll(center, extents, direction, Quaternion.identity, distance,
-                terrain, QueryTriggerInteraction.Ignore))
-                if (owner.IsTerrainCollider(hit.collider) && hit.distance < best)
-                { best = hit.distance; nearest = hit; }
+            for (int i = 0; i < count; i++)
+                if (owner.IsTerrainCollider(hits[i].collider) && hits[i].distance < best)
+                { best = hits[i].distance; nearest = hits[i]; }
             return best < float.PositiveInfinity;
         }
-        public bool MoveBase(Vector3 target, float distance)
+        public void Move(float distance, ref bool towardEnd)
         {
-            if (IsTrapped) return true;
-            target.z = Origin.z;
-            Vector3 requested = Vector3.MoveTowards(BasePosition, target, distance);
+            if (IsTrapped || !bounded) return;
+            bool previousDirection = towardEnd;
+            Vector3 requested = StepPatrol(BasePosition, Origin, End, distance, ref towardEnd);
             Vector3 limited = requested;
             limited.y = Mathf.Clamp(limited.y, MinimumY, MaximumY);
             Vector3 delta = limited - BasePosition;
-            if (delta.sqrMagnitude > .000001f) Facing = delta.normalized;
             Vector3 nextPhysical = Sweep(physical, physical + delta);
-            Vector3 applied = nextPhysical - physical;
-            BasePosition += applied;
+            BasePosition += nextPhysical - physical;
             physical = nextPhysical;
-            return (requested - BasePosition).sqrMagnitude > .000001f;
+            if ((requested - BasePosition).sqrMagnitude > .000001f) towardEnd = !previousDirection;
         }
-        public void ApplyFloat(float offset)
+        public void ApplyPosition()
         {
-            // Moving terrain can enter a static Trigger. Resolve only overlap, never platform velocity.
             Vector3 corrected = physical;
             for (int iteration = 0; iteration < 6; iteration++)
             {
                 bool overlap = false;
-                foreach (var c in Physics.OverlapBox(Center(corrected), half, Quaternion.identity, terrain, QueryTriggerInteraction.Ignore))
+                int count = CollectOverlaps(corrected);
+                for (int i = 0; i < count; i++)
                 {
-                    if (!owner.IsTerrainCollider(c)) continue;
-                    if (!Physics.ComputePenetration(body, corrected, Quaternion.identity, c, c.transform.position,
-                        c.transform.rotation, out var direction, out float depth) || depth <= Skin) continue;
+                    var c = overlaps[i];
+                    if (!owner.IsTerrainCollider(c) || !Physics.ComputePenetration(body, corrected, Quaternion.identity,
+                        c, c.transform.position, c.transform.rotation, out var direction, out float depth) || depth <= Skin) continue;
                     overlap = true;
-                    // Preserve the side-scrolling plane even when PhysX's shortest escape points into depth.
                     direction.z = 0;
                     if (direction.sqrMagnitude < .0001f) break;
                     corrected += direction.normalized * (depth + Skin);
@@ -131,12 +172,12 @@ namespace FeelsGoodOnion.TechSYM.Enemies
                 reportedBlocked = false;
                 if (bounded) BasePosition += corrected - physical;
                 physical = corrected;
-                Vector3 desired = BasePosition + Vector3.up * offset;
+                Vector3 desired = BasePosition;
                 desired.y = Mathf.Clamp(desired.y, MinimumY, MaximumY);
                 physical = Sweep(physical, desired);
             }
-            root.position = BasePosition;
-            body.transform.position = physical;
+            BasePosition = physical;
+            movingBody.position = physical;
         }
     }
 }

@@ -1,230 +1,139 @@
-using DG.Tweening;
+using System.Collections;
+using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEngine;
-using UnityEngine.Serialization;
+using System;
+using Cooked.Authoring;
 
 namespace FeelsGoodOnion.TechSYM.Features
 {
-    /// <summary>
-    /// 무거운 플레이어가 밟으면 붕괴하는 플랫폼.
-    /// 설정에 따라 재생성하거나 파괴한다.
-    /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(BoxCollider))]
-    public sealed class ShatteredPlatform : MonoBehaviour, IBrokenable
+    public sealed class ShatteredPlatform : MonoBehaviour
     {
-        /// <summary>플랫폼 붕괴 진행 단계.</summary>
-        public enum CollapsePhase { Ready, Wiggling, Collapsed, Regenerating, DestroyScheduled }
-
-        [Header("References")]
-        [Tooltip("콜라이더가 없는 렌더 오브젝트")]
-        [SerializeField] private Transform visual;
-        [Tooltip("오브젝트 충돌 검증 콜라이더")]
-        [SerializeField] private Collider supportCollider;
-
-        [Header("Collapse")]
-        [FormerlySerializedAs("wiggleDuration")]
-        [Tooltip("플랫폼 붕괴 경고 트윈 시간")]
-        [SerializeField, Min(0.01f)] private float warningEndSeconds = 1f;
-        [Tooltip("플랫폼 붕괴 트윈 지정 시간")]
-        [SerializeField, Min(0.01f)] private float collapseEndSeconds = 1.25f;
-
-        [Header("Shake")]
-        [FormerlySerializedAs("wiggleAngle")]
-        [Tooltip("회전강도. 0이면 흔들림 없음.")]
-        [SerializeField, Min(0f)] private float shakeAngleDegrees = 4f;
-        [FormerlySerializedAs("wiggleFrequency")]
-        [Tooltip("초당 흔들림 횟수.")]
-        [SerializeField, Min(0.1f)] private float shakeFrequency = 8f;
-
-        [Header("Regeneration")]
-        [Tooltip("재생성 가능 여부. 동적으로 작동하지 않습니다.")]
-        [FormerlySerializedAs("canRegenerate")]
-        [SerializeField] private bool canRegenerate = true;
-        [Tooltip("붕괴 유지 시간.")]
-        [SerializeField, Min(0f)] private float collapsedHoldSeconds = 0.5f;
-        [FormerlySerializedAs("regenerationDuration")]
-        [Tooltip("재생성 까지 걸리는 시간.")]
-        [SerializeField, Min(0.01f)] private float regenerationSeconds = 3f;
-        [FormerlySerializedAs("blinkInterval")]
-        [Tooltip("Blink Tween 간격")]
-        [SerializeField, Min(0.01f)] private float blinkIntervalSeconds = 0.15f;
-
-        /// <summary>현재 진행 단계.</summary>
-        public CollapsePhase Phase { get; private set; } = CollapsePhase.Ready;
-        /// <summary>붕괴 시작부터 발판이 사라질 때까지의 시간(초).</summary>
-        public float CollapseEndSeconds => Mathf.Max(warningEndSeconds, collapseEndSeconds);
-        /// <summary>재생성 가능 여부.</summary>
-        public bool CanRegenerate => canRegenerate;
-        /// <summary>붕괴 시작부터 재생성 완료 또는 파괴 예약까지의 시간(초).</summary>
-        public float CycleDurationSeconds => CollapseEndSeconds + (canRegenerate ? collapsedHoldSeconds + regenerationSeconds : 0f);
-
+        public enum CollapsePhase { Ready = 0, Wiggling = 1, Collapsed = 2, Animating = 5 }
+        [Tooltip("붕괴 표시를 담당하는 Collider 없는 Visual 자식입니다. 원래 위치·회전·크기는 재시도에만 복원합니다.")]
+        [SerializeField, InspectorLabel("외형")] private Transform visual;
+        [Tooltip("실제 지지 BoxCollider를 연결합니다. 경고가 끝나면 즉시 꺼집니다.")]
+        [SerializeField, InspectorLabel("지지 콜라이더")] private Collider supportCollider;
+        [Tooltip("위 Visual 자신에 있는 붕괴 Animator입니다. Collapse Motion이 없으면 연결 대기를 기록하고 외형을 숨깁니다.")]
+        [SerializeField, InspectorLabel("붕괴 애니메이터")] private Animator collapseAnimator;
+        [Tooltip("지지 Collider와 같은 물리 객체의 접촉 전달자입니다. 루트 컨트롤러와 물리 자식을 연결합니다.")]
+        [SerializeField, InspectorLabel("지지 접촉")] private PlatformContacts physicalContacts;
+        [Tooltip("붕괴 전 경고 시간을 조절합니다(초, 최소 0.02). 초기값은 1초이며 종료 즉시 지지를 제거합니다.")]
+        [SerializeField, InspectorLabel("경고 시간"), Min(.02f)] private float warningEndSeconds = 1f;
+        [Tooltip("경고 중 Visual 회전 크기(도)입니다. 0이면 흔들리지 않습니다.")]
+        [SerializeField, InspectorLabel("흔들림 각도"), Min(0f)] private float shakeAngleDegrees = 4f;
+        [Tooltip("경고 중 초당 흔들림 횟수입니다. 최소 0.1입니다.")]
+        [SerializeField, InspectorLabel("흔들림 횟수"), Min(0.1f)] private float shakeFrequency = 8f;
         private PlatformPresentation presentation;
-        private Sequence cycle;
+        private Coroutine animation;
+        private PlatformContacts contacts;
         private bool supportWasEnabled;
-        private const float MinimumSupportDot = 0.5f;
-
-        /// <summary>같은 오브젝트의 콜라이더 연결.</summary>
-        private void Reset() => supportCollider = GetComponent<BoxCollider>();
-
-        /// <summary>잘못된 설정값 보정.</summary>
-        private void OnValidate()
-        {
-            warningEndSeconds = Valid(warningEndSeconds, 0.01f, 1f);
-            collapseEndSeconds = Valid(collapseEndSeconds, warningEndSeconds, warningEndSeconds);
-            shakeAngleDegrees = Valid(shakeAngleDegrees, 0f, 4f);
-            shakeFrequency = Valid(shakeFrequency, 0.1f, 8f);
-            collapsedHoldSeconds = Valid(collapsedHoldSeconds, 0f, 0.5f);
-            regenerationSeconds = Valid(regenerationSeconds, 0.01f, 3f);
-            blinkIntervalSeconds = Valid(blinkIntervalSeconds, 0.01f, 0.15f);
-        }
-
-        private static float Valid(float value, float minimum, float fallback) =>
-            float.IsNaN(value) || float.IsInfinity(value) ? Mathf.Max(minimum, fallback) : Mathf.Max(minimum, value);
-
-        /// <summary>렌더 오브젝트와 콜라이더 확인 및 초기화.</summary>
+        private float warningElapsed;
+        private int version;
+        public CollapsePhase Phase { get; private set; } = CollapsePhase.Ready;
+        /// <summary>Animator 없이 경고 Tween이 회전하는 실제 외형과 그 자식을 판별한다.</summary>
+        public bool OwnsMovingVisual(Transform point) => visual != null && point != null &&
+            (point == visual || point.IsChildOf(visual));
         private void Awake()
         {
             OnValidate();
-            if (supportCollider == null) supportCollider = GetComponent<BoxCollider>();
-            if (visual == null || visual == transform || !visual.IsChildOf(transform)
-                || !visual.gameObject.activeInHierarchy || supportCollider == null
-                || supportCollider.gameObject != gameObject || supportCollider.isTrigger
-                || !(supportCollider is BoxCollider)
-                || visual.GetComponentsInChildren<Collider>(true).Length != 0)
-            {
-                Debug.LogError("붕괴 플랫폼: 활성 자식 표시 객체(Collider 없음)와 같은 객체의 비 Trigger BoxCollider가 필요합니다.", this);
-                enabled = false;
-                return;
-            }
-            presentation = new PlatformPresentation(visual);
+            contacts = physicalContacts;
+            if (visual == null || !visual.IsChildOf(transform) || supportCollider == null || supportCollider.isTrigger
+                || !(supportCollider is BoxCollider) || contacts == null || contacts.Surface != supportCollider
+                || (supportCollider.transform != transform && !supportCollider.transform.IsChildOf(transform))
+                || visual.GetComponentsInChildren<Collider>(true).Length != 0
+                || visual.GetComponentsInChildren<Rigidbody>(true).Length != 0
+                || visual.GetComponentsInChildren<MonoBehaviour>(true).Length != 0)
+            { Debug.LogError("붕괴 발판의 Visual과 물리 자식 참조를 확인하세요.", this); enabled = false; return; }
+            supportWasEnabled = supportCollider.enabled;
+            presentation = new PlatformPresentation(visual, collapseAnimator);
         }
-
-        private void OnCollisionEnter(Collision collision) => TryCollapseFromContact(collision);
-        private void OnCollisionStay(Collision collision) => TryCollapseFromContact(collision);
-
-        /// <summary>
-        /// 현재 플랫폼을 밟은 활성 PlayerFacade와 그 객체가 소유한 활성 HeavyState를 확인한다.
-        /// 두 컴포넌트의 조건과 윗면 접촉 조건이 모두 충족되면 붕괴를 시작한다.
-        /// </summary>
+        private void OnEnable()
+        {
+            if (contacts != null) { contacts.ContactReported -= TryCollapseFromContact; contacts.ContactReported += TryCollapseFromContact; }
+            if (Phase == CollapsePhase.Wiggling && presentation != null)
+                presentation.Shake(Mathf.Max(.02f, warningEndSeconds - warningElapsed), shakeAngleDegrees, shakeFrequency);
+        }
         private void TryCollapseFromContact(Collision collision)
         {
-            if (!isActiveAndEnabled || Phase != CollapsePhase.Ready || presentation == null
-                || collision == null || supportCollider == null || !supportCollider.enabled) return;
-            Collider other = collision.collider;
-            if (other == null || !other.enabled || other.isTrigger) return;
-            if (!IsActiveHeavyPlayer(other)) return;
-            for (int i = 0; i < collision.contactCount; i++)
-            {
-                ContactPoint contact = collision.GetContact(i);
-                // 접촉 방향을 반대로 계산해 윗면 충돌을 확인한다.
-                if (contact.thisCollider == supportCollider
-                    && Vector3.Dot(-contact.normal, transform.up) >= MinimumSupportDot)
-                {
-                    Collapses();
-                    return;
-                }
-            }
+            if (!isActiveAndEnabled || Phase != CollapsePhase.Ready || collision == null) return;
+            var other = collision.collider;
+            var owner = PlatformContacts.Actor(other);
+            if (owner == null || other.isTrigger || owner.TryGetComponent<PlayerDebris>(out _) || !owner.TryGetComponent<PlayerFacade>(out var player)
+                || !player.isActiveAndEnabled || !owner.TryGetComponent<HeavyState>(out var heavy) || !heavy.isActiveAndEnabled
+                || (owner.TryGetComponent<PlayerFormController>(out var form) && form.CurrentForm != PlayerForm.Normal)) return;
+            if (contacts.IsTopContact(other)) Collapses();
         }
-
-        /// <summary>
-        /// 복합 콜라이더는 Rigidbody 객체를 소유자로 판단한다.
-        /// Facade는 플레이어 식별에만 사용하며, 무게 마커는 같은 소유 객체에서 별도로 확인한다.
-        /// Facade에 무게 계약이 추가되면 직접 마커 참조를 그 계약으로 대체한다.
-        /// </summary>
-        private static bool IsActiveHeavyPlayer(Collider other)
-        {
-            if (other == null || !other.enabled || other.isTrigger || !other.gameObject.activeInHierarchy) return false;
-            GameObject owner = other.attachedRigidbody != null ? other.attachedRigidbody.gameObject : other.gameObject;
-            return owner.TryGetComponent<PlayerFacade>(out var player)
-                && player.isActiveAndEnabled
-                && owner.TryGetComponent<HeavyState>(out var heavy)
-                && heavy.isActiveAndEnabled;
-        }
-
-        /// <summary>
-        /// 붕괴 트윈 시작. 중복 요청은 무시한다.
-        /// 시작 후 플레이어가 떠나도 계속 진행한다.
-        /// </summary>
         public void Collapses()
         {
-            if (!isActiveAndEnabled || presentation == null || !presentation.IsValid
-                || supportCollider == null || !supportCollider.enabled || Phase != CollapsePhase.Ready) return;
-            OnValidate();
-            supportWasEnabled = supportCollider.enabled;
+            if (!isActiveAndEnabled || Phase != CollapsePhase.Ready || presentation == null || supportCollider == null || !supportCollider.enabled) return;
             Phase = CollapsePhase.Wiggling;
-            cycle = DOTween.Sequence();
-            cycle.SetTarget(this).SetLink(gameObject, LinkBehaviour.KillOnDisable)
-                .SetUpdate(UpdateType.Fixed, false).SetEase(Ease.Linear).SetAutoKill(true).SetRecyclable(false);
-            cycle.Append(presentation.Shake(warningEndSeconds, shakeAngleDegrees, shakeFrequency));
-            cycle.AppendInterval(CollapseEndSeconds - warningEndSeconds);
-            cycle.AppendCallback(CompleteCollapse);
-            // 재생성 여부는 트윈 시작 시 결정한다.
-            if (canRegenerate)
-            {
-                cycle.AppendInterval(collapsedHoldSeconds);
-                cycle.AppendCallback(BeginRegeneration);
-                cycle.Append(presentation.Blink(regenerationSeconds, blinkIntervalSeconds));
-                cycle.OnComplete(Restore);
-            }
-            else
-            {
-                cycle.OnComplete(DestroyPlatform);
-            }
-            cycle.OnUpdate(ValidateRunningReferences);
-            cycle.OnKill(() => { cycle = null; Restore(); });
-            cycle.Play();
+            warningElapsed = 0f;
+            presentation.Shake(warningEndSeconds, shakeAngleDegrees, shakeFrequency);
         }
-
-        /// <summary>붕괴 완료. 콜라이더를 끄고 플랫폼을 숨긴다.</summary>
-        private void CompleteCollapse()
+        private void FixedUpdate()
         {
-            if (supportCollider != null) supportCollider.enabled = false;
-            presentation?.SetVisible(false);
+            if (Phase != CollapsePhase.Wiggling || Time.timeScale <= 0f) return;
+            warningElapsed += Time.fixedDeltaTime;
+            if (!WarningFinished(warningElapsed, warningEndSeconds)) return;
+            supportCollider.enabled = false;
+            presentation.Restore();
+            Phase = CollapsePhase.Animating;
+            animation = StartCoroutine(PlayCollapse(++version));
+        }
+        private IEnumerator PlayCollapse(int request)
+        {
+            if (presentation.TryBeginCollapseAnimation())
+            {
+                while (request == version)
+                {
+                    if (Time.timeScale <= 0f) { yield return null; continue; }
+                    var progress = presentation.ObserveCollapseAnimation(Time.deltaTime);
+                    if (progress == PlatformPresentation.AnimationProgress.Completed) break;
+                    if (progress == PlatformPresentation.AnimationProgress.Failed || progress == PlatformPresentation.AnimationProgress.ClipNotLinked)
+                    { Debug.LogWarning(presentation.AnimationIssue, this); break; }
+                    yield return null;
+                }
+            }
+            else Debug.LogWarning(presentation.AnimationIssue, this);
+            if (request != version) yield break;
+            presentation.EndCollapseAnimation();
+            presentation.SetVisible(false);
             Phase = CollapsePhase.Collapsed;
+            animation = null;
         }
-
-        /// <summary>재생성 시작. 콜라이더는 꺼진 상태로 유지한다.</summary>
-        private void BeginRegeneration()
+        private void CancelOwnedWork()
         {
-            Phase = CollapsePhase.Regenerating;
-            presentation?.SetVisible(true);
+            ++version;
+            if (animation != null) StopCoroutine(animation);
+            animation = null;
+            presentation?.CancelTween();
+            if (Phase == CollapsePhase.Animating)
+            { presentation?.EndCollapseAnimation(); presentation?.SetVisible(false); Phase = CollapsePhase.Collapsed; }
         }
-
-        /// <summary>1회성 플랫폼 파괴 예약.</summary>
-        private void DestroyPlatform()
+        public void ResetForRetry()
         {
-            Phase = CollapsePhase.DestroyScheduled;
-            Destroy(gameObject);
-        }
-
-        /// <summary>필수 오브젝트가 사라지면 트윈을 취소한다.</summary>
-        private void ValidateRunningReferences()
-        {
-            if (supportCollider != null && presentation != null && presentation.IsValid) return;
-            Debug.LogError("붕괴 플랫폼 실행 중 필수 참조가 제거되어 연출을 취소합니다.", this);
-            CancelCycle();
-            enabled = false;
-        }
-
-        /// <summary>플랫폼 표시와 콜라이더 복원. 파괴 예정이면 제외한다.</summary>
-        private void Restore()
-        {
-            if (Phase == CollapsePhase.DestroyScheduled) return;
+            CancelOwnedWork();
+            warningElapsed = 0f;
             presentation?.Restore();
-            if (Phase != CollapsePhase.Ready && supportCollider != null) supportCollider.enabled = supportWasEnabled;
+            if (supportCollider != null) supportCollider.enabled = supportWasEnabled;
+            contacts?.ResetForRetry();
             Phase = CollapsePhase.Ready;
         }
-
-        private void CancelCycle()
+        private void OnDisable() { if (contacts != null) contacts.ContactReported -= TryCollapseFromContact; CancelOwnedWork(); }
+        private void OnDestroy() => CancelOwnedWork();
+        /// <summary>실행에서 쓰는 경고 종료 경계다. 실제 접지·클립 재생 검증과 구분한다.</summary>
+        public static bool WarningFinished(float elapsedSeconds, float warningSeconds)
         {
-            Sequence owned = cycle;
-            cycle = null;
-            if (owned != null && owned.IsActive()) owned.Kill(false);
-            Restore();
+            if (!float.IsFinite(elapsedSeconds) || elapsedSeconds < 0 || !float.IsFinite(warningSeconds) || warningSeconds < .02f)
+                throw new ArgumentOutOfRangeException(nameof(elapsedSeconds));
+            return elapsedSeconds + .000001f >= warningSeconds;
         }
-
-        /// <summary>비활성화 시 트윈 취소.</summary>
-        private void OnDisable() => CancelCycle();
-        private void OnDestroy() => CancelCycle();
+        private void OnValidate()
+        {
+            warningEndSeconds = float.IsFinite(warningEndSeconds) ? Mathf.Max(.02f, warningEndSeconds) : 1f;
+            shakeAngleDegrees = float.IsFinite(shakeAngleDegrees) ? Mathf.Max(0f, shakeAngleDegrees) : 4f;
+            shakeFrequency = float.IsFinite(shakeFrequency) ? Mathf.Max(0.1f, shakeFrequency) : 8f;
+        }
     }
 }

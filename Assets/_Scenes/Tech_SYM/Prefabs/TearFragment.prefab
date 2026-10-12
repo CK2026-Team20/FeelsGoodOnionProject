@@ -9,8 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 721688784582498277}
-  - component: {fileID: 223947443573885318}
-  - component: {fileID: 5766442867109339186}
   m_Layer: 0
   m_Name: TearFragment
   m_TagString: Untagged
@@ -35,36 +33,6 @@ Transform:
   - {fileID: 7586808715854301529}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &223947443573885318
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68382689422125815}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 24ce2e402334ff946a8d949d165a1703, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.FloatingMotion
-  targetY: 0.24
-  travelSeconds: 1.5
-  ease: 4
-  loopType: 1
---- !u!114 &5766442867109339186
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68382689422125815}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4cfd8610087ebdb4f966fa0e412fc628, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.ObjectRotation
-  rotationTarget: {fileID: 8929678439257351389}
-  degreesPerSecond: 90
 --- !u!1 &3083412958601296013
 GameObject:
   m_ObjectHideFlags: 0
@@ -345,6 +313,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Features.TearFragment
   pickupRoot: {fileID: 68382689422125815}
+  presentationVisual: {fileID: 8929678439257351389}
+  rotationDegreesPerSecond: 90
+  bobHeight: 0.48
+  bobSeconds: 1.5
 --- !u!1 &6492872968092125460
 GameObject:
   m_ObjectHideFlags: 0

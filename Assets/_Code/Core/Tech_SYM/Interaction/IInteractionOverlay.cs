@@ -5,5 +5,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
     {
         bool IsOpen { get; }
         void RequestClose();
+        // Death/session teardown cancels presentation immediately and releases only owned leases.
+        void ForceClose();
     }
 }

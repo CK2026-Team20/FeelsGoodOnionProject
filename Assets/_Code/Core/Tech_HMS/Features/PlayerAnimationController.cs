@@ -35,6 +35,8 @@ public sealed class PlayerAnimationController : MonoBehaviour
     public PlayerForm CurrentForm => formController != null ? formController.CurrentForm : PlayerForm.Normal;
     /// <summary>재생 대상이 변경되거나 일회성 표현을 다시 시작할 때 새 요청을 전달합니다.</summary>
     public event Action<PlayerAnimationRequest> PlaybackRequested;
+    /// <summary>실제 출력이 보고한 완료/누락 및 선택 교체·비활성화의 중단을 끝난 RequestId와 함께 전달합니다.</summary>
+    public event Action<PlayerAnimationRequest, PlayerAnimationEndReason> PlaybackEnded;
 
     /// <summary>플레이어와 표현 판단에 필요한 컴포넌트를 캐싱합니다.</summary>
     private void Awake()
@@ -48,6 +50,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
     /// <summary>일회성 표현 이벤트를 구독하고 첫 갱신에서 현재 요청을 전달하도록 준비합니다.</summary>
     private void OnEnable()
     {
+        playback.PlaybackEnded += HandlePlaybackEnded;
         player.Landed += HandleLanded;
         player.StateChanged += HandleStateChanged;
         player.SkillAnimationRequested += HandleSkillAnimationRequested;
@@ -106,6 +109,34 @@ public sealed class PlayerAnimationController : MonoBehaviour
         return playback.TryComplete(requestId);
     }
 
+    /// <summary>실제 출력의 완료·누락·중단을 유효한 요청 ID로 보고합니다. 해제된 Controller나 오래된 요청은 거절합니다.</summary>
+    public bool TryReportResult(long requestId, PlayerAnimationEndReason reason)
+    {
+        if (!isActiveAndEnabled) return false;
+        RefreshContext();
+        return playback.TryReportResult(requestId, reason);
+    }
+
+    private void HandlePlaybackEnded(PlayerAnimationRequest request, PlayerAnimationEndReason reason)
+    {
+        var observers = PlaybackEnded;
+        if (observers == null) return;
+        foreach (Action<PlayerAnimationRequest, PlayerAnimationEndReason> observer in observers.GetInvocationList())
+        {
+            try { observer(request, reason); }
+            catch (Exception exception) { Debug.LogException(exception, this); }
+        }
+    }
+
+    /// <summary>장치 담당이 상호작용 표현을 한 번 요청합니다. 장치 실행·판정은 변경하지 않습니다.</summary>
+    /// <remarks>사망·넉백보다 낮고 눈물·형태 전환·착지보다 높은 우선순위입니다. 중단·거절된 요청은 재개하지 않으며 이동·점프 실행 제한과는 별개입니다.</remarks>
+    public bool TryRequestInteract()
+    {
+        if (!isActiveAndEnabled) return false;
+        RefreshContext();
+        return playback.TryRequest(PlayerAnimationId.Interact);
+    }
+
     /// <summary>새 요청만 전달하여 동일 기본 애니메이션을 매 프레임 다시 시작하지 않도록 합니다.</summary>
     private void PublishRequest()
     {
@@ -122,7 +153,14 @@ public sealed class PlayerAnimationController : MonoBehaviour
         player.Landed -= HandleLanded;
         player.StateChanged -= HandleStateChanged;
         player.SkillAnimationRequested -= HandleSkillAnimationRequested;
-        playback.Reset();
+        try
+        {
+            playback.Reset();
+        }
+        finally
+        {
+            playback.PlaybackEnded -= HandlePlaybackEnded;
+        }
     }
 
     /// <summary>클립 연결 전 Inspector 메뉴에서 현재 일회성 표현의 완료를 시험합니다.</summary>

@@ -1,0 +1,66 @@
+# 보호 영역 툴팁 누락 및 설명 초안
+
+현재 사용자 허용 대기. 원본 파일은 수정하지 않았다. 실제 Inspector 선언 기준 고유 필드 62개이며 참조 31개, 설정/컨테이너 31개다. 배열 원소 노출 경로와 선언 필드를 구분한다.
+
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.airAcceleration`: 공중에서 입력 방향으로 가속하는 정도입니다(월드 단위/초², 0 이상). 높이면 공중 방향 전환이 빨라지며 0이면 입력 가속하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.airDeceleration`: 공중에서 입력을 놓았을 때 감속하는 정도입니다(월드 단위/초², 0 이상). 높이면 수평 이동이 빨리 멈추며 0이면 자체 속도를 감속하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.allowDepthMovement`: 월드 Z축 이동 허용 여부입니다. 끄면 물리 Z 이동도 고정합니다. 통합 게임에서는 카메라 구간 전환이 이 값을 갱신합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.allowHorizontalMovement`: 월드 X축 이동 허용 여부입니다. 끄면 물리 X 이동도 고정합니다. 통합 게임에서는 카메라 구간 전환이 이 값을 갱신합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.externalDeceleration`: 수평 외력 속도를 줄이는 정도입니다(월드 단위/초², 0 이상). 높이면 밀림이 빨리 줄고 0이면 외력 감속을 하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.fallGravityMultiplier`: 낙하 중 중력 배율입니다(1 이상). 1은 기본 중력이며 높이면 상승보다 빠르게 내려옵니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.gravity`: 아래 방향 중력 가속도입니다(월드 단위/초², 최소 0.01). 높이면 공중 체류 시간이 짧아집니다. 낙하 시 추가 배율을 적용합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.groundAcceleration`: 지상에서 목표 속도까지 가속하는 정도입니다(월드 단위/초², 0 이상). 높이면 더 빠르게 반응하며 0이면 입력 가속하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.groundDeceleration`: 지상에서 입력을 놓았을 때 감속하는 정도입니다(월드 단위/초², 0 이상). 높이면 더 빨리 멈추며 0이면 자체 속도를 감속하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.groundStickSpeed`: 접지 중 바닥에 붙도록 적용하는 아래 방향 속도입니다(월드 단위/초, 0 이상). 0이면 접지용 아래 속도를 추가하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.jumpHeight`: 목표 점프 높이입니다(월드 단위, 0 이상). 높이면 더 높게 점프합니다. 형태 전환 시 형태별 점프 높이로 갱신됩니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.maximumFallSpeed`: 아래 방향 낙하 속도 상한입니다(월드 단위/초, 최소 0.01). 높이면 더 빠른 낙하를 허용합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.maximumGroundAngle`: 지면으로 인정할 최대 경사각입니다(수평 기준 도, 0~85). 높이면 더 가파른 면에서도 접지로 판단합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs` / `CharacterMovement.moveSpeed`: 입력 이동의 목표 속도입니다(월드 단위/초, 0 이상). 높이면 더 빨리 이동하며 0이면 입력 이동의 목표 속도가 0입니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterSlipperyEffect.cs` / `CharacterSlipperyEffect.accelerationMultiplier`: 미끄러짐 중 입력 가속 배율입니다(0.01~1). 1은 기본 반응이고 낮출수록 가속·방향 전환이 느려집니다.
+- `Assets/_Code/Core/Tech_HMS/Features/CharacterSlipperyEffect.cs` / `CharacterSlipperyEffect.decelerationMultiplier`: 미끄러짐 중 감속 배율입니다(0.01~1). 1은 기본 감속이고 낮출수록 입력을 놓아도 오래 미끄러집니다.
+- `Assets/_Code/Core/Tech_HMS/Features/EnemyStunVisual.cs` / `EnemyStunVisual.normalTexture`: 기절 해제 시 지정 텍스처 속성에 적용할 정상 상태 텍스처입니다. 필수 연결입니다.
+- `Assets/_Code/Core/Tech_HMS/Features/EnemyStunVisual.cs` / `EnemyStunVisual.stunnedTexture`: 기절 중 지정 텍스처 속성에 적용할 텍스처입니다. 필수 연결입니다.
+- `Assets/_Code/Core/Tech_HMS/Features/EnemyStunVisual.cs` / `EnemyStunVisual.targetRenderer`: 기절 여부에 따라 텍스처를 교체할 적 Renderer입니다. 지정 머테리얼 슬롯이 있어야 합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/OilSurface.cs` / `OilSurface.effectDuration`: 기름 접촉 후 미끄러짐 유지 시간입니다(초, 최소 0.1). 접촉 중에는 현재 시점부터 이 시간으로 갱신되며 남은 시간에 더하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.blendDuration`: 표현 간 블렌딩 시간입니다(초, 0 이상). 높이면 부드럽고 느리게 전환하며 0이면 즉시 전환합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.dead`: 사망 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 가능한 기본 표현으로 대체하며 사용 가능한 클립이 없으면 재생하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.fall`: 낙하 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 가능한 기본 표현으로 대체하며 사용 가능한 클립이 없으면 재생하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.idle`: 대기 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 가능한 기본 표현으로 대체하며 사용 가능한 클립이 없으면 재생하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.jump`: 점프 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 가능한 기본 표현으로 대체하며 사용 가능한 클립이 없으면 재생하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.knockback`: 넉백 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 가능한 기본 표현으로 대체하며 사용 가능한 클립이 없으면 재생하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.land`: 착지 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 일회성 표현을 건너뜁니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.restoreForm`: 크기 복귀 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 일회성 표현을 건너뜁니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.run`: 달리기 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 가능한 기본 표현으로 대체하며 사용 가능한 클립이 없으면 재생하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.runReferenceSpeed`: 달리기 클립이 1배로 재생되는 기준 속도입니다(월드 단위/초, 최소 0.01). 같은 이동 속도에서 높이면 재생이 느려집니다. 배율은 0.1~3으로 제한됩니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.shrink`: 축소 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 일회성 표현을 건너뜁니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.tear`: 눈물 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 일회성 표현을 건너뜁니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.walk`: 걷기 표현에 사용할 애니메이션 클립입니다. Legacy 클립이나 길이가 0인 클립은 사용할 수 없습니다. 누락 시 가능한 기본 표현으로 대체하며 사용 가능한 클립이 없으면 재생하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationSet.cs` / `PlayerAnimationSet.walkReferenceSpeed`: 걷기 클립이 1배로 재생되는 기준 속도입니다(월드 단위/초, 최소 0.01). 같은 이동 속도에서 높이면 재생이 느려집니다. 배율은 0.1~3으로 제한됩니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerAnimatorOutput.cs` / `PlayerAnimatorOutput.animationSet`: 플레이어 클립·Animator 틀·블렌딩 설정 자산입니다. 실제 Animator와 사용 가능한 클립이 있어야 화면에서 재생됩니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerCameraController.cs` / `PlayerCameraController.backCamera`: 백뷰 모드에서 우선순위를 높일 CinemachineCamera입니다. 다른 모드 카메라와 서로 다른 객체여야 합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerCameraController.cs` / `PlayerCameraController.backFixedCamera`: 고정 백뷰 모드에서 우선순위를 높일 CinemachineCamera입니다. 다른 모드 카메라와 서로 다른 객체여야 합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerCameraController.cs` / `PlayerCameraController.movementModeController`: 현재 이동 모드를 읽을 플레이어 담당입니다. 모드에 맞는 카메라의 우선순위를 높입니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerCameraController.cs` / `PlayerCameraController.quarterCamera`: 쿼터 모드에서 우선순위를 높일 CinemachineCamera입니다. 다른 모드 카메라와 서로 다른 객체여야 합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerCameraController.cs` / `PlayerCameraController.sideCamera`: 사이드 모드에서 우선순위를 높일 CinemachineCamera입니다. 다른 모드 카메라와 서로 다른 객체여야 합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFacade.cs` / `PlayerFacade.initialHP`: 생성 시 체력입니다(0 이상). 최대 체력 이내로 제한되며 0이면 사망 상태로 시작합니다. 세션 복원 시 복원 체력으로 갱신됩니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFacade.cs` / `PlayerFacade.initialSkillFragment`: 생성 시 보유할 눈물 조각 수입니다(0 이상). 모델이 최대 5개로 제한하며 세션 진입·복원 설정에서 갱신될 수 있습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFacade.cs` / `PlayerFacade.invincible`: 켜면 피해를 받지 않습니다. 테스트용 무적 설정이며 이동·낙사 흐름과 구분해 사용하세요.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFacade.cs` / `PlayerFacade.maxHP`: 최대 체력입니다(1 이상). 초기 체력과 회복의 상한으로 사용합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFacade.cs` / `PlayerFacade.restoreFormSkillDefinition`: 껍질 자동 회수와 크기 복귀 스킬 설정 자산입니다. 별도 회수키 없이 Q 상태 전환에서 사용합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFacade.cs` / `PlayerFacade.shrinkSkillDefinition`: 작아지기 스킬의 준비·쿨다운 설정 자산입니다. 현재 Q 상태 전환에서 사용합니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFormController.cs` / `PlayerFormController.normalJumpHeight`: 기본 크기에서 적용할 점프 높이입니다(월드 단위, 0 이상). 높이면 기본 크기 점프가 높아집니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerFormController.cs` / `PlayerFormController.smallJumpHeight`: 작은 크기에서 적용할 점프 높이입니다(월드 단위, 0 이상). 높이면 축소 상태 점프가 높아집니다.
+- `Assets/_Code/Core/Tech_HMS/Features/PlayerMovementModeController.cs` / `PlayerMovementModeController.initialMode`: 초기 이동 모드입니다. 통합 게임에서는 이후 카메라 구간이 이동축을 갱신할 수 있습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/StunEffectOrbit.cs` / `StunEffectOrbit.rotationAxis`: 이펙트가 회전할 로컬 축 방향입니다. 방향을 정규화해 사용하며 모든 성분이 0이면 회전하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Features/StunEffectOrbit.cs` / `StunEffectOrbit.rotationSpeed`: 회전 속도입니다(도/초, 0 이상). 높이면 빨리 회전하고 0이면 정지합니다. 월드 시간이 멈추면 회전도 멈춥니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD.debrisDarkOverlay`: 껍질 복귀 상태를 어둡게 표현할 덮개 이미지입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD.debrisPanel`: 껍질 보유 상태를 표시할 기존 복귀 안내 패널입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD.fragmentCountText`: 현재 눈물 조각 수를 표시할 TMP 텍스트입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD.player`: 스킬·조각·껍질 상태를 읽을 플레이어입니다. 이 HUD는 표시만 하며 실제 스킬을 실행하지 않습니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD.slotViews`: 표시할 스킬 슬롯 목록입니다. 각 슬롯 번호는 플레이어 스킬 슬롯 범위 안에 있어야 합니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD.tearPanel`: 눈물 스킬의 조각 상태를 표시할 패널입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD+SlotView.cooldownOverlay`: 남은 쿨다운 비율을 원형으로 덮어 표시할 Image입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD+SlotView.cooldownText`: 남은 쿨다운 초를 소수점 한 자리로 표시할 TMP 텍스트입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD+SlotView.icon`: 장착된 스킬의 아이콘을 표시할 Image입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD+SlotView.root`: 해당 슬롯이 유효할 때 표시하고 아니면 숨길 슬롯 전체 오브젝트입니다.
+- `Assets/_Code/Core/Tech_HMS/Temporary/PlayerSkillHUD.cs` / `PlayerSkillHUD+SlotView.slotIndex`: 표시할 플레이어 스킬 슬롯 번호입니다(0부터 시작). 범위를 벗어나면 이 슬롯을 숨깁니다. 번호 변경은 표시 대상을 바꾸며 스킬 장착 자체는 바꾸지 않습니다.

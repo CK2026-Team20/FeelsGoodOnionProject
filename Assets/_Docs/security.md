@@ -1,0 +1,60 @@
+# 접근 권한과 보호 대상
+
+> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
+
+현재 서버·네트워크·게임 계정은 요구 범위에 없다. 게임 사용자 로그인, 서버 토큰 발급·만료·폐기, 서버 접근 감사는 적용 대상이 아니다. 로컬 음량 값은 인증 정보가 아니며 비밀 저장소로 쓰지 않는다. 개발용 Git 자격 증명이나 외부 서비스 비밀값을 자산·문서·로그에 기록하지 않는다.
+
+## 작업자별 권한
+
+폴더 구분은 Tech_이니셜(프로그래머), art_이니셜(아티스트), QA_이니셜(QA)이며 대소문자가 달라도 같은 소유권 경계로 취급한다. QA 폴더는 현재 브랜치에 없더라도 다른 브랜치에서 동일 규칙이 적용된다.
+
+| 주체 | 대상 | 읽기·참조 | 생성·수정·이동·삭제 |
+|---|---|---|---|
+| 현재 Tech_SYM | Tech_SYM 하위 | 허용 | 승인된 작업 범위에서 허용 |
+| 현재 Tech_SYM | Tech_HMS 등 다른 작업자 폴더 | 허용 | 금지 |
+| 현재 Tech_SYM | art_*, QA_* | 허용 | 금지 |
+| 비아트 작업자 | _Art 전체 원본 및 .meta | 허용 | 금지 |
+| 다른 작업자 | 자기 직군·이니셜 폴더 | 허용 | 승인된 작업 범위에서 허용 |
+| 같은 직군 작업자 | 타인의 명시된 파일 | 허용 | 특별 지시로 대상·범위가 지정된 경우만 허용 |
+| 현재 Tech_SYM | 루트 지침·Assets/_Docs 프로젝트 Markdown 및 대응 문서·폴더 .meta·문서용 로컬 설정 | 허용 | 이번 문서 작성·재배치·정합성 수정 범위에 한해 예외 허용 |
+| 현재 Tech_SYM | Assets/_Docs의 기존 PDF와 대응 .meta | 허용 | 이번 문서 작업에서는 수정하지 않고 보존 |
+| 현재 Tech_SYM | 공용 코드·프리팹·Packages·ProjectSettings | 허용 | 별도 명시적 허용 없이는 금지 |
+
+직책 접두사가 없다는 이유로 공용 파일의 쓰기 권한이 생기지 않는다. 루트 지침·Assets/_Docs 문서 예외는 게임 설정과 패키지 변경의 포괄 허가가 아니다. _Art는 아트 작업자가 실제 게임 리소스를 추가하는 공간이며 프로그래머가 원본을 복제 후 덮어쓰거나 import 설정을 바꾸는 것도 수정에 해당한다.
+
+.meta의 GUID·import 설정과 원본 파일은 함께 보호한다. 참조용 원본 프리팹에 Apply하거나 원본 리소스를 이동해 우회 수정하지 않는다. 권한이 불분명하거나 예외 대상이 지정되지 않았으면 읽기 전용으로 유지한다.
+
+읽기·참조 허용에는 공개 API·이벤트 사용과 자기 소유 씬·프리팹·오브젝트에 타 작업자의 컴포넌트를 추가·설정·연결하는 조립이 포함된다. 자기 소유 배치의 prefab instance override는 그 배치에 저장할 수 있다. 컴포넌트의 소스가 Tech_HMS라는 이유로 자기 소유 Inspector 설정까지 금지하지 않는다. 원본 코드·씬·프리팹·.meta·import 설정의 직접 수정, 보호 원본에 Apply, 원본 이동·삭제·GUID 변경은 별도의 명시적 파일 허가가 필요하다. _Art와 공유 자산도 같은 원본 보호를 적용한다.
+
+예외를 사용할 때는 허용자·대상 경로·작업 범위·변경 결과를 남긴다. 검토 시 추가·삭제·이름 변경을 포함한 Git diff와 .meta 변경을 함께 확인한다. 다른 작업자의 경로 변경 또는 GUID 손상이 발견되면 사용자에게 즉시 보고한다.
+
+## 현재 파일별 권한
+
+HMS는 원칙적으로 참조 전용이다. V1.6 HMS 소스 최소화의 파일별 대상은 Assets/_Code/Core/Tech_HMS/Features/ 아래 CharacterMovement.cs, PlayerAnimationController.cs, PlayerAnimationPlayback.cs, PlayerAnimationSet.cs, PlayerAnimationTypes.cs, PlayerAnimatorOutput.cs, PlayerCameraController.cs, PlayerFacade.cs, PlayerFormController.cs, PlayerInputReader.cs, PlayerSkillController.cs, TearSkill.cs의 정확한 12파일이었다. 이 작업 한정 허가를 다음 작업이나 보호 씬·프리팹·meta/import·공용·아트·Packages·ProjectSettings의 쓰기 권한으로 확대하지 않는다. 새 수정은 최신 직접 지시의 대상과 범위를 확인한다.
+
+과거 예외 표는 아래 당시 기록이며 현재 작업 범위를 넓히지 않는다.
+
+## 과거 파일별 승인 예외와 미승인 작업 (당시 기록)
+
+| 대상 | 허용 작업 | 근거·기간 | 현재 적용 |
+|---|---|---|---|
+| 루트 AGENTS.md·CLAUDE.md·README.md, Assets/_Docs 프로젝트 Markdown·대응 메타데이터, Tech_SYM 지역 지침 | 문서 정합성·중복·참조 경로 정비 | 2026-10-05 최신 지침 적용 요청 | 이번 정비 범위에 허용 |
+| Tech_SYM 코드·소유 씬·프리팹·설정 | 최신 확정 명세와 대조해 확인된 불일치 수정·영향 검증 | 같은 최신 요청; 기존 미커밋 변경 보존 | 확인된 차이만 허용, 무관한 재작성 금지 |
+| Assets/_Code/Core/Tech_HMS/Features/PlayerInputReader.cs 및 PlayerFormController.cs | F/E/Q 입력과 별도 회수키 없는 Q 자동 회수·복귀 규칙의 최소 변경 | 앞선 사용자 답변의 이번 세션 한정 허가 | 해당 규칙에만 적용; 툴팁·전체 리팩터링 허가 아님 |
+| HMS 12파일의 Tooltip 누락 62필드 | 설명 추가 초안만 존재 | inspector-ux-보호영역 기록; 별도 허가 미확인 | 수정 금지·읽기 전용 |
+| Unity·Editor가 자동 저장한 자산·ProjectSettings 변경 | 원인·전후 diff 확인 후 보존·커밋 | 2026-10-06 사용자 직접 지시: 자동으로 추가된 것도 앞으로 전부 커밋 | 자동 변경에만 적용, 수동 보호 원본 수정 권한은 확대하지 않음 |
+| 공용 Interfaces·공유 _Prefabs·_Art·다른 작업자 영역·Packages·ProjectSettings | 읽기·검사 | 별도 파일 허용 없음 | 수정 금지; 기존 변경은 이번 작업 기준점으로 보존 |
+
+기본 권한 표와 예외 표를 함께 적용한다. 과거 세션 한정 허가를 새 세션의 영구 권한으로 사용하지 않는다. 넓은 프로젝트 정비 요청만으로 보호 파일의 쓰기 권한이 생기지 않는다.
+
+2026-10-06 플랫폼 실행 당시 보호 기준점 1,025개에 대한 기록이다. 당시 원래 해시를 유지했다. 최종 감사에서 승인된 자동 저장5건 외 변화는0이다. ProBuilder의 editor.autoRecalculateCollisions 기본값 저장, URP의 Shader Prefilter 및 RuntimeSettings17항목, Input System project-wide Actions의 사전 로드 참조, UnityConnect의 m_Enabled 저장을 확인했다. 패키지 소스에서 확인한 원인과 native 빌드 전후로만 확인한 내부 저장을 구분하며 정확한 해시는 verification의 automatic-change-authorization.json에 보존한다. 이후 자동 저장도 새 기준점으로 몰래 덮지 않고 원래 기준점·변경 시점·원인·현재 값을 함께 기록한다. 앞선250개 미커밋 변경과 HMS 입력·폼의 승인된 두 파일도 기능별 검토 후 포함한다.
+
+## 2026-10-07 종료된 HMS 최소 확장 기록 (현행 허가 아님)
+
+2026-10-07 사용자는 현재 확정안 구현에 한정해 HMS 스크립트의 최소 기능 확장·참조 캐시·데이터 변수를 허용했다. 기존 기능의 변경/삭제/전체 리팩터링은 금지다. 승인 대상은 Assets/_Code/Core/Tech_HMS/Features/의 PlayerInputReader.cs, PlayerFacade.cs, PlayerCameraController.cs, TearSkill.cs, PlayerAnimationTypes.cs, PlayerAnimationPlayback.cs, PlayerAnimationController.cs, PlayerAnimationSet.cs, PlayerAnimatorOutput.cs의 필요한 additive 공개 경계다. 기존 기본값·독립 소비·enum 번호·공개 계약을 보존한다.
+
+추가 13개 내부 정리 후보, 보호 .meta/원본 프리팹/_Art/Interfaces/Packages/ProjectSettings 수동 수정은 이 허가에 포함되지 않는다. 이번 작업 종료 후 영구 권한으로 사용하지 않는다. [확정안 적용 명세](<tracking/ready-system-v11-refactor-2026-10-06/확정안 적용 명세.md>)와 실제 파일별 diff·보호 hash·독립 검토를 함께 남긴다. 기존 사용자 및 Unity 자동 저장 변경은 기존 지시대로 원인과 diff를 검토·분류한 뒤 포함한다.
+
+## 2026-10-10 HMS 예외 (종료된 당시 기록·현행 허가 아님)
+
+사용자 직접 답변과 go 승인에 따라 Assets/_Code/Core/Tech_HMS/Features/PlayerAnimationPlayback.cs의 Interact 우선순위2→4와 관련 설명, PlayerAnimationController.cs의 관련 설명만 수정할 수 있다. 2026-10-10 추가 직접 승인에 한해 Assets/_Code/Core/Tech_HMS/Features/CharacterMovement.cs에 `public float MaximumGroundAngle => maximumGroundAngle;` 읽기 전용 속성 한 개와 설명을 추가할 수 있다. 발판 보정이 실제 HMS Inspector 접지 설정을 읽게 하려는 변경이며, 원래 필드·기본값·Range·접지 동작·입력·속도·상태·enum·기존 API·meta는 보존한다. 추후 PR 생성 시 이 의도와 변경 한계를 명확히 설명해야 한다. 이전9파일/입력·폼 한정 허가는 종료됐다. 이 세 파일의 지정 범위 외 다른 HMS·공용·아트·보호 meta/import·Packages·ProjectSettings 수동 변경은 금지다. 이번 실행 1회의 예외이며 일반 HMS 수정 권한이 아니다. 사람 프리팹 삭제·재생성·Apply는 수행하지 않는다.

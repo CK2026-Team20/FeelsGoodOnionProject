@@ -7,8 +7,34 @@ public sealed class PlayerInputReader : MonoBehaviour
 {
     private InputAction moveAction;
     private InputAction jumpAction;
-    private InputAction recoverDebrisAction;
     private InputAction formChangeAction;
+    private string tearSkillBinding = "<Keyboard>/f";
+
+    /// <summary>외부 조립에서 눈물 키를 명시적으로 선택합니다. Awake 이전 호출도 보존합니다.</summary>
+    /// <param name="bindingPath">Input System 경로. E는 &lt;Keyboard&gt;/e, 기존 F는 &lt;Keyboard&gt;/f입니다.</param>
+    /// <remarks>자신이 생성한 눈물 액션만 변경하며 이동·점프·Q 입력은 유지합니다.</remarks>
+    public void SetTearSkillBinding(string bindingPath)
+    {
+        if (string.IsNullOrWhiteSpace(bindingPath)) throw new ArgumentException("눈물 입력 경로가 필요합니다.", nameof(bindingPath));
+        if (bindingPath == tearSkillBinding) return;
+        if (tearSkillAction == null)
+        {
+            tearSkillBinding = bindingPath;
+            return;
+        }
+
+        bool wasEnabled = tearSkillAction.enabled;
+        tearSkillAction.Disable();
+        try
+        {
+            tearSkillAction.ApplyBindingOverride(0, bindingPath);
+            tearSkillBinding = bindingPath;
+        }
+        finally
+        {
+            if (wasEnabled) tearSkillAction.Enable();
+        }
+    }
 
     public event Action InputDisabled;
     public bool CanReadInput => isActiveAndEnabled && moveAction != null && jumpAction != null && moveAction.enabled && jumpAction.enabled;
@@ -17,8 +43,8 @@ public sealed class PlayerInputReader : MonoBehaviour
     private InputAction tearSkillAction;
     /// <summary>눈물 스킬 버튼을 이번 프레임에 새로 눌렀는지 확인</summary>
     public bool TearSkillPressedThisFrame => CanReadInput && tearSkillAction != null && tearSkillAction.enabled && tearSkillAction.WasPressedThisFrame();
-    /// <summary>껍질 회수 버튼을 이번 프레임에 새로 눌렀는지 확인</summary>
-    public bool RecoverDebrisPressedThisFrame => CanReadInput && recoverDebrisAction != null && recoverDebrisAction.enabled && recoverDebrisAction.WasPressedThisFrame();
+    /// <summary>기존 소비자 호환용. Q 형태 전환으로 통합되어 독립 회수 입력은 발생하지 않습니다.</summary>
+    public bool RecoverDebrisPressedThisFrame => false;
     /// <summary>형태 전환 버튼을 이번 프레임에 새로 눌렀는지 확인</summary>
     public bool FormChangePressedThisFrame => CanReadInput && formChangeAction != null && formChangeAction.enabled && formChangeAction.WasPressedThisFrame();
 
@@ -30,7 +56,6 @@ public sealed class PlayerInputReader : MonoBehaviour
         CreateMoveAction();
         CreateJumpAction();
         CreateTearSkillAction();
-        CreateRecoverDebrisAction();
         CreateFormChangeAction();
     }
 
@@ -42,7 +67,6 @@ public sealed class PlayerInputReader : MonoBehaviour
         moveAction.Enable();
         jumpAction.Enable();
         tearSkillAction.Enable();
-        recoverDebrisAction.Enable();
         formChangeAction.Enable();
     }
 
@@ -53,9 +77,8 @@ public sealed class PlayerInputReader : MonoBehaviour
     {
         moveAction?.Disable();
         jumpAction?.Disable();
-        tearSkillAction.Disable();
-        recoverDebrisAction.Disable();
-        formChangeAction.Disable();
+        tearSkillAction?.Disable();
+        formChangeAction?.Disable();
         
         // 입력이 꺼졌음을 전달해 남아 있는 입력을 해제
         InputDisabled?.Invoke();
@@ -69,22 +92,15 @@ public sealed class PlayerInputReader : MonoBehaviour
         moveAction?.Dispose();
         jumpAction?.Dispose();
         tearSkillAction?.Dispose();
-        recoverDebrisAction?.Dispose();
         formChangeAction?.Dispose();
     }
 
     /// <summary>
-    /// WASD와 방향키를 정규화하지 않은 2차원 입력으로 구성하고, 허용 축을 제거한 뒤 이동 담당이 입력 크기를 제한
+    /// 방향키를 정규화하지 않은 2차원 입력으로 구성하고, 허용 축을 제거한 뒤 이동 담당이 입력 크기를 제한
     /// </summary>
     private void CreateMoveAction()
     {
         moveAction = new InputAction("Move", InputActionType.Value);
-
-        moveAction.AddCompositeBinding("2DVector(mode=1)")
-            .With("Up", "<Keyboard>/w")
-            .With("Down", "<Keyboard>/s")
-            .With("Left", "<Keyboard>/a")
-            .With("Right", "<Keyboard>/d");
 
         moveAction.AddCompositeBinding("2DVector(mode=1)")
             .With("Up", "<Keyboard>/upArrow")
@@ -102,18 +118,12 @@ public sealed class PlayerInputReader : MonoBehaviour
     private void CreateTearSkillAction()
     {
         tearSkillAction = new InputAction( "TearSkill", InputActionType.Button);
-        tearSkillAction.AddBinding("<Keyboard>/e");
-    }
-    
-    private void CreateRecoverDebrisAction()
-    {
-        recoverDebrisAction = new InputAction( "RecoverDebris", InputActionType.Button);
-        recoverDebrisAction.AddBinding("<Keyboard>/q");
+        tearSkillAction.AddBinding(tearSkillBinding);
     }
     
     private void CreateFormChangeAction()
     {
         formChangeAction = new InputAction( "FormChange", InputActionType.Button);
-        formChangeAction.AddBinding("<Keyboard>/r");
+        formChangeAction.AddBinding("<Keyboard>/q");
     }
 }
