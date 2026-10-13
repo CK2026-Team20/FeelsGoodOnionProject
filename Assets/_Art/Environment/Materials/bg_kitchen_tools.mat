@@ -217,7 +217,7 @@ Material:
     - _LightFalloffSoftness: 0.008
     - _LightIntensity: 1
     - _MCIALO: 0
-    - _MCapIntensity: 1
+    - _MCapIntensity: 0.628
     - _MVCOL: 0
     - _MaiColPo: 1
     - _MaxFadDistance: 2
