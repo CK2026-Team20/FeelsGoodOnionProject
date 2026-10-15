@@ -2,6 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>표면이 소유하는 추가 접지 조건. 법선은 표면에서 캐릭터를 향하는 월드 방향.</summary>
+public interface ICharacterGroundContactFilter
+{
+    bool AllowsGroundContact(Collider surface, CapsuleCollider capsule, Vector3 point, Vector3 normal, float maximumAngle);
+}
+
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider), typeof(PlatformPassenger))]
 public sealed class CharacterMovement : MonoBehaviour
@@ -325,6 +331,11 @@ public sealed class CharacterMovement : MonoBehaviour
             {
                 continue;
             }
+
+            var filterOwner = other.attachedRigidbody != null ? other.attachedRigidbody.gameObject : other.gameObject;
+            var groundFilter = filterOwner.GetComponent<ICharacterGroundContactFilter>();
+            if (groundFilter != null && !groundFilter.AllowsGroundContact(other, capsuleCollider, contact.point, contact.normal, maximumGroundAngle))
+                continue;
 
             platformPassenger.TryGetPlatformVelocity(other, out _, out Vector3 supportPreviousVelocity);
 

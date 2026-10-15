@@ -18,7 +18,6 @@ namespace Cooked.Integration
     {
         private readonly GameSessionRuntime runtime;
         private readonly LevelCameraService camera;
-        private readonly ChaseRuntimeDriver chase;
         private readonly CoreUiBinding ui;
         private readonly IGameFlowService flow;
         private readonly IGameplayControlService control;
@@ -31,22 +30,21 @@ namespace Cooked.Integration
         private StageService stage;
         private readonly List<MemoUIController> memos = new List<MemoUIController>();
         private readonly List<StageTrigger> chaseTriggers = new List<StageTrigger>();
-        private readonly List<CameraZoneTrigger> cameraZones = new List<CameraZoneTrigger>();
+        private readonly List<ChaseRuntimeDriver> chases = new List<ChaseRuntimeDriver>();
         private readonly List<PeriodicPlatform> periodicPlatforms = new List<PeriodicPlatform>();
         private AbilityMask observedUnlocks;
         private int fragments;
         private bool observing, subscriptionsDetached, disposed;
-        public CoreWorldBinding(GameSessionRuntime runtime, LevelCameraService camera, ChaseRuntimeDriver chase,
+        public CoreWorldBinding(GameSessionRuntime runtime, LevelCameraService camera,
             CoreUiBinding ui, IGameFlowService flow, IGameplayControlService control, IDialogueTableService dialogueTable,
             IAudioService audio, AudioFlowBinding audioFlow, ISceneService scenes, Camera output,
             CinemachineBrain brain)
         {
-            this.runtime = runtime; this.camera = camera; this.chase = chase; this.ui = ui; this.flow = flow;
+            this.runtime = runtime; this.camera = camera; this.ui = ui; this.flow = flow;
             this.control = control; this.dialogueTable = dialogueTable; this.audio = audio; this.audioFlow = audioFlow; this.scenes = scenes;
             this.output = output; this.brain = brain;
             if (output == null || brain == null || output.gameObject != brain.gameObject)
                 throw new ArgumentException("World requires explicit App output and distinct Core rigs.");
-            runtime.CheckpointCaptured += OnCheckpointCaptured;
             runtime.ActorReady += BindActor; runtime.ActorRemoving += UnbindActor;
             runtime.Player.AbilitySucceeded += OnAbility; runtime.Player.AbilityRejected += OnAbilityRejected;
         }
@@ -82,7 +80,6 @@ namespace Cooked.Integration
             try
             {
                 foreach (var item in runtime.Stages.Stages) scenes.SetRootsActive(runtime.Stages.ScenePath(item.StageId), item.StageId == runtime.ActiveStageId);
-                chase.Initialize(runtime.Player, control, flow);
                 var active = stage;
                 stage.Initialize(flow, actor, code => runtime.TryStartSafeDialogue(active.StageId, code));
                 stage.BindFinalDialogueStart((trigger, source, generation, code) =>
@@ -90,15 +87,22 @@ namespace Cooked.Integration
                     runtime.Session, () => runtime.IsCurrentStage(active));
                 stage.BindRequests(runtime.Player, control, runtime.Dialogue,
                     (ability, code) => Unlock(active, ability, code), StopChase);
-                stage.BindCheckpointCapture((marker, source) => runtime.TryCaptureCheckpoint(active.StageId, marker, source));
+                stage.CheckpointCaptured += OnCheckpointCaptured;
+                stage.BindSectionPresentation((section, restore) => camera.EnterSection(section, restore), audioFlow.SetStageMusic);
                 stage.BindDialogueTable(dialogueTable);
                 stage.BindFallRequests((source, shell) => runtime.Player.IsCurrentActor(source, runtime.Player.ActorGeneration) &&
                     (shell != null ? runtime.Player.ReturnOwnedDebris(shell) : runtime.Player.ForceDeath(Vector3.zero, skipPresentation: true) > 0));
                 foreach (var trigger in stage.FindComponents<StageTrigger>())
                     if (trigger.Kind == StageTriggerKind.Chase && trigger.Owner == stage)
                     {
-                        trigger.BindChase(chase, source => runtime.TryCaptureBeforeChase(active, source));
                         chaseTriggers.Add(trigger);
+                        var chase = trigger.ChaseDriver;
+                        trigger.BindChase(chase, source => runtime.TryCaptureBeforeChase(active, source));
+                        if (!chases.Contains(chase))
+                        {
+                            chases.Add(chase); // 초기화 실패도 연결 당시 참조로 끝까지 회수한다.
+                            chase.Initialize(runtime.Player, control, flow);
+                        }
                     }
                 stage.ChaseStarted += OnChaseStarted;
                 foreach (var memo in stage.FindComponents<MemoUIController>())
@@ -109,28 +113,7 @@ namespace Cooked.Integration
                     periodic.BindMaterialization(runtime.Player);
                 camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), brain, stage, flow);
                 ui.SetActorCamera(output);
-                CameraZoneRequest? resolved = null;
-                cameraZones.AddRange(stage.FindComponents<CameraZoneTrigger>());
-                foreach (var zone in cameraZones)
-                {
-                    zone.Bind(camera, actor);
-                    if (zone.TryResolveAtPosition(actor.transform.position, out var request))
-                    {
-                        // Hierarchy order is deterministic; the last authored overlapping volume wins.
-                        resolved = request;
-                    }
-                }
-                if (!resolved.HasValue)
-                {
-                    // Safe unzoned entry uses authored default configuration only, not saved IDs.
-                    var initial = stage.InitialCheckpoint;
-                    var fallback = initial.CameraZone;
-                    if (fallback.Source == null)
-                        throw new InvalidOperationException("Actual Actor position is outside camera volumes and Stage has no authored entry mode.");
-                    resolved = fallback;
-                }
-                camera.EnterZone(resolved.Value, true);
-                audioFlow.SetStage(stage.StageMusicPurpose);
+                stage.RestorePresentation();
                 fragments = runtime.Player.Snapshot.Fragments;
                 observedUnlocks = runtime.Session.UnlockedAbilities;
                 runtime.Session.Changed += OnSession; runtime.Player.Changed += OnPlayer; observing = true;
@@ -146,9 +129,15 @@ namespace Cooked.Integration
             return string.IsNullOrWhiteSpace(code) || runtime.Dialogue.IsCompleted(code) || runtime.TryStartSafeDialogue(owner.StageId, code);
         }
         private void StopChase()
-        { chase.Stop(); audioFlow.SetChaseActive(false); }
-        private void OnCheckpointCaptured()
-        { if (observing) audio.PlaySfx(AudioCueIds.Checkpoint); }
+        {
+            foreach (var chase in chases) if (chase != null) chase.Stop();
+            audioFlow.SetChaseActive(false);
+        }
+        private void OnCheckpointCaptured(StageTrigger checkpoint)
+        {
+            if (!observing) return;
+            audio.PlaySfx(AudioCueIds.Checkpoint);
+        }
         private void OnChaseStarted(StageService value) => audioFlow.SetChaseActive(true);
         private void OnAbility(AbilityId ability)
         {
@@ -180,8 +169,6 @@ namespace Cooked.Integration
             memos.Clear();
             // Release only the objects borrowed at bind time. Unity may already be
             // unloading this Stage during app shutdown, when scene lookup is invalid.
-            foreach (var zone in cameraZones) if (zone != null) SessionCleanup.Attempt(errors, zone.ResetForRetry);
-            cameraZones.Clear();
             foreach (var trigger in chaseTriggers) if (trigger != null) SessionCleanup.Attempt(errors, trigger.UnbindChase);
             chaseTriggers.Clear();
             foreach (var periodic in periodicPlatforms) if (periodic != null) SessionCleanup.Attempt(errors, () => periodic.BindMaterialization(null));
@@ -189,10 +176,13 @@ namespace Cooked.Integration
             if (stage != null)
             {
                 stage.ChaseStarted -= OnChaseStarted;
+                stage.CheckpointCaptured -= OnCheckpointCaptured;
                 SessionCleanup.Attempt(errors, stage.Dispose);
             }
             stage = null;
-            SessionCleanup.Attempt(errors, chase.Shutdown); SessionCleanup.Attempt(errors, camera.Unbind);
+            foreach (var chase in chases) if (chase != null) SessionCleanup.Attempt(errors, chase.Shutdown);
+            chases.Clear();
+            SessionCleanup.Attempt(errors, camera.Unbind);
             SessionCleanup.ThrowIfAny(errors, "World release failed.");
         }
         public void Dispose()
@@ -201,7 +191,6 @@ namespace Cooked.Integration
             var errors = new List<Exception>();
             if (!subscriptionsDetached)
             {
-                runtime.CheckpointCaptured -= OnCheckpointCaptured;
                 runtime.ActorReady -= BindActor; runtime.ActorRemoving -= UnbindActor;
                 runtime.Player.AbilitySucceeded -= OnAbility; runtime.Player.AbilityRejected -= OnAbilityRejected;
                 subscriptionsDetached = true;

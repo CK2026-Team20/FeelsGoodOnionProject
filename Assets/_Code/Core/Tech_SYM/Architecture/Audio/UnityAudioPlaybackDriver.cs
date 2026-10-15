@@ -8,6 +8,8 @@ namespace Cooked.Audio
     {
         private readonly AudioSource[] sources;
         private readonly Dictionary<string, AudioClip> clips;
+        private readonly Dictionary<AudioClip, string> musicIds = new Dictionary<AudioClip, string>();
+        private int nextMusicId;
         public UnityAudioPlaybackDriver(AudioSource[] sources, AudioCueCatalog catalog)
         {
             if (sources == null || sources.Length != AudioService.ChannelCount)
@@ -47,6 +49,16 @@ namespace Cooked.Audio
         public void SetPaused(int channel, bool paused)
         { if (paused) sources[channel].Pause(); else sources[channel].UnPause(); }
         public bool IsPlaying(int channel) => sources[channel].isPlaying;
+        public bool IsSameClip(string firstCue, string secondCue) => firstCue != null && secondCue != null &&
+            clips.TryGetValue(firstCue, out var first) && clips.TryGetValue(secondCue, out var second) && first != null && first == second;
+        public string ResolveMusicId(AudioClip clip)
+        {
+            if (clip == null) throw new ArgumentNullException(nameof(clip));
+            if (musicIds.TryGetValue(clip, out var id)) return id;
+            id = "music.trigger." + checked(++nextMusicId);
+            musicIds.Add(clip, id); clips.Add(id, clip);
+            return id;
+        }
 
     }
 }

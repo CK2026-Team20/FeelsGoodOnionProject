@@ -57,7 +57,7 @@ namespace Cooked.Integration
         public static bool IsFixedPoint(Component owner, Transform point)
         {
             if (owner == null || point == null || !owner.gameObject.scene.IsValid() ||
-                owner.gameObject.scene != point.gameObject.scene || !global::Cooked.Level.CameraZoneRequest.IsFinite(point.position)) return false;
+                owner.gameObject.scene != point.gameObject.scene || !global::Cooked.Level.CameraProfileValidation.IsFinite(point.position)) return false;
             for (var parent = point; parent != null; parent = parent.parent)
             {
                 if (parent.GetComponent<Rigidbody>() != null || parent.GetComponent<Animator>() != null ||

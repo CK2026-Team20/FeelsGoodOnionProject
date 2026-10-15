@@ -17,5 +17,5 @@ MonoBehaviour:
   initCooldown: 0
   requiredFragments: 5
   preparationTime: 0
-  effectRadius: 3
+  effectRadius: 0.5
   stunDuration: 2

@@ -9,30 +9,8 @@ using DG.Tweening;
 namespace Cooked.Level
 {
     public enum CameraMovementMode { [InspectorName("측면")] Side = 1, [InspectorName("통로")] Corridor = 2, [InspectorName("쿼터뷰")] Quarter = 3 }
-    /// <summary>실물 구간에서 계산한 월드 정렬 값. 작성용 컴포넌트나 저장 자산이 아니다.</summary>
-    public readonly struct CameraZoneData
+    public static class CameraProfileValidation
     {
-        public CameraMovementMode Movement { get; }
-        public Vector3 AlignmentPosition { get; }
-        public CameraZoneData(CameraMovementMode movement, Vector3 worldPosition)
-        {
-            CameraZoneRequest.Validate(movement, worldPosition);
-            Movement = movement; AlignmentPosition = worldPosition;
-        }
-    }
-    public readonly struct CameraZoneRequest
-    {
-        public CameraMovementMode Movement { get; }
-        public Vector3 AlignmentPosition { get; }
-        public CameraZoneTrigger Source { get; }
-        public CameraZoneRequest(CameraMovementMode movement, Vector3 alignmentPosition)
-        { Validate(movement, alignmentPosition); Movement = movement; AlignmentPosition = alignmentPosition; Source = null; }
-        public CameraZoneRequest(CameraZoneTrigger source, CameraZoneData data)
-        {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            Validate(data.Movement, data.AlignmentPosition);
-            Source = source; Movement = data.Movement; AlignmentPosition = data.AlignmentPosition;
-        }
         internal static void Validate(CameraMovementMode movement, Vector3 alignmentPosition)
         {
             if (movement != CameraMovementMode.Side && movement != CameraMovementMode.Corridor && movement != CameraMovementMode.Quarter)
@@ -48,7 +26,7 @@ namespace Cooked.Level
     public sealed class LevelCameraService : MonoBehaviour, IDisposable
     {
         [Serializable]
-        private sealed class ViewSettings
+        public sealed class ViewSettings
         {
             [SerializeField, InspectorLabel("화면 위치"), Tooltip("대상의 화면 위치입니다. X는 왼쪽 0~오른쪽 100, Y는 아래 0~위 100입니다.")]
             public Vector2 screenPercent;
@@ -56,47 +34,103 @@ namespace Cooked.Level
             public Vector2 deadZone;
             [SerializeField, InspectorLabel("추적 감쇠"), Tooltip("축별 추적 지연을 조절합니다. 0이면 즉시 추적합니다.")]
             public Vector3 damping = Vector3.one;
-            [SerializeField, InspectorLabel("카메라 거리"), Tooltip("대상에서 카메라 전방축을 따라 유지할 거리입니다(m)."), Min(.01f)]
+            [SerializeField, InspectorLabel("피사체 중심 반경"), Tooltip("시선 중심에서 카메라까지의 정착 반경입니다(m). 감쇠·허용 폭·블렌드 중에는 실제 거리가 달라집니다."), Min(.01f)]
             public float distance = 10;
-            [SerializeField, InspectorLabel("고정 각도"), Tooltip("월드 기준 카메라 회전입니다(도). 플레이어가 뒤돌아도 변하지 않습니다.")]
+            [SerializeField, InspectorLabel("피사체 중심 회전"), Tooltip("월드 기준 수직각(X)·수평각(Y)·롤(Z)입니다(도). 시선 중심 주위의 카메라 위치도 변합니다.")]
             public Vector3 angles;
+            [SerializeField, InspectorLabel("시선 중심 오프셋"), Tooltip("Player CameraAnchor에 더할 월드 XYZ 오프셋입니다(m). 플레이어 회전에 따라 회전하지 않습니다.")]
+            public Vector3 focusOffset;
             [SerializeField, InspectorLabel("고정 시야각"), Tooltip("원근 카메라의 수직 시야각입니다(도)."), Range(1, 179)]
             public float fieldOfView = 40;
+            private CinemachineCamera appliedCamera;
+            private (Vector2 screen, Vector2 zone, Vector3 damping, float distance, Vector3 angles, float fov, Vector3 offset) appliedValues;
+            private float appliedAspect;
+            private Quaternion appliedTargetRotation;
+            private bool hasRejectedValues;
+            private (Vector2 screen, Vector2 zone, Vector3 damping, float distance, Vector3 angles, float fov, Vector3 offset) Values
+                => (screenPercent, deadZone, damping, distance, angles, fieldOfView, focusOffset);
             public ViewSettings(Vector2 screen, Vector2 width, Vector3 rotation)
             { screenPercent = screen; deadZone = width; angles = rotation; }
-            public void Apply(CinemachineCamera camera)
-            {
-                if (!CameraZoneRequest.IsFinite(distance) || distance <= 0 || !CameraZoneRequest.IsFinite(angles) ||
-                    !CameraZoneRequest.IsFinite(damping) || damping.x < 0 || damping.y < 0 || damping.z < 0 ||
+            public bool HasValidValues => !(
+                    !CameraProfileValidation.IsFinite(distance) || distance < .01f || !CameraProfileValidation.IsFinite(angles) ||
+                    !CameraProfileValidation.IsFinite(focusOffset) ||
+                    !CameraProfileValidation.IsFinite(damping) || damping.x < 0 || damping.y < 0 || damping.z < 0 ||
                     !float.IsFinite(fieldOfView) || fieldOfView < 1 || fieldOfView > 179 ||
                     !float.IsFinite(screenPercent.x) || !float.IsFinite(screenPercent.y) ||
                     screenPercent.x < 0 || screenPercent.x > 100 || screenPercent.y < 0 || screenPercent.y > 100 ||
-                    !float.IsFinite(deadZone.x) || !float.IsFinite(deadZone.y) || deadZone.x < 0 || deadZone.x > 1 || deadZone.y < 0 || deadZone.y > 1)
+                    !float.IsFinite(deadZone.x) || !float.IsFinite(deadZone.y) || deadZone.x < 0 || deadZone.x > 1 || deadZone.y < 0 || deadZone.y > 1);
+            public float Depth(float aspect)
+            {
+                if (!HasValidValues || !float.IsFinite(aspect) || aspect <= 0)
+                    throw new InvalidOperationException("카메라 구도와 화면비의 유한 값·범위를 확인하세요.");
+                float tangent = Mathf.Tan(fieldOfView * .5f * Mathf.Deg2Rad);
+                Vector2 screen = screenPercent / 50f - Vector2.one;
+                return distance / Mathf.Sqrt(1 + tangent * tangent * (screen.x * screen.x * aspect * aspect + screen.y * screen.y));
+            }
+            // 설치된 PositionComposer의 최소 전방 깊이(0.01m) 미만은 정확한 반경을 표현할 수 없다.
+            public bool IsValidForAspect(float aspect) => HasValidValues && float.IsFinite(aspect) && aspect > 0 && Depth(aspect) >= .01f;
+            public Vector3 PreviewPosition(Vector3 trackingPoint, float aspect)
+            {
+                float depth = Depth(aspect);
+                float height = depth * Mathf.Tan(fieldOfView * .5f * Mathf.Deg2Rad);
+                Vector2 screen = screenPercent / 50f - Vector2.one;
+                return trackingPoint + focusOffset - Quaternion.Euler(angles) * new Vector3(screen.x * height * aspect, screen.y * height, depth);
+            }
+            public void Apply(CinemachineCamera camera, float aspect = 1)
+            {
+                if (!IsValidForAspect(aspect))
                     throw new InvalidOperationException("카메라 구도 설정의 유한 값과 범위를 확인하세요.");
                 var composer = camera.GetComponent<CinemachinePositionComposer>();
                 if (composer == null || !composer.enabled) throw new InvalidOperationException("활성 PositionComposer가 필요합니다.");
                 camera.transform.rotation = Quaternion.Euler(angles);
                 var lens = camera.Lens; lens.FieldOfView = fieldOfView; camera.Lens = lens;
-                composer.CameraDistance = distance; composer.Damping = damping;
-                composer.TargetOffset = Vector3.zero; composer.Lookahead.Enabled = false;
+                composer.CameraDistance = Depth(aspect); composer.Damping = damping;
+                // Composer의 오프셋은 Follow 로컬 축이다. 작성 값은 월드 축이므로 매 프레임 회전 변화도 감지한다.
+                SetTargetOffset(camera, focusOffset); composer.Lookahead.Enabled = false;
+                composer.DeadZoneDepth = 0; composer.CenterOnActivate = true;
                 composer.Composition = new ScreenComposerSettings
                 {
                     ScreenPosition = ToScreenPosition(screenPercent),
                     DeadZone = new ScreenComposerSettings.DeadZoneSettings { Enabled = true, Size = deadZone }
                 };
+                appliedCamera = camera; appliedValues = Values; appliedAspect = aspect;
+                hasRejectedValues = false;
+            }
+            private void SetTargetOffset(CinemachineCamera camera, Vector3 worldOffset)
+            {
+                appliedTargetRotation = camera.Follow != null ? camera.Follow.rotation : Quaternion.identity;
+                camera.GetComponent<CinemachinePositionComposer>().TargetOffset = Quaternion.Inverse(appliedTargetRotation) * worldOffset;
+            }
+            internal void RestoreTargetOffset(CinemachineCamera camera) => SetTargetOffset(camera, appliedValues.offset);
+            public bool Refresh(CinemachineCamera camera, float aspect = 1)
+            {
+                var values = Values;
+                var targetRotation = camera.Follow != null ? camera.Follow.rotation : Quaternion.identity;
+                if (camera == appliedCamera && values.Equals(appliedValues) && appliedAspect == aspect)
+                {
+                    // Actor가 돌아도 월드 오프셋만 보존한다. 정상 추적의 감쇠 상태를 초기화하지 않는다.
+                    if (appliedTargetRotation != targetRotation)
+                    {
+                        RestoreTargetOffset(camera);
+                    }
+                    hasRejectedValues = false; return false;
+                }
+                if (!IsValidForAspect(aspect))
+                {
+                    if (!hasRejectedValues)
+                        Debug.LogWarning("카메라 '" + camera.name + "'의 구도 설정 범위를 확인하세요. 마지막 유효 구도를 유지합니다.", camera);
+                    hasRejectedValues = true;
+                    return false;
+                }
+                Apply(camera, aspect);
+                return true;
             }
         }
-        [SerializeField, InspectorLabel("측면 구도"), Tooltip("측면 추적의 화면 위치, 거리와 고정 각도를 조절합니다.")]
-        private ViewSettings sideView = new ViewSettings(new Vector2(40, 50), new Vector2(.1f, .1f), Vector3.zero);
-        [SerializeField, InspectorLabel("통로 구도"), Tooltip("통로 추적의 화면 위치, 거리와 고정 각도를 조절합니다.")]
-        private ViewSettings corridorView = new ViewSettings(new Vector2(50, 55), new Vector2(.1f, .1f), new Vector3(10, 0, 0));
-        [SerializeField, InspectorLabel("쿼터 구도"), Tooltip("쿼터 추적의 화면 위치, 거리와 고정 각도를 조절합니다.")]
-        private ViewSettings quarterView = new ViewSettings(new Vector2(50, 50), new Vector2(.15f, .1f), new Vector3(20, -30, 0));
-        [SerializeField, InspectorLabel("측면 카메라"), Tooltip("이 서비스가 선택할 측면 CinemachineCamera입니다. PositionComposer와 Confiner3D가 필요합니다.")]
+        [SerializeField, InspectorLabel("측면 카메라"), Tooltip("이 서비스가 선택할 측면 CinemachineCamera입니다. PositionComposer가 필요합니다.")]
         private CinemachineCamera sideCamera;
-        [SerializeField, InspectorLabel("통로 카메라"), Tooltip("이 서비스가 선택할 별도 통로 CinemachineCamera입니다. PositionComposer와 Confiner3D가 필요합니다.")]
+        [SerializeField, InspectorLabel("통로 카메라"), Tooltip("이 서비스가 선택할 통로 CinemachineCamera입니다. PositionComposer가 필요합니다.")]
         private CinemachineCamera corridorCamera;
-        [SerializeField, InspectorLabel("쿼터 카메라"), Tooltip("이 서비스가 선택할 쿼터 CinemachineCamera입니다. PositionComposer와 Confiner3D가 필요합니다.")]
+        [SerializeField, InspectorLabel("쿼터 카메라"), Tooltip("이 서비스가 선택할 쿼터 CinemachineCamera입니다. PositionComposer가 필요합니다.")]
         private CinemachineCamera quarterCamera;
         private PlayerBridgeService player;
         private IGameplayControlService control;
@@ -106,15 +140,14 @@ namespace Cooked.Level
         private CinemachineBrain brain;
         private CinemachineCamera side, corridor, quarter, requestedCamera, committedCamera;
         private Transform target, body;
-        private BoxCollider bounds;
         private IDisposable inputLease;
         private PlayerBridgeService.CorrectionOwnership correction;
         private Tween playerTween, blockerTween;
         private Rigidbody ownedBlockerBody;
-        private CameraZoneTrigger ownedBlockerZone;
-        private long ownedBlockerRequest, ownedBlockerBinding;
+        private StageService.Section requestedSection;
+
         private PlayerFacade acceptedActor;
-        private long actorGeneration, requestGeneration, zoneRevision;
+        private long actorGeneration, requestGeneration;
         private bool initialSelection, motionsComplete, viewCommitted, playerMoveSubmitted, blockerMoveSubmitted, unbinding, cancellingTransition;
         private Vector3 playerGoal, blockerGoal;
         private CinemachineBlendDefinition previousBlend;
@@ -129,9 +162,6 @@ namespace Cooked.Level
         public Exception TransitionFailure { get; private set; }
         /// <summary>수락 전 거절은 진행 중 작업의 State/TransitionFailure와 별개다.</summary>
         public string LastRejectionReason { get; private set; }
-        public CameraZoneTrigger LastRejectedZone { get; private set; }
-        private readonly HashSet<(CameraZoneTrigger source, long binding, string reason)> reportedRejections = new();
-        public CameraZoneTrigger CurrentZone { get; private set; }
         private bool HasBinding => !unbinding && !cancellingTransition && player != null && player.HasActor && modes != null && modes.isActiveAndEnabled &&
             brain != null && brain.isActiveAndEnabled && target != null && body != null && side != null && corridor != null && quarter != null && stage != null && stage.IsBound;
         private bool SelectionComplete => requestedCamera != null && ReferenceEquals(brain.ActiveVirtualCamera, requestedCamera) && !brain.IsBlending;
@@ -150,12 +180,12 @@ namespace Cooked.Level
                 throw new ArgumentException("현재 Actor, Stage, Flow와 서로 다른 세 구도 카메라가 필요합니다.");
             if (!bridge.HasActor || bridge.BodyTransform != actorBody || movementModes.gameObject != bridge.Actor.gameObject || owner.Actor != bridge.Actor)
                 throw new ArgumentException("카메라는 현재 Stage의 실제 Actor에 연결해야 합니다.");
-            var boundary = owner.CameraBounds;
+
             foreach (var camera in new[] { sideCamera, corridorCamera, quarterCamera })
             {
                 Cooked.Integration.SceneComponentLookup.RequireSameScene(this, camera, "구도 카메라");
-                if (camera.GetComponent<CinemachinePositionComposer>() == null || camera.GetComponent<CinemachineConfiner3D>() == null || !camera.isActiveAndEnabled)
-                    throw new ArgumentException("각 카메라의 활성 PositionComposer와 Confiner3D 연결이 필요합니다.");
+                if (camera.GetComponent<CinemachinePositionComposer>() == null || !camera.isActiveAndEnabled)
+                    throw new ArgumentException("각 카메라의 활성 PositionComposer가 필요합니다.");
                 foreach (var component in camera.GetComponents<CinemachineComponentBase>())
                     if (component.enabled && component.Stage != CinemachineCore.Stage.Body)
                         throw new ArgumentException("고정 회전 구도에는 Aim/Noise 회전 writer를 연결하지 마세요.");
@@ -163,7 +193,8 @@ namespace Cooked.Level
             Unbind();
             player = bridge; control = gameplayControl; modes = movementModes; brain = outputBrain;
             side = sideCamera; corridor = corridorCamera; quarter = quarterCamera; target = cameraTarget; body = actorBody;
-            stage = owner; flow = flowService; bounds = boundary;
+            stage = owner; flow = flowService;
+
             previousBlend = brain.DefaultBlend; previousCustomBlends = brain.CustomBlends;
             previousIgnoreTimeScale = brain.IgnoreTimeScale; previousUpdate = brain.UpdateMethod; previousBlendUpdate = brain.BlendUpdateMethod;
             try
@@ -173,10 +204,8 @@ namespace Cooked.Level
                 brain.BlendUpdateMethod = CinemachineBrain.BrainUpdateMethods.LateUpdate;
                 foreach (var camera in Cameras)
                 {
-                    Settings(camera).Apply(camera);
+                    Settings(camera).Apply(camera, OutputAspect);
                     camera.Follow = null; camera.LookAt = null; camera.Priority = 0;
-                    var confiner = camera.GetComponent<CinemachineConfiner3D>();
-                    confiner.BoundingVolume = bounds; confiner.SlowingDistance = 0; confiner.enabled = true;
                 }
                 player.ActorChanged += OnActorChanged; player.Dying += OnDying;
                 stage.Releasing += OnStageReleasing;
@@ -184,8 +213,33 @@ namespace Cooked.Level
             }
             catch { Unbind(); throw; }
         }
+        private float OutputAspect => brain.OutputCamera.aspect;
         private CinemachineCamera[] Cameras => new[] { side, corridor, quarter };
-        private ViewSettings Settings(CinemachineCamera camera) => camera == side ? sideView : camera == corridor ? corridorView : quarterView;
+        private ViewSettings Settings(CinemachineCamera camera) => stage.ViewFor(camera == side ? CameraMovementMode.Side : camera == corridor ? CameraMovementMode.Corridor : CameraMovementMode.Quarter);
+        private bool RefreshView(CinemachineCamera camera)
+        {
+            var settings = Settings(camera);
+            var previousFollow = camera.Follow;
+            bool temporaryFollow = previousFollow == null && (camera == requestedCamera || camera == committedCamera);
+            try
+            {
+                // 월드 오프셋을 Follow 로컬 값으로 바꾸기 전에 실제 추적점부터 연결한다.
+                if (temporaryFollow) camera.Follow = target;
+                if (!settings.Refresh(camera, OutputAspect)) return false;
+                camera.PreviousStateIsValid = false;
+                if (temporaryFollow) camera.UpdateCameraState(Vector3.up, -1);
+                return true;
+            }
+            finally
+            {
+                if (temporaryFollow)
+                {
+                    camera.Follow = previousFollow;
+                    // 평가한 CameraState는 유지하고, Follow와 Composer 로컬 오프셋/회전 캐시만 원상태로 맞춘다.
+                    settings.RestoreTargetOffset(camera);
+                }
+            }
+        }
         public static Vector2 ToScreenPosition(Vector2 percent)
         {
             if (!float.IsFinite(percent.x) || !float.IsFinite(percent.y) || percent.x < 0 || percent.x > 100 || percent.y < 0 || percent.y > 100)
@@ -193,101 +247,79 @@ namespace Cooked.Level
             // PositionComposer.ScreenToOrtho는 Rect Y를 위쪽 원점으로 해석한다.
             return new Vector2(percent.x / 100f - .5f, .5f - percent.y / 100f);
         }
-        public static PlayerMovementMode ResolveMode(CameraZoneRequest zone) => zone.Movement switch
+        public static PlayerMovementMode ResolveMode(CameraMovementMode view) => view switch
         {
             CameraMovementMode.Side => PlayerMovementMode.Side,
             CameraMovementMode.Corridor or CameraMovementMode.Quarter => PlayerMovementMode.Quarter,
-            _ => throw new ArgumentOutOfRangeException(nameof(zone))
+            _ => throw new ArgumentOutOfRangeException(nameof(view))
         };
-        public bool TryEnterZone(CameraZoneRequest zone, PlayerFacade candidate)
+        public void EnterSection(StageService.Section section, bool restore)
         {
-            if (IsTransitioning || !HasBinding || candidate != player.Actor || candidate == null || candidate.IsDead || Paused ||
-                zone.Source == null || !zone.Source.IsBoundTo(this, candidate) || !zone.Source.HasActualContact(candidate) ||
-                flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy) return false;
-            if (CurrentZone == zone.Source && State == CameraTransitionState.Completed) return true;
-            EnterZone(zone);
-            return CurrentZone == zone.Source && (IsTransitioning || State == CameraTransitionState.Completed);
-        }
-        public void EnterZone(CameraZoneRequest zone, bool snap = false)
-        {
-            CameraZoneRequest.Validate(zone.Movement, zone.AlignmentPosition);
-            if (IsTransitioning || !HasBinding || player.Actor.IsDead) return;
-            if (zone.Source == null) throw new ArgumentException("구도 요청은 실제 작성 구간이 필요합니다.");
-            if (!snap && (Paused || !stage.CanDispatch(player.Actor) || !zone.Source.HasActualContact(player.Actor))) return;
-            var source = zone.Source;
-            source.ValidateSetup();
-            Vector3 goal = source.PlayerGoal(player.Actor.GetComponent<Rigidbody>().position);
-            bool move = !snap && !source.BlockerCompleted && (source.HasBlocker || zone.Movement == CameraMovementMode.Side);
-            string unsafeReason = move ? UnsafePathReason(source, player.Actor, goal) : null;
-            if (unsafeReason != null) { RejectZone(source, unsafeReason); return; }
-            long generation = ++requestGeneration;
-            LastRejectionReason = null; LastRejectedZone = null;
-            CurrentZone = source; zoneRevision = source.BindingRevision; requestedMode = ResolveMode(zone); TransitionFailure = null;
-            acceptedActor = player.Actor; actorGeneration = player.ActorGeneration;
-            playerGoal = goal; blockerGoal = source.HasBlocker ? source.BlockerGoal : Vector3.zero;
-            playerMoveSubmitted = blockerMoveSubmitted = false;
-            State = CameraTransitionState.Accepted; initialSelection = snap; motionsComplete = !move; viewCommitted = false;
+            if (section == null || !HasBinding || player.Actor.IsDead || !ReferenceEquals(stage.CurrentSection,section))
+                throw new InvalidOperationException("현재 Stage가 선택한 구간과 살아 있는 Actor가 필요합니다.");
+            var selected = section.View == CameraMovementMode.Side ? side : section.View == CameraMovementMode.Corridor ? corridor : quarter;
+            bool sameView = IsTransitioning ? requestedCamera == selected : committedCamera == selected;
+            // New accepted starts replace old work even when their view is identical.
+            CancelTransition(false, true);
+            if (!HasBinding || !ReferenceEquals(stage.CurrentSection,section)) return;
+            requestedSection = section;
+            long generation=++requestGeneration;
+            acceptedActor=player.Actor;actorGeneration=player.ActorGeneration;
+            requestedMode=ResolveMode(section.View);
+            var capsule=acceptedActor.GetComponent<CapsuleCollider>();
+            var rigidbody=acceptedActor.GetComponent<Rigidbody>();
+            if(capsule == null || rigidbody == null) throw new InvalidOperationException("진입 보정 Capsule/Rigidbody가 필요합니다.");
+            playerGoal=rigidbody.position + section.Start.CheckpointPose.position - capsule.transform.TransformPoint(capsule.center);
+            blockerGoal=section.BlockerBody != null ? section.BlockerGoal : Vector3.zero;
+            State=CameraTransitionState.Accepted;initialSelection=restore;motionsComplete=restore;viewCommitted=false;
+            playerMoveSubmitted=blockerMoveSubmitted=false;TransitionFailure=null;LastRejectionReason=null;
             try
             {
-                var lease = control.BlockGameplay("카메라·통로 전환");
-                if (!IsCurrent(generation)) { lease.Dispose(); return; }
-                inputLease = lease; player.ClearInput();
-                if (!snap && !source.HasActualContact(acceptedActor)) { CancelTransition(false); return; }
-                unsafeReason = move ? UnsafePathReason(source, acceptedActor, goal) : null;
-                if (unsafeReason != null)
+                var lease=control.BlockGameplay("구간 진입 보정");
+                if(!IsCurrent(generation)){lease.Dispose();return;}
+                inputLease=lease;player.ClearInput();
+                if(!restore && (!player.IsCorrectionPathSafe(playerGoal) || !HasSupport(playerGoal) || !section.IsBlockerPathSafe(acceptedActor,playerGoal)))
+                    throw new InvalidOperationException("수락한 구간 '"+section.DisplayName+"' 보정 경로·지지면·차단 경로가 안전하지 않습니다.");
+                requestedCamera=selected;
+                if(restore || !sameView)
                 {
-                    // 이미 수락한 작업은 실행 실패다. 시작 전 거절과 구분한다.
-                    Fail(new InvalidOperationException(unsafeReason));
-                    LogRejectionOnce(source, "수락 후 안전 재검사 실패: " + unsafeReason);
-                    return;
+                    foreach(var camera in Cameras){camera.Follow=camera==selected?target:null;camera.LookAt=null;camera.Priority=camera==selected?20:0;}
+                    Settings(selected).Apply(selected, OutputAspect);
+                    selected.PreviousStateIsValid=false;
+                    selected.UpdateCameraState(Vector3.up,-1);
+                    brain.DefaultBlend=new CinemachineBlendDefinition(restore?CinemachineBlendDefinition.Styles.Cut:CinemachineBlendDefinition.Styles.EaseInOut,
+                        restore?0:section.TransitionSeconds);
+                    if(restore)brain.ResetState();
                 }
-                requestedCamera = zone.Movement == CameraMovementMode.Side ? side : zone.Movement == CameraMovementMode.Corridor ? corridor : quarter;
-                foreach (var camera in Cameras) { camera.Follow = null; camera.LookAt = null; camera.Priority = camera == requestedCamera ? 20 : 0; }
-                Settings(requestedCamera).Apply(requestedCamera);
-                // 수락 시 목표 구도를 한 번 평가한 뒤 Follow를 끊는다. 이전/새 추적 모두 완료 전에는 움직이지 않는다.
-                requestedCamera.Follow = target;
-                requestedCamera.PreviousStateIsValid = false;
-                requestedCamera.UpdateCameraState(Vector3.up, -1);
-                requestedCamera.Follow = null;
-                brain.DefaultBlend = new CinemachineBlendDefinition(snap ? CinemachineBlendDefinition.Styles.Cut : CinemachineBlendDefinition.Styles.EaseInOut,
-                    snap ? 0 : source.TransitionSeconds);
-                if (snap) brain.ResetState();
-                if (move)
+                else selected.Follow=target;
+                if(!restore)
                 {
-                    correction = player.TryAcquireCorrection(acceptedActor, actorGeneration, () => CancelTransition(false));
-                    if (!IsCurrent(generation) || correction == null) throw new InvalidOperationException("Actor 보정 writer를 획득하지 못했습니다.");
-                    State = CameraTransitionState.CorrectingPlayer;
-                    playerTween = correction.Body.DOMove(goal, source.PlayerMoveSeconds).SetEase(source.PlayerEase).SetUpdate(UpdateType.Manual).Pause();
+                    correction=player.TryAcquireCorrection(acceptedActor,actorGeneration,()=>CancelTransition(false));
+                    if(!IsCurrent(generation)||correction==null)throw new InvalidOperationException("Actor 보정 writer를 획득하지 못했습니다.");
+                    State=CameraTransitionState.CorrectingPlayer;
+                    playerTween=correction.Body.DOMove(playerGoal,section.CorrectionSeconds).SetEase(Ease.InOutSine).SetUpdate(UpdateType.Manual).Pause();
                 }
-                else State = CameraTransitionState.WaitingForCamera;
+                else State=CameraTransitionState.WaitingForCamera;
             }
-            catch (Exception error) { if (generation == requestGeneration) Fail(error); throw; }
+            catch(Exception error){if(generation==requestGeneration)Fail(error);throw;}
         }
-        private string UnsafePathReason(CameraZoneTrigger source, PlayerFacade candidate, Vector3 goal)
+        private bool HasSupport(Vector3 goal)
         {
-            if (!player.IsCorrectionPathSafe(goal))
-                return "플레이어 보정 목표 또는 이동 경로가 안전하지 않습니다. 실제 Capsule, 안전 앵커 높이, 바닥·통로·닫힌 차단체를 확인하세요.";
-            if (!source.IsBlockerPathSafe(candidate, goal))
-                return "차단체 목표 또는 이동 경로가 안전하지 않습니다. 차단 목표·장애물·플레이어 안전 범위를 확인하세요.";
-            return null;
+            var capsule=acceptedActor.GetComponent<CapsuleCollider>();
+            PlayerBridgeService.CapsuleGeometry(capsule,out var a,out var b,out float radius);
+            var delta=goal-acceptedActor.GetComponent<Rigidbody>().position;
+            var bottom=(a.y<b.y?a:b)+delta;
+            foreach(var hit in Physics.SphereCastAll(bottom+Vector3.up*.02f,Mathf.Max(.001f,radius-.002f),Vector3.down,.15f,~0,QueryTriggerInteraction.Ignore))
+                if(hit.collider.attachedRigidbody!=acceptedActor.GetComponent<Rigidbody>() &&
+                    !Physics.GetIgnoreLayerCollision(capsule.gameObject.layer,hit.collider.gameObject.layer) &&
+                    !Physics.GetIgnoreCollision(capsule,hit.collider) && Vector3.Angle(hit.normal,Vector3.up)<=acceptedActor.GetComponent<CharacterMovement>().MaximumGroundAngle)
+                    return true;
+            return false;
         }
-        private void RejectZone(CameraZoneTrigger source, string reason)
-        {
-            LastRejectedZone = source; LastRejectionReason = reason;
-            LogRejectionOnce(source, reason);
-        }
-        private void LogRejectionOnce(CameraZoneTrigger source, string reason)
-        {
-            // Stay 및 겹친 여러 구간을 번갈아 검사해도 각 바인딩/사유당 한 번만 기록한다.
-            if (reportedRejections.Add((source, source.BindingRevision, reason)))
-                Debug.LogWarning($"카메라 구간 '{source.name}': {reason}", source);
-        }
-        private bool IsCurrent(long generation) => generation == requestGeneration && IsTransitioning && HasBinding &&
-            player.IsCurrentActor(acceptedActor, actorGeneration) && !acceptedActor.IsDead &&
-            CurrentZone != null && CurrentZone.BindingRevision == zoneRevision && CurrentZone.IsBindingCurrent(this, acceptedActor) &&
-            (initialSelection || !CurrentZone.HasBlocker || ((CurrentZone.BlockerGoal - blockerGoal).sqrMagnitude < .000001f &&
-                CurrentZone.SafeAnchor != null && (CurrentZone.SafeAnchor.position - playerGoal).sqrMagnitude < .000001f)) &&
-            (initialSelection || (flow.Snapshot.State == FlowState.Playing && !flow.Snapshot.IsBusy));
+        private bool IsCurrent(long generation) => generation==requestGeneration && IsTransitioning && HasBinding &&
+            requestedSection!=null && ReferenceEquals(stage.CurrentSection,requestedSection) &&
+            player.IsCurrentActor(acceptedActor,actorGeneration) && !acceptedActor.IsDead &&
+            (initialSelection || (flow.Snapshot.State==FlowState.Playing && !flow.Snapshot.IsBusy));
         private void FixedUpdate()
         {
             if (!IsTransitioning || initialSelection || player == null || Paused) return;
@@ -302,7 +334,7 @@ namespace Cooked.Level
                 }
                 else if (State == CameraTransitionState.MovingBlocker && !blockerMoveSubmitted)
                 {
-                    if (!CurrentZone.IsBlockerPathSafe(acceptedActor, correction.Body.position)) throw new InvalidOperationException("진행 중 차단 경로가 막혔습니다.");
+                    if (!requestedSection.IsBlockerPathSafe(acceptedActor, correction.Body.position)) throw new InvalidOperationException("진행 중 차단 경로가 막혔습니다.");
                     blockerMoveSubmitted = Advance(blockerTween, Time.fixedDeltaTime);
                 }
             }
@@ -314,12 +346,18 @@ namespace Cooked.Level
             if (!HasBinding) { Unbind(); return; }
             bool initialCut = initialSelection && !control.State.PresentationPaused;
             if (IsTransitioning && !IsCurrent(requestGeneration)) { CancelTransition(false); return; }
-            if (Paused && !initialCut) return;
             long generation = requestGeneration;
             try
             {
-                if (bounds == null || !bounds.enabled || !bounds.gameObject.activeInHierarchy)
-                    throw new InvalidOperationException("활성 카메라 경계가 해제되었습니다.");
+                bool viewChanged = RefreshView(side) | RefreshView(corridor) | RefreshView(quarter);
+                if (Paused && !initialCut)
+                {
+                    if (viewChanged)
+                    {
+                        brain.ManualUpdate(Time.frameCount, 0);
+                    }
+                    return;
+                }
                 if (IsTransitioning && !motionsComplete)
                 {
                     if (correction == null || !correction.IsCurrent) { CancelTransition(false); return; }
@@ -327,29 +365,25 @@ namespace Cooked.Level
                     {
                         playerTween = null;
                         if (!IsCurrent(generation)) return;
-                        if (CurrentZone.HasBlocker && !CurrentZone.BlockerCompleted)
+                        if (requestedSection.BlockerBody != null)
                         {
-                            if (!CurrentZone.IsBlockerPathSafe(acceptedActor, correction.Body.position)) throw new InvalidOperationException("보정 후 차단 경로가 막혔습니다.");
+                            if (!requestedSection.IsBlockerPathSafe(acceptedActor, correction.Body.position)) throw new InvalidOperationException("보정 후 차단 경로가 막혔습니다.");
                             State = CameraTransitionState.MovingBlocker;
-                            ownedBlockerBody = CurrentZone.BlockerBody; ownedBlockerZone = CurrentZone;
-                            ownedBlockerRequest = generation; ownedBlockerBinding = CurrentZone.BindingRevision;
-                            blockerTween = ownedBlockerBody.DOMove(blockerGoal, CurrentZone.BlockerMoveSeconds)
-                                .SetEase(CurrentZone.BlockerEase).SetUpdate(UpdateType.Manual).Pause();
+                            ownedBlockerBody = requestedSection.BlockerBody;
+                            blockerTween = ownedBlockerBody.DOMove(blockerGoal, requestedSection.BlockerSeconds)
+                                .SetEase(Ease.InOutSine).SetUpdate(UpdateType.Manual).Pause();
                         }
                         else { motionsComplete = true; State = CameraTransitionState.WaitingForCamera; }
                     }
-                    else if (State == CameraTransitionState.MovingBlocker && blockerMoveSubmitted && (CurrentZone.BlockerBody.position - blockerGoal).sqrMagnitude < .000001f)
+                    else if (State == CameraTransitionState.MovingBlocker && blockerMoveSubmitted && (requestedSection.BlockerBody.position - blockerGoal).sqrMagnitude < .000001f)
                     {
                         blockerTween = null;
                         if (!IsCurrent(generation)) return;
-                        CurrentZone.MarkBlockerCompleted();
-                        ownedBlockerBody = null; ownedBlockerZone = null; // 실제 물리 도착 후에는 보류 이동 소유권도 끝난다.
+                        ownedBlockerBody = null; // 실제 물리 도착 후에는 보류 이동 소유권도 끝난다.
                         motionsComplete = true; State = CameraTransitionState.WaitingForCamera;
                     }
                 }
                 brain.ManualUpdate(Time.frameCount, initialCut ? -1 : Time.deltaTime);
-                // Confiner는 각 vcam의 Body 단계에 적용된다. 회전/비선형 blend 이후 최종 출력도 같은 실제 Box 안으로 제한한다.
-                brain.transform.position = bounds.ClosestPoint(brain.transform.position);
                 if (!IsTransitioning || !motionsComplete || !SelectionComplete || !modes.IsInitialized) return;
                 correction?.Dispose(); correction = null;
                 if (!IsCurrent(generation)) return;
@@ -381,7 +415,7 @@ namespace Cooked.Level
             }
         }
         private void ReleaseLease() { var lease = inputLease; inputLease = null; lease?.Dispose(); }
-        private void CancelTransition(bool failed)
+        private void CancelTransition(bool failed, bool preserveView = false)
         {
             if (cancellingTransition) return;
             cancellingTransition = true;
@@ -389,13 +423,10 @@ namespace Cooked.Level
             {
                 long cancelledRequest = requestGeneration++;
                 var oldBlockerBody = ownedBlockerBody; ownedBlockerBody = null;
-                var oldBlockerZone = ownedBlockerZone; ownedBlockerZone = null;
-                long oldBlockerRequest = ownedBlockerRequest, oldBlockerBinding = ownedBlockerBinding;
                 var oldPlayerTween = playerTween; playerTween = null;
                 var oldBlockerTween = blockerTween; blockerTween = null;
                 var oldCorrection = correction; correction = null;
                 var oldLease = inputLease; inputLease = null;
-                var oldZone = CurrentZone;
                 State = failed ? CameraTransitionState.Failed : CameraTransitionState.Cancelled;
                 initialSelection = false; motionsComplete = false; viewCommitted = false;
                 // 먼저 무효화한다. Dispose/OnKill/제어 통지가 실패해도 나머지 자기 자원을 끝까지 반환한다.
@@ -405,9 +436,7 @@ namespace Cooked.Level
                 SessionCleanup.Attempt(errors, () =>
                 {
                     // Kill은 이미 PhysX에 제출한 MovePosition을 지우지 않는다. 자기 수락 객체/세대만 flush한다.
-                    if (oldBlockerBody == null || oldBlockerZone == null || oldBlockerRequest != cancelledRequest ||
-                        oldBlockerZone.BindingRevision != oldBlockerBinding ||
-                        !ReferenceEquals(oldBlockerZone, oldZone) || !ReferenceEquals(oldBlockerZone.BlockerBody, oldBlockerBody)) return;
+                    if (oldBlockerBody == null) return;
                     Vector3 position = oldBlockerBody.position;
                     Quaternion rotation = oldBlockerBody.rotation;
                     oldBlockerBody.position = position;
@@ -415,8 +444,7 @@ namespace Cooked.Level
                     oldBlockerBody.transform.SetPositionAndRotation(position, rotation);
                 });
                 SessionCleanup.Attempt(errors, () => oldCorrection?.Dispose());
-                SessionCleanup.Attempt(errors, () => oldZone?.RequestCancelled());
-                if (!unbinding && committedCamera != null)
+                if (!preserveView && !unbinding && committedCamera != null)
                     foreach (var camera in Cameras)
                         if (camera != null) SessionCleanup.Attempt(errors, () =>
                         { camera.Priority = camera == committedCamera ? 20 : 0; camera.Follow = camera == committedCamera ? target : null; });
@@ -428,7 +456,6 @@ namespace Cooked.Level
         private void OnActorChanged() => Unbind();
         private void OnDying() => CancelTransition(false);
         private void OnStageReleasing() => Unbind();
-        internal void CancelFrom(CameraZoneTrigger source) { if (CurrentZone == source) CancelTransition(false); }
         public void ResetForRetry() => Unbind();
         public void Unbind()
         {
@@ -444,17 +471,15 @@ namespace Cooked.Level
                     if (camera != null)
                     {
                         camera.Follow = null; camera.LookAt = null; camera.Priority = 0;
-                        var confiner = camera.GetComponent<CinemachineConfiner3D>();
-                        if (confiner != null && confiner.BoundingVolume == bounds) confiner.BoundingVolume = null;
                     }
                 if (brain != null)
                 {
                     brain.DefaultBlend = previousBlend; brain.CustomBlends = previousCustomBlends;
                     brain.UpdateMethod = previousUpdate; brain.BlendUpdateMethod = previousBlendUpdate; brain.IgnoreTimeScale = previousIgnoreTimeScale;
                 }
-                reportedRejections.Clear(); LastRejectionReason = null; LastRejectedZone = null;
+                LastRejectionReason = null;
                 player = null; control = null; flow = null; stage = null; modes = null; brain = null;
-                side = corridor = quarter = requestedCamera = committedCamera = null; target = body = null; bounds = null; CurrentZone = null;
+                side = corridor = quarter = requestedCamera = committedCamera = null; target = body = null; requestedSection = null;
                 if (cleanupError != null) throw cleanupError;
             }
             finally { unbinding = false; }

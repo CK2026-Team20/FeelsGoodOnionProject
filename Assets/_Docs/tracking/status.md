@@ -1,5 +1,101 @@
 # 현재 요구와 검증 상태
 
+## 2026-10-16 Windows 빌드·커밋 인계
+
+사용자의 현재 로컬 상태 빌드·PR 요청에 따라 미저장 Stage를 native 사본으로 보존한 뒤 저장했다. 앞선 외관 단계의 원본 저장 대기는 해소됐다. 전용 Cooked_Prototype_Windows Build Profile에 Bootstrapper/Title/InGameCore/Stage_Prototype4씬을 순서대로 등록하고 바탕화면 Cooked!_Prototype_Build에 Windows64/Mono 실제 빌드를 완료했다. BuildReport Succeeded, 오류0/경고52, 1,129,671ms, 206,450,282bytes다. 실행파일 Player 자체의 동선 QA는 이번 빌드 성공과 구분한다.
+
+HMS 이번 순변경은 CharacterMovement의 선택적 접지 필터 계약과 OilSurface의 명시 기름 Trigger 두 파일이다. 기존 병합된 HMS12파일 이력과 구별하며, 누적 구현/기존 사용자·Editor 편집/이번 빌드 자동 변경의 출처를 정리했다. [변경 내역 및 HMS 검토](prototype-build-pr-2026-10-16/변경%20내역%20및%20HMS%20검토.md) · [빌드 검증](prototype-build-pr-2026-10-16/테스트%20및%20검증%20항목.md).
+
+## 2026-10-16 프로토타입 외관 설정
+
+새 코드 없이 A~C 웜톤/D~F 청보라색 실시간 보조광8개, 독립 Lighting/PostProcessing 루트와 Profile3개를 작성했다. 기존 Core 주광1개 유지, Core에 Linear Fog6~24m·Gradient 환경광, Bootstrap 카메라 인스턴스에 후처리 override를 저장했다. 실제 Play에서 세 시점, Volume 공간 블렌딩, 합성 Space 점프, 실제 발판3초 탑승, Retry와 Title 복귀를 확인했다. 1080p Editor 표본의 중앙값은 A6.91ms/D9.50ms이며 전 구간60fps 보장은 아니다.
+
+Stage는 작업 전의 미저장 Plane/ProBuilder 편집을 유지한 채 새 루트를 추가한 dirty 상태다. 원본 Stage 저장은 사용자 확인 대기이며 최종 native 사본은 output/Tech_SYM/prototype-look-2026-10-16/Stage-authored-preview.unity다. 최종 색감 승인은 사용자 화면 검토로 남긴다. 기존 Patrol 배치 오류와 관측된 NativeArray 수명 경고는 해결 완료로 보지 않는다. 코드·공유 프리팹·아트·파이프라인 설정·Git 작업은 포함하지 않았다.
+
+[외관 명세](prototype-look-2026-10-16/기능%20명세서.md) · [설정 리뷰](prototype-look-2026-10-16/코드%20리뷰.md) · [실행 검증](prototype-look-2026-10-16/테스트%20및%20검증%20항목.md).
+
+## 2026-10-16 구간 통합·실제 플레이 검증
+
+StageService가 구간·스냅샷·소비 이력을 소유하도록 통합했고 01_Stage_Prototype에 시작·끝6쌍/12CP를 연결했다. CameraZone·SafeAnchor·Alignment·카메라 위치 경계/Confiner를 제거했다. 모든 새 시작은 Capsule 중심을 보정하고 같은 시점은 blend만 생략하며 끝은 저장만 한다. Retry는 같은 Core/Stage에서 저장 맥락을 직접 복원한다.
+
+버튼 cap/body 분리, Pot 피해 연결, Linear/Floating 신규 배치 기본형과 빈 무참조 자식을 정리하고65prefab을 감사했다. 속도1.8m/s·점프1/.5m·중력12 및 발판.6m/s, 도마/서랍 간격·센서 범위·Prompt 배율을 조정했다. 반대편 카메라 요청은 철회되어 기존 방향을 유지하고 HMS 입력 코드는 수정하지 않았다.
+
+실제 Keyboard 입력으로12CP와F끝까지 도달했으며 사망·자동Retry를 포함한다. 변경부 저장 후 회귀, 정상/Small 평지 및 대표 경사 Linear13.646초 연속 운반/반전을 확인했다. 통합 검증은55항목과Memo/Options 보완5항목 통과. 실제Title NewGame/Opening, 전환 중 사망·취소·최신요청, Small 보정·Retry, POPO Completed→Ending 자연Completed→Title→새회차를 확인했다. 최초 검증기 실패를 보존하고 원인/재실행을 구분했다. 제품/자산 변경 없이 해당 범위 독립 검토를 통과했다.
+
+현재 미완료는 사용자 배치 회전 전 백페이스 비노출, 실제 메모 본문 콘텐츠, 해당 E 동선의 적 기절 성공, Windows 빌드/Player·사람의 체감 평가다. 최종 저장판 무사망 단일 완주로 주장하지 않는다. 원래 미저장 StationaryPlatforms=(8,0,0)·dirty=true를 보존했고 Play를 종료했다. 보호789개는 최종 실행 전후 추가 변경0이며 작업 시작 대비 TimeManager 줄바꿈1개는 별도 이력이다. Git 작업은 없다.
+
+[기능 명세](stage-flow-unification-2026-10-15/기능%20명세서.md) · [코드 리뷰](stage-flow-unification-2026-10-15/코드%20리뷰.md) · [테스트 및 검증](stage-flow-unification-2026-10-15/테스트%20및%20검증%20항목.md).
+
+2026-10-16 최종 문서 대조 중 Stage 디스크의 추가 변경을 발견했다. 00:01 native 미저장 복사본과 비교하면 FloorPlatforms (11)의 루트 Y 회전0→180도만 다르며, 이전 미저장 StationaryPlatforms=(8,0,0)도 현재 디스크에 포함돼 있다. 이번 문서 작업은 씬을 저장하거나 회전시키지 않았고 변경 주체를 단정하지 않는다. 추가 배치를 보존하며 회전 이후의 충돌·화면 상태는 앞선 Play PASS로 확대하지 않는다. 근거: output/Tech_SYM/stage-flow-unification-2026-10-15/t7/stage-concurrent-diff.txt. 다른 동결 제품6개와 보호789개는 T6 이후 동일하다.
+
+2026-10-16 최종 독립 리뷰 완료: approved, blocking issues0. 새 리뷰어가 명세 적합성·책임과 수명·실행 원자료와 주장 일치·현행 문서를 대조했다. 보고서는 output/Tech_SYM/stage-flow-unification-2026-10-15/t7/최종-독립-리뷰.md다. 사용량 제한 알림 전에 보고서 저장이 완료되었고 재개 응답으로 최종 판정임을 확인했다. 위 배치 변경과 미검증 항목은 비차단 한계로 명시되었으며 전체 QA 승인으로 확대하지 않는다.
+
+최종 문서 import 후 재조회에서 Play=true, sceneCount=3, active=03_InGameCore가 관측됐다. 이번 최종 문서 단계에서는 Play 시작 명령을 실행하지 않았다. 앞서의 stopped/dirty=true 반환 기록은 당시 상태이며 현재 상태로 단정하지 않는다. 새 실행은 중지·원복하지 않았으며 이번 검증 결과에 추가하지 않았다.
+
+## 아래 기록은 이전 시점의 검토·실행 이력
+
+아래의 당시 최신/미해결/미실행 표현은 해당 기록의 시점이다. 현재 Zone·경계·Trigger 음악의 계약이나 Play 금지로 승계하지 않는다.
+
+## 2026-10-15 레벨 작성·플레이 가능성 후속 검수
+
+최신 저장본은 Side Zone2개가 추가됐으며 Small 크기 역전도 해소됐다. 실제 Play에서 버튼 cap/body 동반 하강, 경계에 의한 카메라 거리10→6.91m 보정, CP Cut 전환, SafeAnchor의 조건부 미사용, 현재 소형 플레이어와 점프/속도 비율을 확인했다. 주기·부유·추격·통로/Quarter Zone·순찰형은 현재 미활용이다. Z 회전/Quarter Z 이동 자체는 실제 지원됨을 확인했다. 체크포인트 중심 작성·미리보기·일반 전환 보정 제거 방향을 제안했으며 이번에는 제품 변경 없이 검수했다. [리뷰](playability-audit-2026-10-15/코드%20리뷰.md), [작성 구조 제안](playability-audit-2026-10-15/기능%20명세서.md), [실제 검증 범위](playability-audit-2026-10-15/테스트%20및%20검증%20항목.md).
+
+## 2026-10-15 실제 Play 흐름·시점·선형 발판 수정
+
+최신 직접 지시로 Play 금지를 철회했다. ActorBody 비활성 진입 대기, 체크포인트 접촉의 카메라 요청 누락, 발판 상승 시 물리 스텝이 다른 접점 판정을 수정했다. Playing, Quarter/Side 접촉 전환, 같은 Stage 재시도, 발판400스텝/점프, 메모/옵션, Title/새 게임/오프닝 자동 완료/POPO/Ending/재진입을 실제 확인했다. 최종 오류·경고0. 원래 Stage(isDirty=false) 복귀. 자연 키보드 전체 동선/빌드는 미검증이다. [리뷰](play-flow-verification-2026-10-15/코드%20리뷰.md), [검증과 한계](play-flow-verification-2026-10-15/테스트%20및%20검증%20항목.md). 아래 비 Play 기록은 당시 상태다.
+
+## 2026-10-15 사용자 수동 변경 후 씬 흐름 재점검
+
+현재 저장본은 플레이어 prefab 비활성·Stage 소속/Trigger/시작 음악·Memo 연결이 유효하며 Stage 중복 Player/Camera가 없다. 앞선 누락 기록은 현재 결함으로 승계하지 않는다. 과거 Title 복구의 직접 원인은 Actor prefab 활성 상태 거절이었다. 현재4씬 Missing Script/깨진 참조0, Stage/진입/대화/연출 계약 검사 통과. CameraZoneTrigger 부재 및 Small 충돌체 크기 역전은 남아 있다. [상세 리뷰](flow-diagnosis-2026-10-15/코드%20리뷰.md), [검증](flow-diagnosis-2026-10-15/테스트%20및%20검증%20항목.md). Play/Player는 미실행이며 현재 전체 실행 성공을 뜻하지 않는다.
+
+## 2026-10-15 현재 사용자 배치 씬의 Core 누락 검수
+
+현재 89루트 배치에서 StageManager(StageService)를 추가하고 기존 StageTriggerPoint를 시작 참조로 연결했다. 기존 7,047 객체/컴포넌트 직렬화 변화0. 저장본 Missing Script/깨진 참조0. 기존 트리거6개의 소속·Trigger 미설정과 시작 음악 누락으로 통합 진입은 미해결이다. 기존 Player/Camera 중복 위험과 후속 미작성 흐름을 명세했다. [코드 리뷰](prototype-core-audit-2026-10-15/코드%20리뷰.md), [검증](prototype-core-audit-2026-10-15/테스트%20및%20검증%20항목.md). 기존 객체는 수정하지 않았고 Play는 미실행. 말미 새 dirty 상태는 추가 저장하지 않았다. 아래 이전 목업 배치 검증을 현재 배치의 보증으로 사용하지 않는다.
+
+## 2026-10-15 목업 기반 새 프로토타입 Stage
+
+`Architecture/01_Stage_Prototype.unity`에 기존 프리팹 인스턴스 136개를 배치했다. 첫 CapsuleCollider 중심은 (0,0,0)이며 +X 측면 진행 → 깊이 통로·쿼터 구간 → Z=15 측면 추격·포포 순서다. 체크포인트 7개, 카메라 전환 5개(세 시점), 적 4개, 조각 7개, 메모·오븐 트레이·서랍·압력 연동·주기/흔들림/왕복/붕괴 발판과 원경을 연결했다. 조각 소유 상한 5는 기존 규칙대로 유지한다. 설치·Entry·BootstrapEntryRoute가 새 씬 하나를 참조하고 구 1_Stage 및 비어 있는 Prototype 폴더를 백업 후 삭제했다.
+
+저장 후 Preview Scene의 실제 참조·물리 계약 40검사와 추가 배치 15검사와 식기 착지 5검사가 통과했다. 체크포인트 7곳의 높이2m/반경0.5m Capsule은 비 Trigger 지형 침투0, 지지면 여유 약0.02m다. Bootstrap/Title/Core/새 Stage 저장본의 Missing Script·깨진 참조0, 네 진입 경로와 명시적 빌드 목록을 확인했다. Unity 컴파일 실패 없음과 Console 오류0을 확인했다. 기존 외부 DLL importer/obsolete API 경고는 이번 배치에서 수정하지 않았다. 보호 원본1016파일의 SHA-256 변화0을 확인했다.
+
+Play/Player/빌드/Git·자연 입력/물리·카메라 전환·실제 Title 언로드·전체 동선 QA는 미실행이다. 작업 전 미저장 씬은 output의 사본으로 보존했다. [명세](prototype-layout-2026-10-15/기능%20명세서.md), [코드 리뷰](prototype-layout-2026-10-15/코드%20리뷰.md), [검증 및 사람 확인](prototype-layout-2026-10-15/테스트%20및%20검증%20항목.md)를 따른다.
+
+## 2026-10-14 메시 플랫폼 접촉·피해 영역
+
+승인 계획에 따라 명시 Collider 목록·플레이어 아래 반구/최대 접지각·메시 주기 침투·피해/Oil Trigger 분리를 구현했다. 플랫폼19개 이관 대상 중16파일을 직접 수정하고26개의 실제 형상 충돌 Mesh를 추가했다. 기존 사용자 선택·빈 연결·메모 Box를 보존했다. 아래 과거 Box 기반 사이드뷰 전용 규칙은 이관된 메시 플랫폼에 적용하지 않는다. 이전 빈 연결 권고는 사용자 의도에 따라 결함에서 제외했으며 Memo는 앞선 후속 작업에서 이미 3D Box로 수정됐다.
+
+Unity 컴파일 성공, 비 Play 기능/기하63개 통과·충돌 무시 전환1개 미평가,65프리팹/5씬 조회의 깨진 참조0. _Art660파일·기존 prefab meta65개·기존Transform/활성 선택·씬 파일 보존. 현재 미저장 씬을 저장하지 않았다. Editor 중 ProBuilder 설정 변화는 수동 편집 없이 관측되어 보존했다. Play/Player/빌드/Git은 미실행.
+
+[명세](mesh-platforms-2026-10-14/기능%20명세서.md), [코드 리뷰](mesh-platforms-2026-10-14/코드%20리뷰.md), [검증·사람 확인](mesh-platforms-2026-10-14/테스트%20및%20검증%20항목.md)를 따른다.
+
+## 2026-10-14 종류별 프리팹·플레이어 리소스 연결
+
+최신 직접 지시로 `1_Stage`의 조립·이관을 취소하고 이번 프리팹화 이전 파일·GUID로 정확히 복구했다. 신규 Stage 프리팹31개와 참조 없는 이전 ShellRoot1개를 삭제했다. 기존 테스트 씬 참조를 보존하기 위해 블록아웃11개는 원래 소유 자산 경로로 되돌렸으며 향후 새 레벨에 재사용하지 않는다. `_Prefabs`의 Prototype/ProtoType 폴더는0개다. 기존 사용자28프리팹을 보존했고 Bootstrapper·Title·Core12기능 루트를 종류별 프리팹에 연결했다.
+
+Core PlayerRoot에 지정 원본 분리 클립10개·실제 폼별 리그·이동/점프/등장 VFX와 사용자 Onion_Shell을 연결했다. Runtime 복제 클립과 피격 머테리얼 색 변경은 제거했다. 앞으로 활용 가능한 사용자 프리팹·같은 종류의 실제 계층을 먼저 사용하고 맞지 않는 기능은 독립 프리팹으로 구성한다. 공유 오브젝트 목록과 Dish 등 원형 메시+사각 지지 Collider의 사이드뷰 전용 조건을 작성 기준으로 반영했다. 실제 Stage는 향후 레벨 목업으로 다시 구성한다.
+
+실제 Unity 컴파일 오류0, 비 Play Player Animator/파티클·수명150검사 통과, 등록4씬·65프리팹의 missing script/깨진 참조0, 원본 위치·scale494개·참조4,130개·설정457개 보존, 보호222파일 동일을 확인했다. TMP 폰트와 BootstrapCamera URP 자동 변경은 기록해 보존했다. 사용자 프리팹의 필수 작성 참조5개·Enemy VFX 연결2개·Memo2D/3D 경계는 수정 권고로 보고했다. Play/Player·물리 gameplay·빌드·전체 QA·Git 작업은 미실행이다.
+
+[최종 기능 명세](prefab-authoring-2026-10-14/기능%20명세서.md), [기존 프리팹 수정 권고와 코드 리뷰](prefab-authoring-2026-10-14/코드%20리뷰.md), [실행 결과·사람 확인](prefab-authoring-2026-10-14/테스트%20및%20검증%20항목.md)을 따른다.
+
+## 2026-10-14 체크포인트·씬 종료·음악 통합
+
+10월13일 사용자 검토에서 확정한 범위로 CheckpointMarker와 네 Stage의 P_START/P_END 전용 등장·초기 카메라 오브젝트를 제거하고 체크포인트 StageTrigger 하나로 시작·저장을 작성하도록 이관했다. 저장·복귀는 트리거 위치에 플레이어 CapsuleCollider 월드 중심을 맞춘다. 세 카메라 구간은 같은 빈 Root/Sensor/Alignment 형제 구조다. 경계는 필요 목적을 설명하는 선택 참조다.
+
+옵션/엔딩/복구의 Title 복귀는 세션 해제→Stage 전체→Core 언로드이며 retry는 같은 씬을 유지한다. 설치·Entry·Editor 통합 진입·빌드의 Stage는 Prototype/1_Stage 하나다. 구간 음악은 StageTrigger가 실제 Clip으로 요청하고 같은 Clip은 시간·게인·fade를 유지하며 다른 Clip만 교차 전환한다. 오프닝 후 첫 구간 선택을 보존했다.
+
+실제 Unity 컴파일 오류0, 실제 DLL 비 Play 검사223개, Editor 씬 캐시 검사9개를 통과했다. 네 Stage와 Bootstrap/Title/Core 재읽기의 Missing Script/깨진 참조0, 기존 월드 Transform423개·CP 감지 볼륨·기존 프리팹/meta70파일을 확인했다. Play/Player/빌드·자연 접촉·실제 화면/음원/런타임 언로드는 미실행이다. 기존 staged75항목 상태와 사용자 미저장 씬 작업을 보존했고 이번 Git 작업은 없다.
+
+[기능 명세](stage-trigger-unification-2026-10-13/기능%20명세서.md), [코드 리뷰](stage-trigger-unification-2026-10-13/코드%20리뷰.md), [검증 및 사람 확인](stage-trigger-unification-2026-10-13/테스트%20및%20검증%20항목.md)을 따른다. 아래 기록은 당시 범위와 검증이며 타이틀 이후 씬 유지·현재 Actor 위치 저장·Stage3개 선로딩은 이번 직접 지시로 바뀌었다.
+
+## 2026-10-13 런타임 카메라·스테이지 추격
+
+최신 직접 요청에 따라 LevelCameraService의 세 구도 수치를 런타임에 변경 감지하여 반영하고, StageTrigger가 같은 스테이지 ChaseSwarm을 연결하도록 변경했다. Core의 필수 Driver 참조와 무리 배치를 제거했다. Prototype/1_Stage와 03_3_Stage의 기존 추격 트리거 아래에 기존 프리팹 인스턴스를 연결하고 기존 Core의 물리 override를 유지했다.
+
+실제 Unity 컴파일 오류0, 비 Play 카메라 검사115개, 저장 후 네 씬 Missing Script/깨진 참조0을 확인했다. 원래 Transform ID 480개와 3D 배치428개·UI ID52개, 관련 없는 컴포넌트 설정585개를 확인했다. 실제 화면 프레임·일시정지·전환·Actor 교체·포획과 전체 게임은 Play/Player 금지에 따라 미실행이다. 원본 프리팹·meta는 변경하지 않았으며 이번 Git 작업은 없다.
+
+[기능 명세](runtime-camera-stage-chase-2026-10-13/기능%20명세서.md), [코드 리뷰](runtime-camera-stage-chase-2026-10-13/코드%20리뷰.md), [검증 및 사람 확인](runtime-camera-stage-chase-2026-10-13/테스트%20및%20검증%20항목.md)을 따른다. 아래 2026-10-12 결과는 당시 증거다.
+
 ## 2026-10-12 V1.6 구현·소유 자산 이관
 
 현행 원본은 [V1.6](../Cooked_시스템_기획서_V.1.6.docx)이며 최신 직접 답변이 우선한다. [실행 명세](ready-system-v16-2026-10-11/spec.md)에 따라 SYM 104개 전수 검수, 앱/한 판 종료 통합, UI·오디오 수명 정리, 고정 Root/내부 앵커/이동 Body, 세 시점 및 두 DOMove 통로 차단을 구현했다. Bootstrapper와 SessionShutdownOperation을 통합 삭제하여 최종 SYM 소스는102개다. HudIconGraphic은 실제 자원 연결 전 예외 유지한다.
@@ -19,3 +115,5 @@ HMS 누적12파일의 변경57개를 소비 근거로 재검토해 불필요 분
 최신 미해결/협의는 [findings](findings.md)에 있다. 이전 상태 전체는 [변경 전 보관본](archive/2026-10-12-before-v16-status.md)에 보존했다. 과거 Play·빌드 성공은 이번 소스의 실행 성공이 아니다.
 
 최종 소스·자산·문서 독립 검토에서 차단 사항은 없었고 과거 검증 링크 권고는 최신 경로로 수정했다. 구조 이관 커밋은 855781a이며 실제 검증과 사람 확인의 경계는 위 문서를 따른다.
+
+

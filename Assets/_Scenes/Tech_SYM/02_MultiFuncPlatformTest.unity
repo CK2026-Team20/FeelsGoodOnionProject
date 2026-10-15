@@ -880,13 +880,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageTrigger
   stage: {fileID: 0}
   kind: 5
-  checkpoint: {fileID: 0}
   dialogue:
     table: {fileID: 0}
     code: 
   independentHost: {fileID: 2095254739378554938}
   once: 0
   chaseRetreatGate: {fileID: 0}
+  chaseDriver: {fileID: 0}
 --- !u!65 &1353511285
 BoxCollider:
   m_ObjectHideFlags: 0

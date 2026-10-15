@@ -33,7 +33,7 @@ namespace Cooked.Integration
                     throw new InvalidOperationException("Stage service identity mismatch: " + path);
                 _ = found.InitialPose;
                 if (!found.ContainsCheckpoint(found.InitialCheckpoint))
-                    throw new InvalidOperationException("Initial Marker is outside its Stage: " + found.StageId);
+                    throw new InvalidOperationException("시작 체크포인트가 같은 스테이지에 속하지 않습니다: " + found.StageId);
                 if (next.ContainsKey(found.StageId)) throw new InvalidOperationException("Duplicate Stage: " + found.StageId);
                 next.Add(found.StageId, found);
             }

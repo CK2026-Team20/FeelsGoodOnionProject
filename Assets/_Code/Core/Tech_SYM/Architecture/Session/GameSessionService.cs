@@ -8,22 +8,11 @@ namespace Cooked.Session
     public sealed class GameSessionService : IGameSessionService
     {
         private CheckpointSnapshot initialConfiguration;
-        private CheckpointSnapshot? checkpoint;
         private AbilityMask unlockedAbilities;
         private bool disposed;
         public bool IsActive { get; private set; }
         public long RoundId { get; private set; }
         public CheckpointSnapshot InitialConfiguration { get { RequireActive(); return initialConfiguration; } }
-        public bool HasCheckpoint => IsActive && checkpoint.HasValue;
-        public CheckpointSnapshot Checkpoint
-        {
-            get
-            {
-                RequireActive();
-                if (!checkpoint.HasValue) throw new InvalidOperationException("완료된 체크포인트 저장이 없습니다.");
-                return checkpoint.Value;
-            }
-        }
         public AbilityMask UnlockedAbilities => unlockedAbilities;
         public event Action Changed;
 
@@ -34,40 +23,19 @@ namespace Cooked.Session
             var initial = Validate(initialConfiguration);
             long nextRound = checked(RoundId + 1);
             this.initialConfiguration = initial;
-            checkpoint = null;
             unlockedAbilities = initial.UnlockedAbilities;
             RoundId = nextRound;
             IsActive = true;
             NotifyChanged(nameof(Begin));
         }
-        public bool TryGetCheckpoint(out CheckpointSnapshot snapshot)
-        {
-            snapshot = default;
-            if (!HasCheckpoint) return false;
-            snapshot = checkpoint.Value;
-            return true;
-        }
-        public CheckpointSnapshot CaptureCheckpoint(Vector3 position, int fragments, CancellationToken cancellationToken = default)
+        /// <summary>StageService가 선택한 복귀 payload의 능력만 현재 세션에 복원한다.</summary>
+        public void RestoreAbilities(CheckpointSnapshot snapshot)
         {
             RequireActive();
-            cancellationToken.ThrowIfCancellationRequested();
-            var next = new CheckpointSnapshot(position, fragments, unlockedAbilities);
-            cancellationToken.ThrowIfCancellationRequested();
-            // 완료 경계 이전에는 원본을 건드리지 않으며 관찰자는 세 항목이 완성된 상태를 읽습니다.
-            checkpoint = next;
-            NotifyChanged(nameof(CaptureCheckpoint));
-            return next;
-        }
-        public CheckpointSnapshot RestoreCheckpoint()
-        {
-            RequireActive();
-            var restored = checkpoint ?? initialConfiguration;
-            if (unlockedAbilities != restored.UnlockedAbilities)
-            {
-                unlockedAbilities = restored.UnlockedAbilities;
-                NotifyChanged(nameof(RestoreCheckpoint));
-            }
-            return restored;
+            var restored = Validate(snapshot);
+            if (unlockedAbilities == restored.UnlockedAbilities) return;
+            unlockedAbilities = restored.UnlockedAbilities;
+            NotifyChanged(nameof(RestoreAbilities));
         }
         public bool IsUnlocked(AbilityId ability)
         {
@@ -112,7 +80,6 @@ namespace Cooked.Session
             var wasActive = IsActive;
             IsActive = false;
             initialConfiguration = default;
-            checkpoint = null;
             unlockedAbilities = AbilityMask.None;
             if (wasActive) NotifyChanged(operation);
         }

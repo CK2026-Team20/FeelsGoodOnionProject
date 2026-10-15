@@ -11,14 +11,28 @@ namespace Cooked.Foundation
     {
         private readonly SceneCatalog catalog;
         private readonly HashSet<string> paths;
+        private readonly HashSet<string> gameplayPaths;
         private readonly Dictionary<string, Dictionary<GameObject, bool>> authoredRoots = new Dictionary<string, Dictionary<GameObject, bool>>(StringComparer.Ordinal);
         private bool busy, disposed;
         public SceneService(SceneCatalog catalog)
         {
             this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             paths = new HashSet<string>(catalog.StagePaths, StringComparer.Ordinal) { catalog.BootstrapPath, catalog.TitlePath, catalog.CorePath };
+            gameplayPaths = new HashSet<string>(catalog.StagePaths, StringComparer.Ordinal) { catalog.CorePath };
+            foreach (var retired in BootstrapEntryRoute.RetiredStagePaths) gameplayPaths.Add(retired);
         }
-        public bool IsLoaded(string scenePath) { Validate(scenePath); return SceneManager.GetSceneByPath(scenePath).isLoaded; }
+        public bool IsLoaded(string scenePath) { Validate(scenePath, true); return SceneManager.GetSceneByPath(scenePath).isLoaded; }
+        public IReadOnlyList<string> LoadedGameplayScenes
+        {
+            get
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(SceneService));
+                var loaded = new List<string>();
+                foreach (var path in gameplayPaths) if (SceneManager.GetSceneByPath(path).isLoaded) loaded.Add(path);
+                loaded.Sort(StringComparer.Ordinal);
+                return loaded.AsReadOnly();
+            }
+        }
         public IEnumerator LoadAdditive(string scenePath, CancellationToken token, OperationResult result)
         {
             Validate(scenePath);
@@ -42,8 +56,7 @@ namespace Cooked.Foundation
                 RememberRoots(scenePath);
                 if (token.IsCancellationRequested || disposed)
                 {
-                    // A persistent Core/Stage load completes once even when the initiating request
-                    // is cancelled. Recovery hides it; retry/next game must reuse that instance.
+                    // Unity 로드는 취소할 수 없다. 완료된 Core/Stage는 Foundation 복구가 세션 정리 후 언로드한다.
                     var loaded = SceneManager.GetSceneByPath(scenePath);
                     if (loaded.isLoaded && scenePath == catalog.TitlePath)
                     {
@@ -51,6 +64,7 @@ namespace Cooked.Foundation
                         if (cleanup == null) { result.Fail($"Cancellation cleanup returned null: {scenePath}"); yield break; }
                         while (!cleanup.isDone) yield return null;
                         if (SceneManager.GetSceneByPath(scenePath).isLoaded) { result.Fail($"Cancellation cleanup did not unload: {scenePath}"); yield break; }
+                        authoredRoots.Remove(scenePath);
                     }
                     result.Cancel(); yield break;
                 }
@@ -61,13 +75,11 @@ namespace Cooked.Foundation
         }
         public IEnumerator Unload(string scenePath, CancellationToken token, OperationResult result)
         {
-            Validate(scenePath);
+            Validate(scenePath, true);
             if (scenePath == catalog.BootstrapPath) { result.Fail("Bootstrapper cannot be unloaded."); yield break; }
-            if (scenePath == catalog.CorePath || ContainsStage(scenePath))
-            { result.Fail("Persistent Core/Stage scenes cannot be unloaded."); yield break; }
             if (busy) { result.Fail("Another scene operation is in progress."); yield break; }
             if (token.IsCancellationRequested) { result.Cancel(); yield break; }
-            if (!IsLoaded(scenePath)) { result.Succeed(); yield break; }
+            if (!IsLoaded(scenePath)) { authoredRoots.Remove(scenePath); result.Succeed(); yield break; }
             busy = true;
             try
             {
@@ -79,6 +91,7 @@ namespace Cooked.Foundation
                 var operation = SceneManager.UnloadSceneAsync(scenePath);
                 if (operation == null) { result.Fail($"Unload returned null: {scenePath}"); yield break; }
                 while (!operation.isDone) yield return null;
+                if (!SceneManager.GetSceneByPath(scenePath).isLoaded) authoredRoots.Remove(scenePath);
                 if (SceneManager.GetSceneByPath(scenePath).isLoaded) result.Fail($"Scene still loaded after unload: {scenePath}");
                 else if (token.IsCancellationRequested || disposed) result.Cancel();
                 else result.Succeed();
@@ -95,8 +108,6 @@ namespace Cooked.Foundation
             if (SceneManager.GetActiveScene() == scene) return;
             if (!SceneManager.SetActiveScene(scene)) throw new InvalidOperationException($"Cannot activate scene: {scenePath}");
         }
-        private bool ContainsStage(string path)
-        { foreach (var stage in catalog.StagePaths) if (stage == path) return true; return false; }
         private void RememberRoots(string path)
         {
             var scene = SceneManager.GetSceneByPath(path);
@@ -114,10 +125,10 @@ namespace Cooked.Foundation
                 if (root.Key != null) root.Key.SetActive(active && root.Value);
         }
         public void Dispose() { disposed = true; authoredRoots.Clear(); }
-        private void Validate(string path)
+        private void Validate(string path, bool allowRetired = false)
         {
             if (disposed) throw new ObjectDisposedException(nameof(SceneService));
-            if (path == null || !paths.Contains(path)) throw new ArgumentException($"Scene is not in the catalog: {path}");
+            if (path == null || (!paths.Contains(path) && (!allowRetired || !gameplayPaths.Contains(path)))) throw new ArgumentException($"Scene is not in the catalog: {path}");
         }
     }
 }

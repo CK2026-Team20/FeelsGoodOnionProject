@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
+using UnityEngine;
 
 namespace Cooked.Audio
 {
@@ -59,10 +60,26 @@ namespace Cooked.Audio
         {
             RequireAlive();
             if (!TryCue(cueId, true, out var cue)) return;
-            if (CurrentMusicId == cueId) return;
+            PlayMusic(cue, fadeDuration);
+        }
+        public void PlayMusic(AudioClip clip, float gain, float crossfadeSeconds)
+        {
+            RequireAlive();
+            AudioCue.ValidateUnit(gain, nameof(gain));
+            if (!float.IsFinite(crossfadeSeconds) || crossfadeSeconds < 0) throw new ArgumentOutOfRangeException(nameof(crossfadeSeconds));
+            var id = driver.ResolveMusicId(clip);
+            if (CurrentMusicId == id || driver.IsSameClip(CurrentMusicId, id)) return;
+            var cue = new AudioCue(id, AudioCueKind.Music, gain);
+            cues[id] = cue;
+            PlayMusic(cue, crossfadeSeconds);
+        }
+        private void PlayMusic(AudioCue cue, float duration)
+        {
+            var cueId = cue.Id;
+            if (CurrentMusicId == cueId || driver.IsSameClip(CurrentMusicId, cueId)) return;
             CancelCrossfade();
             int next = -1;
-            for (int i = 0; i < 2; i++) if (voices[i].Cue?.Id == cueId) next = i;
+            for (int i = 0; i < 2; i++) if (voices[i].Cue?.Id == cueId || driver.IsSameClip(voices[i].Cue?.Id, cueId)) next = i;
             if (next < 0)
             {
                 next = voices[0].Cue == null ? 0 : voices[1].Cue == null ? 1 :
@@ -70,14 +87,15 @@ namespace Cooked.Audio
                 StopVoice(next);
                 StartVoice(next, cue, 0);
             }
+            else voices[next].Cue = cue;
             targetChannel = next;
             CurrentMusicId = cueId;
-            if (fadeDuration == 0) FinishFade();
+            if (duration == 0) FinishFade();
             else
             {
                 long ticket = transitionRevision;
                 crossfade.Start(voices[0].Envelope, next == 0 ? 1 : 0,
-                    voices[1].Envelope, next == 1 ? 1 : 0, fadeDuration, false,
+                    voices[1].Envelope, next == 1 ? 1 : 0, duration, false,
                     (a, b) =>
                     {
                         if (disposed || ticket != transitionRevision) return;

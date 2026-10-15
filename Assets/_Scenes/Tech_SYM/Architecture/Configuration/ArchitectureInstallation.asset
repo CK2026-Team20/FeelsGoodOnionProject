@@ -16,9 +16,7 @@ MonoBehaviour:
   titlePath: Assets/_Scenes/Tech_SYM/Architecture/02_Title.unity
   corePath: Assets/_Scenes/Tech_SYM/Architecture/03_InGameCore.unity
   stagePaths:
-  - Assets/_Scenes/Tech_SYM/Architecture/Prototype/1_Stage.unity
-  - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_2_Stage.unity
-  - Assets/_Scenes/Tech_SYM/Architecture/Stages/03_3_Stage.unity
+  - Assets/_Scenes/Tech_SYM/Architecture/01_Stage_Prototype.unity
   bootstrapScene:
     runtimePath: Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity
     scene: {fileID: 102900000, guid: 7add50bb3137ca04cb4cbb2b5ac1715c, type: 3}
@@ -29,9 +27,5 @@ MonoBehaviour:
     runtimePath: Assets/_Scenes/Tech_SYM/Architecture/03_InGameCore.unity
     scene: {fileID: 102900000, guid: 64162a88361db4941993f19cec2926e8, type: 3}
   stageScenes:
-  - runtimePath: Assets/_Scenes/Tech_SYM/Architecture/Prototype/1_Stage.unity
-    scene: {fileID: 102900000, guid: d6a12341baf452344970b1264c41bcd5, type: 3}
-  - runtimePath: Assets/_Scenes/Tech_SYM/Architecture/Stages/03_2_Stage.unity
-    scene: {fileID: 102900000, guid: 0976bb43372fc764abeb62f1707ef821, type: 3}
-  - runtimePath: Assets/_Scenes/Tech_SYM/Architecture/Stages/03_3_Stage.unity
-    scene: {fileID: 102900000, guid: e6cbac29730c07947ba88cec78f8f019, type: 3}
+  - runtimePath: Assets/_Scenes/Tech_SYM/Architecture/01_Stage_Prototype.unity
+    scene: {fileID: 102900000, guid: 08fec95c5d68743458f9083d0fe5f95d, type: 3}
