@@ -127,9 +127,57 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 972146008192038650, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 2614053231084322627, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 3622001799489206819, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4280889377
+      objectReference: {fileID: 0}
+    - target: {fileID: 3622001799489206819, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 3845138249314308959, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 4141306769904637129, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 4847255411796504301, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4283065139
+      objectReference: {fileID: 0}
+    - target: {fileID: 4847255411796504301, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 5784947513151983018, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6622873136987186873, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 7240508235337935972, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
       propertyPath: m_Name
       value: TitleUiRoot
+      objectReference: {fileID: 0}
+    - target: {fileID: 7515894509537354541, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7992366210929369846, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8200223033920339698, guid: 4e0dbc80e7e303e4fafd972631b370a0, type: 3}
       propertyPath: m_LocalPosition.x

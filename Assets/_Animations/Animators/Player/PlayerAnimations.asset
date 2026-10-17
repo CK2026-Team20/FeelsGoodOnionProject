@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d73b75e14bfe417e82a327a728880005, type: 3}
+  m_Name: PlayerAnimations
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationSet
+  controllerTemplate: {fileID: 9100000, guid: 8b33f75a498b61b47a9c30712d706935, type: 2}
+  blendDuration: 0.1
+  walkReferenceSpeed: 5
+  runReferenceSpeed: 5
+  idle: {fileID: 7400000, guid: 6368422747298ec43a37476c99d76d42, type: 2}
+  walk: {fileID: 7400000, guid: 2221aa6d1d0956440855e728581bde06, type: 2}
+  run: {fileID: 7400000, guid: 2221aa6d1d0956440855e728581bde06, type: 2}
+  jump: {fileID: 7400000, guid: 4847f89a99c287843930fa57ef410896, type: 2}
+  fall: {fileID: 7400000, guid: 19106eb7be3be3049af789777c2aba79, type: 2}
+  knockback: {fileID: 7400000, guid: b9860b8b11474c849a23282aaeca8f12, type: 2}
+  dead: {fileID: 7400000, guid: 2ee99f3e3f383774ab86a41647eb7ed1, type: 2}
+  land: {fileID: 7400000, guid: a3a5ee5b7671a4843a1530d44764dc02, type: 2}
+  tear: {fileID: 7400000, guid: 8b735d2cd6044c940a2e7191c12be0a0, type: 2}
+  shrink: {fileID: 7400000, guid: bce0d50a28095de4a953e6ec0e4987f8, type: 2}
+  restoreForm: {fileID: 7400000, guid: 306e63a1107e8de4da21db4640295937, type: 2}
+  interact: {fileID: 0}

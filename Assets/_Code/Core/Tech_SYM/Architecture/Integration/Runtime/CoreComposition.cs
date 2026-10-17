@@ -2,7 +2,6 @@ using Cooked.Authoring;
 using System;
 using System.Collections.Generic;
 using Cooked.Audio;
-using Cooked.Chase;
 using Cooked.Cinematics;
 using Cooked.Contracts;
 using Cooked.Dialogue;
@@ -27,8 +26,6 @@ namespace Cooked.Integration
         [SerializeField, InspectorLabel("게임 화면 담당")] private CoreUiBinding ui;
         [Tooltip("구간 요청과 실제 Brain 완료를 확인할 Core의 LevelCameraService입니다.")]
         [SerializeField, InspectorLabel("카메라 구간 담당")] private LevelCameraService cameraService;
-        [Tooltip("추격 무리와 실제 포획을 갱신할 Core의 ChaseRuntimeDriver입니다.")]
-        [SerializeField, InspectorLabel("추격 담당")] private ChaseRuntimeDriver chase;
         private GameSessionRuntime runtime;
         private CoreWorldBinding world;
         private bool releasing;
@@ -37,16 +34,16 @@ namespace Cooked.Integration
         {
             if (runtime != null || world != null || releasing) throw new InvalidOperationException("Core still owns a session or unfinished release.");
             if (actor == null || dialogueView == null || cinematic == null || entries == null || ui == null ||
-                cameraService == null || chase == null)
+                cameraService == null)
                 throw new InvalidOperationException("Core composition references are incomplete.");
-            foreach (var reference in new Component[] { actor, dialogueView, cinematic, ui, cameraService, chase })
+            foreach (var reference in new Component[] { actor, dialogueView, cinematic, ui, cameraService })
                 SceneComponentLookup.RequireSameScene(this, reference, "Core 연결");
             try
             {
                 var cinematics = cinematic.Initialize(app.Get<IGameplayControlService>());
                 runtime = new GameSessionRuntime(app, catalog, actor, dialogueView, cinematics, entries);
                 ui.Bind(runtime, cinematic.transform);
-                world = new CoreWorldBinding(runtime, cameraService, chase, ui, app.Get<IGameFlowService>(),
+                world = new CoreWorldBinding(runtime, cameraService, ui, app.Get<IGameFlowService>(),
                     app.Get<IGameplayControlService>(), app.Get<IDialogueTableService>(), app.Get<IAudioService>(), audioFlow,
                     app.Get<ISceneService>(), output, brain);
                 runtime.BindStageLifecycle(world.PrepareStage);

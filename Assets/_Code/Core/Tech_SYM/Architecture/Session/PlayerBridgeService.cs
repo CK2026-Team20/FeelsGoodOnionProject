@@ -220,8 +220,8 @@ namespace Cooked.Session
             if (detaching) throw new InvalidOperationException("Cannot attach during actor teardown.");
             if (value == null) throw new ArgumentNullException(nameof(value));
             if (actor == value) return;
-            var presentation = value.GetComponent<PlayerDamagePresentation>();
-            if (presentation == null) throw new InvalidOperationException("현재 ActorBody의 PlayerDamagePresentation 참조가 필요합니다.");
+            var presentation = value.GetComponent<PlayerPresentationReferences>();
+            if (presentation == null) throw new InvalidOperationException("현재 ActorBody의 PlayerPresentationReferences 참조가 필요합니다.");
             presentation.ValidateReferences(value);
             if (value.GetComponent<CharacterMovement>() == null || value.GetComponent<Rigidbody>() == null ||
                 value.GetComponent<CapsuleCollider>() == null || value.GetComponent<PlayerSkillController>() == null ||

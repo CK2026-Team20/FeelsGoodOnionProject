@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using Cooked.Authoring;
@@ -75,12 +75,27 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         }
 
         private KinematicPlatformMotion motion;
-        private BoxCollider surface;
         private PlatformContacts contacts;
         private float landingOffset;
         private Sequence landingTween;
         private readonly Dictionary<Rigidbody, Collider> landed = new Dictionary<Rigidbody, Collider>();
         private readonly List<Rigidbody> departed = new List<Rigidbody>();
+        private readonly List<PlatformContacts.SupportContact> supportContacts = new List<PlatformContacts.SupportContact>();
+        private readonly Dictionary<Rigidbody, LandingSupport> landingSupports = new Dictionary<Rigidbody, LandingSupport>();
+        private readonly struct LandingSupport
+        {
+            public readonly Transform Surface;
+            public readonly Vector3 LocalPoint;
+            public LandingSupport(PlatformContacts.SupportContact contact)
+            { Surface = contact.Surface.transform; LocalPoint = Surface.InverseTransformPoint(contact.Point); }
+        }
+        private void RememberSupport(Rigidbody actor, Collider passenger)
+        {
+            contacts.CopySupportContacts(supportContacts);
+            foreach (var contact in supportContacts)
+                if (contact.Passenger == passenger && contact.Surface != null)
+                { landingSupports[actor] = new LandingSupport(contact); return; }
+        }
         private bool IsReacting => landingTween != null && landingTween.IsActive();
 
         private void Awake()
@@ -88,7 +103,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             OnValidate();
             motion = GetComponent<KinematicPlatformMotion>();
             contacts = motion.Contacts;
-            surface = contacts != null ? contacts.Surface : null;
         }
 
         private void OnEnable()
@@ -100,7 +114,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             if (Time.timeScale <= 0f) return;
             if (motion == null || !motion.isActiveAndEnabled
-                || surface == null || !surface.enabled) return;
+                || contacts == null || !contacts.HasActiveSurface) return;
             if (!motion.RegisterEffect(this)) { enabled = false; return; }
             ReleaseDepartedPlayers();
             if (landingTween != null && landingTween.IsActive())
@@ -112,7 +126,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private void ReactToContact(Collision collision)
         {
             if (!isActiveAndEnabled || motion == null || !motion.isActiveAndEnabled
-                || surface == null || !surface.enabled || collision == null) return;
+                || contacts == null || !contacts.HasActiveSurface || collision == null) return;
             Rigidbody actor = collision.rigidbody;
             Collider other = collision.collider;
             if (actor == null || other == null || other.isTrigger
@@ -121,6 +135,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (contacts.IsTopContact(other))
             {
                 landed.Add(actor, other);
+                RememberSupport(actor, other);
                 if (!IsReacting && landingDepth > 0f) BeginLanding();
                 return;
             }
@@ -154,19 +169,23 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private void ReleaseDepartedPlayers()
         {
             departed.Clear();
-            Bounds top = surface.bounds;
             foreach (var entry in landed)
             {
                 Collider other = entry.Value;
                 if (entry.Key == null || other == null || !other.enabled || !other.gameObject.activeInHierarchy)
                 { departed.Add(entry.Key); continue; }
+                if (contacts.IsTopContact(other)) RememberSupport(entry.Key, other);
+                if (!landingSupports.TryGetValue(entry.Key, out var support) || support.Surface == null)
+                { departed.Add(entry.Key); continue; }
+                Vector3 point = support.Surface.TransformPoint(support.LocalPoint);
+                // 원래 접점의 현재 월드 위치를 사용한다. 용기의 높은 테두리 Bounds는 재착지 간격이 아니다.
                 Bounds actor = other.bounds;
-                if (actor.min.y > top.max.y + rearmGap || actor.max.y < top.min.y
-                    || actor.max.x < top.min.x || actor.min.x > top.max.x
-                    || actor.max.z < top.min.z || actor.min.z > top.max.z)
+                if (actor.min.y > point.y + rearmGap || actor.max.y < point.y - rearmGap ||
+                    actor.max.x < point.x - rearmGap || actor.min.x > point.x + rearmGap ||
+                    actor.max.z < point.z - rearmGap || actor.min.z > point.z + rearmGap)
                     departed.Add(entry.Key);
             }
-            foreach (Rigidbody actor in departed) landed.Remove(actor);
+            foreach (Rigidbody actor in departed) { landed.Remove(actor); landingSupports.Remove(actor); }
         }
 
         public void ResetForRetry()
@@ -184,7 +203,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             landingTween = null;
             if (owned != null && owned.IsActive()) owned.Kill(false);
             landingOffset = 0f;
-            landed.Clear();
+            landed.Clear(); landingSupports.Clear();
             departed.Clear();
             if (motion != null) motion.ReleaseEffect(this);
         }

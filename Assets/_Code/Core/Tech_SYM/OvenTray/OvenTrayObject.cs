@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using FeelsGoodOnion.TechSYM.Interaction;
 using FeelsGoodOnion.TechSYM.Platforms;
@@ -113,6 +113,9 @@ namespace FeelsGoodOnion.TechSYM.OvenTray
             Gizmos.DrawLine(closedPose.position, openPose.position);
             Gizmos.DrawRay(closedPose.position, closedPose.forward * .3f);
             Gizmos.DrawRay(openPose.position, openPose.forward * .3f);
+            PlatformColliderGizmos.Draw(writer != null ? writer.Contacts : null, Matrix4x4.identity);
+            PlatformColliderGizmos.DrawAt(writer, closedPose.position, closedPose.rotation);
+            PlatformColliderGizmos.DrawAt(writer, openPose.position, openPose.rotation);
         }
     }
 }

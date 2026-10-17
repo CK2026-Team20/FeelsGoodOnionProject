@@ -12,8 +12,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
     public sealed class PressurePlatePlatform : MonoBehaviour
     {
         [Header("누름")]
-        [Tooltip("버튼이 내려가는 거리(m).")]
-        [SerializeField, InspectorLabel("눌림 깊이"), Min(0.01f)] private float pressDepth = 0.2f;
+        [Tooltip("이동 몸체 부모의 로컬 -Y축 눌림 거리입니다(m, 배율 1 기준). 부모의 회전과 배율을 적용하므로 비균일 배율에서도 캡과 바디의 상대 깊이를 유지합니다.")]
+        [SerializeField, InspectorLabel("눌림 깊이"), Min(0.01f)] private float pressDepth = 0.08f;
         [Tooltip("끝까지 누르거나 복귀하는 시간(초). 중간 해제 시 남은 거리만큼 적용합니다.")]
         [SerializeField, InspectorLabel("누름 시간"), Min(0.02f)] private float travelSeconds = 3f;
 
@@ -58,8 +58,10 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             }
             Pressed = pressed;
             Progress = AdvanceProgress(Progress, pressed, TravelSeconds, Time.fixedDeltaTime);
-            // 눌림 깊이는 기존 월드 Y 거리이며 원래 위치만 부모→world로 변환한다.
-            motion.MoveTo(motion.RestPosition + Vector3.down * (pressDepth * Progress));
+            // 고정 부모의 좌표계에서 깊이를 변환한다. 움직이는 캡 위치를 누적 기준으로 사용하지 않는다.
+            Transform frame = motion.PhysicsBody != null ? motion.PhysicsBody.transform.parent : null;
+            Vector3 offset = Vector3.down * (pressDepth * Progress);
+            motion.MoveTo(motion.RestPosition + (frame != null ? frame.TransformVector(offset) : offset));
         }
 
         public void ResetForRetry()

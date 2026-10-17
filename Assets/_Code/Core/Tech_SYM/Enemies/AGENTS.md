@@ -8,4 +8,4 @@ EnemyActor Root의 직접 자식 Body에 BoxCollider Trigger와 EnemyContactSens
 
 Stage 초기 재준비는 기존 적의 pose·방향·기절·접촉을 복원한다. 비활성 Stage는 target·자기 작업을 해제한다. Hurt Collider는 실제 Body이며 Sensor 후보라는 이유로 눈물 차폐 검사에서 무조건 제외하지 않는다. 순찰·기절/재기절·지속 접촉·Options·Retry/비활성 Stage를 기능 단위로 검증한다.
 
-Inspector 이름·Tooltip은 연결 대상/조절 효과를 짧은 한국어로 설명한다. 씬 월드 Root를 Manager의 자식으로 묶지 않는다. 에이전트 Play·기존 prefab 삭제/재생성/Apply·자동 Builder·리소스 제작은 실행하지 않는다. 실제 컴파일/격리 엔진/API 검사와 사람의 자연 충돌·VFX·플레이를 구분해 보고한다.
+Inspector 이름·Tooltip은 연결 대상/조절 효과를 짧은 한국어로 설명한다. 씬 월드 Root를 Manager의 자식으로 묶지 않는다. 에이전트 Play 금지는 철회됐으며 공식 Unity 도구를 사용한다. prefab 삭제/재생성/Apply·자동 Builder·리소스 제작은 해당 작업의 명시 허용 범위를 따른다. 실제 컴파일/격리 엔진/API 검사와 사람의 자연 충돌·VFX·플레이를 구분해 보고한다.

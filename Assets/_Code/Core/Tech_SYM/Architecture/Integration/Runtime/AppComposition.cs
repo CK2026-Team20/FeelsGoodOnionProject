@@ -33,6 +33,7 @@ namespace Cooked.Integration
         private ServiceLocator services;
         private SceneCatalog catalog;
         private OptionsService options;
+        private CursorPresentationBinding cursor;
         private GameRuntimeService runtime;
         private CoreComposition loadedCore;
         private static AppComposition active;
@@ -97,10 +98,13 @@ namespace Cooked.Integration
                 runtime = new GameRuntimeService(() =>
                 {
                     loadedCore = SceneComponentLookup.RequireSingle<CoreComposition>(catalog.CorePath);
-                    return loadedCore.CreateSession(services, catalog, audio.Binding, presentationCamera, outputBrain);
+                    var session = loadedCore.CreateSession(services, catalog, audio.Binding, presentationCamera, outputBrain);
+                    cursor?.BindDialogue(session.Dialogue);
+                    return session;
                 });
                 runtime.BindSessionRelease(old =>
                 {
+                    cursor?.BindDialogue(null);
                     // Core owns its own destruction cleanup. App destruction may run after
                     // Unity has removed that scene, so do not search an unloaded scene here.
                     if (loadedCore == null)
@@ -117,6 +121,7 @@ namespace Cooked.Integration
                 services.Register<IGameFlowService>(flow);
                 options = new OptionsService(flow, control, settings);
                 services.Register<OptionsService>(options);
+                cursor = new CursorPresentationBinding(flow, options);
                 optionsModel = new OptionsViewModel(options, settings);
                 fadeModel = new FadeViewModel(fade);
                 optionsView.Bind(optionsModel);
@@ -169,6 +174,8 @@ namespace Cooked.Integration
             void Attempt(Action action) { try { action(); } catch (Exception error) { errors.Add(error); } }
             if (subscribed) SceneManager.sceneLoaded -= SceneLoaded;
             subscribed = false;
+            Attempt(() => cursor?.Dispose());
+            cursor = null;
             runtime = null;
             Attempt(() =>
             {
@@ -191,6 +198,7 @@ namespace Cooked.Integration
             }
             if (errors.Count != 0) throw new AggregateException("App composition cleanup failed.", errors);
         }
+        private void OnApplicationFocus(bool focused) { if (focused) cursor?.RestoreOnFocus(); }
         private void OnDestroy() { try { Cleanup(); } catch (Exception error) { Debug.LogException(error, this); } }
     }
 }

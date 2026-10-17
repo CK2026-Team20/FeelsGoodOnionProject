@@ -14,7 +14,7 @@ namespace Cooked.Integration
         [Serializable]
         public sealed class Entry
         {
-            [SerializeField, InspectorLabel("진입 스테이지"), Tooltip("진입할 Stage 씬을 연결하세요. 등장 위치는 해당 Stage의 초기 Marker를 사용합니다.")]
+            [SerializeField, InspectorLabel("진입 스테이지"), Tooltip("진입할 Stage 씬을 연결하세요. 등장 위치는 해당 Stage의 시작 체크포인트 StageTrigger 위치를 사용합니다.")]
             private SceneReference stageScene;
             public SceneReference StageScene => stageScene;
             [InspectorLabel("초기 눈물 조각"), Tooltip("진입할 때 보유할 조각 수를 조절합니다(0~5개). 0은 조각 없음입니다.")]

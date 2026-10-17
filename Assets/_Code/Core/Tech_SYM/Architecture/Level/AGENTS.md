@@ -1,15 +1,19 @@
-# 스테이지와 카메라 구간
+# 스테이지 구간과 카메라
 
-StageService는 초기 Marker·음악·실제 카메라 경계 설정, 공유 진행/최종 대화 수명과 초기 재준비를 소유한다. 지역 추격 설정은 StageTrigger, 카메라 정렬점은 CameraZoneTrigger가 소유한다. 관리자 자식을 전제하지 않고 같은 씬의 비활성 루트까지 조회한다.
+StageService가 같은 씬의 논리 구간, 첫 구간, 현재 구간, 활성화한 체크포인트 집합, 마지막 스냅샷과 그 복귀 구간을 소유한다. 구간에는 서로 다른 시작·끝 StageTrigger, 시점 종류, 실제 음악 Clip·음량·전환 시간, 진입 보정·카메라 전환 시간을 연결한다. 이름·배열 순번은 저장 키가 아니다. Trigger는 접촉을 전달하며 시점·음악·저장 장부를 별도로 편집하지 않는다.
 
-체크포인트 payload는 유한한 현재 ActorBody 월드 Position, 정수 Fragments 0..5, UnlockedAbilities 마스크 None=0/FormChange=1/Tear=2/Both=3의 정확히 세 항목이다. 모든 값을 검증한 뒤 한 번에 교체하며 실패 시 이전 snapshot을 지킨다. 첫 저장 전에는 초기 진입 구성을 사용한다. 같은 실제 Marker의 재접촉은 갱신하지 않고 추격 직전 저장은 별도 수락 경계로 처리한다. StageId/CheckpointId·월드 상태·HP·폼·카메라·시간·대화 완료를 저장하지 않는다.
+CheckpointSnapshot은 접촉한 체크포인트 Transform의 유한 월드 Position, 접촉 순간 Fragments 정수0..5, UnlockedAbilities 마스크0/1/2/3의 정확히 세 값이다. StageService가 유효한 최초 접촉에서 스냅샷과 활성화 이력을 콜백 전에 원자 확정한다. 수락 전 실패는 이전 저장을 유지하고, 수락 후 표현 취소·사망은 이미 수락한 저장과 소비 이력을 유지한다. CapsuleCollider 월드 중심을 Position에 맞추며 HP·폼·껍질·음악·시점·세계 상태는 payload에 추가하지 않는다. 첫 저장 전에는 첫 구간 시작과 Entry 초기 값을 사용하고, 추격 직전 예외만 당시 플레이어 Capsule 중심을 저장한다.
 
-추격은 StageTrigger 접촉 진입·퇴로 안전 확인 → 원자 저장 성공 → 추격 시작/문 닫힘이다. 진행/추격 경로와 전신 통과는 2026-10-11 직접 지시로 제거했다. 포획은 같은 프레임 포포보다 우선하며 최종 대화 Completed/Skipped만 Ending으로 연결한다. StageTriggerKind 1..7과 Side1/Quarter3 의미를 보존하고 Corridor2 구도를 사용한다. 중복 Enter(0)는 제거했으며 숫자0을 재사용하지 않는다. CameraZoneData는 실행 값 struct이고 작성은 실제 CameraZoneTrigger/자식 정렬 Transform이다. CheckpointMarker의 등장 Transform도 해당 Marker의 자식이다. Stage 간 자동 전환을 추가하지 않는다.
+새 시작 체크포인트마다 플레이어 Capsule 중심을 해당 시작 위치로 DOMove 보정한다. 끝은 저장만 하고 현재 구간·시점을 바꾸지 않는다. 같은 시점의 새 시작은 카메라 재선택·blend 재시작만 생략하며 보정·저장·음악은 수행한다. 새 유효 시작은 이전 보정·전환을 취소하고 최신 요청이 완료하도록 한다. 사망·취소·Actor/Stage 해제 때 자기 트윈·보정 소유권·입력 제한을 반환하며 낡은 callback은 상태를 바꾸지 못한다. 사용 중인 차단 장치만 플레이어 보정 뒤 고정 목표로 이동한다.
 
-App 출력 Camera/Brain/AudioListener는 각 1개다. Core의 서로 다른 Side·Corridor·Quarter 세 CinemachineCamera와 구도·우선순위·추적 대상·경계·전환은 LevelCameraService가 소유한다. Brain이 출력하고 서비스는 최종 위치도 Stage의 cameraBounds 안으로 제한한다. Side(1)는 X, Corridor(2)와 Quarter(3)는 XZ 이동이다. HMS PlayerCameraController는 기존 독립 네 rig용이며 통합 분리 Bind/Preview/Commit/Unbind 확장은 사용하지 않는다.
+재시도는 같은 Core/Stage와 StageService의 소비 이력을 유지하고 마지막 유효 저장 및 당시 구간·음악·시점을 직접 복원한다. 소비한 센서를 다시 발동하지 않는다. 현재 해금은 GameSessionService 원본이고 저장 시점의 해금은 별도 불변 스냅샷 값이다. Title 복귀에서 세션 종료 후 Stage 전체→Core 순서로 언로드하며 새 게임은 새 객체와 빈 체크포인트 장부로 시작한다.
 
-CameraZoneTrigger의 실제 접촉과 현재 Actor·Stage·구간 세대를 확인한다. 통로 차단이 있는 전환은 실물 safeAnchor로 플레이어를 먼저 보정한 뒤 blockerTarget으로 차단 Rigidbody를 이동하며 둘 다 DOMove를 사용한다. 기본 전환 시간은 0.6초이고 각 이동 시간·Ease는 구간 설정이다. 실제 이동과 Brain 블렌드 완료 후 이동축을 확정하고 자기 입력 차단을 반환한다. 옵션/메모 정지, 취소·사망·Actor/Stage 교체 시 자기 작업 해제와 오래된 요청 거절을 유지한다.
+App 출력 Camera/Brain/AudioListener는 각1개이고 Core의 Side·Corridor·Quarter 리그를 LevelCameraService가 표현한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
 
-현행 공통 규칙은 Assets/_Docs/planning-index.md와 루트 AGENTS.md를 따른다. 에이전트 Play는 금지하며 구현/검증 상태는 tracking/status.md다.
+구간 음악은 StageService의 실제 Clip·음량·전환 시간으로 작성하고 새 구간 시작 및 복귀 맥락에서 요청한다. 같은 실제 Clip이면 재생 위치·게인·진행 중 fade를 다시 시작하지 않는다. 첫 구간 선택을 Opening 동안 유지해 Playing에서 적용하며, 타이틀·오프닝·엔딩·추격 음악의 기존 우선순위는 유지한다.
 
-최종 포포 Escape(7)만 완료 장부와 별개로 새 회차를 허용한다. 실제 Trigger·선택 객체·Table·Code·활성 Stage·Actor 세대·Round·Session을 수락 전후 및 완료 callback에서 검증하고 Completed/Skipped에서만 Ending을 한 번 예약한다. 동일 프레임 사망/포획이 우선이고 Cancelled/낡은 callback은 현재 판에 전달하지 않는다.
+뒷면 메시를 생략한 아트는 구도·추적·전환 중간에서도 뒷면을 노출하지 않도록 배치한다. 최신 사용자 정정으로 반대편 카메라 이동은 철회했고 기존 방향을 유지한다. 사용자가 오브젝트 배치를 회전하는 작업은 에이전트가 완료한 것으로 기록하지 않는다. 보호 아트의 임의 수정·양면화나 HMS 입력 변환으로 우회하지 않으며 현재 백페이스 노출은 미해결 시각 항목이다.
+
+StageTrigger의 Fall·해금·일반 대화·추격·Escape는 각 기존 계약을 유지한다. 체크포인트 1회성을 반복 데드존까지 확대하지 않는다. 추격 무리·퇴로는 같은 씬의 실제 참조이며 고정 센서를 움직이는 무리 아래에 두지 않는다. 최종 Escape는 현재 Stage/Trigger/Table/Code/Actor 세대/회차를 확인하고 Completed/Skipped만 Ending을 한 번 예약한다. 사망·취소·낡은 callback은 종료를 예약하지 않는다.
+
+2026-10-15 직접 지시로 에이전트 Play/Player 금지와 과거 검증·QA 역할 고정을 철회했다. 승인된 기능의 실제 Editor Play를 공식 Unity 플러그인으로 수행하고 실행 근거대로 판정한다. API 위치 준비, 실제 InputSystem 합성 입력, 사람 직접 조작, 빌드·Player 실행, 팀 평가를 구분한다. 미저장 작업·파일 소유권·Git 승인 경계는 유지하며 실행하지 않은 항목을 통과로 기록하지 않는다.

@@ -125,6 +125,8 @@ namespace Cooked.Contracts
     public interface ISceneService : IDisposable
     {
         bool IsLoaded(string scenePath);
+        // 실제 로드된 게임 씬만 반환한다. 종료 전용 보존 Stage도 포함하고 Bootstrap/Title은 제외한다.
+        IReadOnlyList<string> LoadedGameplayScenes { get; }
         IEnumerator LoadAdditive(string scenePath, CancellationToken token, OperationResult result);
         IEnumerator Unload(string scenePath, CancellationToken token, OperationResult result);
         void SetActive(string scenePath);
