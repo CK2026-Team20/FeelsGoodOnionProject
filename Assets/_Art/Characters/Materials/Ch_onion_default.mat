@@ -31,9 +31,7 @@ Material:
   - N_F_GLO_ON
   - N_F_LLI_ON
   - N_F_MC_ON
-  - N_F_NFD_ON
   - N_F_O_ON
-  - N_F_PA_ON
   - N_F_RDC_ON
   - N_F_RL_ON
   - N_F_SCT_ON
@@ -523,12 +521,12 @@ Material:
     - _N_F_LLI: 1
     - _N_F_MC: 1
     - _N_F_MSSOLTFO: 0
-    - _N_F_NFD: 1
+    - _N_F_NFD: 0
     - _N_F_NLASOBF: 0
     - _N_F_NM: 0
     - _N_F_O: 1
     - _N_F_OFLMB: 0
-    - _N_F_PA: 1
+    - _N_F_PA: 0
     - _N_F_PT: 0
     - _N_F_R: 0
     - _N_F_RDC: 1

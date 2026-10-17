@@ -16,6 +16,7 @@ Material:
   - N_F_EAL_ON
   - N_F_GLO_ON
   - N_F_LLI_ON
+  - N_F_MC_ON
   - N_F_O_ON
   - N_F_RDC_ON
   - N_F_RELGI_ON
@@ -44,7 +45,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MCap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 8e28123c1c11fd845850ede9b58b7114, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MCapMask:
@@ -126,13 +127,13 @@ Material:
     - _GIFlatShade: 0
     - _GIShadeThreshold: 0
     - _GlossColorPower: 1
-    - _GlossIntensity: 0.05
-    - _GlossSoftness: 0.479
+    - _GlossIntensity: 0.192
+    - _GlossSoftness: 0.689
     - _GlossTextureFollowLight: 0
     - _GlossTextureFollowObjectRotation: 0
     - _GlossTextureRotate: 0
     - _GlossTextureSoftness: 0
-    - _Glossiness: 0.264
+    - _Glossiness: 0.278
     - _Glow_Edge_Width: 1
     - _HighlightColorPower: 1
     - _LLI_Max: 1
@@ -145,7 +146,7 @@ Material:
     - _LightFalloffSoftness: 0.008
     - _LightIntensity: 1
     - _MCIALO: 0
-    - _MCapIntensity: 1
+    - _MCapIntensity: 0.304
     - _MVCOL: 0
     - _MaiColPo: 1
     - _MaxFadDistance: 2
@@ -168,7 +169,7 @@ Material:
     - _N_F_HDLS: 0
     - _N_F_HPSS: 0
     - _N_F_LLI: 1
-    - _N_F_MC: 0
+    - _N_F_MC: 1
     - _N_F_MSSOLTFO: 0
     - _N_F_NFD: 0
     - _N_F_NLASOBF: 0
@@ -234,7 +235,7 @@ Material:
     - _RimLightSoftness: 1
     - _RimLightUnfill: 1.5
     - _SPECIN: 1
-    - _SPECMODE: 0
+    - _SPECMODE: 1
     - _STIL: 0
     - _Saturation: 1
     - _SelfLitHighContrast: 1
@@ -245,9 +246,9 @@ Material:
     - _SelfShadowRealTimeShadowColorPower: 1
     - _SelfShadowRealtimeShadowIntensity: 1
     - _SelfShadowShadowTAtViewDirection: 0
-    - _SelfShadowThreshold: 0.986
+    - _SelfShadowThreshold: 0.972
     - _ShadowColorTexturePower: 0.6
-    - _ShadowHardness: 0.093
+    - _ShadowHardness: 0.829
     - _ShadowTColorPower: 1
     - _ShadowTHardness: 1
     - _ShadowTIntensity: 1
@@ -285,7 +286,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _CustomLightDirection: {r: 0, g: 0, b: 10, a: 0}
-    - _GlossColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlossColor: {r: 0.86792046, g: 1, b: 0.79607844, a: 1}
     - _Glow_Color: {r: 1, g: 1, b: 1, a: 1}
     - _HighlightColor: {r: 1, g: 1, b: 1, a: 1}
     - _MainColor: {r: 1, g: 1, b: 1, a: 1}
@@ -293,9 +294,9 @@ Material:
     - _ObjectForward: {r: 0, g: 0, b: 0, a: 0}
     - _ObjectRight: {r: 0, g: 0, b: 0, a: 0}
     - _OutResi: {r: 1, g: 1, b: 1, a: 1}
-    - _OutlineColor: {r: 0.1981132, g: 0.16353685, b: 0.16353685, a: 1}
-    - _OutlineOffset: {r: 0, g: 0, b: 0, a: 1}
-    - _OverallShadowColor: {r: 0.7264151, g: 0.68595266, b: 0.68187076, a: 1}
+    - _OutlineColor: {r: 0.15641688, g: 0.1792453, b: 0.15873355, a: 1}
+    - _OutlineOffset: {r: 0, g: 0, b: 0, a: 0}
+    - _OverallShadowColor: {r: 0.6955767, g: 0.7019345, b: 0.7264151, a: 1}
     - _PTCol: {r: 0, g: 0, b: 0, a: 1}
     - _PrevPosition: {r: 0, g: 0, b: 0, a: 0}
     - _RefracColor: {r: 1, g: 1, b: 1, a: 1}
