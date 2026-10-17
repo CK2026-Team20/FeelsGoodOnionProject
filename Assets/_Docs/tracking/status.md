@@ -1,5 +1,19 @@
 # 현재 요구와 검증 상태
 
+## 2026-10-18 리소스 참조 복구·실제 씬 왕복
+
+Stage6구간의 끊어진 음악 GUID와 CinematicCatalog 원화8참조를 현재 제공 자산에 연결했다. 활성 Patrol의 지형 아래 순찰 끝점은 Stage 인스턴스 위치 override로 보정했다. 실제 Bootstrap→Title→Opening→Playing, 옵션 Title 복귀 후 재진입, Retry, Ending 자동 완료 후 재진입을 검증했다. 통합55개와 메모/음량10개 검사 통과다. ESC/F 합성 입력과 실제 UI 이벤트/API 준비를 사용했으며 전체 레벨 자연 동선이나 빌드 완료를 뜻하지 않는다. 이전 UI 작업의 음악/컷신 준비 차단과 Patrol 오류는 이번 실행에서 해소됐다.
+
+[변경 검토](flow-resources-2026-10-18/코드%20리뷰.md) · [실행 결과와 한계](flow-resources-2026-10-18/테스트%20및%20검증%20항목.md).
+
+## 2026-10-18 UI Ver2.1 레이아웃·아이콘·폰트
+
+승인된 UI 프리팹6개와 Bootstrapper/Title/Core 배치에 새 레이아웃을 적용했다. 제공 HP/Q/E Sprite6개를 연결하고 프리팹35개/씬35개 TMP 텍스트를 IM_Hyemin-Bold SDF로 통일했다. 일반 플레이 설정 버튼은 제거하고 ESC 옵션 및 화면별 커서 숨김/표시를 연결했다. TMP 전역 설정과 보호 원본 import는 수동 변경하지 않았다.
+
+실제 타이틀/옵션, 격리 UI Play의 HP/Q/E·커서·ESC·재바인딩·해제·기록 스크롤 및 렌더를 확인했다. 첫59개 및 최종57개 검사를 통과했으며 테스트 대역/직접 이벤트 준비를 사용한 격리 결과다. 현재 Stage6구간 음악참조 NULL로 새게임 진입이 실패하고 컷신 첫 원화 누락으로 Prepare가 실패한다. 메모는 기존 Placeholder 원화이고 미제공 배경·도구·조각 아이콘은 리소스 대기다. 빌드/Player/전체 동선 QA는 미실행이다.
+
+[변경 명세](ui-v21-2026-10-18/기능%20명세서.md) · [코드 리뷰](ui-v21-2026-10-18/코드%20리뷰.md) · [검증 결과](ui-v21-2026-10-18/테스트%20및%20검증%20항목.md).
+
 ## 2026-10-16 Windows 빌드·커밋 인계
 
 사용자의 현재 로컬 상태 빌드·PR 요청에 따라 미저장 Stage를 native 사본으로 보존한 뒤 저장했다. 앞선 외관 단계의 원본 저장 대기는 해소됐다. 전용 Cooked_Prototype_Windows Build Profile에 Bootstrapper/Title/InGameCore/Stage_Prototype4씬을 순서대로 등록하고 바탕화면 Cooked!_Prototype_Build에 Windows64/Mono 실제 빌드를 완료했다. BuildReport Succeeded, 오류0/경고52, 1,129,671ms, 206,450,282bytes다. 실행파일 Player 자체의 동선 QA는 이번 빌드 성공과 구분한다.

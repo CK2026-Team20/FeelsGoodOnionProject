@@ -1,5 +1,17 @@
 # 열린 문제와 검증 제한
 
+## 2026-10-18 후속 해결
+
+아래 UI 적용 당시의 Stage 음악 NULL, 컷신 원화 누락, Patrol 안전높이 오류는 후속 사용자 요청으로 수정하고 실제 Play에서 해소를 확인했다. Stage music6개/Cinematic artwork8개의 이전 GUID를 현재 자산에 연결했고 활성 Patrol 인스턴스의 순찰 경로를 지형 위로 보정했다. Title 왕복·Retry·Ending·재진입 및 UI65개 검사 결과는 [후속 검증](flow-resources-2026-10-18/테스트%20및%20검증%20항목.md)을 따른다. 아래 기록은 당시 증거로 보존한다. Placeholder 메모/미제공 UI 아트, 전체 동선·백페이스·성능 QA 제한은 해소 선언하지 않는다.
+
+## 2026-10-18 UI 적용 중 확인한 리소스·통합 제한
+
+- 새 게임 버튼으로 진입하면 현재 `01_Stage_Prototype`의 구간 검증에서 실패하여 Title로 복귀한다. native PreviewScene 검사에서 sections[0..5].music이 모두 NULL이었다. UI 범위 밖의 음악/Stage 원본은 임의 연결하지 않았다.
+- 실제 CinematicCatalog로 Opening Prepare가 `Cinematic Opening cut 1: missing artwork Texture2D`로 실패한다. 컷신 UI의 폰트·Skip 배치는 반영했지만 실제 원화 재생 완료는 아니다.
+- Memo_1001/1002는 PlaceholderMemo_1/2다. 타이틀 최종 배경/로고, 눈물 조각 전용 UI Sprite, 설정·자동·기록·Skip 도구 아이콘은 현재 아트 리소스에 없다. 제공 HP/Q/E6개는 적용했고 나머지는 기존 표시/텍스트 조작을 유지했다.
+- 기존 Patrol 안전높이 오류가 다시 관측됐다. 현재 UI 격리 Play 검증 통과를 전체 Stage/컷신 검증으로 확대하지 않는다.
+- 실제 케이스·화면·자동 TMP 변화는 [UI 검증](ui-v21-2026-10-18/테스트%20및%20검증%20항목.md)과 [코드 리뷰](ui-v21-2026-10-18/코드%20리뷰.md)에 기록했다.
+
 2026-10-16 빌드 인계 갱신: 사용자 현재 상태 빌드·PR 요청으로 Stage 사본 보존 후 원본 저장을 완료했다. 아래 외관 작업의 저장 대기는 당시 상태다. Windows64 빌드는 Succeeded(오류0/경고52)이며 Player 실행 QA는 미실행이다. Sphere Read/Write·메시34개 collision pre-bake·기존 플러그인 메타/API/셰이더 경고의 상세는 prototype-build-pr-2026-10-16/테스트 및 검증 항목.md에 기록한다. 해당 경고 해결을 위해 보호 원본을 임의 수정하지 않았다.
 
 ## 2026-10-16 외관 작업에서 확인한 항목
