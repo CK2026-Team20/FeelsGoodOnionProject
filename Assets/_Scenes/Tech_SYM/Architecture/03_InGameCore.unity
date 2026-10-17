@@ -207,9 +207,21 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2756723667739868849, guid: 47063fb854b440c4e944c21e893cff75, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 4331131745289418378, guid: 47063fb854b440c4e944c21e893cff75, type: 3}
       propertyPath: m_Name
       value: CinematicPresentation
+      objectReference: {fileID: 0}
+    - target: {fileID: 5565344359029202624, guid: 47063fb854b440c4e944c21e893cff75, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8992945801507251324, guid: 47063fb854b440c4e944c21e893cff75, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -308,6 +320,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 47260909430592134, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4280889377
+      objectReference: {fileID: 0}
+    - target: {fileID: 47260909430592134, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 337495051734731578, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 2329777565532205460, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -352,9 +376,21 @@ PrefabInstance:
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
       objectReference: {fileID: 0}
+    - target: {fileID: 3054402785297587835, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4280889377
+      objectReference: {fileID: 0}
+    - target: {fileID: 3054402785297587835, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 3231799562293998182, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
       propertyPath: m_Name
       value: GameUiRoot
+      objectReference: {fileID: 0}
+    - target: {fileID: 5128762306435252830, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     - target: {fileID: 6366578817758192764, guid: fe931de3551058e4e9361036fe5b131f, type: 3}
       propertyPath: m_LocalScale.x
@@ -428,6 +464,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1547377902}
     m_Modifications:
+    - target: {fileID: 312215108642339460, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 430644739544887262, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -512,9 +552,25 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
+    - target: {fileID: 3308361304586749202, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5688059277127985656, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5734503258076054942, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6073552124733751400, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6105501634267147063, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6613160452741410603, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
       propertyPath: m_Name
@@ -543,6 +599,10 @@ PrefabInstance:
     - target: {fileID: 8006374153881967540, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8998613322283219528, guid: 4ad1b2c4bf6a08f418a20200b8061d55, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
