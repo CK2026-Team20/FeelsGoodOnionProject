@@ -15,6 +15,7 @@ Material:
   - N_F_DDMD_ON
   - N_F_EAL_ON
   - N_F_LLI_ON
+  - N_F_MC_ON
   - N_F_O_ON
   - N_F_RDC_ON
   - N_F_RELGI_ON
@@ -43,11 +44,11 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MCap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 9344d36b5af7b3a44826c980f2f9f5b7, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MCapMask:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 04577a6b06685374a88be7260f7312f8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -125,7 +126,7 @@ Material:
     - _GIFlatShade: 0
     - _GIShadeThreshold: 0
     - _GlossColorPower: 10
-    - _GlossIntensity: 1
+    - _GlossIntensity: 0
     - _GlossSoftness: 0
     - _GlossTextureFollowLight: 0
     - _GlossTextureFollowObjectRotation: 0
@@ -167,7 +168,7 @@ Material:
     - _N_F_HDLS: 0
     - _N_F_HPSS: 0
     - _N_F_LLI: 1
-    - _N_F_MC: 0
+    - _N_F_MC: 1
     - _N_F_MSSOLTFO: 0
     - _N_F_NFD: 0
     - _N_F_NLASOBF: 0
@@ -233,7 +234,7 @@ Material:
     - _RimLightSoftness: 1
     - _RimLightUnfill: 1.5
     - _SPECIN: 1
-    - _SPECMODE: 0
+    - _SPECMODE: 1
     - _STIL: 0
     - _Saturation: 1
     - _SelfLitHighContrast: 1
@@ -245,7 +246,7 @@ Material:
     - _SelfShadowRealtimeShadowIntensity: 1
     - _SelfShadowShadowTAtViewDirection: 0
     - _SelfShadowThreshold: 0.986
-    - _ShadowColorTexturePower: 0.6
+    - _ShadowColorTexturePower: 0.8
     - _ShadowHardness: 0.093
     - _ShadowTColorPower: 1
     - _ShadowTHardness: 1
@@ -294,7 +295,7 @@ Material:
     - _OutResi: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 0.1981132, g: 0.16353685, b: 0.16353685, a: 1}
     - _OutlineOffset: {r: 0, g: 0, b: 0, a: 1}
-    - _OverallShadowColor: {r: 0.7264151, g: 0.68595266, b: 0.68187076, a: 1}
+    - _OverallShadowColor: {r: 0.5283019, g: 0.4943202, b: 0.49092203, a: 1}
     - _PTCol: {r: 0, g: 0, b: 0, a: 1}
     - _PrevPosition: {r: 0, g: 0, b: 0, a: 0}
     - _RefracColor: {r: 1, g: 1, b: 1, a: 1}
