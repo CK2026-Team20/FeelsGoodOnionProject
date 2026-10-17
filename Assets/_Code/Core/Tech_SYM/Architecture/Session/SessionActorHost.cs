@@ -67,7 +67,7 @@ namespace Cooked.Session
             if (control == null) throw new ArgumentNullException(nameof(control));
             this.bridge = bridge; this.control = control;
         }
-        /// <summary>Pose is ActorBody center: default capsule center 0,height 2 => floorY + 1.03.</summary>
+        /// <summary>Pose is the player CapsuleCollider world center, including nonzero local center.</summary>
         public void Spawn(Pose pose, int fragments)
         {
             if (releasing || shutdown || spawning) throw new InvalidOperationException("Actor host is releasing or shut down.");
@@ -85,7 +85,7 @@ namespace Cooked.Session
                 var reader = actorRoot.GetComponentInChildren<PlayerInputReader>(true);
                 if (actor == null || reader == null) throw new InvalidOperationException("Actor prefab dependencies missing.");
                 reader.SetTearSkillBinding("<Keyboard>/e");
-                actor.transform.SetPositionAndRotation(pose.position, pose.rotation);
+                PlaceColliderCenter(actor.GetComponent<CapsuleCollider>(), pose);
                 if (actorRoot.GetComponentsInChildren<Camera>(true).Length != 0 ||
                     actorRoot.GetComponentsInChildren<Unity.Cinemachine.CinemachineBrain>(true).Length != 0 ||
                     actorRoot.GetComponentsInChildren<AudioListener>(true).Length != 0 ||
@@ -96,6 +96,7 @@ namespace Cooked.Session
                 var forms = actor.GetComponent<PlayerFormController>();
                 if (forms == null || forms.CurrentForm != PlayerForm.Normal || forms.OwnedDebris != null)
                     throw new InvalidOperationException("A fresh Actor must start Normal with no shell.");
+                PlaceColliderCenter(actor.GetComponent<CapsuleCollider>(), pose);
                 actor.SetMaxHP(3);
                 actor.SetInvincible(false);
                 actor.SetHitInvincibilityDuration(2f);
@@ -113,6 +114,18 @@ namespace Cooked.Session
             }
             catch (Exception original) { SessionCleanup.RethrowAfterCleanup(original, ReleaseNow); }
             finally { spawning = false; }
+        }
+        internal static void PlaceColliderCenter(CapsuleCollider capsule, Pose pose)
+        {
+            if (capsule == null || !CameraProfileValidation.IsFinite(pose.position) ||
+                !CameraProfileValidation.IsFinite(capsule.center)) throw new ArgumentException("플레이어 CapsuleCollider와 유한한 중심 위치가 필요합니다.");
+            // 비활성 Actor는 attachedRigidbody가 아직 없으므로 작성된 같은 오브젝트에서 확인한다.
+            var body = capsule.GetComponent<Rigidbody>();
+            if (body == null) throw new ArgumentException("플레이어 Capsule과 Rigidbody는 같은 ActorBody에 있어야 합니다.");
+            var actor = capsule.transform;
+            actor.SetPositionAndRotation(pose.position, pose.rotation);
+            actor.position += pose.position - actor.TransformPoint(capsule.center);
+            body.position = actor.position;
         }
         public IEnumerator Despawn()
         {

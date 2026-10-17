@@ -183,10 +183,13 @@ namespace Cooked.Foundation
             Publish(FlowState.LoadingGame, true, null);
             if (!alreadyCovered) yield return Step(r => fade.Cover(token, r), token);
             yield return Step(r => scenes.Unload(catalog.TitlePath, token, r), token);
+            foreach (var path in scenes.LoadedGameplayScenes)
+                if (path != catalog.CorePath && !IsStage(Path.GetFileNameWithoutExtension(path)))
+                    yield return Step(r => scenes.Unload(path, token, r), token);
             if (!scenes.IsLoaded(catalog.CorePath)) yield return Step(r => scenes.LoadAdditive(catalog.CorePath, token, r), token);
             scenes.SetRootsActive(catalog.CorePath, true);
             scenes.SetActive(catalog.CorePath); // BEFORE dynamic objects / session initialization
-            yield return LoadStages(token); // Session.Begin needs the initially authored marker's real Pose.
+            yield return LoadStages(token); // Session.Begin uses the initial checkpoint trigger's authored Pose.
             // Mark before initialization so even partially initialized sessions get teardown on error.
             sessionInitialized = true;
             yield return Step(r => runtime.InitializeSession(stageId, token, r), token);
@@ -256,7 +259,7 @@ namespace Cooked.Foundation
                 yield return Step(r => runtime.ShutdownSession(token, r), token);
                 sessionInitialized = false;
             }
-            HidePersistentScenes();
+            yield return UnloadGameplayScenes(token);
         }
         private IEnumerator Recover(OperationResult recovery)
         {
@@ -270,7 +273,12 @@ namespace Cooked.Foundation
                 if (stop.Status == OperationStatus.Succeeded) sessionInitialized = false;
                 else errors.Add(stop.Error ?? "Session teardown cancelled.");
             }
-            try { HidePersistentScenes(); } catch (Exception e) { errors.Add(e.ToString()); }
+            if (errors.Count == 0)
+            {
+                var unload = new OperationResult();
+                yield return SafeOperation(r => UnloadGameplayScenes(CancellationToken.None, r), unload);
+                if (unload.Status != OperationStatus.Succeeded) errors.Add(unload.Error ?? "Game scene teardown failed.");
+            }
             if (errors.Count > 0) { recovery.Fail(string.Join("\n", errors)); yield break; }
             yield return ShowTitle(CancellationToken.None);
             recovery.Succeed();
@@ -281,16 +289,20 @@ namespace Cooked.Foundation
             foreach (string path in catalog.StagePaths)
             {
                 if (!scenes.IsLoaded(path)) yield return Step(r => scenes.LoadAdditive(path, token, r), token);
-                // Resident geometry may still be from the previous round. PrepareStage resets
-                // inactive owners; CoreWorldBinding enables only the prepared selected Stage.
+                // PrepareStage resets inactive owners before CoreWorldBinding enables the selected Stage.
                 scenes.SetRootsActive(path, false);
             }
         }
-        private void HidePersistentScenes()
+        private IEnumerator UnloadGameplayScenes(CancellationToken token, OperationResult result = null)
         {
-            foreach (string path in catalog.StagePaths)
-                if (scenes.IsLoaded(path)) scenes.SetRootsActive(path, false);
-            if (scenes.IsLoaded(catalog.CorePath)) scenes.SetRootsActive(catalog.CorePath, false);
+            // 종료 시작 시의 실제 로드 목록이다. 등록 해제된 보존 씬과 부분 로드도 포함한다.
+            var loaded = scenes.LoadedGameplayScenes;
+            foreach (string path in loaded)
+                if (path != catalog.CorePath) yield return Step(r => scenes.Unload(path, token, r), token);
+            if (scenes.IsLoaded(catalog.CorePath)) yield return Step(r => scenes.Unload(catalog.CorePath, token, r), token);
+            if (scenes.LoadedGameplayScenes.Count != 0) throw new InvalidOperationException("타이틀 복귀 전에 게임 씬 언로드가 완료되어야 합니다.");
+            selectedStagePath = null;
+            result?.Succeed();
         }
         private static IEnumerator Step(Func<OperationResult, IEnumerator> operation, CancellationToken token)
         {

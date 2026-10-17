@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Cooked.Audio
 {
     /// <summary>Borrowed output device. AudioService stops voices, but does not destroy the device.</summary>
@@ -9,5 +11,7 @@ namespace Cooked.Audio
         void SetGain(int channel, float gain);
         void SetPaused(int channel, bool paused);
         bool IsPlaying(int channel);
+        string ResolveMusicId(AudioClip clip);
+        bool IsSameClip(string firstCue, string secondCue);
     }
 }

@@ -1,4 +1,4 @@
-using Cooked.Integration;
+﻿using Cooked.Integration;
 using System;
 using System.Collections.Generic;
 using DG.Tweening;
@@ -11,7 +11,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
     [DisallowMultipleComponent, DefaultExecutionOrder(-300)]
     public sealed class KinematicPlatformMotion : MonoBehaviour
     {
-        [Tooltip("고정 기능 루트 안에서 움직일 자식 Rigidbody를 연결합니다. 같은 몸체에 지지 BoxCollider와 PlatformContacts를 둡니다.")]
+        [Tooltip("고정 기능 루트 안에서 움직일 자식 Rigidbody를 연결합니다. 같은 몸체의 PlatformContacts에 자식 지지 Collider들을 연결합니다.")]
         [SerializeField, InspectorLabel("이동 몸체")] private Rigidbody physicsBody;
         private Rigidbody body;
         private Vector3 authoredLocalPosition;
@@ -34,7 +34,10 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private readonly Dictionary<Component, Vector3> effects = new Dictionary<Component, Vector3>();
         private bool conflictReported;
         private readonly HashSet<Rigidbody> carried = new HashSet<Rigidbody>();
-        private PhysicsMaterial originalMaterial;
+        private Dictionary<Rigidbody, Vector3> previousRiderVelocities = new Dictionary<Rigidbody, Vector3>();
+        private Dictionary<Rigidbody, Vector3> riderVelocities = new Dictionary<Rigidbody, Vector3>();
+        private readonly Dictionary<Collider, PhysicsMaterial> originalMaterials = new Dictionary<Collider, PhysicsMaterial>();
+        private readonly List<PlatformContacts.SupportContact> supportContacts = new List<PlatformContacts.SupportContact>();
         private PhysicsMaterial motionMaterial;
         private Vector3 tweenStart, tweenDestination;
         private float tweenDuration, tweenElapsed;
@@ -42,7 +45,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private Action tweenCompleted;
         public bool IsTweening => positionTween || rotationTween;
         public Vector3 Velocity { get; private set; }
-        private Vector3 PreviousVelocity { get; set; }
         public Vector3 Position => PhysicsBody != null ? PhysicsBody.position : transform.position;
         public Vector3 RestPosition => body != null && body.transform.parent != null
             ? body.transform.parent.TransformPoint(authoredLocalPosition) : authoredLocalPosition;
@@ -62,22 +64,23 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             if (motionMaterial != null) return;
             if (!BindPhysics(physicsBody))
-            { Debug.LogError("이동 몸체 자식의 Rigidbody를 연결하고 같은 객체에 지지 BoxCollider와 PlatformContacts를 배치하세요.", this); enabled = false; return; }
+            { Debug.LogError("이동 몸체 자식의 Rigidbody를 연결하고 PlatformContacts에 같은 몸체의 지지 Collider들을 연결하세요.", this); enabled = false; return; }
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             body.constraints = RigidbodyConstraints.FreezeRotation;
-            var collider = contacts.Surface;
-            if (collider == null) collider = contacts.GetComponent<BoxCollider>();
-            collider.isTrigger = false;
-            originalMaterial = collider.sharedMaterial;
             motionMaterial = new PhysicsMaterial("Platform Motion")
             {
                 staticFriction = 0f, dynamicFriction = 0f, bounciness = 0f,
                 frictionCombine = PhysicsMaterialCombine.Minimum, bounceCombine = PhysicsMaterialCombine.Minimum
             };
-            collider.sharedMaterial = motionMaterial;
+            foreach (var collider in contacts.Surfaces.Count > 0 ? contacts.Surfaces : new Collider[] { contacts.Surface })
+            {
+                if (collider == null || originalMaterials.ContainsKey(collider)) continue;
+                originalMaterials.Add(collider, collider.sharedMaterial);
+                collider.sharedMaterial = motionMaterial;
+            }
         }
 
         private bool BindPhysics(Rigidbody physicalBody)
@@ -85,8 +88,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             var physicalContacts = physicalBody != null ? physicalBody.GetComponent<PlatformContacts>() : null;
             if (physicalBody == null || physicalContacts == null
                 || physicalContacts.GetComponent<Rigidbody>() != physicalBody
-                || physicalContacts.Surface == null || physicalContacts.Surface.attachedRigidbody != physicalBody
-                || physicalContacts.Surface.isTrigger
+                || !physicalContacts.ValidBody(physicalBody)
                 || physicalBody.GetComponent<MovingPlatform>() != null || GetComponent<MovingPlatform>() != null
                 || (physicalBody.transform == transform || !physicalBody.transform.IsChildOf(transform))) return false;
             int drivers = (GetComponent<LinearShuttlePlatform>() != null ? 1 : 0)
@@ -132,8 +134,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         public void CancelMotion()
         {
             CancelTween(); hasTarget = false; path = MotionPath.None;
-            effects.Clear(); occupants.Clear(); carried.Clear();
-            Velocity = PreviousVelocity = Vector3.zero;
+            effects.Clear(); occupants.Clear(); carried.Clear(); previousRiderVelocities.Clear(); riderVelocities.Clear();
+            Velocity = Vector3.zero;
             contacts?.ResetForRetry();
         }
 
@@ -280,7 +282,6 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 completed = tweenCompleted;
                 CancelTween();
             }
-            PreviousVelocity = Velocity;
             bool carryWithoutInertia = path == MotionPath.Effect;
             Vector3 next = hasTarget ? target : body.position;
             bool tweenStep = positionTween;
@@ -313,6 +314,11 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             Vector3 displacement = next - body.position;
             Velocity = displacement / Time.fixedDeltaTime;
             carried.Clear();
+            var oldVelocities = previousRiderVelocities;
+            previousRiderVelocities = riderVelocities;
+            riderVelocities = oldVelocities;
+            riderVelocities.Clear();
+            contacts.CopySupportContacts(supportContacts);
             contacts.CopyOccupants(occupants);
             foreach (Collider other in occupants)
             {
@@ -330,16 +336,24 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                     var rigidMovement = actor.GetComponent<PlatformRigidbodyMovement>();
                     bool hasMovement = (movement != null && movement.isActiveAndEnabled)
                         || (rigidMovement != null && rigidMovement.isActiveAndEnabled);
-                    bool grounded = (movement != null && movement.isActiveAndEnabled && movement.IsGrounded && movement.GroundCollider == contacts.Surface)
-                        || (rigidMovement != null && rigidMovement.isActiveAndEnabled && rigidMovement.IsGrounded && rigidMovement.GroundCollider == contacts.Surface);
+                    bool grounded = (movement != null && movement.isActiveAndEnabled && movement.IsGrounded && contacts.ContainsSurface(movement.GroundCollider))
+                        || (rigidMovement != null && rigidMovement.isActiveAndEnabled && rigidMovement.IsGrounded && contacts.ContainsSurface(rigidMovement.GroundCollider));
                     if (!hasMovement || (carryWithoutInertia && grounded))
                     {
                         Rigidbody rider = other.attachedRigidbody;
                         if (rider != null && !rider.isKinematic) rider.position += riderDisplacement;
                     }
-                    passenger.ReceivePlatformVelocity(contacts.Surface, other,
-                        carryWithoutInertia ? Vector3.zero : riderDisplacement / Time.fixedDeltaTime,
-                        carryWithoutInertia ? Vector3.zero : PreviousVelocity);
+                    Vector3 riderVelocity = carryWithoutInertia ? Vector3.zero : riderDisplacement / Time.fixedDeltaTime;
+                    Vector3 previousRiderVelocity = Vector3.zero;
+                    if (rigid != null)
+                    {
+                        previousRiderVelocities.TryGetValue(rigid, out previousRiderVelocity);
+                        riderVelocities[rigid] = riderVelocity;
+                    }
+                    foreach (var contact in supportContacts)
+                        if (contact.Passenger != null && contact.Passenger.attachedRigidbody == rigid)
+                            passenger.ReceivePlatformVelocity(contact.Surface, contact.Passenger, riderVelocity,
+                                carryWithoutInertia ? Vector3.zero : previousRiderVelocity);
                 }
                 else if (rigid != null && !rigid.isKinematic)
                     rigid.position += riderDisplacement;
@@ -363,8 +377,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private void OnDestroy()
         {
             CancelTween();
-            var collider = contacts != null ? contacts.Surface : null;
-            if (collider != null && collider.sharedMaterial == motionMaterial) collider.sharedMaterial = originalMaterial;
+            foreach (var entry in originalMaterials)
+                if (entry.Key != null && entry.Key.sharedMaterial == motionMaterial) entry.Key.sharedMaterial = entry.Value;
+            originalMaterials.Clear();
             if (motionMaterial != null)
             {
                 if (Application.isPlaying) Destroy(motionMaterial);

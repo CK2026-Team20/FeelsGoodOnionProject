@@ -1,5 +1,6 @@
 using System;
 using Cooked.Contracts;
+using UnityEngine;
 
 namespace Cooked.Audio
 {
@@ -10,7 +11,8 @@ namespace Cooked.Audio
         private readonly IGameFlowService flow;
         private readonly IGameplayControlService control;
         private FlowState state;
-        private string stageMusic;
+        private AudioClip stageMusic;
+        private float stageGain, stageTransition;
         private bool chase, disposed;
 
         public AudioFlowBinding(AudioService audio, IGameFlowService flow, IGameplayControlService control)
@@ -22,11 +24,13 @@ namespace Cooked.Audio
             flow.Changed += ApplyFlow; control.Changed += ApplyControl;
         }
 
-        public void SetStage(AudioCuePurpose purpose)
+        public void SetStageMusic(AudioClip clip, float gain, float transitionSeconds)
         {
             RequireAlive();
-            if (AudioCueIds.KindForPurpose(purpose) != AudioCueKind.Music) throw new ArgumentException("Stage requires a music purpose.", nameof(purpose));
-            stageMusic = AudioCueIds.ForPurpose(purpose); SelectMusic();
+            if (clip == null) throw new ArgumentNullException(nameof(clip));
+            AudioCue.ValidateUnit(gain, nameof(gain));
+            if (!float.IsFinite(transitionSeconds) || transitionSeconds < 0) throw new ArgumentOutOfRangeException(nameof(transitionSeconds));
+            stageMusic = clip; stageGain = gain; stageTransition = transitionSeconds; SelectMusic();
         }
         public void SetChaseActive(bool active)
         {
@@ -45,11 +49,13 @@ namespace Cooked.Audio
             {
                 switch (state)
                 {
-                    case FlowState.LoadingGame:
                     case FlowState.ReturningToTitle:
                     case FlowState.Recovering:
                     case FlowState.Title:
                         stageMusic = null; chase = false; audio.ClearWorldSfx(); break;
+                    case FlowState.LoadingGame:
+                        // 오프닝 종료 후 같은 진입 상태로 돌아와도 이미 연결한 첫 구간 음악은 유지한다.
+                        chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.Retrying:
                         stageMusic = null; chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.Ending:
@@ -70,7 +76,7 @@ namespace Cooked.Audio
                 case FlowState.Ending: audio.PlayMusic(AudioCueIds.Ending); break;
                 case FlowState.Playing:
                     if (chase) audio.PlayMusic(AudioCueIds.Chase);
-                    else if (stageMusic != null) audio.PlayMusic(stageMusic);
+                    else if (stageMusic != null) audio.PlayMusic(stageMusic, stageGain, stageTransition);
                     break;
             }
         }

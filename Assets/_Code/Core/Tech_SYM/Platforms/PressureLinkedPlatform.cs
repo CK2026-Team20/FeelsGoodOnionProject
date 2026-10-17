@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using Cooked.Authoring;
 
@@ -79,7 +79,12 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             Gizmos.color = writer != null && writer.IsFixedPoint(startPoint) && writer.IsFixedPoint(targetPoint)
                 ? Color.green : Color.red;
             Gizmos.DrawLine(StartPosition, TargetPosition);
-            Gizmos.DrawWireCube(TargetPosition, Vector3.one * .15f);
+            if (writer != null && writer.PhysicsBody != null)
+            {
+                PlatformColliderGizmos.Draw(writer.Contacts, Matrix4x4.identity);
+                PlatformColliderGizmos.DrawAt(writer, StartPosition, writer.PhysicsBody.rotation);
+                PlatformColliderGizmos.DrawAt(writer, TargetPosition, writer.PhysicsBody.rotation);
+            }
         }
     }
 }

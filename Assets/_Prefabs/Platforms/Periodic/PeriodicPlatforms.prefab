@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &5791222703735550112
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2654033669430752111, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3120438467090061625, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7238229311724133484, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      propertyPath: m_Name
+      value: PeriodicPlatforms
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 6277285101188859628, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+    - {fileID: 7902777615529874335, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+    m_RemovedGameObjects:
+    - {fileID: 5702851257491145199, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7238229311724133484, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 33987850458216466}
+  m_SourcePrefab: {fileID: 100100000, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+--- !u!1 &3759895907508071628 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7238229311724133484, guid: 3cbd33649598f9a4481c73f3e8a5b7f2, type: 3}
+  m_PrefabInstance: {fileID: 5791222703735550112}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &33987850458216466
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3759895907508071628}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eaacfa6dad0856e40958c6d41ece5d12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PeriodicPlatform
+  supportCollider: {fileID: 0}
+  collisionGeometry:
+    source: {fileID: 0}
+    vertices: []
+    triangles: 
+  motion: {fileID: 0}
+  lifetime: 5
+  hiddenSeconds: 2
+  warningSeconds: 3
+  initialPhaseSeconds: 0
+  blinkCount: 8
+  blinkAcceleration: 2
+  separationSeconds: 0.35
