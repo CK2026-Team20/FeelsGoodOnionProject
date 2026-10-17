@@ -2007,7 +2007,7 @@ MonoBehaviour:
     start: {fileID: 1345041820}
     end: {fileID: 1949177014}
     view: 1
-    music: {fileID: 8300000, guid: 47caefba599d56f8888acfa8ba7b6c1a, type: 3}
+    music: {fileID: 8300000, guid: 429883c608d28ae44bb4ee821f4624e4, type: 3}
     musicGain: 0.6
     musicTransitionSeconds: 0.3
     correctionSeconds: 0.15
@@ -2019,7 +2019,7 @@ MonoBehaviour:
     start: {fileID: 368040533}
     end: {fileID: 350879956}
     view: 1
-    music: {fileID: 8300000, guid: 47caefba599d56f8888acfa8ba7b6c1a, type: 3}
+    music: {fileID: 8300000, guid: 429883c608d28ae44bb4ee821f4624e4, type: 3}
     musicGain: 0.6
     musicTransitionSeconds: 0.3
     correctionSeconds: 0.15
@@ -2031,7 +2031,7 @@ MonoBehaviour:
     start: {fileID: 993355611}
     end: {fileID: 1832676028}
     view: 2
-    music: {fileID: 8300000, guid: 47caefba599d56f8888acfa8ba7b6c1a, type: 3}
+    music: {fileID: 8300000, guid: 429883c608d28ae44bb4ee821f4624e4, type: 3}
     musicGain: 0.6
     musicTransitionSeconds: 0.3
     correctionSeconds: 0.15
@@ -2043,7 +2043,7 @@ MonoBehaviour:
     start: {fileID: 785891757}
     end: {fileID: 798758565}
     view: 1
-    music: {fileID: 8300000, guid: 47caefba599d56f8888acfa8ba7b6c1a, type: 3}
+    music: {fileID: 8300000, guid: 429883c608d28ae44bb4ee821f4624e4, type: 3}
     musicGain: 0.6
     musicTransitionSeconds: 0.3
     correctionSeconds: 0.15
@@ -2055,7 +2055,7 @@ MonoBehaviour:
     start: {fileID: 1898484708}
     end: {fileID: 722678879}
     view: 3
-    music: {fileID: 8300000, guid: 47caefba599d56f8888acfa8ba7b6c1a, type: 3}
+    music: {fileID: 8300000, guid: 429883c608d28ae44bb4ee821f4624e4, type: 3}
     musicGain: 0.6
     musicTransitionSeconds: 0.3
     correctionSeconds: 0.15
@@ -2067,7 +2067,7 @@ MonoBehaviour:
     start: {fileID: 1776651407}
     end: {fileID: 1874548088}
     view: 1
-    music: {fileID: 8300000, guid: 47caefba599d56f8888acfa8ba7b6c1a, type: 3}
+    music: {fileID: 8300000, guid: 429883c608d28ae44bb4ee821f4624e4, type: 3}
     musicGain: 0.6
     musicTransitionSeconds: 0.3
     correctionSeconds: 0.5
@@ -6296,6 +6296,10 @@ PrefabInstance:
     - target: {fileID: 4900626249236791632, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_LocalScale.z
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4900626249236791632, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.5211849
       objectReference: {fileID: 0}
     - target: {fileID: 6007281456219345362, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: definition
