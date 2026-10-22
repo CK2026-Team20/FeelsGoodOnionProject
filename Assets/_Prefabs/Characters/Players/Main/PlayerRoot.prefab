@@ -435,6 +435,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerFormController
   visualRoot: {fileID: 4518552140602201270}
   debrisPrefab: {fileID: 7989407682090592886, guid: 23792feaabbbdd442afd58379610d971, type: 3}
+  autoScaleSmallCollider: 1
   smallRadius: 0.05
   smallHeight: 0.115
   restoreCheckTolerance: 0.005

@@ -11,19 +11,20 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d73b75e14bfe417e82a327a728880005, type: 3}
   m_Name: PlayerAnimations
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   controllerTemplate: {fileID: 9100000, guid: 7e739cc3bd8942e990ebfce5e4c64bee, type: 2}
   blendDuration: 0.1
   walkReferenceSpeed: 3
   runReferenceSpeed: 5
-  idle: {fileID: 0}
+  idle: {fileID: 1827226128182048838, guid: e5803c1e8d02f954eb62d9d1164c9776, type: 3}
   walk: {fileID: 0}
-  run: {fileID: 0}
-  jump: {fileID: 0}
-  fall: {fileID: 0}
-  knockback: {fileID: 0}
-  dead: {fileID: 0}
-  land: {fileID: 0}
-  tear: {fileID: 0}
-  shrink: {fileID: 0}
-  restoreForm: {fileID: 0}
+  run: {fileID: 1827226128182048838, guid: a4bcd107edfe0af40ba560b2bbb5173c, type: 3}
+  jump: {fileID: 1827226128182048838, guid: c087c353afd22fa44846e6a59ef04a8b, type: 3}
+  fall: {fileID: 1827226128182048838, guid: b0cc4f66b7970a64babe5b65a5f3cdc0, type: 3}
+  knockback: {fileID: 1827226128182048838, guid: 13ce75708cc8454428aab67de9c42ffe, type: 3}
+  dead: {fileID: 1827226128182048838, guid: 55b05ed4dc573af47a63d156c61a0d31, type: 3}
+  land: {fileID: 1827226128182048838, guid: 8c222cf810e27e64391164b7c3bcd39f, type: 3}
+  tear: {fileID: 1827226128182048838, guid: 09f3dce5a88dfba4eab87c826c78b69a, type: 3}
+  shrink: {fileID: 1827226128182048838, guid: 10916a1c7f51bca418405fce103b52d1, type: 3}
+  restoreForm: {fileID: 1827226128182048838, guid: 5ae603e708858ce49a6708b2a4ebc7d0, type: 3}
+  interact: {fileID: 0}
