@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEngine;
 using System;
@@ -12,7 +12,7 @@ namespace FeelsGoodOnion.TechSYM.Features
         public enum CollapsePhase { Ready = 0, Wiggling = 1, Collapsed = 2, Animating = 5 }
         [Tooltip("붕괴 표시를 담당하는 Collider 없는 Visual 자식입니다. 원래 위치·회전·크기는 재시도에만 복원합니다.")]
         [SerializeField, InspectorLabel("외형")] private Transform visual;
-        [Tooltip("실제 지지 BoxCollider를 연결합니다. 경고가 끝나면 즉시 꺼집니다.")]
+        [Tooltip("실제 지지 Collider를 연결합니다. 경고가 끝나면 즉시 꺼집니다.")]
         [SerializeField, InspectorLabel("지지 콜라이더")] private Collider supportCollider;
         [Tooltip("위 Visual 자신에 있는 붕괴 Animator입니다. Collapse Motion이 없으면 연결 대기를 기록하고 외형을 숨깁니다.")]
         [SerializeField, InspectorLabel("붕괴 애니메이터")] private Animator collapseAnimator;
@@ -39,7 +39,7 @@ namespace FeelsGoodOnion.TechSYM.Features
             OnValidate();
             contacts = physicalContacts;
             if (visual == null || !visual.IsChildOf(transform) || supportCollider == null || supportCollider.isTrigger
-                || !(supportCollider is BoxCollider) || contacts == null || contacts.Surface != supportCollider
+                || contacts == null || !contacts.ContainsSurface(supportCollider)
                 || (supportCollider.transform != transform && !supportCollider.transform.IsChildOf(transform))
                 || visual.GetComponentsInChildren<Collider>(true).Length != 0
                 || visual.GetComponentsInChildren<Rigidbody>(true).Length != 0

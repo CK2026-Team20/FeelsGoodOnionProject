@@ -1166,6 +1166,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67128e709f098e24e836e7cb99380c7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PlatformContacts
+  surfaces: []
+  drawContacts: 0
 --- !u!1 &1363769678
 GameObject:
   m_ObjectHideFlags: 0
@@ -1441,11 +1443,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.PlayerDamagePresentation
   visualRoot: {fileID: 41968824}
   cameraAnchor: {fileID: 1586315979}
-  targets:
-  - {fileID: 429521109}
-  - {fileID: 623607480}
-  duration: 0.15
-  damageColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &1363769696
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2637,13 +2634,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageTrigger
   stage: {fileID: 0}
   kind: 5
-  checkpoint: {fileID: 0}
   dialogue:
     table: {fileID: 0}
     code: 
   independentHost: {fileID: 318828357}
   once: 0
   chaseRetreatGate: {fileID: 0}
+  chaseDriver: {fileID: 0}
 --- !u!65 &2146570258
 BoxCollider:
   m_ObjectHideFlags: 0

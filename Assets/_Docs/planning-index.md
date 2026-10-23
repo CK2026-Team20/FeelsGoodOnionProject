@@ -1,5 +1,35 @@
 # 기획 문서 버전과 적용 기준
 
+## 2026-10-18 UI 레이아웃·기능 공통 기준
+
+사용자 직접 지시로 UI 레이아웃과 UI 기능 모두 `Assets/_Docs/Cooked!_UI기획서Ver2.1.pdf`를 필수 참조한다. 저장소 원본은 앞서 지정한 Desktop 원본과 SHA-256이 같다. 화면 배치·아이콘·텍스트, 버튼/단축키·전환·표시 조건·상태 변화를 이 문서에 대조한다. 아래 앞선 레이아웃 작업의 범위 제한을 향후 UI 기능 작업의 참조 제외로 해석하지 않는다. 사용자 후속 직접 지시가 우선하며 시스템 V1.6과 충돌하면 근거를 기록하고 확인한다. 이 지침 추가가 기존 UI 기능 전체의 명세 일치 완료 선언은 아니다.
+
+## 2026-10-18 음악·컷신 연결과 실제 재진입 직접 지시
+
+현재 제공 리소스로 Stage 음악과 컷신 원화의 누락 참조를 연결하고 새 게임/UI/타이틀 복귀/재진입의 실제 흐름을 검증하며 재현 오류를 수정한다. 원본 아트 제작·변경 지시가 아니라 기존 자산 연결이다. [기능 명세](tracking/flow-resources-2026-10-18/기능%20명세서.md), 결과는 status와 해당 검증 문서를 따른다.
+
+## 2026-10-18 UI Ver2.1·폰트·플레이 포인터 직접 지시
+
+UI 배치 기준은 사용자가 지정한 `C:/Users/acac1/Desktop/Cooked!_UI기획서Ver2.1.pdf`(33쪽, SHA-256 `65af2e72aa062dee114615cca25466255b559589d811479254131d6913933031`)다. 기존 Ver1.0은 과거 자료다. 제공된 UI 아이콘을 적용하고 표시 TMP 텍스트는 `IM_Hyemin-Bold SDF`를 직접 참조한다. 사용자 정정으로 TMP 전역 설정 변경은 제외한다. UI 프리팹6개의 관련 수정은 이번 작업에 허용됐다.
+
+후속 직접 지시로 일반 플레이의 설정 버튼을 제거하고 ESC 옵션은 유지한다. 일반 플레이와 F로 닫는 메모는 포인터 숨김/잠금, 타이틀·옵션·대화/기록·컷신은 마우스 UI 조작을 위한 포인터 표시다. 레이아웃 요청으로 문서 내 구버전 시스템/타임아웃 규칙을 재구현하지 않는다. 상세 [명세](tracking/ui-v21-2026-10-18/기능%20명세서.md)와 실행 상태는 tracking을 따른다.
+
+## 2026-10-15~16 직접 지시: 구간·체크포인트 통합
+
+StageService가 같은 씬의 논리 구간, 첫 구간, 현재 구간, 활성화한 체크포인트 집합, 마지막 스냅샷과 그 복귀 구간을 소유한다. 구간에는 서로 다른 시작·끝 StageTrigger, 시점 종류, 실제 음악 Clip·음량·전환 시간, 진입 보정·카메라 전환 시간을 연결한다. 이름·배열 순번은 저장 키가 아니다. Trigger는 접촉을 전달하며 시점·음악·저장 장부를 별도로 편집하지 않는다. 새 시작 체크포인트마다 플레이어 Capsule 중심을 해당 시작 위치로 DOMove 보정한다. 끝은 저장만 하고 현재 구간·시점을 바꾸지 않는다. 같은 시점의 새 시작은 카메라 재선택·blend 재시작만 생략하며 보정·저장·음악은 수행한다. 새 유효 시작은 이전 보정·전환을 취소하고 최신 요청이 완료하도록 한다. 사망·취소·Actor/Stage 해제 때 자기 트윈·보정 소유권·입력 제한을 반환하며 낡은 callback은 상태를 바꾸지 못한다. 사용 중인 차단 장치만 플레이어 보정 뒤 고정 목표로 이동한다. 재시도는 같은 Core/Stage와 StageService의 소비 이력을 유지하고 마지막 유효 저장 및 당시 구간·음악·시점을 직접 복원한다. 소비한 센서를 다시 발동하지 않는다. 현재 해금은 GameSessionService 원본이고 저장 시점의 해금은 별도 불변 스냅샷 값이다. Title 복귀에서 세션 종료 후 Stage 전체→Core 순서로 언로드하며 새 게임은 새 객체와 빈 체크포인트 장부로 시작한다.
+
+뒷면 메시를 생략한 아트는 구도·추적·전환 중간에서도 뒷면을 노출하지 않도록 배치한다. 최신 사용자 정정으로 반대편 카메라 이동은 철회했고 기존 방향을 유지한다. 사용자가 오브젝트 배치를 회전하는 작업은 에이전트가 완료한 것으로 기록하지 않는다. 보호 아트의 임의 수정·양면화나 HMS 입력 변환으로 우회하지 않으며 현재 백페이스 노출은 미해결 시각 항목이다.
+
+2026-10-15 직접 지시로 에이전트 Play/Player 금지와 과거 검증·QA 역할 고정을 철회했다. 승인된 기능의 실제 Editor Play를 공식 Unity 플러그인으로 수행하고 실행 근거대로 판정한다. API 위치 준비, 실제 InputSystem 합성 입력, 사람 직접 조작, 빌드·Player 실행, 팀 평가를 구분한다. 미저장 작업·파일 소유권·Git 승인 경계는 유지하며 실행하지 않은 항목을 통과로 기록하지 않는다. 최종 기능 명세와 실제 수행 범위는 tracking/stage-flow-unification-2026-10-15에 기록한다. 아래 과거 Trigger 음악·Zone·선택 bounds 설명은 이 결정으로 대체됐다.
+
+## 2026-10-15 실제 실행 검증 후속 지시
+
+이전 2026-10-15 Play 재개 검토는 과거 이력이다. 당시 체크포인트 직접 시점·Zone 소비 경로는 이번 StageService 구간 통합으로 대체됐다. [당시 명세](tracking/play-flow-verification-2026-10-15/기능%20명세서.md)와 [당시 실행 근거](tracking/play-flow-verification-2026-10-15/테스트%20및%20검증%20항목.md)는 보존한다.
+
+## 2026-10-15 실제 프로토타입 레벨 배치
+
+Desktop의 `Cooked!_프로토타입 레벨디자인.fbx`를 배치 자료로 지정했다. `_Prefabs`의 실제 메시·Collider 크기로 간격과 배율을 조정하고 시작 Collider 중심을 (0,0,0)에 둔다. 통합 실행은 Bootstrapper → Title → Core + `Architecture/01_Stage_Prototype.unity` → 옵션 또는 Ending → Title이다. 이전 `Prototype/1_Stage.unity`는 폐기하며 설치·Entry·Editor 진입·명시적 빌드는 새 Stage 하나를 사용한다. 이번 범위는 오브젝트 배치와 필요한 참조 전환이고 게임 규칙 구현 변경은 없다. `.blend` 원본은 보존하고 실제 형상 조회에는 제공 FBX를 사용했다. [명세](tracking/prototype-layout-2026-10-15/기능%20명세서.md)와 [검증](tracking/prototype-layout-2026-10-15/테스트%20및%20검증%20항목.md)을 따른다. 아래 날짜별 단독 1_Stage 지시는 당시 이력이다.
+
 > 현행 시스템 원본은 V1.6이다. 우선순위는 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명이다. 사전 명세와 날짜별 기록은 당시 계획·증거이며 현재 승인·검증 상태를 대신하지 않는다. 구현·자산 이관·최종 검증 결과는 tracking/status.md와 담당자의 실제 증거로 확인한다.
 
 ## 2026-10-11 기능 객체 중심 정리
@@ -18,18 +48,23 @@
 
 | 문서 | 역할 | 식별/적용 |
 |---|---|---|
+| [Cooked!_UI기획서Ver2.1.pdf](Cooked!_UI기획서Ver2.1.pdf) | 최신 UI 레이아웃·기능 기준 | 33쪽; SHA-256 `65af2e72aa062dee114615cca25466255b559589d811479254131d6913933031`; 최신 사용자 직접 지시 우선 |
 | [Cooked_시스템_기획서_V.1.6.docx](Cooked_시스템_기획서_V.1.6.docx) | 최신 시스템 자료 | SHA-256 `4f11bf49af22944e4d38003f7dd029062e7cc79c9927056bf64f5616bd23493f`; Desktop 지정 원본과 바이트 일치 |
-| [Cooked_시스템_기획서_V.1.5.docx](Cooked_시스템_기획서_V.1.5.docx) | 이전 비교/이력 | SHA-256 `d5698cbc3e50bcb1a4ea8c4f31eae325b43af7221bbcc97a150fdb8b28aa8ebe`; Desktop 지정 원본과 바이트 일치 |
-| [Cooked_시스템_기획서_V.1.1.docx](Cooked_시스템_기획서_V.1.1.docx) | 이전 비교/이력 | SHA-256 `00ca888a929966eeb02e7b7319cf766230a173c4c99876cea946ee0204b7a26c`; Desktop 지정 파일과 바이트 일치 |
-| [Cooked!_UI기획서Ver1.0.pdf](Cooked!_UI기획서Ver1.0.pdf) | 화면 흐름/배치 자료 | 7쪽; 새 시스템의 입력/정지/버튼 재정의 우선 |
+| [Cooked_시스템_기획서_V.1.5.docx](https://github.com/CK2026-Team20/FeelsGoodOnionProject/blob/a17f9a5ae0089f0f08b8db2f8328b93bf54ab9a1/Assets/_Docs/Cooked_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EA%B8%B0%ED%9A%8D%EC%84%9C_V.1.5.docx) | 이전 비교/이력 | SHA-256 `d5698cbc3e50bcb1a4ea8c4f31eae325b43af7221bbcc97a150fdb8b28aa8ebe`; Desktop 지정 원본과 바이트 일치 |
+| [Cooked_시스템_기획서_V.1.1.docx](https://github.com/CK2026-Team20/FeelsGoodOnionProject/blob/a17f9a5ae0089f0f08b8db2f8328b93bf54ab9a1/Assets/_Docs/Cooked_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EA%B8%B0%ED%9A%8D%EC%84%9C_V.1.1.docx) | 이전 비교/이력 | SHA-256 `00ca888a929966eeb02e7b7319cf766230a173c4c99876cea946ee0204b7a26c`; Desktop 지정 파일과 바이트 일치 |
+| [Cooked!_UI기획서Ver1.0.pdf](https://github.com/CK2026-Team20/FeelsGoodOnionProject/blob/a17f9a5ae0089f0f08b8db2f8328b93bf54ab9a1/Assets/_Docs/Cooked%21_UI%EA%B8%B0%ED%9A%8D%EC%84%9CVer1.0.pdf) | 이전 UI 자료 | 7쪽; Ver2.1로 대체, Git 이력 링크 |
 | [Cooked!_레벨디자인ver1.1.pptx](Cooked!_레벨디자인ver1.1.pptx) | 향후 본편 배치 자료 | 14슬라이드; 현재 기능 응집 프로토타입의 분할/배치를 강제하지 않음 |
-| [Cooked_시스템_기획서확정_V.1.1.docx](Cooked_시스템_기획서확정_V.1.1.docx) | 이전 비교/이력 | SHA-256 `56480089f2265793431b3160ea5ba6e5a09cc186383450e516fe29b84e659932`; 현재 시스템 기준에서 대체됨 |
-| [Cooked_시스템_기획서_2안.docx](Cooked_시스템_기획서_2안.docx) | 이전 초안 | 보존; 현재 동작 기준 아님 |
+| [Cooked_시스템_기획서확정_V.1.1.docx](https://github.com/CK2026-Team20/FeelsGoodOnionProject/blob/a17f9a5ae0089f0f08b8db2f8328b93bf54ab9a1/Assets/_Docs/Cooked_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EA%B8%B0%ED%9A%8D%EC%84%9C%ED%99%95%EC%A0%95_V.1.1.docx) | 이전 비교/이력 | SHA-256 `56480089f2265793431b3160ea5ba6e5a09cc186383450e516fe29b84e659932`; 현재 시스템 기준에서 대체됨 |
+| [Cooked_시스템_기획서_2안.docx](https://github.com/CK2026-Team20/FeelsGoodOnionProject/blob/a17f9a5ae0089f0f08b8db2f8328b93bf54ab9a1/Assets/_Docs/Cooked_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EA%B8%B0%ED%9A%8D%EC%84%9C_2%EC%95%88.docx) | 이전 초안 | 보존; 현재 동작 기준 아님 |
 
-기존 PDF·PPTX·확정본과 메타는 보존한다. UI SHA-256은 `43088a30592ef7eade54075f31fc6789922d18d1092e74b564ac6d04c7865361`, 레벨은 `b9911c1fcce62fe9197f6050ab1ce41186ab6f51d4afee141235ba93435ee290`, 시스템2안은 `916ce65c2a6c3b5588d964c2550ffbeeb301d9dd762ec74b2dc662b1abdbfd06`인 이전 등록 식별값이며 이번에 새 버전이라고 주장하지 않는다.
+2026-10-18 커밋 작업 시작 시 구버전 문서5개와 메타는 이미 삭제된 상태였다. 해당 로컬 정리를 별도 문서 커밋에 기록하고 위 구버전 링크는 삭제 전 Git 이력으로 연결했다. 이 상태의 승계가 다른 원본의 삭제 권한을 부여하지 않는다. UI SHA-256은 `43088a30592ef7eade54075f31fc6789922d18d1092e74b564ac6d04c7865361`, 레벨은 `b9911c1fcce62fe9197f6050ab1ce41186ab6f51d4afee141235ba93435ee290`, 시스템2안은 `916ce65c2a6c3b5588d964c2550ffbeeb301d9dd762ec74b2dc662b1abdbfd06`인 이전 등록 식별값이며 이번에 새 버전이라고 주장하지 않는다.
 
 ## 현행 후속 직접 선택
 
+- 2026-10-14 메시 플랫폼 후속 승인: 실제 지지 MeshCollider, 플랫폼 소유 아래 반구 접촉 검사와 플레이어 최대 접지각, 실제 메시 교차의 1/4 사망 경계, 얕은 벽 침투의 안쪽 수평 분리, 피해/Oil Trigger 분리를 적용한다. 메시 지지면으로 이관·검증된 원형 플랫폼은 쿼터뷰에서도 사용할 수 있다. 아래 기존 Box 기반 사이드뷰 전용 규칙을 대체한다. [명세](tracking/mesh-platforms-2026-10-14/기능%20명세서.md)를 따른다.
+
+- 2026-10-14: `_Prefabs`는 종류별로 분류하고 Prototype/ProtoType 폴더를 제거한다. 재사용 가능한 사용자 프리팹과 같은 종류의 실제 계층을 우선 활용하며 그 구조에 맞지 않는 기능은 독립 프리팹으로 구성한다. 폐기 예정 `1_Stage`의 조립·이관은 중단하고 향후 레벨 목업으로 새 스테이지를 구성한다. Player는 기존 분리 클립·실제 리그·VFX를 연결하고 피격 머테리얼 색 변경을 제거한다. Dish 등 원형 메시와 사각 지지 Collider의 이동 발판은 사이드뷰 전용이다. [최종 작업 명세](tracking/prefab-authoring-2026-10-14/기능%20명세서.md)를 따른다.
+- 2026-10-13: 카메라 구도 Inspector 값은 플레이 중에도 반영한다. ChaseSwarm은 해당 스테이지의 추격 시작 StageTrigger가 같은 씬 참조로 연결하며 Core의 필수 배치를 제거한다. 범위와 검증은 [변경 명세](tracking/runtime-camera-stage-chase-2026-10-13/기능%20명세서.md)를 따른다.
 - 추격은 접촉·퇴로 안전·현재3값 저장 성공 뒤 직선 이동과 실제 몸체 포획을 사용한다. 전신 통과·진행 경로를 추가하지 않는다.
 - 기본/통로/쿼터의 세 구도는 LevelCameraService가 소유한다. 플레이어 안전 보정 후 차단 오브젝트를 이동하며 둘 다 DOMove와 실물 앵커·Gizmo를 사용한다. HMS의 기존 독립 네 rig는 유지한다.
 - 최종 포포 Escape(7)만 일반 Completed/Skipped 장부를 지우지 않고 새 회차를 허용한다. 현재 맥락 검증과 사망/포획 우선, 취소≠완료를 지킨다.
@@ -41,7 +76,7 @@ V1.5와 이전 기획·검증은 아래 원본 목록 및 날짜별 tracking에�
 
 ## 유지하는 자료와 상태
 
-기존 DOCX/PDF/PPTX와 과거 실행 기록은 보존한다. App/Core/등록 Stage의 최초 additive 로드 후 씬 유지, 현재 Actor 한 개와 출력 Camera/Brain/AudioListener 한 개, Side/Corridor/Quarter 세 리그 분리, MVVM과 자기 구독/작업 해제는 유지한다. 현재 Prototype을 본편 레벨 배치로 임의 분할하지 않는다.
+기존 DOCX/PDF/PPTX와 과거 실행 기록은 보존한다. 2026-10-13 후속 검토로 체크포인트 StageTrigger 통합·Collider 중심 복귀, Title에서 Core/Stage 전체 언로드, 1_Stage 단독 등록, 트리거 음악 변경, 카메라 경계 선택을 확정했다. 재시도에서만 Core/Stage 인스턴스를 유지한다. 현재 Actor 한 개와 출력 Camera/Brain/AudioListener 한 개, 세 리그 분리, MVVM과 자기 구독/작업 해제는 유지한다. 상세 범위는 [통합 명세](tracking/stage-trigger-unification-2026-10-13/기능%20명세서.md)를 따른다.
 
 목표 동작은 [business-rules.md](business-rules.md), 책임과 수명은 [architecture.md](architecture.md), 협업 계약은 [contracts.md](contracts.md), 권한은 [security.md](security.md), 실제 구현/검증은 [tracking/status.md](tracking/status.md)다. 새 명세를 지정한 것과 기능 구현 완료는 다르다. 커밋·push·PR·병합은 각각 현재 작업의 직접 지시를 따른다. 과거 #26 갱신 허가를 새 작업의 Git 권한으로 승계하지 않는다.
 

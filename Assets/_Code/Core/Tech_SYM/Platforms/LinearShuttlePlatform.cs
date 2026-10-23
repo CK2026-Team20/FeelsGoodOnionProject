@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using Cooked.Authoring;
 
@@ -156,8 +156,11 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (!TryGetEndpoints(out var start, out var end)) return;
             Gizmos.color = Color.cyan;
             Gizmos.DrawLine(start, end);
-            Vector3 size = transform.lossyScale;
-            if (Finite(size)) Gizmos.DrawWireCube(end, size);
+            var writer = motion != null ? motion : GetComponent<KinematicPlatformMotion>();
+            if (writer == null || writer.PhysicsBody == null) return;
+            PlatformColliderGizmos.Draw(writer.Contacts, Matrix4x4.identity);
+            PlatformColliderGizmos.DrawAt(writer, start, writer.PhysicsBody.rotation);
+            PlatformColliderGizmos.DrawAt(writer, end, writer.PhysicsBody.rotation);
         }
     }
 }

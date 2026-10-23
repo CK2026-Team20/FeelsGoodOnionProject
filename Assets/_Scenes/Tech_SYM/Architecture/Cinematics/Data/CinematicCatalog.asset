@@ -13,28 +13,28 @@ MonoBehaviour:
   m_Name: CinematicCatalog
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Cinematics.CinematicCatalog
   openingCuts:
-  - artwork: {fileID: 2800000, guid: 479e2eedb7941c143aa881254669dc0e, type: 3}
+  - artwork: {fileID: 2800000, guid: da45a1dbbd1be6c47a8d57d894cc6d1b, type: 3}
     caption: "\uC591\uD30C\uC640 \uD3EC\uD3EC\uAC00 \uC8FC\uBC29\uC5D0 \uD568\uAED8 \uC788\uC5C8\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4
-  - artwork: {fileID: 2800000, guid: 1758dc90acb24eb4aba08b79f197521b, type: 3}
+  - artwork: {fileID: 2800000, guid: 97712b320eec4df479411954bbe20dc0, type: 3}
     caption: "\uC8FC\uBC29 \uD55C\uAC00\uC6B4\uB370\uC5D0 \uB0AF\uC120 \uD2C8\uC774 \uC0DD\uACBC\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4
-  - artwork: {fileID: 2800000, guid: 93549e307fe8a2b4d8c4a21edc09dde4, type: 3}
+  - artwork: {fileID: 2800000, guid: d128fbe91776d2144b89485b4827af91, type: 3}
     caption: "\uD3EC\uD3EC\uAC00 \uD2C8 \uB108\uBA38\uC5D0 \uB0A8\uC558\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4
-  - artwork: {fileID: 2800000, guid: d5d788eae37fe394fa17d18e4e237f87, type: 3}
+  - artwork: {fileID: 2800000, guid: 9361e7c86182be44996505ff1769f708, type: 3}
     caption: "\uC591\uD30C\uB294 \uD3EC\uD3EC\uB97C \uD5A5\uD574 \uBC1C\uAC78\uC74C\uC744 \uC62E\uACBC\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4
   endingCuts:
-  - artwork: {fileID: 2800000, guid: c9908a54a085832439d1cb46dacc8764, type: 3}
+  - artwork: {fileID: 2800000, guid: 4744df286deb105418e547bf690637f8, type: 3}
     caption: "\uC591\uD30C\uB294 \uB9C8\uCE68\uB0B4 \uD3EC\uD3EC\uC640 \uB2E4\uC2DC \uB9CC\uB0AC\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4
-  - artwork: {fileID: 2800000, guid: ed190f9edc9c2bd45a6ddcb14bbef94f, type: 3}
+  - artwork: {fileID: 2800000, guid: d5bd435d5d485fc478fed5618b05b834, type: 3}
     caption: "\uB450 \uCE5C\uAD6C\uB294 \uD568\uAED8 \uAE38\uC744 \uAC78\uC5C8\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4
-  - artwork: {fileID: 2800000, guid: 17fa22e312fb07544a504ce288f31cf1, type: 3}
+  - artwork: {fileID: 2800000, guid: f78d8c1bdd453e74ea39a563a0be5897, type: 3}
     caption: "\uB450 \uCE5C\uAD6C\uB294 \uB098\uB780\uD788 \uC8FC\uBC29\uC744 \uBC14\uB77C\uBCF4\uC558\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4
-  - artwork: {fileID: 2800000, guid: 4d331659a470a3d40810d037fee6206a, type: 3}
+  - artwork: {fileID: 2800000, guid: a4f7d366906507d4a83d9fb8e70e11ee, type: 3}
     caption: "\uB450 \uCE5C\uAD6C\uB294 \uB098\uB780\uD788 \uC549\uC544 \uC26C\uC5C8\uC2B5\uB2C8\uB2E4."
     durationSeconds: 4

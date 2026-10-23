@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Cooked.Authoring;
 using Cooked.Session;
@@ -20,8 +20,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             public OverlapKind Kind { get; }
             public double Ratio { get; }
         }
-        [SerializeField, InspectorLabel("지지 충돌체"), Tooltip("실제 발판 몸체의 비 Trigger BoxCollider를 연결합니다. 윗면은 현재 HMS 접지각 안에 있어야 합니다.")]
-        private BoxCollider supportCollider;
+        [SerializeField, InspectorLabel("지지 충돌체"), Tooltip("실제 발판 몸체의 비 Trigger BoxCollider 또는 비 Convex MeshCollider를 연결합니다. 접지각과 캡슐 크기는 현재 플레이어 값을 사용합니다.")]
+        private Collider supportCollider;
+        [SerializeField, HideInInspector] private MeshCapsuleGeometry.Snapshot collisionGeometry;
         [SerializeField, InspectorLabel("발판 이동"), Tooltip("이 발판 몸체를 움직이는 KinematicPlatformMotion을 연결합니다. 고정 발판은 비워 둡니다.")]
         private KinematicPlatformMotion motion;
         [SerializeField, InspectorLabel("표시 시간"), Tooltip("밟을 수 있는 시간을 조절합니다(초). 0이면 이 단계를 건너뜁니다.")]
@@ -39,7 +40,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         [SerializeField, InspectorLabel("몸체 분리 시간"), Tooltip("깊이 끼인 플레이어를 위로 이동시키는 시간을 조절합니다(초). 피격 클립 길이와 독립입니다.")]
         private float separationSeconds = .35f;
 
-        private BoxCollider support;
+        private Collider support;
         private Renderer[] renderers;
         private bool[] defaults;
         private bool colliderDefault;
@@ -91,11 +92,12 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             ValidateAuthoring();
             support = supportCollider;
-            if (support == null || support.isTrigger)
+            if (support == null || support.isTrigger || !(support is BoxCollider || support is MeshCollider))
             { Debug.LogError("주기 발판의 비 Trigger 지지 충돌체를 연결하세요.", this); enabled = false; return; }
-            if (motion != null && (motion.PhysicsBody != support.attachedRigidbody || motion.Contacts == null || motion.Contacts.Surface != support))
+            if (motion != null && (motion.PhysicsBody != support.attachedRigidbody || motion.Contacts == null || !motion.Contacts.ContainsSurface(support)))
             { Debug.LogError("주기 발판의 이동과 지지 충돌체는 같은 물리 몸체여야 합니다.", this); enabled = false; return; }
             colliderDefault = support.enabled;
+            if (support is MeshCollider mesh) collisionGeometry = RequireGeometry(mesh, collisionGeometry);
             renderers = GetComponentsInChildren<Renderer>(true);
             defaults = new bool[renderers.Length];
             for (int i = 0; i < renderers.Length; i++) defaults[i] = renderers[i].enabled;
@@ -149,13 +151,17 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             examined.Clear();
             PhysicsScene physics = support.gameObject.scene.GetPhysicsScene();
             if (!physics.IsValid()) throw new InvalidOperationException("발판 소속 물리 씬이 유효하지 않습니다.");
-            Vector3 scale = Abs(support.transform.lossyScale);
-            Vector3 center = supportPose.position + supportPose.rotation * Vector3.Scale(support.center, support.transform.lossyScale);
+            Bounds localBounds = support is BoxCollider box ? new Bounds(box.center, box.size) : ((MeshCollider)support).sharedMesh.bounds;
+            Matrix4x4 plannedMatrix = ColliderMatrix(support, supportPose);
+            var queryBounds = new Bounds(plannedMatrix.MultiplyPoint3x4(localBounds.center), Vector3.zero);
+            for (int corner = 0; corner < 8; corner++)
+                queryBounds.Encapsulate(plannedMatrix.MultiplyPoint3x4(localBounds.center + Vector3.Scale(localBounds.extents,
+                    new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1))));
             int count;
             while (true)
             {
-                count = physics.OverlapBox(center, Vector3.Scale(support.size * .5f, scale), candidates,
-                    supportPose.rotation, ~0, QueryTriggerInteraction.Ignore);
+                count = physics.OverlapBox(queryBounds.center, queryBounds.extents, candidates,
+                    Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
                 if (count < candidates.Length) break;
                 if (candidates.Length >= 4096) throw new InvalidOperationException("주기 발판 교차 후보가 4096개 이상입니다. 누락 판정 대신 배치를 확인하세요.");
                 Array.Resize(ref candidates, candidates.Length * 2);
@@ -173,19 +179,18 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 if (player == null && shell == null) continue;
                 if (player != null && (other != body.GetComponent<CapsuleCollider>() || !bridge.IsCurrentActor(player, generation))) continue;
                 if (shell != null && (other != body.GetComponent<BoxCollider>() || !bridge.OwnsDebris(shell))) continue;
-                // 현재 보정 writer는 실제 교차 후보일 때만 반환한다. 단순 근접/바닥 접촉은 보정을 중단하지 않는다.
-                if (player != null && bridge.HasCorrectionOwner && Physics.ComputePenetration(support, supportPose.position,
-                    supportPose.rotation, other, other.transform.position, other.transform.rotation, out _, out _))
-                {
-                    bridge.CancelCorrection();
-                    if (!bridge.IsCurrentActor(expected, generation)) continue;
-                }
                 Pose bodyShapePose = PhysicsPose(other);
                 // Move 통지는 운반 이전이다. 실제 접지/윗면 접촉을 가진 탑승자는 이번 운반 의도를 존중한다.
                 bool normalTop = moving && IsSupportedPassenger(other);
                 OverlapResult overlap = InspectOverlap(support, supportPose, other, bodyShapePose, normalTop,
-                    out Vector3 bodySeparation, out Vector3 correction);
+                    out Vector3 bodySeparation, out Vector3 correction, collisionGeometry);
                 if (overlap.Kind == OverlapKind.None || overlap.Kind == OverlapKind.SupportedTop || !examined.Add(body)) continue;
+                // 실제 삼각형 교차를 확인한 뒤에만 기존 보정 소유권을 반환한다. 빈 내부/근접 후보는 취소하지 않는다.
+                if (player != null && bridge.HasCorrectionOwner)
+                {
+                    bridge.CancelCorrection();
+                    if (!bridge.IsCurrentActor(expected, generation)) continue;
+                }
                 if (shell != null) bridge.TrySeparateOwnedDebris(shell, bodySeparation);
                 else if (bridge.IsCurrentActor(expected, generation))
                     bridge.TryResolvePlatformOverlap(this, expected, generation, correction, separationSeconds, overlap.Kind == OverlapKind.Fatal);
@@ -204,23 +209,36 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             return shellMovement != null && shellMovement.IsGrounded && shellMovement.GroundCollider == support;
         }
         /// <summary>실제 엔진 교차 검사. 다른 씬 pose에도 동작하며 전역 물리 씬을 전진시키지 않는다.</summary>
-        public static OverlapResult InspectOverlap(BoxCollider platform, Pose platformPose, Collider shape, Pose shapePose,
-            bool normalTop, out Vector3 bodySeparation, out Vector3 playerCorrection)
+        public static OverlapResult InspectOverlap(Collider platform, Pose platformPose, Collider shape, Pose shapePose,
+            bool normalTop, out Vector3 bodySeparation, out Vector3 playerCorrection,
+            MeshCapsuleGeometry.Snapshot geometry = null)
         {
             if (platform == null || shape == null) throw new ArgumentNullException(nameof(shape));
             bool intersects = Physics.ComputePenetration(platform, platformPose.position, platformPose.rotation,
                 shape, shapePose.position, shapePose.rotation, out Vector3 direction, out float distance);
             bodySeparation = intersects ? -direction * (distance + .001f) : Vector3.zero;
             playerCorrection = Vector3.zero;
-            if (!intersects) return new OverlapResult(OverlapKind.None, 0);
+            if (!intersects && !(platform is MeshCollider && shape is CapsuleCollider)) return new OverlapResult(OverlapKind.None, 0);
             if (shape is CapsuleCollider capsule)
             {
                 WorldCapsule(capsule, shapePose, out Vector3 start, out Vector3 end, out float radius);
-                Vector3 center = platformPose.position + platformPose.rotation * Vector3.Scale(platform.center, platform.transform.lossyScale);
-                var half = Vector3.Scale(platform.size * .5f, Abs(platform.transform.lossyScale));
                 var actorMovement = shape.attachedRigidbody != null ? shape.attachedRigidbody.GetComponent<CharacterMovement>() : null;
                 if (actorMovement == null || !actorMovement.isActiveAndEnabled)
                     throw new InvalidOperationException("실제 Capsule 몸체의 활성 HMS 이동 설정이 필요합니다.");
+                if (platform is MeshCollider mesh)
+                {
+                    geometry = RequireGeometry(mesh, geometry);
+                    // 현재 Transform의 자식 offset/scale을 보존하고 물리 pose의 이동·회전만 적용한다.
+                    var world = geometry.Transform(ColliderMatrix(platform, platformPose));
+                    var meshResult = world.Inspect(start, end, radius, actorMovement.MaximumGroundAngle, normalTop,
+                        out _, out _, out playerCorrection, actorMovement.AllowHorizontalMovement, actorMovement.AllowDepthMovement);
+                    // Player는 correction을, 껍질은 아래 Box 분기의 MTD를 소비한다. Player 출력도 실제 메시 분리와 일치시킨다.
+                    bodySeparation = playerCorrection;
+                    return meshResult;
+                }
+                if (!(platform is BoxCollider box)) throw new ArgumentException("주기 발판은 Box 또는 비 Convex Mesh만 지원합니다.", nameof(platform));
+                Vector3 center = platformPose.position + platformPose.rotation * Vector3.Scale(box.center, platform.transform.lossyScale);
+                var half = Vector3.Scale(box.size * .5f, Abs(platform.transform.lossyScale));
                 var result = InspectCapsulePlacement(center, platformPose.rotation, half, start, end, radius,
                     actorMovement.MaximumGroundAngle, normalTop, actorMovement.AllowHorizontalMovement, actorMovement.AllowDepthMovement,
                     out playerCorrection);
@@ -232,6 +250,35 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                 return new OverlapResult(normalTop ? OverlapKind.SupportedTop : OverlapKind.Shallow, 0);
             throw new ArgumentException("주기 판정은 실제 Player Capsule 또는 껍질 Box만 수락합니다.", nameof(shape));
         }
+        private static MeshCapsuleGeometry.Snapshot RequireGeometry(MeshCollider mesh, MeshCapsuleGeometry.Snapshot geometry)
+        {
+            if (mesh.convex || mesh.sharedMesh == null)
+                throw new InvalidOperationException("주기 발판은 실제 삼각형을 사용하는 비 Convex MeshCollider가 필요합니다.");
+            if (geometry != null && geometry.Matches(mesh.sharedMesh)) return geometry;
+            if (!mesh.sharedMesh.isReadable)
+                throw new InvalidOperationException("주기 발판의 읽기 불가 메시 CPU 사본이 없습니다. Editor에서 BakeCollisionGeometry를 호출하고 프리팹을 저장하세요. 원본 import 변경은 필요하지 않습니다.");
+            return MeshCapsuleGeometry.Snapshot.Capture(mesh.sharedMesh);
+        }
+        private static Matrix4x4 ColliderMatrix(Collider collider, Pose pose) =>
+            Matrix4x4.TRS(pose.position, pose.rotation, Vector3.one) *
+            Matrix4x4.TRS(collider.transform.position, collider.transform.rotation, Vector3.one).inverse * collider.transform.localToWorldMatrix;
+#if UNITY_EDITOR
+        /// <summary>프리팹 이관 담당자가 연결 완료 후 호출하고 저장한다. 원본 메시/import는 변경하지 않는다.</summary>
+        public void BakeCollisionGeometry()
+        {
+            RefreshCollisionGeometry();
+        }
+        /// <summary>Editor 메인 스레드에서만 호출한다. 빈 참조를 채우지 않고 변경된 파생 데이터만 교체한다.</summary>
+        public bool RefreshCollisionGeometry()
+        {
+            var fresh = supportCollider is MeshCollider mesh && mesh.sharedMesh != null
+                ? MeshCapsuleGeometry.Snapshot.Capture(mesh.sharedMesh) : null;
+            if (fresh == null && collisionGeometry == null) return false;
+            if (fresh != null && collisionGeometry != null && collisionGeometry.ContentEquals(fresh)) return false;
+            collisionGeometry = fresh;
+            return true;
+        }
+#endif
         /// <summary>보정 전 실제 교차를 판정하고, 얕을 때만 현재 HMS 접지각/이동축으로 윗면 또는 지지 가능한 가장자리를 구한다.</summary>
         public static OverlapResult InspectCapsulePlacement(Vector3 boxCenter, Quaternion boxRotation, Vector3 boxHalfExtents,
             Vector3 capsuleStart, Vector3 capsuleEnd, float capsuleRadius, float maximumGroundAngle, bool normalTop,

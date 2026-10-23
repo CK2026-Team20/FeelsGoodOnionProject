@@ -21,11 +21,11 @@ Unity Hub에서 위 프로젝트를 지정한 버전으로 열고 import·컴파
 
 ## 사람이 확인할 플레이
 
-사람이 Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity를 열고 Play한다. 타이틀 → 새 게임 → 오프닝 → 응집형 Prototype Stage → 포포 대화 완료 또는 전체 Skip → 엔딩 → 타이틀의 한 판 흐름을 확인한다. Stage 씬을 선택하여 직접 Play하는 경우 Editor 진입 라우팅이 적용되며 오프닝이 생략된다. 에이전트는 Play 버튼·PlayMode API/CLI/pipeline·batch PlayMode 테스트·직접 플레이를 실행하지 않는다. 저장되지 않은 타인 씬을 자동 저장하지 않는다.
+Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity에서 Play하여 Title의 실제 새 게임 명령→Opening→Playing→포포 대화→Ending→Title을 확인한다. Stage 직접 Play는 EditorStart 경로라 Opening을 생략하므로 두 진입을 혼동하지 않는다. 2026-10-15 직접 지시로 에이전트 Play/Player 금지와 과거 검증·QA 역할 고정을 철회했다. 승인된 기능의 실제 Editor Play를 공식 Unity 플러그인으로 수행하고 실행 근거대로 판정한다. API 위치 준비, 실제 InputSystem 합성 입력, 사람 직접 조작, 빌드·Player 실행, 팀 평가를 구분한다. 미저장 작업·파일 소유권·Git 승인 경계는 유지하며 실행하지 않은 항목을 통과로 기록하지 않는다.
 
-Architecture의 Bootstrapper·Title·Core·Prototype/1_Stage·Stages/03_2_Stage·Stages/03_3_Stage 여섯 경로에만 Bootstrap 시작을 적용한다. 선택한 Stage2/3는 해당 Stage로 도착한다. 그 밖의 저장 씬은 현재 활성 씬에서 직접 시작한다. 역사적 Stages/03_1_Stage는 플레이어를 포함하지 않는 level-only 씬이어서 독립 Play만으로 통합 세션을 만들지는 않는다. 프로그래머가 대상을 바꿀 때 BootstrapEntryRoute의 정확한 경로 목록·설치의 SceneAsset Stage 목록·직접 진입 설정·빌드 생성 경로와 Catalog·실제 진입 검증 목록을 함께 맞춘다.
+Architecture의 Bootstrapper·Title·Core·01_Stage_Prototype 네 경로에만 통합 Bootstrap 시작을 적용한다. 현재 설치와 진입 설정에 등록한 Stage는 01_Stage_Prototype 하나다. Stage2/3와 역사적 Stages/03_1_Stage는 보존 자산이며 통합 실행 대상에서 제외한다. 그 밖의 저장 기능 씬은 기존 직접 진입 정책을 유지한다. 대상을 바꿀 때 BootstrapEntryRoute·설치 SceneAsset 목록·직접 진입 설정·빌드 생성 경로와 Catalog를 함께 맞춘다.
 
-ArchitectureInstallation.asset에는 씬 자산을, IntegrationEntrySettings.asset에는 직접 진입할 Stage 씬과 초기 조각·해금 설정을 연결한다. 초기 Pose는 해당 Stage의 실제 초기 Marker에서 조회한다. 유효 CP 접촉 뒤 저장 payload는 현재 ActorBody의 유한 월드 Position, Fragments 0..5, UnlockedAbilities 마스크 0/1/2/3의 세 항목뿐이다. StageId/CheckpointId·HP·폼·시간·대화 완료를 저장하지 않는다. 첫 저장 전에는 초기 진입 구성을 사용한다. Core1회 뒤 등록 Stage3개를 최초 additive 로드하고 retry·Title·다음 판에 씬을 유지한다. Title 씬 자체는 NewGame 때 언로드할 수 있다. 한 판 ReleaseSession/재연결과 씬 수명을 구분한다. 현재 Prototype 한 판에서 Stage1→2→3 자동 전환은 추가하지 않는다.
+ArchitectureInstallation.asset과 IntegrationEntrySettings.asset에 01_Stage_Prototype 하나를 연결한다. 시작 체크포인트 StageTrigger의 위치에 플레이어 CapsuleCollider 중심을 맞춘다. 유효 CP 접촉 뒤 payload는 트리거의 유한 월드 Position, Fragments 0..5, UnlockedAbilities 마스크 0/1/2/3 세 항목이다. 추격 직전만 당시 Collider 중심을 저장한다. 첫 저장 전에는 초기 진입 구성을 사용한다. Core/Stage는 retry에 유지하며 옵션·엔딩의 Title 복귀에는 세션 해제 후 Stage 전체→Core 순서로 언로드한다. 다음 새 게임에서 다시 로드한다. 구간 시작·끝 및 음악·시점은 StageService에서 함께 작성한다.
 
 ## 자동 기능 검증
 
@@ -54,7 +54,7 @@ QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스�
 
 ## Windows 빌드
 
-안정된 Edit Mode에서 Cooked/Integration/Build Windows Player를 실행한다. ArchitectureInstallation의 여섯 씬을 명시적으로 빌드한다. ProjectSettings/EditorBuildSettings.asset의 일반 목록을 수정할 필요가 없다.
+안정된 Edit Mode에서 Cooked/Integration/Build Windows Player를 실행한다. ArchitectureInstallation의 Bootstrap/Title/Core/01_Stage_Prototype 네 씬을 명시적으로 빌드한다. ProjectSettings/EditorBuildSettings.asset의 일반 목록을 수정할 필요가 없다. 에이전트는 이번 요청에서 빌드·Player 실행을 하지 않는다.
 
 결과 경로는 output/Tech_SYM/integration/build/Windows/CookedPrototype.exe이고 같은 폴더에 build-evidence.json이 남는다. result가 Succeeded인지, errors가 0인지 확인한다. changedProjectSettings는 빌드 전후 실제 해시 차이이며 자동 변경이 있으면 원인·diff를 감사하고 사용자 지시에 따라 보존·커밋한다. 엔진 빌드 성공과 설정 감사 결과를 분리한다. 빌드 성공과 실행 파일의 두 판 반복 동작 검증은 별개다.
 
@@ -71,3 +71,7 @@ QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스�
 Unity singleton wrapper를 SaveToSerializedFileAndForget 또는 SaveAssetIfDirty에 넘긴 첫 시도는 디스크 복원이 되지 않았다. 실제 복사 파일을 InternalEditorUtility.LoadSerializedFileAndForget로 읽은 객체에 SerializedObject로 해당 필드만 원복하고 SaveToSerializedFileAndForget로 저장한 뒤 재조회했다. 전역 SaveAssets/SaveOpenScenes나 원본 씬 저장을 사용하지 않았다. 외부 ProBuilder 변경은 복원 대상에서 제외한다.
 
 마지막 카메라 수정 뒤 전체36시나리오·9진입/종료·원본 합성 입력2판/자연 사망4회와 새 지정6씬 Windows 빌드를 다시 실행했다. 원본 동선의 합성 입력 검증과 위치 준비/복제 fixture 기능 검사는 각각 기록한다. Windows 수동 그래픽·UI/UX·FunQA는 별도 수락이며 활성 DryForge 세 문서는 사용자 결과 수락 전 유지한다.
+
+## 미저장 편집과 실제 실행
+
+Play 전 씬 구성·active·dirty·임시 설정을 기록한다. 미저장 씬은 원본을 덮어쓰지 않는 native saveAsCopy로 보존할 수 있으며 자동 저장·버림을 선택하지 않는다. 실제 Play에 미저장 위치 편집이 포함될 수 있으므로 디스크 해시만으로 실행본 일치를 주장하지 않는다. 종료 후 사용자의 원래 편집을 보존하며 clean 상태를 강제로 만들지 않는다.

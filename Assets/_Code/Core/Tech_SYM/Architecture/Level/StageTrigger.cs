@@ -17,7 +17,7 @@ namespace Cooked.Level
         [InspectorName("대화")] Dialogue = 4,
         [InspectorName("데드존")] Fall = 5,
         [InspectorName("추격 시작")] Chase = 6,
-        [InspectorName("포포 도착")] Escape = 7
+        [InspectorName("포포 도착")] Escape = 7 // 8(독립 음악 트리거)은 폐기했으며 재사용하지 않습니다.
     }
     [DisallowMultipleComponent, RequireComponent(typeof(BoxCollider))]
     public sealed class StageTrigger : MonoBehaviour
@@ -26,8 +26,6 @@ namespace Cooked.Level
         private StageService stage;
         [SerializeField, InspectorLabel("요청 종류"), Tooltip("접촉으로 요청할 기능 또는 해금할 능력을 선택하세요.")]
         private StageTriggerKind kind = StageTriggerKind.Checkpoint;
-        [SerializeField, InspectorLabel("체크포인트 지점"), Tooltip("이 접촉에 대응하는 같은 씬의 CheckpointMarker를 연결하세요. 저장 위치는 현재 ActorBody 중심입니다.")]
-        private CheckpointMarker checkpoint;
         [SerializeField, InspectorLabel("대화 선택"), Tooltip("원본 JSON TextAsset를 연결하고 그 표의 Code를 선택하세요. 해금 안내는 비워도 됩니다.")]
         private DialogueSelection dialogue = new DialogueSelection();
         [SerializeField, InspectorLabel("독립 플레이어 담당"), Tooltip("독립 씬 데드존의 SessionActorHost를 연결하세요. 현재 Player와 소유 Shell은 실행 중 주입받습니다.")]
@@ -36,16 +34,22 @@ namespace Cooked.Level
         private bool once = true;
         [SerializeField, InspectorLabel("추격 퇴로"), Tooltip("추격 시작 시 닫을 같은 씬의 퇴로를 연결하세요. 플레이어와 겹치면 시작을 보류합니다.")]
         private ChaseRetreatGate chaseRetreatGate;
+        [SerializeField, InspectorLabel("추격 무리"), Tooltip("이 트리거가 시작할 같은 씬의 ChaseRuntimeDriver를 연결하세요. 움직이는 무리 아래에 시작 센서를 넣지 마세요.")]
+        private ChaseRuntimeDriver chaseDriver;
         private ChaseRuntimeDriver chase;
         private Func<PlayerFacade, bool> saveBeforeChase;
         private bool startingChase;
         public void BindChase(ChaseRuntimeDriver driver, Func<PlayerFacade, bool> save)
         {
-            if (kind != StageTriggerKind.Chase || stage == null || chaseRetreatGate == null)
-                throw new InvalidOperationException("추격 시작 트리거에는 스테이지와 퇴로를 연결하세요.");
+            if (kind != StageTriggerKind.Chase || stage == null || chaseRetreatGate == null || chaseDriver == null)
+                throw new InvalidOperationException("추격 시작 트리거에는 스테이지, 퇴로와 추격 무리를 연결하세요.");
+            SceneComponentLookup.RequireSameScene(this, stage, "소속 스테이지");
             SceneComponentLookup.RequireSameScene(this, chaseRetreatGate, "추격 퇴로");
-            chase = driver != null ? driver : throw new ArgumentNullException(nameof(driver));
-            saveBeforeChase = save ?? throw new ArgumentNullException(nameof(save));
+            SceneComponentLookup.RequireSameScene(this, chaseDriver, "추격 무리");
+            if (driver != chaseDriver || transform.IsChildOf(driver.transform) || chaseRetreatGate.transform.IsChildOf(driver.transform))
+                throw new InvalidOperationException("작성한 추격 무리를 연결하고 시작 센서와 퇴로는 움직이는 무리 밖에 배치하세요.");
+            if (save == null) throw new ArgumentNullException(nameof(save));
+            chase = driver; saveBeforeChase = save;
         }
         public void UnbindChase() { contactRevision++; chase = null; saveBeforeChase = null; }
         private bool TryStartChase(PlayerFacade current)
@@ -94,7 +98,20 @@ namespace Cooked.Level
         private long contactRevision;
         public StageTriggerKind Kind => kind;
         public StageService Owner => stage;
-        public CheckpointMarker Checkpoint => checkpoint;
+        public ChaseRuntimeDriver ChaseDriver => chaseDriver;
+        public Pose CheckpointPose
+        {
+            get
+            {
+                var volume = GetComponent<BoxCollider>();
+                if (kind != StageTriggerKind.Checkpoint || stage == null || volume == null || !volume.isTrigger)
+                    throw new InvalidOperationException("체크포인트 종류와 소속 스테이지, Trigger BoxCollider가 필요합니다.");
+                SceneComponentLookup.RequireSameScene(this, stage, "소속 스테이지");
+                SceneComponentLookup.RequireFixedPoint(this, transform, "체크포인트 위치");
+                if (!CameraProfileValidation.IsFinite(transform.position)) throw new InvalidOperationException("체크포인트 위치가 유한하지 않습니다.");
+                return new Pose(transform.position, transform.rotation);
+            }
+        }
         public DialogueSelection Dialogue => dialogue;
         public AbilityId Ability => kind == StageTriggerKind.UnlockTear ? AbilityId.Tear : AbilityId.FormChange;
         public SessionActorHost IndependentHost => independentHost;
@@ -124,6 +141,17 @@ namespace Cooked.Level
         private void OnTriggerEnter(Collider other) => TryHandleContact(other);
         private void OnTriggerStay(Collider other) => TryHandleContact(other);
         /// <summary>Physics sensor lives with its BoxCollider. PlayerFacade is on the attached Rigidbody; Shell is a separate owned body.</summary>
+        internal bool HasActualContact(PlayerFacade candidate)
+        {
+            if (!isActiveAndEnabled || candidate == null || !candidate.isActiveAndEnabled || candidate.IsDead) return false;
+            var volume=GetComponent<BoxCollider>();
+            var capsule=candidate.GetComponent<CapsuleCollider>();
+            return volume != null && volume.enabled && volume.isTrigger && volume.gameObject.activeInHierarchy &&
+                capsule != null && capsule.enabled && capsule.gameObject.activeInHierarchy &&
+                capsule.attachedRigidbody != null && capsule.attachedRigidbody.GetComponent<PlayerFacade>() == candidate &&
+                Physics.ComputePenetration(volume,volume.transform.position,volume.transform.rotation,
+                    capsule,capsule.transform.position,capsule.transform.rotation,out _,out _);
+        }
         public bool TryHandleContact(Collider other)
         {
             if (!isActiveAndEnabled || other == null || !other.enabled || !other.gameObject.activeInHierarchy) return false;
@@ -143,6 +171,9 @@ namespace Cooked.Level
                 shell = debris;
             }
             else if (!body.TryGetComponent<PlayerFacade>(out var player) || player != current) return false;
+            // Checkpoint progress has exactly one owner; local occupancy/reset flags do not participate.
+            if (kind == StageTriggerKind.Checkpoint)
+                return stage != null && shell == null && HasActualContact(current) && stage.TryDispatch(this,current);
             occupants.RemoveWhere(c => c == null || !c.enabled || !c.gameObject.activeInHierarchy);
             acceptedFallBodies.RemoveWhere(acceptedBody => acceptedBody == null ||
                 !System.Linq.Enumerable.Any(occupants, occupant => occupant.attachedRigidbody == acceptedBody));

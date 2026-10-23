@@ -49,6 +49,7 @@ namespace Cooked.UI
     public sealed class HudViewModel : ObservableViewModel
     {
         private readonly IPlayerBridgeService bridge; private readonly IGameSessionService session;
+        private global::PlayerFormController observedForm;
         public bool Visible { get; private set; } = true;
         public string FragmentCount => bridge.HasActor ? $"{bridge.Snapshot.Fragments}/{bridge.Snapshot.MaxFragments}" : "—/—";
         public float HeartFill(int slot)
@@ -60,15 +61,37 @@ namespace Cooked.UI
         }
         public bool FormUnlocked => session.IsActive && session.IsUnlocked(AbilityId.FormChange);
         public bool TearUnlocked => session.IsActive && session.IsUnlocked(AbilityId.Tear);
+        public bool IsSmall => observedForm != null && observedForm.IsSmall;
+        public bool TearReady => TearUnlocked && bridge.HasActor && bridge.Snapshot.MaxFragments > 0 && bridge.Snapshot.Fragments >= bridge.Snapshot.MaxFragments;
         public HudViewModel(IPlayerBridgeService bridge, IGameSessionService session)
         {
             this.bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
             this.session = session ?? throw new ArgumentNullException(nameof(session));
             bridge.Changed += OnPlayer; session.Changed += OnSession;
+            ObserveForm();
         }
         public void SetVisible(bool value) { if (IsDisposed || Visible == value) return; Visible = value; Notify(); }
-        private void OnPlayer(PlayerSnapshot _) => Notify(); private void OnSession() => Notify();
-        protected override void Release() { try { bridge.Changed -= OnPlayer; } finally { session.Changed -= OnSession; } }
+        private void ObserveForm()
+        {
+            var next = bridge.HasActor ? bridge.Actor.GetComponent<global::PlayerFormController>() : null;
+            if (ReferenceEquals(next, observedForm)) return;
+            if (observedForm != null) observedForm.FormChanged -= OnForm;
+            observedForm = next;
+            if (observedForm != null) observedForm.FormChanged += OnForm;
+        }
+        private void OnForm(global::PlayerForm _) => Notify();
+        private void OnPlayer(PlayerSnapshot _) { ObserveForm(); Notify(); }
+        private void OnSession() => Notify();
+        protected override void Release()
+        {
+            try { bridge.Changed -= OnPlayer; }
+            finally
+            {
+                session.Changed -= OnSession;
+                if (observedForm != null) observedForm.FormChanged -= OnForm;
+                observedForm = null;
+            }
+        }
     }
     public sealed class WorldPromptViewModel : ObservableViewModel
     {

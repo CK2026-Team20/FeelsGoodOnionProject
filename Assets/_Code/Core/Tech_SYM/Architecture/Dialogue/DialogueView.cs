@@ -112,6 +112,11 @@ namespace Cooked.Dialogue
                 return;
             }
             bool newRow = shownSession != model.SessionId || shownRow != model.RowId;
+            // 기록 화면 뒤의 본문과 도구가 겹쳐 읽히지 않도록 표시만 전환한다.
+            panelButton.gameObject.SetActive(!model.LogOpen);
+            autoButton.gameObject.SetActive(!model.LogOpen);
+            historyButton.gameObject.SetActive(!model.LogOpen);
+            skipButton.gameObject.SetActive(!model.LogOpen);
             if (newRow)
             {
                 consumedFrame = Time.frameCount;
@@ -153,7 +158,10 @@ namespace Cooked.Dialogue
             if (model.LogOpen)
             {
                 var text = new StringBuilder();
-                foreach (var row in model.History) text.Append(row.Name).Append("\n").Append(row.Context).Append("\n\n");
+                // 첫 줄의 화자와 본문을 두 열로 정렬하고 줄바꿈은 본문 열 안에 유지한다.
+                foreach (var row in model.History)
+                    text.Append("<indent=24%><line-indent=-24%>").Append(row.Name)
+                        .Append("<pos=24%>").Append(row.Context).Append("</line-indent></indent>\n\n");
                 string next = text.Length == 0 ? "아직 전체 출력된 대화가 없습니다." : text.ToString();
                 if (shownHistory != next)
                 {

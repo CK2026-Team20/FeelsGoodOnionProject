@@ -27,8 +27,7 @@ namespace Cooked.Integration
         private Func<bool> actorViewReady;
         public void BindActorViewReadiness(Func<bool> ready)
         { ThrowIfDisposed(); actorViewReady = ready ?? throw new ArgumentNullException(nameof(ready)); }
-        private CheckpointMarker lastContactMarker;
-        private bool capturingCheckpoint;
+        public StageTrigger ActiveCheckpoint => ActiveStage.ActiveCheckpoint;
         private Func<string, CancellationToken, OperationResult, IEnumerator> prepareStage;
         public string ActiveStageId { get; private set; }
         public StageService ActiveStage => Stages.Require(ActiveStageId);
@@ -61,7 +60,7 @@ namespace Cooked.Integration
             var step = new OperationResult();
             yield return PrepareStage(ActiveStageId, token, step);
             if (step.Status != OperationStatus.Succeeded) { CopyFailure(step, result); yield break; }
-            // Actor replacement does not clear physical Marker identity or the completed dialogue ledger.
+            // Actor replacement does not clear checkpoint identity or the completed dialogue ledger.
             result.Succeed();
         }
         private static void CopyFailure(OperationResult source, OperationResult target)
@@ -75,7 +74,6 @@ namespace Cooked.Integration
         public bool GameplayVisible { get; private set; }
         public event Action ActorReady;
         public event Action ActorRemoving;
-        public event Action CheckpointCaptured;
         public event Action<bool> GameplayVisibilityChanged;
 
         public GameSessionRuntime(ServiceLocator app, SceneCatalog catalog, SessionActorHost host,
@@ -130,7 +128,6 @@ namespace Cooked.Integration
                 mask |= ability == AbilityId.FormChange ? AbilityMask.FormChange : AbilityMask.Tear;
             var initial = new CheckpointSnapshot(initialPose.position, entry.Fragments, mask);
             ActiveStageId = entryStageId;
-            lastContactMarker = null;
             Session.Begin(initial);
             Dialogue.ResetRound();
         }
@@ -138,10 +135,11 @@ namespace Cooked.Integration
         {
             ThrowIfDisposed();
             if (!Session.IsActive) throw new InvalidOperationException("Session is inactive.");
-            var saved = Session.RestoreCheckpoint();
+            var saved = ActiveStage.ResolveRestore(Session.InitialConfiguration);
+            Session.RestoreAbilities(saved);
             Stages.Require(ActiveStageId);
-            // Rotation is fresh authoring, not a third checkpoint value. Retry never re-queries a marker.
-            var pose = new Pose(saved.Position, Session.HasCheckpoint ? Quaternion.identity : ActiveStage.InitialPose.rotation);
+            // Rotation is fresh authoring; the snapshot retains position, fragments and unlocked abilities.
+            var pose = new Pose(saved.Position, ActiveStage.HasCheckpoint ? Quaternion.identity : ActiveStage.InitialPose.rotation);
             try
             {
                 host.Spawn(pose, saved.Fragments);
@@ -263,41 +261,8 @@ namespace Cooked.Integration
                 flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy) return false;
             return flow.Request(new FlowRequest(FlowCommand.RetryCheckpoint));
         }
-        public bool TryCaptureCheckpoint(string stageId, CheckpointMarker marker, PlayerFacade source)
-        {
-            if (marker == null || !CanCapture(stageId, source) || !ActiveStage.ContainsCheckpoint(marker) ||
-                ReferenceEquals(lastContactMarker, marker)) return false;
-            return Capture(source, marker);
-        }
         public bool TryCaptureBeforeChase(StageService owner, PlayerFacade source)
-        {
-            if (owner == null || !CanCapture(owner.StageId, source) || !ReferenceEquals(ActiveStage, owner)) return false;
-            return Capture(source, null);
-        }
-        private bool CanCapture(string stageId, PlayerFacade source) => !capturingCheckpoint && CanAcceptWorldRequest &&
-            stageId == ActiveStageId && source != null && Player.IsCurrentActor(source, Player.ActorGeneration) &&
-            host.ActorRoot != null && (source.transform == host.ActorRoot.transform || source.transform.IsChildOf(host.ActorRoot.transform));
-        private bool Capture(PlayerFacade source, CheckpointMarker marker)
-        {
-            capturingCheckpoint = true;
-            try
-            {
-                Session.CaptureCheckpoint(source.transform.position, Player.Snapshot.Fragments);
-                if (marker != null) lastContactMarker = marker;
-                var observers = CheckpointCaptured;
-                if (observers != null)
-                    foreach (Action observer in observers.GetInvocationList())
-                        try { observer(); }
-                        catch (Exception error) { Debug.LogException(new InvalidOperationException("완료된 체크포인트 저장의 관찰자 통지에 실패했습니다. 저장은 유지됩니다.", error), host); }
-                return true;
-            }
-            catch (ArgumentException error)
-            {
-                Debug.LogException(new InvalidOperationException("현재 Actor의 체크포인트 저장을 거절했습니다. 이전 저장을 유지합니다.", error), host);
-                return false;
-            }
-            finally { capturingCheckpoint = false; }
-        }
+            => CanAcceptWorldRequest && IsCurrentStage(owner) && owner.TryCaptureBeforeChase(source);
 
         public void Dispose()
         {
@@ -314,9 +279,9 @@ namespace Cooked.Integration
             SessionCleanup.Attempt(errors, () => { if (Session != null && Session.IsActive) Session.End(); });
             SessionCleanup.Attempt(errors, () => scope?.Dispose());
             Stages.Clear();
-            ActiveStageId = null; lastContactMarker = null;
+            ActiveStageId = null;
             prepareStage = null; actorViewReady = null;
-            ActorReady = null; ActorRemoving = null; CheckpointCaptured = null; GameplayVisibilityChanged = null;
+            ActorReady = null; ActorRemoving = null; GameplayVisibilityChanged = null;
             SessionCleanup.ThrowIfAny(errors, "Core session cleanup failed.");
         }
         private void ThrowIfDisposed() { if (disposed) throw new ObjectDisposedException(nameof(GameSessionRuntime)); }

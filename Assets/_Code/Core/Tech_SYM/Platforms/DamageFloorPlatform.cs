@@ -1,96 +1,147 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using Cooked.Authoring;
 using Cooked.Session;
 using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Platforms
 {
-    /// <summary>실제 표면의 모든 방향 접촉을 현재 플레이어의 공통 피해 경계에 전달합니다.</summary>
+    /// <summary>명시된 피해 Trigger의 접촉을 현재 플레이어의 공통 피해 경계에 전달합니다.</summary>
     [DisallowMultipleComponent]
     public sealed class DamageFloorPlatform : MonoBehaviour
     {
-        [SerializeField, InspectorLabel("물리 접촉 수집기"), Tooltip("피해 표면 BoxCollider와 같은 객체의 PlatformContacts를 연결하세요. 윗면·옆면·아랫면 접촉을 받습니다.")]
-        private PlatformContacts physicalContacts;
-        private PlatformContacts subscribedContacts;
+        [SerializeField, InspectorLabel("피해 감지 영역"), Tooltip("루트 또는 자식의 피해 Trigger들을 연결하세요. 메시 Trigger는 Convex여야 하며 지지면은 제외합니다. 비워 두면 피해를 감지하지 않습니다. 선택 시 주황색은 Box 영역, 자홍색은 Convex 입력 메시 참고선입니다.")]
+        private Collider[] damageTriggers = Array.Empty<Collider>();
+        private readonly List<DamageTriggerRelay> subscribedRelays = new List<DamageTriggerRelay>();
         private PlayerBridgeService bridge;
         private PlayerFacade actor;
         private CapsuleCollider actorBody;
         private long actorGeneration;
         private double lastDamagePhysicsStep = double.NegativeInfinity;
         private bool resolving;
-        private void OnEnable() => SubscribeContacts();
-        private void SubscribeContacts()
+
+        private void OnEnable() => ResumeBinding();
+
+        private void ResumeBinding()
         {
-            if (subscribedContacts == physicalContacts) return;
-            if (subscribedContacts != null) subscribedContacts.ContactReported -= DamageContact;
-            subscribedContacts = physicalContacts;
-            if (subscribedContacts != null) subscribedContacts.ContactReported += DamageContact;
+            if (!isActiveAndEnabled || bridge == null) return;
+            bridge.ActorChanged -= CaptureCurrentActor;
+            bridge.ActorChanged += CaptureCurrentActor;
+            CaptureCurrentActor();
+            SubscribeTriggers();
         }
+
+        // 일시 비활성화는 연결값을 보존하고 자신이 소유한 구독과 현재 몸체 캐시만 해제한다.
+        private void SuspendBinding()
+        {
+            UnsubscribeTriggers();
+            if (bridge != null) bridge.ActorChanged -= CaptureCurrentActor;
+            actor = null; actorBody = null; actorGeneration = 0;
+            lastDamagePhysicsStep = double.NegativeInfinity;
+        }
+
+        private bool IsOwnedTrigger(Collider source) => source != null && source.isTrigger &&
+            (source.transform == transform || source.transform.IsChildOf(transform)) &&
+            (!(source is MeshCollider mesh) || (mesh.convex && mesh.sharedMesh != null));
+
+        private void SubscribeTriggers()
+        {
+            UnsubscribeTriggers();
+            if (damageTriggers == null) return;
+            foreach (Collider source in damageTriggers)
+            {
+                if (source == null) continue;
+                if (!IsOwnedTrigger(source))
+                {
+                    Debug.LogError("피해 감지 영역은 루트 또는 자식의 Trigger여야 합니다. MeshCollider는 메시와 Convex 설정이 필요합니다.", this);
+                    continue;
+                }
+                var relay = source.GetComponent<DamageTriggerRelay>();
+                if (relay == null) relay = source.gameObject.AddComponent<DamageTriggerRelay>();
+                if (subscribedRelays.Contains(relay)) continue;
+                relay.ContactReported += DamageContact;
+                subscribedRelays.Add(relay);
+            }
+        }
+
+        private void UnsubscribeTriggers()
+        {
+            foreach (var relay in subscribedRelays)
+                if (relay != null) relay.ContactReported -= DamageContact;
+            subscribedRelays.Clear();
+        }
+
         public void BindPlayer(PlayerBridgeService player)
         {
             if (player == null) throw new ArgumentNullException(nameof(player));
-            if (physicalContacts == null || physicalContacts.Surface == null || physicalContacts.Surface.isTrigger ||
-                (physicalContacts.transform != transform && !physicalContacts.transform.IsChildOf(transform)))
-                throw new InvalidOperationException("피해원 루트 또는 물리 자식의 실제 비 Trigger 표면과 접촉 수집기를 연결하세요.");
-            if (ReferenceEquals(bridge, player)) return;
-            UnbindPlayer();
-            bridge = player; bridge.ActorChanged += CaptureCurrentActor;
-            CaptureCurrentActor();
-            if (isActiveAndEnabled) SubscribeContacts();
+            if (!ReferenceEquals(bridge, player))
+            {
+                UnbindPlayer();
+                bridge = player;
+            }
+            if (isActiveAndEnabled) ResumeBinding();
+            else SuspendBinding();
         }
+
         public void UnbindPlayer()
         {
-            if (bridge != null) bridge.ActorChanged -= CaptureCurrentActor;
-            bridge = null; actor = null; actorBody = null; actorGeneration = 0;
-            lastDamagePhysicsStep = double.NegativeInfinity;
+            SuspendBinding();
+            bridge = null;
         }
+
         private void CaptureCurrentActor()
         {
-            actor = bridge.Actor; actorGeneration = bridge.ActorGeneration;
-            actorBody = actor != null ? actor.GetComponent<CapsuleCollider>() : null;
-            lastDamagePhysicsStep = double.NegativeInfinity;
+            if (!isActiveAndEnabled || bridge == null) return;
+            var currentActor = bridge.Actor;
+            long currentGeneration = bridge.ActorGeneration;
+            var currentBody = currentActor != null ? currentActor.GetComponent<CapsuleCollider>() : null;
+            // 같은 바인딩의 재요청으로 동일 물리 스텝의 중복 방지를 해제하지 않는다.
+            if (actor != currentActor || actorGeneration != currentGeneration || actorBody != currentBody)
+                lastDamagePhysicsStep = double.NegativeInfinity;
+            actor = currentActor; actorGeneration = currentGeneration; actorBody = currentBody;
         }
-        private void DamageContact(Collision collision)
-        {
-            if (collision != null) TryDamageContact(collision.collider, Time.fixedTimeAsDouble);
-        }
-        /// <summary>물리 콜백 한 단계에서 피해원 하나당 현재 몸체에 한 명령만 보냅니다.</summary>
+
+        private void DamageContact(Collider other) => TryDamageContact(other, Time.fixedTimeAsDouble);
+
+        /// <summary>명시된 Trigger와 겹친 현재 몸체에 물리 단계당 피해 명령을 한 번만 보냅니다.</summary>
         public int TryDamageContact(Collider other, double physicsStep)
         {
-            if (!isActiveAndEnabled || physicalContacts == null || !physicalContacts.isActiveAndEnabled || bridge == null || actor == null ||
+            if (!isActiveAndEnabled || bridge == null || actor == null ||
                 !bridge.IsCurrentActor(actor, actorGeneration) || actor.IsDead || bridge.PhysicsPaused || resolving ||
                 !double.IsFinite(physicsStep) || physicsStep == lastDamagePhysicsStep || other == null || other != actorBody ||
-                !other.enabled || !other.gameObject.activeInHierarchy || other.attachedRigidbody == null ||
-                other.attachedRigidbody.gameObject != actor.gameObject) return 0;
-            BoxCollider surface = physicalContacts.Surface;
-            if (surface == null || !surface.enabled || surface.isTrigger) return 0;
-            resolving = true; lastDamagePhysicsStep = physicsStep;
-            try { return bridge.Damage(surface.ClosestPoint(other.bounds.center)); }
-            finally { resolving = false; }
+                !other.enabled || other.isTrigger || !other.gameObject.activeInHierarchy || other.attachedRigidbody == null ||
+                other.attachedRigidbody.gameObject != actor.gameObject || damageTriggers == null) return 0;
+            foreach (Collider source in damageTriggers)
+            {
+                if (!IsOwnedTrigger(source) || !source.enabled || !source.gameObject.activeInHierarchy ||
+                    Physics.GetIgnoreCollision(source, other) ||
+                    Physics.GetIgnoreLayerCollision(source.gameObject.layer, other.gameObject.layer)) continue;
+                // Compound 몸체의 콜백은 자기 Collider를 주지 않으므로 실제 지정 영역과의 겹침을 확인한다.
+                if (!Physics.ComputePenetration(other, other.transform.position, other.transform.rotation,
+                    source, source.transform.position, source.transform.rotation, out _, out _)) continue;
+                resolving = true; lastDamagePhysicsStep = physicsStep;
+                // Trigger 내부의 ClosestPoint는 플레이어 중심 자체가 될 수 있어 피해 영역 중심을 전달한다.
+                try { return bridge.Damage(source.bounds.center); }
+                finally { resolving = false; }
+            }
+            return 0;
         }
+
         private void FixedUpdate()
         {
-            // Kinematic 보정 중 static/kinematic 표면은 Collision callback을 주지 않을 수 있다.
-            if (bridge == null || !bridge.HasCorrectionOwner || bridge.PhysicsPaused || actorBody == null ||
-                physicalContacts == null || physicalContacts.Surface == null) return;
-            var surface = physicalContacts.Surface;
-            if (!surface.enabled || !surface.gameObject.activeInHierarchy ||
-                Physics.GetIgnoreCollision(surface, actorBody) ||
-                Physics.GetIgnoreLayerCollision(surface.gameObject.layer, actorBody.gameObject.layer)) return;
-            PlayerBridgeService.CapsuleGeometry(actorBody, out var a, out var b, out float radius);
-            foreach (var hit in Physics.CapsuleCastAll(a + Vector3.up * .01f, b + Vector3.up * .01f, radius, Vector3.down, .02f, ~0, QueryTriggerInteraction.Ignore))
-                if (hit.collider == surface)
-                { TryDamageContact(actorBody, Time.fixedTimeAsDouble); return; }
-            if (Physics.ComputePenetration(surface, surface.transform.position, surface.transform.rotation,
-                actorBody, actorBody.transform.position, actorBody.transform.rotation, out _, out _))
+            // 보정 중에도 동일한 Trigger 판정과 피해 중복 방지 경계를 사용한다.
+            if (bridge != null && bridge.HasCorrectionOwner)
                 TryDamageContact(actorBody, Time.fixedTimeAsDouble);
         }
-        public void ResetForRetry() => physicalContacts?.ResetForRetry();
-        private void OnDisable()
+
+        private void OnDrawGizmosSelected()
         {
-            if (subscribedContacts != null) subscribedContacts.ContactReported -= DamageContact;
-            subscribedContacts = null;
-            UnbindPlayer();
+            if (damageTriggers == null) return;
+            foreach (var trigger in damageTriggers) PlatformColliderGizmos.Draw(trigger, Matrix4x4.identity);
         }
+
+        public void ResetForRetry() => lastDamagePhysicsStep = double.NegativeInfinity;
+        private void OnDisable() => SuspendBinding();
+        private void OnDestroy() => UnbindPlayer();
     }
 }
