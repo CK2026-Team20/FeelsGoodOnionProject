@@ -323,7 +323,7 @@ Material:
     - _SelfShadowRealTimeShadowColorPower: 1
     - _SelfShadowRealtimeShadowIntensity: 1
     - _SelfShadowShadowTAtViewDirection: 0
-    - _SelfShadowThreshold: 0.986
+    - _SelfShadowThreshold: 1
     - _ShadowColorTexturePower: 0.6
     - _ShadowHardness: 0.093
     - _ShadowTColorPower: 1
