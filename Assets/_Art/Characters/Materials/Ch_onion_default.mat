@@ -416,7 +416,7 @@ Material:
     - _EnergyConservingSpecularColor: 1
     - _EnvironmentReflections: 1
     - _EnvironmentalLightingIntensity: 0.25
-    - _FarDistanceMaxWidth: 0.5
+    - _FarDistanceMaxWidth: 1
     - _Farthest_Distance: 100
     - _FirstShadeOverridden: 0
     - _FirstShadeVisible: 1
@@ -551,7 +551,7 @@ Material:
     - _NoiTexAffStraWidt: 0
     - _NoisTexInten: 1
     - _NoiseSize: 100
-    - _NoisyOutlineIntensity: 0
+    - _NoisyOutlineIntensity: 0.2
     - _NorMapAsDis: 0
     - _NormalMapIntensity: 1
     - _NormalMapSpace: 0
@@ -759,7 +759,7 @@ Material:
     - _ObjectForward: {r: 0, g: 0, b: 0, a: 0}
     - _ObjectRight: {r: 0, g: 0, b: 0, a: 0}
     - _OutResi: {r: 1, g: 1, b: 1, a: 2}
-    - _OutlineColor: {r: 0.122641504, g: 0.081568174, b: 0.081568174, a: 1}
+    - _OutlineColor: {r: 0.23584908, g: 0.08121218, b: 0.08121218, a: 1}
     - _OutlineMaskColor: {r: 0, g: 0, b: 0, a: 1}
     - _OutlineOffset: {r: 0, g: 0, b: 0, a: 1}
     - _Outline_Color: {r: 0.46226418, g: 0.39030796, b: 0.39030796, a: 1}
