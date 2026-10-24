@@ -40,7 +40,7 @@ Material:
     m_TexEnvs:
     - _AlphaTransitionMap:
         m_Texture: {fileID: 2800000, guid: 6b08335485af66d458dc218c87b6f7d3, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Scale: {x: 2, y: 1}
         m_Offset: {x: 0, y: 0}
     - _AlphaTransitionMap2DArray:
         m_Texture: {fileID: 0}
@@ -108,7 +108,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _FlowMap:
         m_Texture: {fileID: 2800000, guid: e039e7f7a2a5d974baecbf2a069a678d, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Scale: {x: 2, y: 1}
         m_Offset: {x: 0, y: 0}
     - _GradientMap:
         m_Texture: {fileID: 0}
@@ -156,7 +156,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _VertexDeformationMap:
         m_Texture: {fileID: 0}
-        m_Scale: {x: 0.5, y: 1}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 1, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
@@ -178,7 +178,7 @@ Material:
     - _AlphaTransitionMapChannelsX: 0
     - _AlphaTransitionMapMode: 0
     - _AlphaTransitionMapOffsetXCoord: 1
-    - _AlphaTransitionMapOffsetYCoord: 0
+    - _AlphaTransitionMapOffsetYCoord: 1
     - _AlphaTransitionMapProgress: 0
     - _AlphaTransitionMapProgressCoord: 0
     - _AlphaTransitionMapRandomRowCoord: 0
@@ -200,10 +200,10 @@ Material:
     - _AlphaTransitionMapSecondTextureSliceCount: 4
     - _AlphaTransitionMapSliceCount: 4
     - _AlphaTransitionMode: 2
-    - _AlphaTransitionProgress: 0.055
-    - _AlphaTransitionProgressCoord: 0
+    - _AlphaTransitionProgress: 0.071
+    - _AlphaTransitionProgressCoord: 21
     - _AlphaTransitionProgressCoordSecondTexture: 0
-    - _AlphaTransitionProgressSecondTexture: 0.119
+    - _AlphaTransitionProgressSecondTexture: 0
     - _AlphaTransitionSecondTextureBlendMode: 2
     - _BaseMapChannel: 0
     - _BaseMapMirrorSampling: 0
@@ -267,7 +267,7 @@ Material:
     - _EmissionMapRowCount: 1
     - _EmissionMapSliceCount: 4
     - _EnvironmentReflections: 1
-    - _FlowIntensity: 0
+    - _FlowIntensity: 0.1
     - _FlowIntensityCoord: 0
     - _FlowMapChannelsX: 0
     - _FlowMapChannelsY: 1
@@ -356,7 +356,7 @@ Material:
     - _VertexDeformationIntensity: 0.05
     - _VertexDeformationIntensityCoord: 0
     - _VertexDeformationMapChannel: 0
-    - _VertexDeformationMapOffsetXCoord: 11
+    - _VertexDeformationMapOffsetXCoord: 0
     - _VertexDeformationMapOffsetYCoord: 0
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1

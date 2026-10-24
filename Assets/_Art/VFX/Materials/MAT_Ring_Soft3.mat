@@ -212,7 +212,7 @@ Material:
     - _AlphaTransitionMapSliceCount: 4
     - _AlphaTransitionMode: 1
     - _AlphaTransitionProgress: 0
-    - _AlphaTransitionProgressCoord: 11
+    - _AlphaTransitionProgressCoord: 31
     - _AlphaTransitionProgressCoordSecondTexture: 0
     - _AlphaTransitionProgressSecondTexture: 0
     - _AlphaTransitionSecondTextureBlendMode: 0
