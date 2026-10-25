@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>눈물 스킬의 설정 데이터입니다.</summary>
 [CreateAssetMenu(fileName = "TearSkillDefinition", menuName = "Skills/Tear")]
@@ -12,9 +13,15 @@ public class TearSkillDefinition : SkillDefinition
     [Tooltip("사용 요청 수락 후 실제 발동까지 걸리는 시간입니다.\n(단위: 초)")]
     private float preparationTime = 0f;
 
+    [FormerlySerializedAs("effectRadius")]
     [SerializeField, Min(0f)]
-    [Tooltip("효과 중심을 기준으로 스턴 대상을 검사할 반경입니다.\n(단위: Unity 월드 단위)")]
-    private float effectRadius = 3f;
+    [InspectorName("기본 형태 반경")]
+    [Tooltip("기본 형태에서 스턴 대상을 검사할 반경입니다. Unity 월드 단위이며 0이면 대상을 검사하지 않습니다. 청록색(Cyan) 기즈모로 표시됩니다.")]
+    private float normalFormRadius = 0.5f;
+
+    [SerializeField, Min(0f), InspectorName("작은 형태 반경")]
+    [Tooltip("작은 형태에서 스턴 대상을 검사할 반경입니다. Unity 월드 단위이며 0이면 대상을 검사하지 않습니다. 기본 형태 반경 및 Visual Scale과 독립적이며 초록빛 청록색 기즈모로 표시됩니다.")]
+    private float smallFormRadius = 0.3f;
 
     [SerializeField, Min(0f)]
     [Tooltip("대상에게 적용할 스턴 지속 시간입니다.\n(단위: 초)")]
@@ -32,8 +39,20 @@ public class TearSkillDefinition : SkillDefinition
     /// </remarks>
     public float PreparationTime => preparationTime;
 
-    /// <summary>효과 중심을 기준으로 대상을 검사할 반경입니다.</summary>
-    public float EffectRadius => effectRadius;
+    /// <summary>기본 형태에서 효과 중심을 기준으로 대상을 검사할 월드 반경입니다.</summary>
+    public float NormalFormRadius => SanitizeRadius(normalFormRadius);
+
+    /// <summary>작은 형태에서 효과 중심을 기준으로 대상을 검사할 월드 반경입니다.</summary>
+    public float SmallFormRadius => SanitizeRadius(smallFormRadius);
+
+    /// <summary>현재 형태에 따른 월드 반경입니다. 공유 설정 자산의 값을 변경하지 않습니다.</summary>
+    public float GetEffectRadius(PlayerForm form)
+        => form == PlayerForm.Small ? SmallFormRadius : NormalFormRadius;
+
+    private static float SanitizeRadius(float radius)
+    {
+        return float.IsNaN(radius) || float.IsInfinity(radius) ? 0f : Mathf.Max(0f, radius);
+    }
 
     /// <summary>대상에게 적용할 스턴 지속 시간입니다.<br/>
     /// (단위: s)</summary>

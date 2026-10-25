@@ -8,6 +8,7 @@ public class TearSkill : PlayerSkill
     private readonly TearSkillDefinition definition;
     private readonly PlayerModel model;
     private readonly Transform owner;
+    private readonly PlayerFormController formController;
     private Transform effectRoot;
     private Func<Vector3, Collider, IStunnable, bool> targetValidator;
 
@@ -28,11 +29,17 @@ public class TearSkill : PlayerSkill
     
     public int RequiredFragments => definition.RequiredFragments;
 
+    /// <summary>현재 형태에 따른 효과 반경입니다. 실제 발동 순간에 확정합니다.</summary>
+    public float CurrentEffectRadius => definition.GetEffectRadius(
+        formController != null ? formController.CurrentForm : PlayerForm.Normal);
+
     /// <param name="definition">눈물 스킬 설정</param>
     /// <param name="model">사용자의 플레이어 모델</param>
     /// <param name="owner">플레이어의 최상위 Transform입니다.
     /// 범위의 중심과, 자기 자신을 제외하는 기준으로 사용합니다.</param>
-    public TearSkill(TearSkillDefinition definition, PlayerModel model, Transform owner) : base(definition)
+    /// <param name="formController">현재 형태의 소유자입니다. 생략하면 기본 형태의 반경을 사용합니다.</param>
+    public TearSkill(TearSkillDefinition definition, PlayerModel model, Transform owner,
+        PlayerFormController formController = null) : base(definition)
     {
         if (model == null) throw new ArgumentNullException(nameof(model));
         if (owner == null) throw new ArgumentNullException(nameof(owner));
@@ -40,6 +47,7 @@ public class TearSkill : PlayerSkill
         this.definition = definition;
         this.model = model;
         this.owner = owner;
+        this.formController = formController;
     }
 
     /// <summary>새로운 사용 요청을 받을 수 있는지 검사</summary>
@@ -113,6 +121,7 @@ public class TearSkill : PlayerSkill
 
         // 실제 발동 순간의 위치를 사용
         Vector3 center = targetValidator != null ? effectRoot.position : owner.position;
+        float radius = CurrentEffectRadius;
         Phase = PlayerSkillPhase.Executing;
 
         try
@@ -129,7 +138,7 @@ public class TearSkill : PlayerSkill
             Debug.Log($"[눈물 스킬 발동] 남은 조각: {model.CurrentSkillFragment} / " + $"적용할 쿨다운: {Cooldown}초", owner);
             #endif
             NotifyActivated();
-            ApplyStun(center);
+            ApplyStun(center, radius);
             return true;
         }
         finally
@@ -145,10 +154,11 @@ public class TearSkill : PlayerSkill
     }
 
     /// <summary>범위 내 대상을 찾고 동일 대상에게 한 번씩 스턴을 시도합니다.</summary>
-    private void ApplyStun(Vector3 center)
+    private void ApplyStun(Vector3 center, float radius)
     {
+        if (radius <= 0f) return;
         // 추후 레이어를 나누게 되면 Layer부분 수정
-        Collider[] colliders = Physics.OverlapSphere(center, definition.EffectRadius, Physics.AllLayers, QueryTriggerInteraction.Collide);
+        Collider[] colliders = Physics.OverlapSphere(center, radius, Physics.AllLayers, QueryTriggerInteraction.Collide);
         HashSet<IStunnable> processedTargets = new HashSet<IStunnable>();
         
         int stunMilliseconds = Mathf.RoundToInt(definition.StunDuration * 1000f);
