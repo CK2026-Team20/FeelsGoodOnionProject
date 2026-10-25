@@ -32,12 +32,16 @@ public sealed class PlayerFormController : MonoBehaviour
     [SerializeField] private PlayerDebris debrisPrefab;
 
     [Header("Small Form Collider")]
-    [Tooltip("작은 형태의 캡슐 반경입니다. 루트 로컬 단위입니다.")]
-    [SerializeField, Min(0.001f)]
+    [SerializeField, InspectorName("Small Collider 자동 계산")]
+    [Tooltip("초기 NormalVisual 대비 SmallVisual의 균일 Scale 비율로 Small 캡슐을 계산합니다. 끄면 수동 반경·높이를 사용합니다. 같은 모델과 회전, 발 위치 정렬을 기준으로 합니다.")]
+    private bool autoScaleSmallCollider = true;
+
+    [Tooltip("자동 계산을 끄거나 계산할 수 없을 때 사용할 Small 캡슐 반경입니다. 루트 로컬 단위입니다.")]
+    [SerializeField, Min(0.001f), InspectorName("수동 Small 반경")]
     private float smallRadius = 0.25f;
 
-    [Tooltip("작은 형태의 캡슐 전체 높이입니다. 지름 이상이어야 합니다.")]
-    [SerializeField, Min(0.002f)]
+    [Tooltip("자동 계산을 끄거나 계산할 수 없을 때 사용할 Small 캡슐 전체 높이입니다. 루트 로컬 단위이며 지름 이상이어야 합니다.")]
+    [SerializeField, Min(0.002f), InspectorName("수동 Small 높이")]
     private float smallHeight = 1f;
 
     [Header("Restore Space")]
@@ -73,6 +77,11 @@ public sealed class PlayerFormController : MonoBehaviour
     private float normalRadius;
     private float normalHeight;
     private float worldScale;
+    private Vector3 initialNormalVisualScale;
+    private Vector3 initialSmallVisualScale;
+    private Quaternion initialNormalVisualRotation;
+    private Quaternion initialSmallVisualRotation;
+    private bool smallColliderWarningReported;
 
     private bool initialized;
     private bool debrisRecovered = true;
@@ -195,6 +204,11 @@ public sealed class PlayerFormController : MonoBehaviour
 
         normalVisual = normal.gameObject;
         smallVisual = small.gameObject;
+        // 애니메이션의 일시적인 Scale 변화가 물리 캡슐 크기를 바꾸지 않게 작성된 초기 값을 보존합니다.
+        initialNormalVisualScale = normal.localScale;
+        initialSmallVisualScale = small.localScale;
+        initialNormalVisualRotation = normal.localRotation;
+        initialSmallVisualRotation = small.localRotation;
 
         normalAnimator = normal.GetComponentInChildren<Animator>(true);
         smallAnimator = small.GetComponentInChildren<Animator>(true);
@@ -448,6 +462,61 @@ public sealed class PlayerFormController : MonoBehaviour
     }
 
     /// <summary>
+    /// Normal 캡슐과 초기 Visual 배율로 Small 크기를 계산합니다. 초기화 전 호출은 편집 미리보기이며 상태를 변경하지 않습니다.
+    /// </summary>
+    /// <remarks>계산 실패 시 기존 수동 크기를 반환하고 false와 사유를 전달합니다. 중심은 형태 적용 시 기존 발점을 유지해 계산합니다.</remarks>
+    public bool TryGetSmallColliderSize(out float radius, out float height, out string reason)
+    {
+        radius = smallRadius;
+        height = Mathf.Max(smallHeight, radius * 2f);
+        reason = null;
+        if (!autoScaleSmallCollider) return true;
+
+        var root = visualRoot != null ? visualRoot : transform.Find("VisualRoot");
+        var normal = root != null ? root.Find("NormalVisual") : null;
+        var small = root != null ? root.Find("SmallVisual") : null;
+        var referenceCapsule = initialized ? capsule : GetComponent<CapsuleCollider>();
+        if (normal == null || small == null || referenceCapsule == null)
+        {
+            reason = "NormalVisual·SmallVisual과 루트 CapsuleCollider가 필요합니다.";
+            return false;
+        }
+
+        Vector3 normalScale = initialized ? initialNormalVisualScale : normal.localScale;
+        Vector3 smallScale = initialized ? initialSmallVisualScale : small.localScale;
+        Quaternion normalRotation = initialized ? initialNormalVisualRotation : normal.localRotation;
+        Quaternion smallRotation = initialized ? initialSmallVisualRotation : small.localRotation;
+        if (!IsPositiveFinite(normalScale.x) || !IsPositiveFinite(normalScale.y) || !IsPositiveFinite(normalScale.z) ||
+            !IsPositiveFinite(smallScale.x) || !IsPositiveFinite(smallScale.y) || !IsPositiveFinite(smallScale.z))
+        {
+            reason = "두 Visual의 Scale은 0보다 큰 유한한 값이어야 합니다.";
+            return false;
+        }
+
+        Vector3 ratio = new Vector3(smallScale.x / normalScale.x, smallScale.y / normalScale.y, smallScale.z / normalScale.z);
+        if (!IsPositiveFinite(ratio.x) || !IsPositiveFinite(ratio.y) || !IsPositiveFinite(ratio.z) ||
+            !Mathf.Approximately(ratio.x, ratio.y) || !Mathf.Approximately(ratio.y, ratio.z) ||
+            Quaternion.Angle(normalRotation, smallRotation) > 0.01f)
+        {
+            reason = "같은 회전의 Visual에 X·Y·Z가 동일한 축소 비율이 필요합니다.";
+            return false;
+        }
+
+        float referenceRadius = initialized ? normalRadius : referenceCapsule.radius;
+        float referenceHeight = initialized ? normalHeight : Mathf.Max(referenceCapsule.height, referenceRadius * 2f);
+        float scaledRadius = referenceRadius * ratio.x;
+        float scaledHeight = referenceHeight * ratio.x;
+        if (!IsPositiveFinite(scaledRadius) || !IsPositiveFinite(scaledHeight))
+        {
+            reason = "Scale 비율과 Normal 캡슐로 유효한 Small 크기를 계산할 수 없습니다.";
+            return false;
+        }
+        radius = Mathf.Max(0.001f, scaledRadius);
+        height = Mathf.Max(scaledHeight, radius * 2f);
+        return true;
+    }
+
+    /// <summary>
     /// 형태에 맞춰 Collider, 외형, 점프 높이와 무거움을 변경합니다.
     /// </summary>
     /// <remarks>
@@ -458,10 +527,13 @@ public sealed class PlayerFormController : MonoBehaviour
     {
         bool useSmall = form == PlayerForm.Small;
 
-        float radius = useSmall ? smallRadius : normalRadius;
-        float height = useSmall
-            ? Mathf.Max(smallHeight, radius * 2f)
-            : normalHeight;
+        float radius = normalRadius;
+        float height = normalHeight;
+        if (useSmall && !TryGetSmallColliderSize(out radius, out height, out string reason) && !smallColliderWarningReported)
+        {
+            smallColliderWarningReported = true;
+            Debug.LogWarning($"Small Collider 자동 계산 실패: {reason} 기존 수동 크기를 사용합니다.", this);
+        }
 
         capsule.radius = radius;
         capsule.height = height;

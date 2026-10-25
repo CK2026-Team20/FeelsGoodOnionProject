@@ -28,7 +28,7 @@ public sealed class PlayerAnimationPlayback
     /// <summary>FSM 상태와 이동 표현을 갱신하고, 필요한 경우 일회성 표현을 중단합니다.</summary>
     /// <param name="state">최신 FSM 상태</param>
     /// <param name="useWalk">Move 상태에서 걷기를 사용할지 여부. false이면 달리기를 사용합니다.</param>
-    /// <remarks>상호작용·눈물·형태 전환 재생 중에도 기본 표현을 갱신하여 완료 시 최신 상태로 복귀합니다.</remarks>
+    /// <remarks>일회성 표현 중에도 기본 표현을 갱신하여 완료 시 최신 상태로 복귀합니다. 착지는 대기·이동 중 유지하고 공중 상태로 전환되면 중단합니다.</remarks>
     public void Refresh(PlayerState state, bool useWalk)
     {
         currentState = state;
@@ -44,7 +44,7 @@ public sealed class PlayerAnimationPlayback
         }
 
         if (state == PlayerState.Dead || state == PlayerState.Knockback ||
-            (activeOneShot == PlayerAnimationId.Land && state != PlayerState.Idle))
+            (activeOneShot == PlayerAnimationId.Land && state != PlayerState.Idle && state != PlayerState.Move))
         {
             activeOneShot = null;
         }
@@ -64,7 +64,7 @@ public sealed class PlayerAnimationPlayback
     {
         int priority = GetPriority(animation);
         if (currentState == PlayerState.Dead || currentState == PlayerState.Knockback) return false;
-        if (animation == PlayerAnimationId.Land && currentState != PlayerState.Idle) return false;
+        if (animation == PlayerAnimationId.Land && currentState != PlayerState.Idle && currentState != PlayerState.Move) return false;
         if (activeOneShot.HasValue && GetPriority(activeOneShot.Value) > priority) return false;
 
         activeOneShot = animation;
