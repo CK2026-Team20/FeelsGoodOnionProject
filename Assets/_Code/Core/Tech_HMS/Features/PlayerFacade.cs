@@ -159,7 +159,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
 
         if (tearSkillDefinition != null)
         {
-            TearSkill tearSkill = new TearSkill(tearSkillDefinition, model, transform);
+            TearSkill tearSkill = new TearSkill(tearSkillDefinition, model, transform, formController);
             skillController.Equip(TearSlotIndex, tearSkill);
         }
         else
@@ -606,7 +606,7 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         skillPresentation.Clear();
     }
 
-    /// <summary>PC 선택 시 눈물 스킬의 효과 범위를 표시</summary>
+    /// <summary>눈물 스킬의 기본 형태(청록색)와 작은 형태(초록빛 청록색) 범위를 동시에 표시합니다.</summary>
     private void OnDrawGizmos()
     {
         if (tearSkillDefinition == null) return;
@@ -614,7 +614,9 @@ public sealed class PlayerFacade : MonoBehaviour, IDamageable, IKnockbackable
         Color previousColor = Gizmos.color;
 
         Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, tearSkillDefinition.EffectRadius);
+        Gizmos.DrawWireSphere(transform.position, tearSkillDefinition.GetEffectRadius(PlayerForm.Normal));
+        Gizmos.color = new Color(0f, 1f, 0.5f);
+        Gizmos.DrawWireSphere(transform.position, tearSkillDefinition.GetEffectRadius(PlayerForm.Small));
         Gizmos.color = previousColor;
     }
     
