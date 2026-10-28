@@ -417,7 +417,7 @@ Material:
     - _EnergyConservingSpecularColor: 1
     - _EnvironmentReflections: 1
     - _EnvironmentalLightingIntensity: 0.25
-    - _FarDistanceMaxWidth: 0.5
+    - _FarDistanceMaxWidth: 0.9
     - _Farthest_Distance: 100
     - _FirstShadeOverridden: 0
     - _FirstShadeVisible: 1
@@ -552,7 +552,7 @@ Material:
     - _NoiTexAffStraWidt: 0
     - _NoisTexInten: 1
     - _NoiseSize: 100
-    - _NoisyOutlineIntensity: 0.314
+    - _NoisyOutlineIntensity: 0.31
     - _NorMapAsDis: 0
     - _NormalMapIntensity: 1
     - _NormalMapSpace: 0
