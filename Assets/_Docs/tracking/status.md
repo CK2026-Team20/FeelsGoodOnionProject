@@ -1,5 +1,15 @@
 # 현재 요구와 검증 상태
 
+## 2026-10-29 프로토타입 진입 복구
+
+Stationary3개(비활성 포함)의 씬 인스턴스 물리 회전을 외형 자식으로 이관하고 Enemys/Patrol을 3cm 올렸다. 원본 적 prefab/스케일/코드는 보존했다. 실제 Stage 직접 진입, Retry, Title 복귀, NewGame→오프닝 Skip→Playing 및 플레이 옵션 열기/닫기를 확인했다. 새 Console 오류0. 아래 Icons 작업 때 기록한 진입 차단은 이번 실행에서 해소됐으며 HUD 전 상태·전체 플레이 검증을 뜻하지 않는다. [검증](prototype-entry-fix-2026-10-29/테스트%20및%20검증%20항목.md).
+
+## 2026-10-29 Icons UI 적용·기존 크기 보존
+
+옵션 Frame/Bar_bg/Bar/Button 4종을 GlobalUiRoot의 10개 Image에 연결하고 RGB 7개를 흰색으로 변경했다. 기존 HP/Q/E6종 참조는 유지했다. Sprite/Color 외 전체 프리팹 필드 동일, RectTransform39개·Transform1개 및 원본 Icons24파일 해시를 보존했다. 실제 타이틀 옵션에서 값9회·합성 드래그3개·닫기/재열기와 화면을 확인했다. 최댓값 손잡이와 100 글자 일부 겹침은 크기·배치 보존 조건에 따라 남겼다.
+
+새 게임은 Stationary 물리 루트 회전/배율과 Patrol 안전높이 오류로 Recovering→Title 복귀하여 플레이 HUD/옵션은 미검증이다. 과거 통합 성공을 현재 통과로 승계하지 않는다. 원래 Stage isDirty=false로 복귀했으며 Git 작업은 없다. [명세](ui-icons-2026-10-29/기능%20명세서.md), [리뷰](ui-icons-2026-10-29/코드%20리뷰.md), [검증](ui-icons-2026-10-29/테스트%20및%20검증%20항목.md).
+
 ## 2026-10-18 리소스 참조 복구·실제 씬 왕복
 
 Stage6구간의 끊어진 음악 GUID와 CinematicCatalog 원화8참조를 현재 제공 자산에 연결했다. 활성 Patrol의 지형 아래 순찰 끝점은 Stage 인스턴스 위치 override로 보정했다. 실제 Bootstrap→Title→Opening→Playing, 옵션 Title 복귀 후 재진입, Retry, Ending 자동 완료 후 재진입을 검증했다. 통합55개와 메모/음량10개 검사 통과다. ESC/F 합성 입력과 실제 UI 이벤트/API 준비를 사용했으며 전체 레벨 자연 동선이나 빌드 완료를 뜻하지 않는다. 이전 UI 작업의 음악/컷신 준비 차단과 Patrol 오류는 이번 실행에서 해소됐다.
