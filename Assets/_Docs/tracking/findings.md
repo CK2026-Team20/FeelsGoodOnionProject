@@ -1,8 +1,8 @@
 # 열린 문제와 검증 제한
 
-## 2026-10-29 본편 검증 중 Editor 네이티브 충돌
+## 2026-10-29 본편 Editor 네이티브 충돌 — 전환 순서 수정 후 비재현
 
-TitlePlayChecks 실행 중 GPUResidentDrawer/ObjectDispatcher 스택의 네이티브 충돌로 Editor 연결이 종료됐다. 원인을 게임 코드로 확정하지 않는다. 저장된 구현과 기존 통과 증거는 보존했다. 공식 재실행이 Scene Backup Detected 대화상자로 차단되어 Keep Backups 사용자 응답이 필요하다. 전체 본편 회귀·비개발 빌드 및 직접 테스트 타이틀 복귀 마지막 수정 검증을 남긴다. 근거와 재개 순서는 [검증 문서](ready-debug-authoring-2026-10-29/테스트%20및%20검증%20항목.md).
+기존 Title 선행 언로드에서 GPUResidentDrawer/ObjectDispatcher 충돌을 재현했다. Core·Stage 준비 후 Title 해제로 변경하고 원본 렌더 설정에서 실제 오프닝 ESC 복귀2회 및 Playing 복귀를 통과했다. 버전6000.6.0f1과 렌더 설정은 유지한다. 엔진 내부 원인을 확정하거나 모든 장면의 재발 가능성이 사라졌다고 선언하지 않는다. 복구 창 대기는 해소했고 백업을 output에 보존했다. 비개발 빌드/직접 테스트 종료도 통과했다. 실제 엔딩·부분 로드 실패 주입·전체 본편 자연 QA는 남는다. [검증](ready-debug-authoring-2026-10-29/테스트%20및%20검증%20항목.md).
 
 
 ## 2026-10-29 프로토타입 진입 오류 해결
