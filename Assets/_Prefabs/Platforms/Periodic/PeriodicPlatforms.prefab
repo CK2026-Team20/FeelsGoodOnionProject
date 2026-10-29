@@ -89,6 +89,7 @@ MonoBehaviour:
     source: {fileID: 0}
     vertices: []
     triangles: 
+    sourceRevision: 
   motion: {fileID: 0}
   lifetime: 5
   hiddenSeconds: 2
