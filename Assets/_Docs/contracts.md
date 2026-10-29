@@ -1,6 +1,8 @@
 # 협업·데이터 계약
 
-> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
+> 아래 구조·API 설명은 현재 구현 사실이다. V1.8 요구를 이미 구현했다는 뜻이 아니다. 컷신 복귀·타이틀·카메라·추격 차이는 [구조 차이 목록](tracking/system-v18-2026-10-29/구조%20차이%20목록.md)을 따른다.
+
+> 현행 시스템 권위는 V1.8 활성 본문 → 이전 사용자 기능 명세 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
 
 ## 상태와 외부 공개 API
 
@@ -30,11 +32,11 @@ Scene 설정은 실제 SceneAsset을 사용한다. StageService가 같은 씬의
 
 추격 시작 트리거의 chaseDriver는 같은 씬의 실제 ChaseRuntimeDriver다. BindChase는 작성한 무리와 주입된 실행기의 일치, 같은 씬 Stage/퇴로, 고정 센서·퇴로가 움직이는 무리 밖에 있는 것을 검증한다. Core는 활성 스테이지 트리거에서 받은 실행기만 중복 없이 초기화하고 연결 당시 참조로 Shutdown한다. 추격이 없는 스테이지는 실행기를 요구하지 않는다. 기존 추격의 저장→시작→퇴로 닫기 순서는 유지한다.
 
-App 출력 Camera/Brain/AudioListener는 각1개이고 Core의 Side·Corridor·Quarter 리그를 LevelCameraService가 표현한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
+App 출력 Camera/Brain/AudioListener는 각1개이고 Core의 Side·Corridor·Quarter 리그를 LevelCameraService가 표현한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. [현재 구현·V1.8 미반영] 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
 
 구도 수치의 원본은 StageService의 sideView/corridorView/quarterView다. LevelCameraService는 변경된 값만 실제 출력에 적용한다. 잘못된 값은 마지막 유효 구도를 보존하며 일시정지 중에는 표시만 갱신하고 전환 시간을 진행하지 않는다.
 
-새 시작 체크포인트마다 플레이어 Capsule 중심을 해당 시작 위치로 DOMove 보정한다. 끝은 저장만 하고 현재 구간·시점을 바꾸지 않는다. 같은 시점의 새 시작은 카메라 재선택·blend 재시작만 생략하며 보정·저장·음악은 수행한다. 새 유효 시작은 이전 보정·전환을 취소하고 최신 요청이 완료하도록 한다. 사망·취소·Actor/Stage 해제 때 자기 트윈·보정 소유권·입력 제한을 반환하며 낡은 callback은 상태를 바꾸지 못한다. 사용 중인 차단 장치만 플레이어 보정 뒤 고정 목표로 이동한다.
+새 시작 체크포인트마다 플레이어 Capsule 중심을 해당 시작 위치로 DOMove 보정한다. 끝은 저장만 하고 현재 구간·시점을 바꾸지 않는다. 같은 시점의 새 시작은 카메라 재선택·blend 재시작만 생략하며 보정·저장·음악은 수행한다. [현재 구현·V1.8 미반영] 새 유효 시작은 이전 보정·전환을 취소하고 최신 요청을 수행한다. V1.8 목표는 전환 중 추가 전환 금지다. 사망·취소·Actor/Stage 해제 때 자기 트윈·보정 소유권·입력 제한을 반환하며 낡은 callback은 상태를 바꾸지 못한다. 사용 중인 차단 장치만 플레이어 보정 뒤 고정 목표로 이동한다.
 
 초기 준비와 Retry는 서비스의 첫/복귀 구간으로 카메라를 직접 준비한다. 공간 포함 검사나 소비된 트리거의 재접촉으로 복귀 구도를 선택하지 않는다. 카메라 맥락은 StageService 실행 상태이며 Snapshot payload가 아니다.
 

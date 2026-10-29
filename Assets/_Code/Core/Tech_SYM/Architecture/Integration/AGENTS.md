@@ -1,6 +1,6 @@
 # 시스템 조립
 
-현재 기준은 Assets/_Docs/planning-index.md의 V1.6과 최신 직접 지시다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
+현재 시스템 기준은 Assets/_Docs/planning-index.md의 V1.8이며 이전 사용자 기능 명세와 기존 구현보다 우선한다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
 
 AppComposition은 부모 없는 ServiceLocator와 앱 startup/shutdown을 직접 소유하며 앱 출력 Camera/Brain/AudioListener 각1개와 음량/Flow를 소유한다. Foundation/Bootstrapper.cs는 이 소유자에 통합 후 제거했으며 App.cs는 없다. Core는 앱을 부모로 하는 한 판의 서비스 범위·Side/Corridor/Quarter 리그·ActorHost·UI를 조립한다. 같은 상태/업무를 이곳에 복제하지 않는다. 통합 카메라 구도·우선순위·추적·경계·전환은 LevelCameraService가 소유한다. Brain 출력 뒤 최종 위치도 서비스가 경계로 제한한다. HMS 카메라 Controller는 기존 독립 네 rig용이다.
 

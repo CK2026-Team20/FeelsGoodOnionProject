@@ -1,6 +1,6 @@
 # 물리 발판
 
-현재 기준은 Assets/_Docs/planning-index.md의 V1.6과 최신 직접 지시다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
+현재 시스템 기준은 Assets/_Docs/planning-index.md의 V1.8이며 이전 사용자 기능 명세와 기존 구현보다 우선한다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
 
 KinematicPlatformMotion은 물리 이동의 단일 작성자, PlatformContacts는 실제 윗면 콜백/점유, 종류별 컨트롤러는 진행 목적/상태를 소유한다. 신규 구조는 Root 로직과 명시적으로 주입받는 PhysicsBody/Contacts 자식이다. 현재 GetComponent/RequireComponent 및 콜백 위치를 실제 코드와 함께 이관하며 같은 물체에 HMS 이동자를 중복 조립하지 않는다.
 

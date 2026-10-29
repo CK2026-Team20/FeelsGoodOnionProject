@@ -1,5 +1,11 @@
 # 현재 요구와 검증 상태
 
+## 2026-10-29 시스템 V1.8 문서 교체
+
+현행 시스템 원본을 V1.8로 교체하고 V1.6 DOCX·메타를 제거했다. V1.8 활성 본문이 이전 사용자 기능 명세보다 우선한다. 공통·지역 지침 갱신은 게임 구현 완료를 의미하지 않는다. [구조 차이 목록](system-v18-2026-10-29/구조%20차이%20목록.md)의 컷신 복귀·타이틀3D·카메라 경계/전환·추격 시작·추격 이동/포획 5건은 미반영이며 이미지/하단 텍스트 분리는 이미 일치한다. [검증](system-v18-2026-10-29/테스트%20및%20검증%20항목.md)은 문서·정적 검사에 한정한다. 아래 날짜별 과거 상태와 검증 결과는 당시 기록이다.
+
+2026-10-29 재발 후 재적용: HEAD=a3acf10의 저장 씬에서 앞선 적 보정 override 부재를 확인하고 다시 적용·저장했다. 직접 진입/Retry/Title→NewGame→Playing 재검증 성공, 새 오류0. Play 종료 후 새 미저장 씬 상태는 보호하고 강제 재열기하지 않았다. [재검증 상세](prototype-entry-fix-2026-10-29/테스트%20및%20검증%20항목.md).
+
 ## 2026-10-29 프로토타입 진입 복구
 
 Stationary3개(비활성 포함)의 씬 인스턴스 물리 회전을 외형 자식으로 이관하고 Enemys/Patrol을 3cm 올렸다. 원본 적 prefab/스케일/코드는 보존했다. 실제 Stage 직접 진입, Retry, Title 복귀, NewGame→오프닝 Skip→Playing 및 플레이 옵션 열기/닫기를 확인했다. 새 Console 오류0. 아래 Icons 작업 때 기록한 진입 차단은 이번 실행에서 해소됐으며 HUD 전 상태·전체 플레이 검증을 뜻하지 않는다. [검증](prototype-entry-fix-2026-10-29/테스트%20및%20검증%20항목.md).
@@ -122,7 +128,7 @@ Core PlayerRoot에 지정 원본 분리 클립10개·실제 폼별 리그·이�
 
 ## 2026-10-12 V1.6 구현·소유 자산 이관
 
-현행 원본은 [V1.6](../Cooked_시스템_기획서_V.1.6.docx)이며 최신 직접 답변이 우선한다. [실행 명세](ready-system-v16-2026-10-11/spec.md)에 따라 SYM 104개 전수 검수, 앱/한 판 종료 통합, UI·오디오 수명 정리, 고정 Root/내부 앵커/이동 Body, 세 시점 및 두 DOMove 통로 차단을 구현했다. Bootstrapper와 SessionShutdownOperation을 통합 삭제하여 최종 SYM 소스는102개다. HudIconGraphic은 실제 자원 연결 전 예외 유지한다.
+현행 원본은 [V1.6](https://github.com/CK2026-Team20/FeelsGoodOnionProject/blob/a3acf102ffcdd9fd593b47aac8f0e85860e1689f/Assets/_Docs/Cooked_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EA%B8%B0%ED%9A%8D%EC%84%9C_V.1.6.docx)이며 최신 직접 답변이 우선한다. [실행 명세](ready-system-v16-2026-10-11/spec.md)에 따라 SYM 104개 전수 검수, 앱/한 판 종료 통합, UI·오디오 수명 정리, 고정 Root/내부 앵커/이동 Body, 세 시점 및 두 DOMove 통로 차단을 구현했다. Bootstrapper와 SessionShutdownOperation을 통합 삭제하여 최종 SYM 소스는102개다. HudIconGraphic은 실제 자원 연결 전 예외 유지한다.
 
 HMS 누적12파일의 변경57개를 소비 근거로 재검토해 불필요 분리 카메라 확장·getter 등을 제거했다. PR 기준 PlayerCameraController는 원본과 같으며 필요한 피해·사망·회수·애니메이션·스킬 연결은 유지했다. 보호 HMS 기준 씬과 _Art·Packages·ProjectSettings의 수동 수정 권한을 확대하지 않았다.
 
