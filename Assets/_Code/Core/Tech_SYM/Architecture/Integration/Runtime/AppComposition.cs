@@ -54,6 +54,9 @@ namespace Cooked.Integration
         // Compose after sceneLoaded so the same-scene and output-singleton checks are valid.
         private void Start()
         {
+#if UNITY_EDITOR
+            if (Cooked.DebugTesting.DirectSceneTestEntry.IsSelected) return;
+#endif
             try
             {
                 if (active != null && active != this)
@@ -157,6 +160,7 @@ namespace Cooked.Integration
             if (catalog == null || scene.path != catalog.TitlePath) return;
             if (options == null) throw new InvalidOperationException("Title loaded before options composition completed.");
             SceneComponentLookup.RequireSingle<TitleUiRoot>(catalog.TitlePath).Bind(services.Get<IGameFlowService>(), options, QuitApplication);
+            SceneComponentLookup.RequireSingle<TitleScenePresentation>(catalog.TitlePath).Bind(presentationCamera);
         }
         private static void QuitApplication()
         {
