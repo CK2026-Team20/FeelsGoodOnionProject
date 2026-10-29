@@ -8,8 +8,13 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 {
     /// <summary>명시된 피해 Trigger의 접촉을 현재 플레이어의 공통 피해 경계에 전달합니다.</summary>
     [DisallowMultipleComponent]
-    public sealed class DamageFloorPlatform : MonoBehaviour
+    public class DamageFloorPlatform : MonoBehaviour
     {
+        // 기존 자산의 GUID와 공통 타입 조회를 보존한다. 신규 배치는 Pot/Gratang/Burner 구체 타입을 사용한다.
+        [SerializeField, Min(0), InspectorLabel("피해량"), Tooltip("이 플랫폼이 플레이어에게 주는 체력 피해량입니다. 0은 피해 없음이며 무적 중에는 큰 피해도 적용하지 않습니다.")]
+        private int damageAmount = 1;
+        public int DamageAmount => Mathf.Max(0, damageAmount);
+
         [SerializeField, InspectorLabel("피해 감지 영역"), Tooltip("루트 또는 자식의 피해 Trigger들을 연결하세요. 메시 Trigger는 Convex여야 하며 지지면은 제외합니다. 비워 두면 피해를 감지하지 않습니다. 선택 시 주황색은 Box 영역, 자홍색은 Convex 입력 메시 참고선입니다.")]
         private Collider[] damageTriggers = Array.Empty<Collider>();
         private readonly List<DamageTriggerRelay> subscribedRelays = new List<DamageTriggerRelay>();
@@ -20,7 +25,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private double lastDamagePhysicsStep = double.NegativeInfinity;
         private bool resolving;
 
-        private void OnEnable() => ResumeBinding();
+        protected virtual void OnEnable() => ResumeBinding();
+        protected virtual void OnValidate() => damageAmount = Mathf.Max(0, damageAmount);
 
         private void ResumeBinding()
         {
@@ -121,27 +127,27 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                     source, source.transform.position, source.transform.rotation, out _, out _)) continue;
                 resolving = true; lastDamagePhysicsStep = physicsStep;
                 // Trigger 내부의 ClosestPoint는 플레이어 중심 자체가 될 수 있어 피해 영역 중심을 전달한다.
-                try { return bridge.Damage(source.bounds.center); }
+                try { return bridge.Damage(this, source.bounds.center); }
                 finally { resolving = false; }
             }
             return 0;
         }
 
-        private void FixedUpdate()
+        protected virtual void FixedUpdate()
         {
             // 보정 중에도 동일한 Trigger 판정과 피해 중복 방지 경계를 사용한다.
             if (bridge != null && bridge.HasCorrectionOwner)
                 TryDamageContact(actorBody, Time.fixedTimeAsDouble);
         }
 
-        private void OnDrawGizmosSelected()
+        protected virtual void OnDrawGizmosSelected()
         {
             if (damageTriggers == null) return;
             foreach (var trigger in damageTriggers) PlatformColliderGizmos.Draw(trigger, Matrix4x4.identity);
         }
 
         public void ResetForRetry() => lastDamagePhysicsStep = double.NegativeInfinity;
-        private void OnDisable() => SuspendBinding();
-        private void OnDestroy() => UnbindPlayer();
+        protected virtual void OnDisable() => SuspendBinding();
+        protected virtual void OnDestroy() => UnbindPlayer();
     }
 }
