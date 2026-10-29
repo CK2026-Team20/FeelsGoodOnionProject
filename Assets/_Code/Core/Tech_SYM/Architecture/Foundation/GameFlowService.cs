@@ -209,7 +209,6 @@ namespace Cooked.Foundation
                 if (Path.GetFileNameWithoutExtension(path) == stageId) selectedStagePath = path;
             Publish(FlowState.LoadingGame, true, null);
             if (!alreadyCovered) yield return Step(r => fade.Cover(token, r), token);
-            yield return Step(r => scenes.Unload(catalog.TitlePath, token, r), token);
             foreach (var path in scenes.LoadedGameplayScenes)
                 if (path != catalog.CorePath && !IsStage(Path.GetFileNameWithoutExtension(path)))
                     yield return Step(r => scenes.Unload(path, token, r), token);
@@ -217,6 +216,9 @@ namespace Cooked.Foundation
             scenes.SetRootsActive(catalog.CorePath, true);
             scenes.SetActive(catalog.CorePath); // BEFORE dynamic objects / session initialization
             yield return LoadStages(token); // Session.Begin uses the initial checkpoint trigger's authored Pose.
+            // 타이틀과 Core가 공유하는 표시 자산의 사용자가 없는 틈을 만들지 않습니다.
+            // 페이드가 덮인 상태에서 새 씬을 먼저 확보한 뒤 이전 화면을 해제합니다.
+            yield return Step(r => scenes.Unload(catalog.TitlePath, token, r), token);
             // Mark before initialization so even partially initialized sessions get teardown on error.
             sessionInitialized = true;
             yield return Step(r => runtime.InitializeSession(stageId, token, r), token);
