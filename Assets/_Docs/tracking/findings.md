@@ -1,5 +1,10 @@
 # 열린 문제와 검증 제한
 
+## 2026-10-29 본편 검증 중 Editor 네이티브 충돌
+
+TitlePlayChecks 실행 중 GPUResidentDrawer/ObjectDispatcher 스택의 네이티브 충돌로 Editor 연결이 종료됐다. 원인을 게임 코드로 확정하지 않는다. 저장된 구현과 기존 통과 증거는 보존했다. 공식 재실행이 Scene Backup Detected 대화상자로 차단되어 Keep Backups 사용자 응답이 필요하다. 전체 본편 회귀·비개발 빌드 및 직접 테스트 타이틀 복귀 마지막 수정 검증을 남긴다. 근거와 재개 순서는 [검증 문서](ready-debug-authoring-2026-10-29/테스트%20및%20검증%20항목.md).
+
+
 ## 2026-10-29 프로토타입 진입 오류 해결
 
 아래 Stationary 회전/Patrol 높이 오류는 프로토타입 씬 인스턴스 보정 후 실제 직접 진입·재시도·Title→NewGame에서 재발하지 않았다. [검증](prototype-entry-fix-2026-10-29/테스트%20및%20검증%20항목.md). 원본 Enemys.prefab은 보존했으므로 다른 씬이나 신규 배치에서의 물리 루트 Y180도는 별도 확인이 필요하다. 옵션 최댓값 손잡이/문구 겹침은 이번 범위에서 수정하지 않았다.

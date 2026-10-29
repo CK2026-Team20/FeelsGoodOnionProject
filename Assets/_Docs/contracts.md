@@ -52,6 +52,8 @@ View 입력은 VM Command 한 경로, VM은 View 직접 참조 없음이다. 재
 
 ## 물리와 prefab 교체
 
+일반 적의 현행 배치 계약(2026-10-29 T2)은 고정 EnemyActor Root 내부의 Body와 Start/End 앵커다. Body에는 BoxCollider Trigger와 소유 EnemyContactSensor를 함께 연결하고 앵커는 같은 씬의 Root 내부·Body 외부 고정 지점으로 연결한다. EnemyMotor는 Body의 월드 위치만 변경한다. 첫 목표는 End이며 XYZ 왕복, 선분 밖 초기 위치, 회전·양수 비균등 배율을 허용한다. 같은 두 앵커에서는 현재 위치에 정지하고 Stationary는 앵커를 요구하지 않는다. 지형 Mask/검색/충돌 회피·침투/갇힘 계약과 첫 방향 enum은 제거했다. 필요한 참조·유한값·양수 크기/실제 배율·Rigidbody 없는 적 계층 계약은 유지한다. ResetForRetry는 최초 Body localPosition과 초기 상태·End 목표를 복원하며 배치 오류는 로그와 IsPrepared=false로 해당 적에 한정한다. 회전·배율은 복원 과정에서 정규화하지 않는다.
+
 PlayerRoot는 관리 단위, ActorBody는 Facade·Movement·Form·RB·Capsule이 동거하는 실제 몸체다. VisualRoot와 CameraAnchor는 서로 다른 직계 자식이다. Shell의 PlayerDebris/Box/RB/HeavyState는 실제 Root에 동거한다. 움직이는 발판 Render는 Motion이 이동하는 Body 아래, 고정 Marker는 밖이다. Tear는 pickupRoot 전체 이동으로 Sensor가 따라간다. 생성 발판 실제 침투<1/4는 지지 보정, >=1/4는 actual Body를 위로 분리하며 사망한다. 소유 Shell만 별도 분리/데드존 반환하고 같은 객체·HP·폼·소유·IgnoreCollision을 유지한다.
 
 같은 이름의 새 prefab이 기존 GUID 소비를 자동 대체하지 않는다. Host.actorPrefab, Form.debrisPrefab, MemoUIController.viewPrefab, App/Core View와 Stage의 실제 인스턴스 참조를 사람이 옮긴다. HudIconGraphic Source와 fallback은 실제 하트와 Q/E/조각 Graphic 소비가0이 된 뒤 제거한다. 원본 prefab 삭제·재생성·Apply·아트 제작은 사람이 한다.

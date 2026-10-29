@@ -4,7 +4,7 @@
 
 KinematicPlatformMotion은 물리 이동의 단일 작성자, PlatformContacts는 실제 윗면 콜백/점유, 종류별 컨트롤러는 진행 목적/상태를 소유한다. 신규 구조는 Root 로직과 명시적으로 주입받는 PhysicsBody/Contacts 자식이다. 현재 GetComponent/RequireComponent 및 콜백 위치를 실제 코드와 함께 이관하며 같은 물체에 HMS 이동자를 중복 조립하지 않는다.
 
-LinearShuttlePlatform은 실제 startPoint/endPoint Transform과 월드m/s, 양 종점0.5초 대기다. 이동량0은 정지이며 부모 변환은 끝점에 반영한다. FloatingPlatform은 한 착지당 눌림/반동이고 PhysicsBody의 지속 bob은 제거한다. Periodic은 조절 가능한 초기5/2/3초·생성 중 비충돌·개별 시작 위상이다. 압력은 기본PC/껍질만, 해제 복귀·재압력 반전은 현재 진행을 사용한다. DamageFloor는 피해원 자체1초 타이머 대신 플레이어 공통HP1/무적2초를 사용한다.
+LinearShuttlePlatform은 실제 startPoint/endPoint Transform과 월드m/s, 양 종점0.5초 대기다. 이동량0은 정지이며 부모 변환은 끝점에 반영한다. FloatingPlatform은 한 착지당 눌림/반동이고 PhysicsBody의 지속 bob은 제거한다. Periodic은 조절 가능한 초기5/2/3초·생성 중 비충돌·개별 시작 위상이다. 압력은 기본PC/껍질만, 해제 복귀·재압력 반전은 현재 진행을 사용한다. DamageFloorPlatform은 Inspector의 정수 피해량(기본1, 0은 무피해)을 전달한다. PotDamagePlatform·GratangDamagePlatform·BurnerDamagePlatform은 실제 피해원 타입이며 플랫폼은 애니메이션을 선택하지 않는다. 플레이어의 무적 판정이 피해량보다 우선하므로 무적 중9999도 무효다. 수락된 피해로 HP가0이 되면 기존 사망 연출·재시도를 사용한다. 데드존의 별도 재시작 경로는 유지한다.
 
 ManualUpdate 트윈은 물리 단계에서 진행하고 비활성화/제목/Stage 제거 시 자기 작업·점유를 해제한다. 발판/장치/적 상태는 체크포인트에 저장하지 않는다. retry는 Stage 초기 재준비다.
 

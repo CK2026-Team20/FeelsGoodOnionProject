@@ -6,6 +6,8 @@
 
 ## Actor와 같은 의미의 위치
 
+일반 적의 위치 작성 대상은 EnemyActor Root가 아니라 자손 Body Transform이다(2026-10-29 T2). Start/End는 Root 내부·Body 외부의 고정 앵커이며 실제 월드 위치로 XYZ 경로를 정한다. Body 원점을 앵커 목표에 맞추므로 Collider.center와 앵커 위치를 혼동하지 않는다. 초기 Body 위치는 선분 밖이어도 보존하고 첫 목표 End 이후 왕복한다. 같은 두 앵커에서는 현재 위치에 정지한다. Retry는 최초 Body localPosition을 복원하고 End 목표·초기 대기·기절·접촉 상태를 재준비한다. Root/Body 회전·양수 비균등 배율을 허용하며 속도는 Body의 실제 월드 거리(m/s)다. 기존 Transform 값을 정규화하지 않는다. 지형 Mask·높이 제한·Cast/Sweep·침투 보정·갇힘 판정은 제거했고 플레이어 피해/기절 감지 Collider는 유지한다. 아래 눈물의 차폐 검사는 적 이동의 지형 검사와 다른 기능이므로 제거하지 않는다.
+
 현재 위치는 PlayerFacade가 있는 실제 ActorBody의 월드 중심이다. 빈 관리 PlayerRoot나 Render Transform으로 CP·껍질 복귀·스킬 중심을 계산하지 않는다. ActorBody 아래 VisualRoot/CameraAnchor를 연결하고 실제 몸체·Collider 이동과 외형/추적이 함께 움직이게 한다. Root scale을 Form 전환 때 다시 줄여 Collider 전환과 이중 적용하지 않는다.
 
 움직이는 발판은 하나의 KinematicPlatformMotion이 실제 Rigidbody를 이동한다. Render는 Body 아래, 시작/끝·닫힘/열림·경로 Marker는 Body 밖이다. 조작/안내 Point는 손잡이를 따라가야 하므로 Body의 자식이 될 수 있다. 고정 목적 Point와 현재 조작 위치를 혼동하지 않는다. Shattered는 Animator 없는 경고 Shake도 Visual을 움직인다. 그 Visual/자식의 고정 Point를 거절하고 static 논리 Root의 Marker 형제는 허용한다.

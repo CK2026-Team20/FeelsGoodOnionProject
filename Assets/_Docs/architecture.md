@@ -55,6 +55,8 @@ Bootstrap→Title→새 게임→Core/Prototype1개 additive 로드→초기 준
 
 ## Scene Root와 prefab 물리
 
+일반 적의 현행 구조(2026-10-29 T2)는 고정 EnemyActor Root 아래의 Body와 고정 Start/End 앵커를 조합한다. EnemyActor는 상태·기절·목표 끝점·초기 Body localPosition을, EnemyMotor는 Body의 월드 위치 작성을, Body의 EnemyContactSensor는 실제 접촉과 반복 피해를 소유한다. Root와 앵커를 이동시키지 않으며 앵커는 Body 밖에 둔다. EnemyMotor는 지형 검사를 소유하지 않고 XYZ 방향과 Root/Body 회전·양수 비균등 배율을 허용한다. Body 속도는 월드 거리(m/s)이므로 Root 배율을 곱하지 않으며 Gizmo는 Body 변환 행렬로 표시한다.
+
 씬 Manager/Camera/Canvas/월드 기능 객체는 서로 독립 root다. 개별 prefab은 빈 논리 Root와 Render/Body/표현 자식을 구분한다. Player의 실제 ActorBody는 Facade·Movement·Form·HeavyState·Rigidbody·Capsule이 동거하고 VisualRoot/CameraAnchor는 서로 다른 직계 자식이다. 빈 PlayerRoot는 생성/제거 관리 단위다. Shell은 HMS Remove 계약 때문에 PlayerDebris/Rigidbody/Box/HeavyState가 실제 Root에 동거하며 바깥 래퍼를 만들지 않는다.
 
 움직이는 발판은 한 Motion이 실제 Body Rigidbody를 이동한다. Render는 그 Body 아래, 고정 목표는 Body 밖이다. 눈물은 pickupRoot 전체를 움직여 Sensor와 Render가 함께 이동한다. Shattered Visual의 경고 Shake와 Chase 표현 아래에는 고정 Marker를 두지 않는다. 기존 물리 Root template의 계약은 예시 계층 때문에 강제 재작성하지 않는다.
