@@ -1,0 +1,199 @@
+#if UNITY_EDITOR
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using Cooked.Contracts;
+using Cooked.Foundation;
+using Cooked.Integration;
+using Cooked.Session;
+using FeelsGoodOnion.TechSYM.Enemies;
+using FeelsGoodOnion.TechSYM.Interaction;
+using FeelsGoodOnion.TechSYM.Platforms;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+namespace Cooked.DebugTesting
+{
+    /// <summary>Owns only the temporary test session. Authored world objects are borrowed.</summary>
+    public sealed class DirectSceneTestRuntime : MonoBehaviour
+    {
+        public const string DefaultPlayerPrefabPath = "Assets/_Prefabs/Characters/Players/Main/PlayerRoot.prefab";
+        public DirectSceneTestSettings Settings { get; private set; }
+        public PlayerBridgeService Player { get; private set; }
+        public GameSessionService Session { get; private set; }
+        public GameplayControlService Control { get; private set; }
+        public DirectSceneTestFlow Flow { get; private set; }
+        public SessionActorHost ActorHost { get; private set; }
+        public Camera Output { get; private set; }
+        public bool IsRespawning { get; private set; }
+        public bool IsReady => !disposed && !IsRespawning && Player != null && Player.HasActor &&
+            !Player.Actor.IsDead && Flow.Snapshot.State == FlowState.Playing;
+        public event Action ActorReady;
+        public event Action ActorRemoving;
+        private readonly List<Action> unbind = new List<Action>();
+        private bool disposed, ownsCamera;
+        private Pose initialPose;
+        private CheckpointSnapshot initial;
+
+        public void Initialize(DirectSceneTestSettings settings)
+        {
+            if (Settings != null) throw new InvalidOperationException("Test session already initialized.");
+            if (settings == null || settings.StartPoint == null || settings.StartPoint.gameObject.scene != gameObject.scene)
+                throw new ArgumentException("현재 씬의 시작점이 필요합니다.");
+            foreach (var actor in FindObjectsByType<PlayerFacade>(FindObjectsSortMode.None))
+                if (actor.isActiveAndEnabled) throw new InvalidOperationException("이미 활성 플레이어가 있습니다. 중복 생성하지 않습니다.");
+            Settings = settings;
+            initialPose = new Pose(settings.StartPoint.position, settings.StartPoint.rotation);
+            initial = new CheckpointSnapshot(initialPose.position, settings.InitialFragments, settings.InitialAbilities);
+            var prefab = settings.PlayerPrefab != null ? settings.PlayerPrefab : AssetDatabase.LoadAssetAtPath<GameObject>(DefaultPlayerPrefabPath);
+            if (prefab == null) throw new InvalidOperationException("플레이어 프리팹을 연결하세요.");
+            Control = new GameplayControlService();
+            Flow = new DirectSceneTestFlow(() => StartCoroutine(ReturnToTitle()));
+            Session = new GameSessionService();
+            Session.Begin(initial);
+            ActorHost = gameObject.AddComponent<SessionActorHost>();
+            ActorHost.ConfigureActorPrefab(prefab);
+            Player = new PlayerBridgeService(Control, Session, RequestDeathRetry,
+                ActorHost.HorizontalKnockbackSpeed, ActorHost.UpwardKnockbackSpeed);
+            ActorHost.Initialize(Player, Control);
+            PrepareOutput();
+            SpawnActor();
+        }
+        private void PrepareOutput()
+        {
+            var cameras = new List<Camera>();
+            foreach (var camera in FindObjectsByType<Camera>(FindObjectsSortMode.None))
+                if (camera.isActiveAndEnabled && camera.targetTexture == null) cameras.Add(camera);
+            if (cameras.Count > 1) throw new InvalidOperationException("활성 출력 카메라가 여러 개입니다. 테스트는 기존 출력을 임의로 변경하지 않습니다.");
+            if (cameras.Count == 1) { Output = cameras[0]; return; }
+            var child = new GameObject("Test Output") { hideFlags = HideFlags.DontSave };
+            child.transform.SetParent(transform, false);
+            Output = child.AddComponent<Camera>();
+            Output.transform.position = initialPose.position + new Vector3(0f, 2f, -10f);
+            Output.transform.LookAt(initialPose.position + Vector3.up);
+            bool listenerPresent = false;
+            foreach (var listener in FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
+                listenerPresent |= listener.isActiveAndEnabled;
+            if (!listenerPresent) child.AddComponent<AudioListener>();
+            ownsCamera = true;
+        }
+        private void LateUpdate()
+        {
+            if (!ownsCamera || Output == null || Player == null || !Player.HasActor) return;
+            var target = Player.CameraTarget != null ? Player.CameraTarget.position : Player.BodyTransform.position;
+            Output.transform.position = target + new Vector3(0f, 2f, -10f);
+            Output.transform.LookAt(target);
+        }
+        private void SpawnActor()
+        {
+            ActorHost.Spawn(initialPose, initial.Fragments);
+            // Host spawns into the active scene; explicitly retain this session's scene ownership.
+            SceneManager.MoveGameObjectToScene(ActorHost.ActorRoot, gameObject.scene);
+            BindWorld();
+            ActorReady?.Invoke();
+        }
+        private void BindWorld()
+        {
+            foreach (var sensor in SceneComponentLookup.FindAll<EnemyContactSensor>(gameObject.scene))
+                BindOptional(sensor, () => sensor.BindPlayer(Player), sensor.UnbindPlayer);
+            foreach (var floor in SceneComponentLookup.FindAll<DamageFloorPlatform>(gameObject.scene))
+                BindOptional(floor, () => floor.BindPlayer(Player), floor.UnbindPlayer);
+            foreach (var platform in SceneComponentLookup.FindAll<PeriodicPlatform>(gameObject.scene))
+                BindOptional(platform, () => platform.BindMaterialization(Player), () => platform.BindMaterialization(null));
+            var memos = new List<MemoUIController>();
+            foreach (var memo in SceneComponentLookup.FindAll<MemoUIController>(gameObject.scene))
+                if (BindOptional(memo, () => memo.Initialize(Control), memo.Unbind)) memos.Add(memo);
+            ActorHost.Interaction.BindOverlays(memos);
+            // Devices are discovered by the real PlayerInteractionService; fragments use the real PlayerFacade contact path.
+        }
+        private bool BindOptional(Component owner, Action bind, Action release)
+        {
+            try
+            {
+                bind();
+                unbind.Add(() => { if (owner != null) release(); });
+                return true;
+            }
+            catch (Exception error)
+            {
+                // A malformed optional authored object must not abort independent player testing.
+                try { release(); } catch (Exception cleanup) { Debug.LogException(cleanup, owner); }
+                Debug.LogException(new InvalidOperationException("테스트 객체 연결 실패: " + owner.name, error), owner);
+                return false;
+            }
+        }
+        private void UnbindWorld()
+        {
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => ActorRemoving?.Invoke());
+            SessionCleanup.Attempt(errors, () => ActorHost?.Interaction?.ForceCloseOverlays());
+            SessionCleanup.Attempt(errors, () => ActorHost?.Interaction?.CancelOperations());
+            for (int i = unbind.Count - 1; i >= 0; i--) SessionCleanup.Attempt(errors, unbind[i]);
+            unbind.Clear();
+            SessionCleanup.ThrowIfAny(errors, "직접 씬 테스트 연결 해제 실패");
+        }
+        private bool RequestDeathRetry(PlayerFacade actor, long generation)
+        {
+            if (disposed || IsRespawning || !Player.IsCurrentActor(actor, generation)) return false;
+            return Respawn();
+        }
+        public bool Respawn()
+        {
+            if (disposed || IsRespawning || Player == null || !Player.HasActor || Flow.Snapshot.State != FlowState.Playing) return false;
+            IsRespawning = true;
+            StartCoroutine(RespawnRoutine());
+            return true;
+        }
+        private IEnumerator RespawnRoutine()
+        {
+            try
+            {
+                UnbindWorld();
+                yield return ActorHost.Despawn();
+                if (disposed) yield break;
+                Session.RestoreAbilities(initial);
+                SpawnActor();
+            }
+            finally { IsRespawning = false; }
+        }
+        private IEnumerator ReturnToTitle()
+        {
+            // Defer past the UI command/death callback stack before releasing borrowed objects.
+            yield return null;
+            AsyncOperation loading = null;
+            try
+            {
+                UnbindWorld();
+                ActorHost.ReleaseNow();
+                DirectSceneTestEntry.IsSelected = false;
+                loading = EditorSceneManager.LoadSceneAsyncInPlayMode(BootstrapEntryRoute.BootstrapPath,
+                    new LoadSceneParameters(LoadSceneMode.Single));
+                if (loading == null) throw new InvalidOperationException("Bootstrap 로드를 시작하지 못했습니다.");
+            }
+            catch (Exception error)
+            {
+                Flow.Fail(error.Message);
+                Debug.LogException(error, this);
+            }
+            if (loading != null) yield return loading;
+        }
+        private void OnDestroy()
+        {
+            if (disposed) return;
+            disposed = true;
+            StopAllCoroutines();
+            var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => DirectSceneTestEntry.Released(this));
+            SessionCleanup.Attempt(errors, UnbindWorld);
+            SessionCleanup.Attempt(errors, () => { if (ActorHost != null) ActorHost.Shutdown(); });
+            SessionCleanup.Attempt(errors, () => Player?.Dispose());
+            SessionCleanup.Attempt(errors, () => Session?.Dispose());
+            SessionCleanup.Attempt(errors, () => Flow?.Dispose());
+            SessionCleanup.Attempt(errors, () => Control?.Dispose());
+            ActorReady = null; ActorRemoving = null;
+            foreach (var error in errors) Debug.LogException(error, this);
+        }
+    }
+}
+#endif

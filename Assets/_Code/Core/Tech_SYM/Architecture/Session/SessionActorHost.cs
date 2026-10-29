@@ -58,6 +58,13 @@ namespace Cooked.Session
         public PlayerInteractionService Interaction { get; private set; }
         public event Action<PlayerInteractionService> InteractionChanged;
 
+        /// <summary>Composition-time injection. Does not modify the source prefab.</summary>
+        public void ConfigureActorPrefab(GameObject prefab)
+        {
+            if (shutdown || bridge != null || actorRoot != null) throw new InvalidOperationException("Configure before Initialize.");
+            actorPrefab = prefab != null ? prefab : throw new ArgumentNullException(nameof(prefab));
+        }
+
         public void Initialize(PlayerBridgeService bridge, IGameplayControlService control)
         {
             if (shutdown) throw new ObjectDisposedException(nameof(SessionActorHost));
