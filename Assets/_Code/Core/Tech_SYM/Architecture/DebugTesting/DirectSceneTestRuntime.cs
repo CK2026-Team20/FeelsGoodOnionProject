@@ -164,26 +164,34 @@ namespace Cooked.DebugTesting
             AsyncOperation loading = null;
             try
             {
-                UnbindWorld();
-                ActorHost.ReleaseNow();
+                // DontSave 루트의 자동 씬 정리에 의존하지 않습니다. 새 Bootstrap이
+                // 조립되기 전에 패널·정지 토큰·커서·Actor와 출력의 소유권을 반환합니다.
+                ReleaseSession();
+                gameObject.SetActive(false);
                 DirectSceneTestEntry.IsSelected = false;
                 loading = EditorSceneManager.LoadSceneAsyncInPlayMode(BootstrapEntryRoute.BootstrapPath,
                     new LoadSceneParameters(LoadSceneMode.Single));
                 if (loading == null) throw new InvalidOperationException("Bootstrap 로드를 시작하지 못했습니다.");
+                Destroy(gameObject);
             }
             catch (Exception error)
             {
-                Flow.Fail(error.Message);
                 Debug.LogException(error, this);
+                Destroy(gameObject);
             }
-            if (loading != null) yield return loading;
+            yield break;
         }
         private void OnDestroy()
         {
+            StopAllCoroutines();
+            ReleaseSession();
+        }
+        private void ReleaseSession()
+        {
             if (disposed) return;
             disposed = true;
-            StopAllCoroutines();
             var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => GetComponent<DirectSceneTestPresentation>()?.Dispose());
             SessionCleanup.Attempt(errors, () => DirectSceneTestEntry.Released(this));
             SessionCleanup.Attempt(errors, UnbindWorld);
             SessionCleanup.Attempt(errors, () => { if (ActorHost != null) ActorHost.Shutdown(); });

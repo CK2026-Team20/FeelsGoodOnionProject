@@ -14,6 +14,15 @@ namespace Cooked.UI
         private readonly CursorLockMode previousLock;
         private DialogueService dialogue;
         private bool disposed;
+#if UNITY_EDITOR
+        private bool debugVisible;
+        public void SetDebugVisible(bool visible)
+        {
+            if (disposed) return;
+            debugVisible = visible;
+            Refresh();
+        }
+#endif
 
         public CursorPresentationBinding(IGameFlowService flow, OptionsService options)
         {
@@ -43,6 +52,9 @@ namespace Cooked.UI
             if (disposed) return;
             bool visible = flow.Snapshot.State != FlowState.Playing || options.IsOpen ||
                 (dialogue != null && dialogue.IsActive);
+#if UNITY_EDITOR
+            visible |= debugVisible;
+#endif
             // 일반 플레이와 F로 닫는 메모는 포인터를 사용하지 않는다.
             Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = visible;

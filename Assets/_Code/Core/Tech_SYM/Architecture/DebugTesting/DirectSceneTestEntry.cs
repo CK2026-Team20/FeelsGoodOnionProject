@@ -16,6 +16,26 @@ namespace Cooked.DebugTesting
         }
         public static DirectSceneTestRuntime Current { get; private set; }
         public static event Action<DirectSceneTestRuntime> Changed;
+        [InitializeOnLoadMethod]
+        private static void ObserveEditorLifetime()
+        {
+            EditorApplication.playModeStateChanged -= OnPlayState;
+            EditorApplication.playModeStateChanged += OnPlayState;
+            AssemblyReloadEvents.beforeAssemblyReload -= ReleaseTemporarySessions;
+            AssemblyReloadEvents.beforeAssemblyReload += ReleaseTemporarySessions;
+        }
+        private static void OnPlayState(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.ExitingPlayMode) ReleaseTemporarySessions();
+        }
+        private static void ReleaseTemporarySessions()
+        {
+            // DontSave objects require explicit destruction, including an assembly reload in Play.
+            foreach (var runtime in Resources.FindObjectsOfTypeAll<DirectSceneTestRuntime>())
+                if (runtime != null && !EditorUtility.IsPersistent(runtime))
+                    UnityEngine.Object.DestroyImmediate(runtime.gameObject);
+            Current = null;
+        }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetRuntime() { Current = null; Changed = null; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -35,6 +55,7 @@ namespace Cooked.DebugTesting
             try
             {
                 runtime.Initialize(settings[0]);
+                root.AddComponent<DirectSceneTestPresentation>().Initialize(runtime);
                 Current = runtime;
                 Changed?.Invoke(runtime);
             }

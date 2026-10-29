@@ -18,6 +18,9 @@ namespace Cooked.DebugTesting
         private AbilityMask initialAbilities;
         [SerializeField, InspectorLabel("추가 이동 지점"), Tooltip("이동 버튼에서 선택할 현재 씬의 실제 Transform 목록입니다.")]
         private Transform[] additionalPoints = Array.Empty<Transform>();
+        [SerializeField, Min(1), InspectorLabel("보관할 로그 수"), Tooltip("최근 로그를 보관할 최대 개수입니다. 기본값은 200이며 오래된 항목부터 제거합니다.")]
+        private int logCapacity = 200;
+        public int LogCapacity => Mathf.Max(1, logCapacity);
         public Transform StartPoint => startPoint;
         public GameObject PlayerPrefab => playerPrefab;
         public int InitialFragments => initialFragments;
