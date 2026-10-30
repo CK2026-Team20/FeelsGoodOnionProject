@@ -77,7 +77,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: 4c1f97f62a05d71449a1c3d9cf01a721, type: 3}
+        m_Texture: {fileID: 2800000, guid: cd761375fe18fbf41b8bab8eb1422c17, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseMap2DArray:
@@ -228,7 +228,7 @@ Material:
     - _BaseMapProgressCoord: 0
     - _BaseMapRandomRowCoord: 0
     - _BaseMapRandomRowSelectionEnabled: 0
-    - _BaseMapRotation: 0.42
+    - _BaseMapRotation: 0.46
     - _BaseMapRotationCoord: 0
     - _BaseMapRowCount: 1
     - _BaseMapSliceCount: 4
@@ -392,7 +392,7 @@ Material:
     - _EmissionMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _FlowMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _TintColor: {r: 10.432949, g: 8.72064, b: 4.1830225, a: 1}
+    - _TintColor: {r: 16.94838, g: 14.166725, b: 6.7953415, a: 1}
     - _TintMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
