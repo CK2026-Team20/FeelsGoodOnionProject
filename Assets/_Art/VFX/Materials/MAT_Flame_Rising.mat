@@ -65,8 +65,8 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _BaseMap:
         m_Texture: {fileID: 2800000, guid: a9a76e014c92f2b4da42204e28c13d57, type: 3}
-        m_Scale: {x: 1, y: 3}
-        m_Offset: {x: 1.2, y: 0}
+        m_Scale: {x: 1.23, y: 3}
+        m_Offset: {x: 0.07, y: 0}
     - _BaseMap2DArray:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -201,10 +201,10 @@ Material:
     - _AlphaTransitionMapSecondTextureSliceCount: 4
     - _AlphaTransitionMapSliceCount: 4
     - _AlphaTransitionMode: 2
-    - _AlphaTransitionProgress: 0.28
+    - _AlphaTransitionProgress: 0.3
     - _AlphaTransitionProgressCoord: 0
     - _AlphaTransitionProgressCoordSecondTexture: 0
-    - _AlphaTransitionProgressSecondTexture: 0.52
+    - _AlphaTransitionProgressSecondTexture: 0.3
     - _AlphaTransitionSecondTextureBlendMode: 2
     - _BaseMapChannel: 0
     - _BaseMapMirrorSampling: 0
@@ -308,7 +308,7 @@ Material:
     - _ReceiveShadows: 1
     - _RenderType: 2
     - _RimTransparencyEnabled: 1
-    - _RimTransparencyProgress: 0.31
+    - _RimTransparencyProgress: 0.27
     - _RimTransparencyProgressCoord: 0
     - _RimTransparencySharpness: 0.64
     - _RimTransparencySharpnessCoord: 0
@@ -379,7 +379,7 @@ Material:
     - _EmissionMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _FlowMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _TintColor: {r: 0.024866648, g: 0.23605707, b: 1.7572463, a: 0.6039216}
+    - _TintColor: {r: 0.20008944, g: 0.41088605, b: 1.8443024, a: 1}
     - _TintMapRotationOffsets: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
