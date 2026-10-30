@@ -14,16 +14,18 @@ namespace Cooked.DebugTesting
         public TextMeshProUGUI SummaryLabel { get; private set; }
         private DebugPanelViewModel model;
         private TMP_FontAsset font;
+        private DebugLogFont logFont;
         private TextMeshProUGUI pointLabel, platformLabel, invincibleLabel, pauseLabel;
         private UnityEngine.UI.Button damageButton, pointButton;
         private readonly List<UnityEngine.UI.Button> actorButtons = new List<UnityEngine.UI.Button>();
         private readonly List<Action> release = new List<Action>();
         private long renderedLogVersion = -1;
-        public void Bind(DebugPanelViewModel value, TMP_FontAsset fontAsset)
+        public void Bind(DebugPanelViewModel value, TMP_FontAsset fontAsset, DebugLogFont logFontAsset)
         {
             if (model != null) throw new InvalidOperationException("디버그 View는 한 번만 연결합니다.");
             model = value ?? throw new ArgumentNullException(nameof(value));
             font = fontAsset;
+            logFont = logFontAsset ?? throw new ArgumentNullException(nameof(logFontAsset));
             Build();
             model.Changed += Render;
             Render();
@@ -85,6 +87,8 @@ namespace Cooked.DebugTesting
             viewport.gameObject.AddComponent<UnityEngine.UI.Image>().color = new Color(0, 0, 0, .01f);
             viewport.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
             LogLabel = Text(viewport, "", 0, 0, 560, 242, 14);
+            LogLabel.font = logFont.Asset;
+            LogLabel.parseCtrlCharacters = false; // 파일 경로의 \\n 등을 실제 줄바꿈으로 해석하지 않습니다.
             LogLabel.rectTransform.anchorMax = new Vector2(1, 1);
             LogLabel.rectTransform.sizeDelta = new Vector2(-14, 242);
             LogScroll = log.gameObject.AddComponent<UnityEngine.UI.ScrollRect>();
@@ -112,7 +116,7 @@ namespace Cooked.DebugTesting
             SummaryLabel.text = model.Summary;
             pointLabel.text = "지점 선택 ▶ " + model.PointLabel;
             platformLabel.text = "피해원 선택 ▶ " + model.PlatformLabel;
-            invincibleLabel.text = (model.DebugInvincible ? "[✓]" : "[ ]") + " 디버그 무적";
+            invincibleLabel.text = (model.DebugInvincible ? "[ON]" : "[OFF]") + " 디버그 무적";
             pauseLabel.text = model.Paused ? "재개" : "일시정지";
             foreach (var button in actorButtons) button.interactable = model.CanCommand;
             pointButton.interactable = model.CanCommand && model.SelectedPoint != null;
@@ -120,7 +124,7 @@ namespace Cooked.DebugTesting
             if (!model.Visible || renderedLogVersion == model.LogVersion) return;
             bool atBottom = renderedLogVersion < 0 || LogScroll.content.rect.height <= LogScroll.viewport.rect.height || LogScroll.verticalNormalizedPosition <= .01f;
             var offset = LogScroll.content.anchoredPosition;
-            LogLabel.text = model.LogText;
+            LogLabel.text = logFont.ForDisplay(model.LogText);
             LogLabel.ForceMeshUpdate();
             LogScroll.content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(242, LogLabel.preferredHeight + 8));
             if (atBottom) LogScroll.verticalNormalizedPosition = 0;
@@ -132,7 +136,7 @@ namespace Cooked.DebugTesting
             if (model == null) return;
             model.Changed -= Render;
             foreach (var cleanup in release) cleanup();
-            release.Clear(); model = null;
+            release.Clear(); model = null; logFont = null;
         }
         private void OnDestroy() => Unbind();
     }

@@ -16,6 +16,7 @@ namespace Cooked.DebugTesting
         public DebugPanelView View { get; private set; }
         public DebugLogBuffer Logs { get; private set; }
         private CursorPresentationBinding cursor;
+        private DebugLogFont logFont;
         private GameObject ownedEventSystem;
         private float nextRefresh;
         private bool disposed;
@@ -44,7 +45,8 @@ namespace Cooked.DebugTesting
                 viewRoot.hideFlags = HideFlags.DontSave;
                 viewRoot.transform.SetParent(transform, false);
                 View = viewRoot.AddComponent<DebugPanelView>();
-                View.Bind(ViewModel, AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Art/UI/Fonts/IM_Hyemin-Bold SDF.asset"));
+                logFont = new DebugLogFont();
+                View.Bind(ViewModel, AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Art/UI/Fonts/IM_Hyemin-Bold SDF.asset"), logFont);
             }
             catch { Dispose(); throw; }
         }
@@ -69,6 +71,7 @@ namespace Cooked.DebugTesting
                 Logs?.Dispose();
                 cursor?.SetDebugVisible(false); cursor = null;
                 if (View != null) { if (Application.isPlaying) Destroy(View.gameObject); else DestroyImmediate(View.gameObject); }
+                logFont?.Dispose(); logFont = null;
                 if (ownedEventSystem != null) { if (Application.isPlaying) Destroy(ownedEventSystem); else DestroyImmediate(ownedEventSystem); }
             }
         }
