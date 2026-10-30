@@ -143,7 +143,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ShadowColorTexture:
-        m_Texture: {fileID: 2800000, guid: d64eb26bd5573e843a6ae026179314dc, type: 3}
+        m_Texture: {fileID: 2800000, guid: d279e88338353b8458fd309c06922303, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ShadowT:
