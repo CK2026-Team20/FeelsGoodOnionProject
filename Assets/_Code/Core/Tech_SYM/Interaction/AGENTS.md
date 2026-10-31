@@ -1,6 +1,6 @@
 # 메모·상호작용 표시
 
-현재 기준은 Assets/_Docs/planning-index.md의 V1.6과 최신 직접 지시다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
+현재 시스템 기준은 Assets/_Docs/planning-index.md의 V1.8이며 이전 사용자 기능 명세와 기존 구현보다 우선한다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.
 
 최신 입력은 F 상호작용이다. 대상 선택은 PlayerInteractionService 한곳에서2.5m/전방±60도/차폐/가까운 유효 대상/중복 Collider를 처리하고 SessionActorHost가 한 번 전달한다. CheckInteract는 현재 소스에 없으며 WorldPromptView/WorldPromptViewModel은 실제 표시·명령 소비를 유지한다. 같은 이름이나 JSON preview의 instanceID0만으로 미사용·연결 누락을 판정하지 않는다.
 

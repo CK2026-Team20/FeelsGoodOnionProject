@@ -1,5 +1,46 @@
 # 현재 요구와 검증 상태
 
+## 2026-10-31 디버그 원본 구도 재사용
+
+사용자 최신 지시로 디버그의 Y180 강제 회전·롤 초기화·수직각 제한을 제거했다. 선택된 StageService 구도를 그대로 복사하며 입력 로직과 씬은 변경하지 않았다. StageService가 없는 씬에서는 기존 Inspector 테스트 구도를 사용한다. 실제 프로토타입 저장 자산의 세 구도/거리/시야각 일치 등 Native 검사9건 통과, 컴파일 상태 오류0·경고0. 현재 Stage_quarter의 미저장 상태 유지. 실제 Play 입력 검증은 미실행이다. 아래 날짜별 고정 방향 설명은 당시 이력이다.
+
+## 2026-10-30 본편 구도·타이틀 출력 분리
+
+등록된 01_Stage_Prototype의 StageService 세 구도와 신규 기본값을 대상 +Z 쪽 배치(Y180)로 변경했다. Title 씬에는 별도 Camera/AudioListener를 추가하고, TitleScenePresentation이 게임 출력을 일시 비활성화한 뒤 타이틀 출력을 사용한다. Title 해제 시 게임 활성 상태를 복원하며 게임 카메라 Transform·시야각은 변경하지 않는다. 컴파일 오류0·경고0, 저장 자산을 사용한 PreviewScene 출력/복원 검사21건 통과. 실제 게임 흐름 Play·렌더 검증은 미실행. 현재 Stage_quarter 미저장 씬은 저장하거나 재로드하지 않았다. [명세·검증](camera-output-separation-2026-10-30/테스트%20및%20검증%20항목.md).
+
+## 2026-10-30 직접 테스트 카메라·붕괴 발판 복원
+
+후속 정정: 입력은 HMS 월드 X/Z 그대로 유지하고 카메라 복사본의 수평 방향을 월드 +Z로 통일했다(원본 각도 보존). 메모·오븐 트레이의 기존 F 입력 경로에 월드 안내를 연결하고 빈 메모 화면 참조를 실행 중에만 보완한다. 최신 Native 검사는 카메라17건·상호작용 구성11건 통과이며 실제 Play는 미실행이다. Stage_quarter의 현재 미저장 상태(dirty=true·루트86개)를 유지했다.
+
+직접 테스트에 본편 CinemachineCamera·PositionComposer·Brain과 구도/이동축 설정 코드를 재사용하는 세 시점을 추가했다. F1 패널에서 측면·통로·쿼터뷰를 선택하며 리스폰 후에도 유지한다. 임시 Settings 추적 코드는 대체했고 같은 씬의 기존 화면 출력은 테스트 중에만 비활성화·종료 시 복원한다. 붕괴 발판도 사망/버튼 재생성 시 기존 ResetForRetry를 사용한다. 컴파일 오류0·경고0, 비 Play PreviewScene 카메라 구성/수명 검사14건 통과. 실제 시점 클릭·추적·리스폰 Play 검증은 미실행이며 작업 씬 저장/전환 없이 확인했다. [사용 절차](ready-debug-authoring-2026-10-29/디버깅%20모드%20사용%20방법.md), [검증](ready-debug-authoring-2026-10-29/테스트%20및%20검증%20항목.md).
+
+## 2026-10-30 프리팹 공통 설정 반영
+
+피해 묶음의 빈 루트 컴포넌트 제거, Pot/Burner 구체 타입과 묶음 내부 Gratan 피해 연결, StageTriggerPoint 기본 체크포인트, LinearPlatforms 기본속도0.6을 원본에 반영했다. 묶음의 빈 Collider/Rigidbody 작성 슬롯과 씬 참조는 그대로 두었다. 새 인스턴스 구조·참조 및 보호 파일 검사 통과. 프로토타입 기존 override는 유지했고 저장본은 바이트 동일하다. 실제 Play 검증은 수행하지 않았다. [명세·검증](prefab-default-sync-2026-10-30/테스트%20및%20검증%20항목.md).
+
+## 2026-10-29 직접 씬 테스트·적/피해 작성 개선 — 구현·빌드 검증
+
+최소 현재 씬 진입, F1 로그/조작 패널, Body XYZ 앵커 이동, Inspector 피해량과 구체 플랫폼 타입, 빈 Title 월드/구도, 컷신 옵션 복귀, 플레이어 Inspector 원본 동기화를 구현했다. 직접 Play25항목·적 API12항목, 실제 오프닝 ESC 복귀9항목×2회, Playing ESC 복귀7항목, 서비스 취소8시나리오 및 직접 테스트 종료 정리를 통과했다. Windows 비개발 빌드 성공(오류0·경고52), Player 테스트 전용 타입 제외 확인.
+
+새 게임 네이티브 충돌은 Core/Stage 준비 후 Title 해제로 순서를 변경한 뒤 위 경로에서 재발하지 않았다. Unity6000.6.0f1·GPU Resident Drawer 원본 설정을 유지한다. 보호 파일1,218개와 Prototype 변환을 보존했다. 실제 엔딩 화면·실패 주입·전체 자연 플레이 QA는 남는다. 기능별 로컬 커밋만 수행하며 push/PR은 하지 않는다. [검증](ready-debug-authoring-2026-10-29/테스트%20및%20검증%20항목.md), [사용 방법](ready-debug-authoring-2026-10-29/디버깅%20모드%20사용%20방법.md).
+
+
+## 2026-10-29 시스템 V1.8 문서 교체
+
+현행 시스템 원본을 V1.8로 교체하고 V1.6 DOCX·메타를 제거했다. V1.8 활성 본문이 이전 사용자 기능 명세보다 우선한다. 공통·지역 지침 갱신은 게임 구현 완료를 의미하지 않는다. [구조 차이 목록](system-v18-2026-10-29/구조%20차이%20목록.md)의 컷신 복귀·타이틀3D·카메라 경계/전환·추격 시작·추격 이동/포획 5건은 미반영이며 이미지/하단 텍스트 분리는 이미 일치한다. [검증](system-v18-2026-10-29/테스트%20및%20검증%20항목.md)은 문서·정적 검사에 한정한다. 아래 날짜별 과거 상태와 검증 결과는 당시 기록이다.
+
+2026-10-29 재발 후 재적용: HEAD=a3acf10의 저장 씬에서 앞선 적 보정 override 부재를 확인하고 다시 적용·저장했다. 직접 진입/Retry/Title→NewGame→Playing 재검증 성공, 새 오류0. Play 종료 후 새 미저장 씬 상태는 보호하고 강제 재열기하지 않았다. [재검증 상세](prototype-entry-fix-2026-10-29/테스트%20및%20검증%20항목.md).
+
+## 2026-10-29 프로토타입 진입 복구
+
+Stationary3개(비활성 포함)의 씬 인스턴스 물리 회전을 외형 자식으로 이관하고 Enemys/Patrol을 3cm 올렸다. 원본 적 prefab/스케일/코드는 보존했다. 실제 Stage 직접 진입, Retry, Title 복귀, NewGame→오프닝 Skip→Playing 및 플레이 옵션 열기/닫기를 확인했다. 새 Console 오류0. 아래 Icons 작업 때 기록한 진입 차단은 이번 실행에서 해소됐으며 HUD 전 상태·전체 플레이 검증을 뜻하지 않는다. [검증](prototype-entry-fix-2026-10-29/테스트%20및%20검증%20항목.md).
+
+## 2026-10-29 Icons UI 적용·기존 크기 보존
+
+옵션 Frame/Bar_bg/Bar/Button 4종을 GlobalUiRoot의 10개 Image에 연결하고 RGB 7개를 흰색으로 변경했다. 기존 HP/Q/E6종 참조는 유지했다. Sprite/Color 외 전체 프리팹 필드 동일, RectTransform39개·Transform1개 및 원본 Icons24파일 해시를 보존했다. 실제 타이틀 옵션에서 값9회·합성 드래그3개·닫기/재열기와 화면을 확인했다. 최댓값 손잡이와 100 글자 일부 겹침은 크기·배치 보존 조건에 따라 남겼다.
+
+새 게임은 Stationary 물리 루트 회전/배율과 Patrol 안전높이 오류로 Recovering→Title 복귀하여 플레이 HUD/옵션은 미검증이다. 과거 통합 성공을 현재 통과로 승계하지 않는다. 원래 Stage isDirty=false로 복귀했으며 Git 작업은 없다. [명세](ui-icons-2026-10-29/기능%20명세서.md), [리뷰](ui-icons-2026-10-29/코드%20리뷰.md), [검증](ui-icons-2026-10-29/테스트%20및%20검증%20항목.md).
+
 ## 2026-10-18 리소스 참조 복구·실제 씬 왕복
 
 Stage6구간의 끊어진 음악 GUID와 CinematicCatalog 원화8참조를 현재 제공 자산에 연결했다. 활성 Patrol의 지형 아래 순찰 끝점은 Stage 인스턴스 위치 override로 보정했다. 실제 Bootstrap→Title→Opening→Playing, 옵션 Title 복귀 후 재진입, Retry, Ending 자동 완료 후 재진입을 검증했다. 통합55개와 메모/음량10개 검사 통과다. ESC/F 합성 입력과 실제 UI 이벤트/API 준비를 사용했으며 전체 레벨 자연 동선이나 빌드 완료를 뜻하지 않는다. 이전 UI 작업의 음악/컷신 준비 차단과 Patrol 오류는 이번 실행에서 해소됐다.
@@ -112,7 +153,7 @@ Core PlayerRoot에 지정 원본 분리 클립10개·실제 폼별 리그·이�
 
 ## 2026-10-12 V1.6 구현·소유 자산 이관
 
-현행 원본은 [V1.6](../Cooked_시스템_기획서_V.1.6.docx)이며 최신 직접 답변이 우선한다. [실행 명세](ready-system-v16-2026-10-11/spec.md)에 따라 SYM 104개 전수 검수, 앱/한 판 종료 통합, UI·오디오 수명 정리, 고정 Root/내부 앵커/이동 Body, 세 시점 및 두 DOMove 통로 차단을 구현했다. Bootstrapper와 SessionShutdownOperation을 통합 삭제하여 최종 SYM 소스는102개다. HudIconGraphic은 실제 자원 연결 전 예외 유지한다.
+현행 원본은 [V1.6](https://github.com/CK2026-Team20/FeelsGoodOnionProject/blob/a3acf102ffcdd9fd593b47aac8f0e85860e1689f/Assets/_Docs/Cooked_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EA%B8%B0%ED%9A%8D%EC%84%9C_V.1.6.docx)이며 최신 직접 답변이 우선한다. [실행 명세](ready-system-v16-2026-10-11/spec.md)에 따라 SYM 104개 전수 검수, 앱/한 판 종료 통합, UI·오디오 수명 정리, 고정 Root/내부 앵커/이동 Body, 세 시점 및 두 DOMove 통로 차단을 구현했다. Bootstrapper와 SessionShutdownOperation을 통합 삭제하여 최종 SYM 소스는102개다. HudIconGraphic은 실제 자원 연결 전 예외 유지한다.
 
 HMS 누적12파일의 변경57개를 소비 근거로 재검토해 불필요 분리 카메라 확장·getter 등을 제거했다. PR 기준 PlayerCameraController는 원본과 같으며 필요한 피해·사망·회수·애니메이션·스킬 연결은 유지했다. 보호 HMS 기준 씬과 _Art·Packages·ProjectSettings의 수동 수정 권한을 확대하지 않았다.
 

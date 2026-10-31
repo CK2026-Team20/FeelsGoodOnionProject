@@ -122,11 +122,11 @@ namespace Cooked.Level
         [SerializeField, InspectorLabel("첫 구간 시작"), Tooltip("첫 구간의 시작 체크포인트를 명시적으로 연결하세요. 목록 순번은 저장 키가 아닙니다.")]
         private StageTrigger firstSectionStart;
         [SerializeField, InspectorLabel("측면 구도"), Tooltip("모든 측면 구간이 공유하는 구도입니다.")]
-        private LevelCameraService.ViewSettings sideView = new LevelCameraService.ViewSettings(new Vector2(40,50), new Vector2(.1f,.1f), Vector3.zero);
+        private LevelCameraService.ViewSettings sideView = new LevelCameraService.ViewSettings(new Vector2(40,50), new Vector2(.1f,.1f), new Vector3(0,180,0));
         [SerializeField, InspectorLabel("통로 구도"), Tooltip("모든 통로 구간이 공유하는 구도입니다.")]
-        private LevelCameraService.ViewSettings corridorView = new LevelCameraService.ViewSettings(new Vector2(50,55), new Vector2(.1f,.1f), new Vector3(10,0,0));
+        private LevelCameraService.ViewSettings corridorView = new LevelCameraService.ViewSettings(new Vector2(50,55), new Vector2(.1f,.1f), new Vector3(10,180,0));
         [SerializeField, InspectorLabel("쿼터 구도"), Tooltip("모든 쿼터 구간이 공유하는 구도입니다.")]
-        private LevelCameraService.ViewSettings quarterView = new LevelCameraService.ViewSettings(new Vector2(50,50), new Vector2(.15f,.1f), new Vector3(20,-30,0));
+        private LevelCameraService.ViewSettings quarterView = new LevelCameraService.ViewSettings(new Vector2(50,50), new Vector2(.15f,.1f), new Vector3(20,180,0));
         public LevelCameraService.ViewSettings ViewFor(CameraMovementMode view) =>
             view == CameraMovementMode.Side ? sideView : view == CameraMovementMode.Corridor ? corridorView : quarterView;
         public IReadOnlyList<Section> Sections => Array.AsReadOnly(sections);

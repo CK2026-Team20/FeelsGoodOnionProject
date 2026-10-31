@@ -1,6 +1,6 @@
 # 실행 및 검증 절차
 
-> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
+> 현행 시스템 권위는 V1.8 활성 본문 → 이전 사용자 기능 명세 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
 
 ## 준비
 
@@ -64,7 +64,7 @@ QA 인계를 요청받은 경우 프로그래머·에이전트는 기능 테스�
 
 ## 새 목표 검증 범위와 준비 상태
 
-현행 V1.6 검증의 명령·시각·Source/DLL/빌드 식별·실패·미평가 범위는 tracking/status.md에서 연결한 실제 증거로 확인한다. 자산 이관·최종 검증의 완료 여부는 담당자의 결과 전까지 확정하지 않는다. 아래 V1.1 관찰과 ready-system-v15-2026-10-10 검증 기록은 당시 이력으로 보존하며 현재 통과로 승계하지 않는다.
+과거 V1.6 검증의 명령·시각·Source/DLL/빌드 식별·실패·미평가 범위는 tracking/status.md에서 연결한 실제 증거로 확인한다. 자산 이관·최종 검증의 완료 여부는 담당자의 결과 전까지 확정하지 않는다. 아래 V1.1 관찰과 ready-system-v15-2026-10-10 검증 기록은 당시 이력으로 보존하며 현재 통과로 승계하지 않는다.
 
 ### Windows 빌드 설정 감사 주의 (2026-10-05 T9의 과거 관찰)
 명시 여섯 씬 BuildPipeline.BuildPlayer는 성공했으나 최초 실행에서 Unity 자체가 GraphicsSettings 형식을 정규화하고 InputSystem preloadedAssets 및 UnityConnect m_Enabled를 디스크에 기록했다. 엔진 결과 Succeeded와 ProjectSettings 불변 gate 실패를 분리한다. baseline의 GraphicsSettings 복사본을 native load/save한 바이트는 현재 파일과 동일하므로 형식 변환으로 재현됐다. PlayerSettings.preloadedAssets와 Connect.m_Enabled의 본 검사 부수 변경은 원래 값으로만 native API 복원했다. raw 파일 해시는 줄바꿈/형식 차이 때문에 baseline과 달라 raw 불변 PASS가 아니다. 근거 t9-windows-first-build.json, t9-build-settings-restoration.json.

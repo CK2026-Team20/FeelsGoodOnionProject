@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
 using FeelsGoodOnion.TechSYM.Enemies;
+using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEngine;
 
 namespace Cooked.Session
@@ -9,6 +10,27 @@ namespace Cooked.Session
     /// <summary>Connects session policy and presentation to the HMS actor; HMS owns gameplay input.</summary>
     public sealed class PlayerBridgeService : IPlayerBridgeService
     {
+        /// <summary>플레이어가 실제 수락한 피해 결과입니다. Source는 실제 컴포넌트이며 타입 패턴으로 구별합니다.</summary>
+        public readonly struct AcceptedDamage
+        {
+            public PlayerFacade Actor { get; }
+            public long ActorGeneration { get; }
+            /// <summary>일반 적의 기존 위치 기반 피해는 null입니다. 플랫폼의 이름으로 종류를 추측하지 않습니다.</summary>
+            public DamageFloorPlatform Source { get; }
+            public int RequestedAmount { get; }
+            public int AppliedAmount { get; }
+            public bool IsFatal { get; }
+            internal AcceptedDamage(PlayerFacade actor, long generation, DamageFloorPlatform source,
+                int requestedAmount, int appliedAmount, bool isFatal)
+            {
+                Actor = actor; ActorGeneration = generation; Source = source;
+                RequestedAmount = requestedAmount; AppliedAmount = appliedAmount; IsFatal = isFatal;
+            }
+        }
+        // HMS의 실제 HP/피격 처리 완료 후 전달한다. 플랫폼은 애니메이션 선택을 알지 않는다.
+        public AcceptedDamage? LastAcceptedDamage { get; private set; }
+        public event Action<AcceptedDamage> DamageAccepted;
+        private bool applyingDamage;
         // Matches the existing HMS Facade's form/tear slots; never reinitializes its controller.
         private const int FormSlot = 0, TearSlot = 1;
         // Current EnemyDefinition/DamageFloor authoring uses 0ms; retain that finite fallback
@@ -333,6 +355,7 @@ namespace Cooked.Session
             var oldSkillActivated = skillActivatedHandler;
             skillCondition = null; skillRejectedHandler = null; skillActivatedHandler = null;
             ++actorGeneration;
+            LastAcceptedDamage = null;
             ClearSeparation();
             deathPending = deathReady = deathInterrupted = deathNotified = skipDeathPresentation = false;
             animation = null; endedHandler = null;
@@ -468,23 +491,55 @@ namespace Cooked.Session
         private bool HasLiveActor => IsCurrentActor(actor, actorGeneration) && !actor.IsDead &&
             movement != null && actorBody != null && (correction != null || (movement.isActiveAndEnabled && !actorBody.isKinematic));
 
-        /// <summary>인자는 피해원의 월드 위치다. 방향/세기는 모든 일반 피해원이 이 한 규칙을 사용한다.</summary>
-        public int Damage(Vector3 sourcePosition)
+        /// <summary>적 등 기존 위치 기반 호출은 피해1을 유지합니다.</summary>
+        public int Damage(Vector3 sourcePosition) => ApplyDamage(null, 1, sourcePosition);
+
+        /// <summary>디버그 명령도 선택한 실제 플랫폼의 Inspector 피해량과 구체 타입을 그대로 사용합니다.</summary>
+        public int Damage(DamageFloorPlatform source)
         {
             ThrowIfDisposed();
-            if (PhysicsPaused) return 0;
-            var beforeCorrection = actor; long beforeGeneration = actorGeneration;
-            try { CancelCorrection(); } catch (Exception error) { Debug.LogException(error); } // 정리 통지 오류가 실제 피해를 무적으로 바꾸지 않는다.
-            if (!IsCurrentActor(beforeCorrection, beforeGeneration)) return 0;
-            if (!HasLiveActor || PhysicsPaused) return 0;
-            Vector3 velocity = CommonKnockback(sourcePosition, actorBody.position, FacingDirection,
-                movement.AllowHorizontalMovement, movement.AllowDepthMovement, HorizontalKnockbackSpeed, UpwardKnockbackSpeed);
-            PlayerFacade expected = actor;
-            long generation = actorGeneration;
-            bool mayDie = model.CurrentHP == 1;
-            if (mayDie) BeginDeathObservation(false);
-            try { return expected.Damage(1, velocity, GetKnockbackControlLockMilliseconds(expected)); }
-            finally { if (mayDie && IsCurrentActor(expected, generation) && !expected.IsDead) ClearDeathObservation(); }
+            return source == null ? 0 : Damage(source, source.transform.position);
+        }
+
+        /// <summary>접촉한 실제 Trigger 중심과 피해 플랫폼을 전달합니다. 클립 선택은 플레이어 표현의 책임입니다.</summary>
+        public int Damage(DamageFloorPlatform source, Vector3 sourcePosition)
+        {
+            ThrowIfDisposed();
+            if (source == null || !source.isActiveAndEnabled) return 0;
+            return ApplyDamage(source, source.DamageAmount, sourcePosition);
+        }
+
+        private int ApplyDamage(DamageFloorPlatform source, int amount, Vector3 sourcePosition)
+        {
+            ThrowIfDisposed();
+            // 거절된 피해는 보정 이동·넉백·사망 관측·마지막 피해원을 변경하지 않는다.
+            if (amount <= 0 || applyingDamage || PhysicsPaused || !HasLiveActor || actor.IsInvincible()) return 0;
+            if (!Finite(sourcePosition)) throw new ArgumentOutOfRangeException(nameof(sourcePosition));
+            applyingDamage = true;
+            try
+            {
+                var expected = actor; long generation = actorGeneration;
+                try { CancelCorrection(); } catch (Exception error) { Debug.LogException(error); }
+                // 보정 해제의 동기 콜백이 Actor/무적/정지 상태를 바꿀 수 있다.
+                if (!IsCurrentActor(expected, generation) || !HasLiveActor || PhysicsPaused || expected.IsInvincible()) return 0;
+                Vector3 velocity = CommonKnockback(sourcePosition, actorBody.position, FacingDirection,
+                    movement.AllowHorizontalMovement, movement.AllowDepthMovement, HorizontalKnockbackSpeed, UpwardKnockbackSpeed);
+                bool mayDie = amount >= model.CurrentHP;
+                if (mayDie) BeginDeathObservation(false);
+                int applied;
+                try { applied = expected.Damage(amount, velocity, GetKnockbackControlLockMilliseconds(expected)); }
+                finally { if (mayDie && IsCurrentActor(expected, generation) && !expected.IsDead) ClearDeathObservation(); }
+                if (applied > 0 && IsCurrentActor(expected, generation))
+                {
+                    var result = new AcceptedDamage(expected, generation, source, amount, applied, expected.IsDead);
+                    LastAcceptedDamage = result;
+                    var errors = new List<Exception>();
+                    SessionCleanup.Notify(errors, DamageAccepted, result);
+                    if (errors.Count > 0) Debug.LogException(new AggregateException("플레이어 피해 결과 통지 오류입니다.", errors));
+                }
+                return applied;
+            }
+            finally { applyingDamage = false; }
         }
         /// <summary>작성 평면은 HMS 이동 축(X/Z)이다. 동일 위치는 논리 정면 반대, Y는 항상 상향이다.</summary>
         public static Vector3 CommonKnockback(Vector3 sourcePosition, Vector3 bodyPosition, Vector3 facing,
@@ -905,7 +960,7 @@ namespace Cooked.Session
                 SessionCleanup.Attempt(errors, () => session.Changed -= OnSessionChanged);
                 SessionCleanup.Attempt(errors, Detach);
             }
-            finally { Changed = null; ActorChanged = null; AbilitySucceeded = null; AbilityRejected = null; Dying = null; }
+            finally { Changed = null; ActorChanged = null; AbilitySucceeded = null; AbilityRejected = null; Dying = null; DamageAccepted = null; }
             SessionCleanup.ThrowIfAny(errors, "Player bridge disposal completed with teardown failures.");
         }
         private void RequireActor() { ThrowIfDisposed(); if (!HasActor) throw new InvalidOperationException("No player actor attached."); }

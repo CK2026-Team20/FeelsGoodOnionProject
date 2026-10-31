@@ -12,5 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ce535a4e4029d914fb2a8c4be09bd330, type: 3}
   m_Name: Memo_1002
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Interaction.MemoModel
-  memoID: 1002
-  memoImage: {fileID: 21300000, guid: 76b7b5a4eacbff242b637820daf8e477, type: 3}
+  memoImage: {fileID: 21300000, guid: 2e096fc23db917f40a587d7cdbdc5c37, type: 3}

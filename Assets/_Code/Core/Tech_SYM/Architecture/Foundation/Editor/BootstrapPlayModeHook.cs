@@ -45,6 +45,7 @@ namespace Cooked.Foundation.Editor
             VerifyRestoredSceneSetup();
             Arm();
         }
+        public static void RefreshEntrySelection() => Arm();
         private static void ScheduleArm() { EditorApplication.delayCall -= Arm; EditorApplication.delayCall += Arm; }
         private static ArchitectureInstallation Installation => AssetDatabase.LoadAssetAtPath<ArchitectureInstallation>(ArchitectureInstallation.AssetPath);
         private static void Arm()
@@ -80,6 +81,13 @@ namespace Cooked.Foundation.Editor
                     {
                         RestoreOptions(); ClearRoute(); CaptureSceneSetup();
                         ArmStartSceneForEntry(null);
+                        if (Cooked.DebugTesting.DirectSceneTestEntry.IsSelected)
+                        {
+                            SessionState.SetBool(Key + "OptionsSaved", true);
+                            SessionState.SetInt(Key + "Options", (int)EditorSettings.enterPlayModeOptions);
+                            EditorSettings.enterPlayModeOptions &= ~EnterPlayModeOptions.DisableSceneReload;
+                            SessionState.SetInt(Key + "OwnedOptions", (int)EditorSettings.enterPlayModeOptions);
+                        }
                         SessionState.SetBool(Key + "Entering", true);
                         return;
                     }
@@ -171,6 +179,7 @@ namespace Cooked.Foundation.Editor
         private static bool TryResolveEntry(string source, out SceneCatalog catalog, out BootRoute route)
         {
             catalog = null; route = default;
+            if (Cooked.DebugTesting.DirectSceneTestEntry.IsSelected) return false;
             var installation = Installation;
             if (installation == null)
             {
