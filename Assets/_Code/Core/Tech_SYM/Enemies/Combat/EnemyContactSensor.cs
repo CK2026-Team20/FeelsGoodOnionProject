@@ -19,7 +19,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         private CapsuleCollider actorBody;
         private long actorGeneration;
         private double lastDamagePhysicsStep = double.NegativeInfinity;
-        private bool resolving;
+        private bool resolving, reportedInvalidSetup;
         public EnemyActor Owner => owner;
         public bool PhysicsPaused => bridge != null && bridge.PhysicsPaused;
         private void Awake() => shape = GetComponent<BoxCollider>();
@@ -33,8 +33,16 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (player == null) throw new ArgumentNullException(nameof(player));
             if (shape == null) shape = GetComponent<BoxCollider>();
-            if (owner == null || shape != owner.HurtCollider || !shape.isTrigger || shape.transform == owner.transform || !shape.transform.IsChildOf(owner.transform))
-                throw new InvalidOperationException("소유 적의 실제 몸체 Trigger와 같은 객체에 접촉 센서를 연결하세요.");
+            if (owner == null || shape == null || shape != owner.HurtCollider || !shape.isTrigger ||
+                shape.transform == owner.transform || !shape.transform.IsChildOf(owner.transform))
+            {
+                UnbindPlayer();
+                if (!reportedInvalidSetup)
+                    Debug.LogError($"적 접촉 센서 '{name}': 소유 적의 실제 몸체 Trigger와 같은 객체에 연결하세요. 이 센서만 연결을 생략합니다.", this);
+                reportedInvalidSetup = true;
+                return;
+            }
+            reportedInvalidSetup = false;
             if (ReferenceEquals(bridge, player)) { ClearContacts(); return; }
             UnbindPlayer();
             bridge = player;

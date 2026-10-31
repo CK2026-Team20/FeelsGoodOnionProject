@@ -15,12 +15,15 @@ namespace Cooked.UI
         private bool changing;
         public bool IsOpen { get; private set; }
         public bool CanOpen => !disposed && CanOpenAt(flow.Snapshot);
-        public bool CanNavigate => !disposed && flow.Snapshot.State == FlowState.Playing && !flow.Snapshot.IsBusy;
+        public bool CanNavigate => !disposed && CanReturnToTitleAt(flow.Snapshot);
         public string Error { get; private set; }
         public event Action Changed;
         public static bool CanOpenAt(FlowSnapshot value) =>
             value.State == FlowState.Opening || value.State == FlowState.Ending ||
             (!value.IsBusy && (value.State == FlowState.Title || value.State == FlowState.Playing));
+        private static bool CanReturnToTitleAt(FlowSnapshot value) =>
+            value.State == FlowState.Opening || value.State == FlowState.Ending ||
+            (value.State == FlowState.Playing && !value.IsBusy);
         public OptionsService(IGameFlowService flow, IGameplayControlService control, SettingsService settings, Action<string> reportError = null)
         {
             this.flow = flow ?? throw new ArgumentNullException(nameof(flow));

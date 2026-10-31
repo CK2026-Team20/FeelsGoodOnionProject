@@ -1,8 +1,10 @@
 # 시스템 책임과 수명
 
-> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
+> 아래 구조·API 설명은 현재 구현 사실이다. V1.8 요구를 이미 구현했다는 뜻이 아니다. 컷신 복귀·타이틀·카메라·추격 차이는 [구조 차이 목록](tracking/system-v18-2026-10-29/구조%20차이%20목록.md)을 따른다.
 
-Unity6000.6.0f1의 로컬 플레이 게임이다. 현행은 V1.6과 최신 사용자 직접 선택이며 현재 실행 등록은 01_Stage_Prototype 하나다. 2026-10-15 직접 지시로 제공 레벨 목업과 `_Prefabs` 실제 크기에 따라 새 씬의 지형·원경·기능을 배치하고 구 Prototype/1_Stage를 폐기했다. 서버·네트워크·디스크 진행 저장은 없다. 기존 Core와 등록 Stage의 씬 수명, 한 판 서비스 수명, 현재 Actor 수명을 구분한다.
+> 현행 시스템 권위는 V1.8 활성 본문 → 이전 사용자 기능 명세 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
+
+Unity6000.6.0f1의 로컬 플레이 게임이다. 시스템 목표는 V1.8이며 현재 구현과 구별한다. 현재 실행 등록은 01_Stage_Prototype 하나다. 2026-10-15 직접 지시로 제공 레벨 목업과 `_Prefabs` 실제 크기에 따라 새 씬의 지형·원경·기능을 배치하고 구 Prototype/1_Stage를 폐기했다. 서버·네트워크·디스크 진행 저장은 없다. 기존 Core와 등록 Stage의 씬 수명, 한 판 서비스 수명, 현재 Actor 수명을 구분한다.
 
 ## 상태 원본과 실행 책임
 
@@ -37,11 +39,11 @@ CheckpointSnapshot은 접촉한 체크포인트 Transform의 유한 월드 Posit
 
 구간 음악은 StageService의 실제 Clip·음량·전환 시간으로 작성하고 새 구간 시작 및 복귀 맥락에서 요청한다. 같은 실제 Clip이면 재생 위치·게인·진행 중 fade를 다시 시작하지 않는다. 첫 구간 선택을 Opening 동안 유지해 Playing에서 적용하며, 타이틀·오프닝·엔딩·추격 음악의 기존 우선순위는 유지한다.
 
-App 출력 Camera/Brain/AudioListener는 각1개이고 Core의 Side·Corridor·Quarter 리그를 LevelCameraService가 표현한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
+App의 게임 출력 Camera/Brain/AudioListener와 Title 씬의 전용 Camera/AudioListener를 분리한다. 타이틀 표시 중 게임 출력은 비활성화하고 Title 해제 시 원래 상태를 복원하여 활성 출력·Listener는 하나만 유지한다. Core의 Side·Corridor·Quarter 리그는 게임 출력만 구동한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. [현재 구현·V1.8 미반영] 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
 
 구도 Inspector의 화면 위치·허용 폭/높이·감쇠·거리·각도·시야각은 런타임에 변경된 값만 갱신한다. 잘못된 값은 마지막 유효 구도를 보존하고 유효값 복귀까지 한 번 경고한다. Follow를 끊은 전환 구도는 목표를 잠시 연결해 재평가한 뒤 다시 끊으며 전환 상태·입력 차단·이동 Tween은 유지한다. 일시정지 중 구도 변경은 Brain delta 0으로 출력하고 전환 시간은 진행하지 않는다.
 
-새 시작 체크포인트마다 플레이어 Capsule 중심을 해당 시작 위치로 DOMove 보정한다. 끝은 저장만 하고 현재 구간·시점을 바꾸지 않는다. 같은 시점의 새 시작은 카메라 재선택·blend 재시작만 생략하며 보정·저장·음악은 수행한다. 새 유효 시작은 이전 보정·전환을 취소하고 최신 요청이 완료하도록 한다. 사망·취소·Actor/Stage 해제 때 자기 트윈·보정 소유권·입력 제한을 반환하며 낡은 callback은 상태를 바꾸지 못한다. 사용 중인 차단 장치만 플레이어 보정 뒤 고정 목표로 이동한다.
+새 시작 체크포인트마다 플레이어 Capsule 중심을 해당 시작 위치로 DOMove 보정한다. 끝은 저장만 하고 현재 구간·시점을 바꾸지 않는다. 같은 시점의 새 시작은 카메라 재선택·blend 재시작만 생략하며 보정·저장·음악은 수행한다. [현재 구현·V1.8 미반영] 새 유효 시작은 이전 보정·전환을 취소하고 최신 요청을 수행한다. V1.8 목표는 전환 중 추가 전환 금지다. 사망·취소·Actor/Stage 해제 때 자기 트윈·보정 소유권·입력 제한을 반환하며 낡은 callback은 상태를 바꾸지 못한다. 사용 중인 차단 장치만 플레이어 보정 뒤 고정 목표로 이동한다.
 
 ## 한 판 흐름
 
@@ -52,6 +54,8 @@ Bootstrap→Title→새 게임→Core/Prototype1개 additive 로드→초기 준
 최종 포포 대화만 완료 장부와 별개로 새 회차를 허용한다. Stage·Trigger·선택 객체·Table·Code·Actor 세대·Round·Session을 캡처하고 종료 시 다시 확인한다. Completed/Skipped만 Ending1회이며 취소·낡은 callback·같은 프레임 사망/포획은 거절한다.
 
 ## Scene Root와 prefab 물리
+
+일반 적의 현행 구조(2026-10-29 T2)는 고정 EnemyActor Root 아래의 Body와 고정 Start/End 앵커를 조합한다. EnemyActor는 상태·기절·목표 끝점·초기 Body localPosition을, EnemyMotor는 Body의 월드 위치 작성을, Body의 EnemyContactSensor는 실제 접촉과 반복 피해를 소유한다. Root와 앵커를 이동시키지 않으며 앵커는 Body 밖에 둔다. EnemyMotor는 지형 검사를 소유하지 않고 XYZ 방향과 Root/Body 회전·양수 비균등 배율을 허용한다. Body 속도는 월드 거리(m/s)이므로 Root 배율을 곱하지 않으며 Gizmo는 Body 변환 행렬로 표시한다.
 
 씬 Manager/Camera/Canvas/월드 기능 객체는 서로 독립 root다. 개별 prefab은 빈 논리 Root와 Render/Body/표현 자식을 구분한다. Player의 실제 ActorBody는 Facade·Movement·Form·HeavyState·Rigidbody·Capsule이 동거하고 VisualRoot/CameraAnchor는 서로 다른 직계 자식이다. 빈 PlayerRoot는 생성/제거 관리 단위다. Shell은 HMS Remove 계약 때문에 PlayerDebris/Rigidbody/Box/HeavyState가 실제 Root에 동거하며 바깥 래퍼를 만들지 않는다.
 

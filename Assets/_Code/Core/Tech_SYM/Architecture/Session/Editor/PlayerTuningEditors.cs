@@ -66,9 +66,139 @@ namespace Cooked.Session.Editor
         }
     }
 
+    /// <summary>Editor-only synchronization through serialized authoring data and public movement APIs.</summary>
+    public static class PlayerTuningSynchronization
+    {
+        public static string SpeedField(PlayerMovementMode mode) => mode == PlayerMovementMode.Side
+            ? "sideMoveSpeed" : mode == PlayerMovementMode.Quarter ? "quarterMoveSpeed" : "backMoveSpeed";
+
+        /// <summary>Read-only: scene runtime values in Play; authoritative startup sources otherwise.</summary>
+        public static void ReadDisplayedValues(CharacterMovement movement, out float speed, out float jumpHeight)
+        {
+            if (movement == null) throw new System.ArgumentNullException(nameof(movement));
+            using var values = new SerializedObject(movement);
+            speed = values.FindProperty("moveSpeed").floatValue;
+            jumpHeight = values.FindProperty("jumpHeight").floatValue;
+            if (Application.isPlaying && !EditorUtility.IsPersistent(movement)) return;
+            var mode = movement.GetComponent<PlayerMovementModeController>();
+            if (mode != null)
+            {
+                using var source = new SerializedObject(mode);
+                var initialMode = (PlayerMovementMode)source.FindProperty("initialMode").intValue;
+                speed = source.FindProperty(SpeedField(initialMode)).floatValue;
+            }
+            var form = movement.GetComponent<PlayerFormController>();
+            if (form != null)
+            {
+                using var source = new SerializedObject(form);
+                jumpHeight = source.FindProperty("normalJumpHeight").floatValue;
+            }
+        }
+
+        /// <summary>Explicit edit helper for automation; null means leave that setting untouched.</summary>
+        public static void ApplyEditedValues(CharacterMovement movement, float? speed, float? jumpHeight)
+        {
+            if (movement == null) throw new System.ArgumentNullException(nameof(movement));
+            int group = Undo.GetCurrentGroup();
+            using var values = new SerializedObject(movement);
+            if (speed.HasValue) values.FindProperty("moveSpeed").floatValue = speed.Value;
+            if (jumpHeight.HasValue) values.FindProperty("jumpHeight").floatValue = jumpHeight.Value;
+            values.ApplyModifiedProperties();
+            SyncMovement(movement, speed.HasValue, jumpHeight.HasValue);
+            Undo.CollapseUndoOperations(group);
+        }
+
+        public static void SyncMovement(CharacterMovement movement, bool speedChanged, bool jumpChanged)
+        {
+            if (movement == null) return;
+            int group = Undo.GetCurrentGroup();
+            using var values = new SerializedObject(movement);
+            var mode = movement.GetComponent<PlayerMovementModeController>();
+            var form = movement.GetComponent<PlayerFormController>();
+            if (speedChanged && mode != null)
+            {
+                using var data = new SerializedObject(mode);
+                string field = SpeedField(Application.isPlaying && !EditorUtility.IsPersistent(mode)
+                    ? mode.CurrentMode : (PlayerMovementMode)data.FindProperty("initialMode").intValue);
+                float value = values.FindProperty("moveSpeed").floatValue;
+                value = float.IsFinite(value) ? Mathf.Max(0f, value) : 0f;
+                // HMS owns Quarter <= Side; reducing Side may also reduce Quarter in OnValidate.
+                if (field == "quarterMoveSpeed") value = Mathf.Min(value, data.FindProperty("sideMoveSpeed").floatValue);
+                data.FindProperty(field).floatValue = value;
+                data.ApplyModifiedProperties();
+                data.Update(); // Read back HMS validation rather than displaying the requested value.
+                Undo.RecordObject(movement, "이동속도 원본 동기화");
+                movement.SetMoveSpeed(data.FindProperty(field).floatValue);
+                EditorUtility.SetDirty(movement);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(movement);
+            }
+            if (jumpChanged && form != null)
+            {
+                using var data = new SerializedObject(form);
+                string field = Application.isPlaying && !EditorUtility.IsPersistent(form) && form.IsSmall ? "smallJumpHeight" : "normalJumpHeight";
+                float height = values.FindProperty("jumpHeight").floatValue;
+                data.FindProperty(field).floatValue = float.IsFinite(height) ? Mathf.Max(0f, height) : 0f;
+                data.ApplyModifiedProperties();
+                Undo.RecordObject(movement, "점프 높이 원본 동기화");
+                movement.SetJumpHeight(data.FindProperty(field).floatValue);
+                EditorUtility.SetDirty(movement);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(movement);
+            }
+            Undo.CollapseUndoOperations(group);
+        }
+
+        public static void ApplyCurrentSpeed(PlayerMovementModeController mode)
+        {
+            if (mode == null || !PlayerTuningInspector.IsLive(mode) || !mode.IsInitialized) return;
+            var movement = mode.GetComponent<CharacterMovement>();
+            if (movement == null) return;
+            using var data = new SerializedObject(mode);
+            Undo.RecordObject(movement, "현재 모드 속도 반영");
+            movement.SetMoveSpeed(data.FindProperty(SpeedField(mode.CurrentMode)).floatValue);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(movement);
+        }
+
+        public static void ApplyCurrentJump(PlayerFormController form)
+        {
+            if (form == null || !PlayerTuningInspector.IsLive(form) || !form.isActiveAndEnabled) return;
+            var movement = form.GetComponent<CharacterMovement>();
+            if (movement == null) return;
+            using var data = new SerializedObject(form);
+            Undo.RecordObject(movement, "현재 폼 점프 높이 반영");
+            movement.SetJumpHeight(data.FindProperty(form.IsSmall ? "smallJumpHeight" : "normalJumpHeight").floatValue);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(movement);
+        }
+    }
+
     [CustomEditor(typeof(CharacterMovement)), CanEditMultipleObjects]
     public sealed class CharacterMovementEditor : UnityEditor.Editor
     {
+        private bool DrawTuningProxy(bool speed)
+        {
+            float displayed = 0f;
+            bool mixed = false;
+            for (int i = 0; i < targets.Length; i++)
+            {
+                PlayerTuningSynchronization.ReadDisplayedValues((CharacterMovement)targets[i], out float move, out float jump);
+                float value = speed ? move : jump;
+                if (i == 0) displayed = value;
+                else mixed |= !displayed.Equals(value);
+            }
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = mixed;
+            try
+            {
+                EditorGUI.BeginChangeCheck();
+                float edited = EditorGUILayout.FloatField(new GUIContent(
+                    speed ? "현재/초기 모드 이동속도 (m/s)" : "현재/정상 폼 점프 높이 (m)",
+                    "Play 전에는 시작 원본을, Play 중 씬 객체는 실제 적용값을 표시합니다. 편집할 때만 원본과 이동 컴포넌트를 함께 변경합니다."), displayed);
+                bool changed = EditorGUI.EndChangeCheck();
+                if (changed) serializedObject.FindProperty(speed ? "moveSpeed" : "jumpHeight").floatValue = edited;
+                return changed;
+            }
+            finally { EditorGUI.showMixedValue = previousMixed; }
+        }
+
         public override bool RequiresConstantRepaint() => Application.isPlaying;
         public override void OnInspectorGUI()
         {
@@ -76,15 +206,15 @@ namespace Cooked.Session.Editor
             PlayerTuningInspector.PersistenceNotice();
             void F(string n, string label, string help) => PlayerTuningInspector.Field(serializedObject, n, label, help);
             using (new EditorGUI.DisabledScope(true)) F("m_Script", "스크립트", "이동을 실행하는 컴포넌트입니다.");
-            EditorGUILayout.HelpBox("이동속도는 이동 모드 설정이, 점프 높이는 폼 설정이 시작·전환 때 덮어씁니다. 리밸런스는 해당 컴포넌트에서 편집하고 명시적 적용 버튼을 사용하세요.", MessageType.Info);
-            F("moveSpeed", "현재/기본 이동속도 (m/s)", "실행 중에는 모드 설정이 적용된 값입니다. 모드 변경 시 다시 덮어씁니다.");
+            EditorGUILayout.HelpBox("속도 편집은 현재/초기 모드 원본에, 점프 편집은 현재/정상 폼 원본에 함께 반영됩니다. 기존 HMS 규칙에 따라 측면 속도를 낮추면 그보다 큰 쿼터 속도도 함께 낮아집니다. 쿼터 속도는 측면 이하이며 다른 폼은 유지합니다.", MessageType.Info);
+            bool speedChanged = DrawTuningProxy(true);
             F("groundAcceleration", "지상 가속도 (m/s²)", "목표 수평 속도에 도달하는 빠르기를 조절합니다.");
             F("groundDeceleration", "지상 감속도 (m/s²)", "입력을 놓았을 때 멈추는 빠르기를 조절합니다.");
             F("airAcceleration", "공중 가속도 (m/s²)", "공중 수평 조작 반응을 조절합니다.");
             F("airDeceleration", "공중 감속도 (m/s²)", "공중에서 입력을 놓았을 때의 감속을 조절합니다.");
             F("allowHorizontalMovement", "X축 이동 허용", "이동 모드가 적용할 때 덮어쓰는 월드 X축 허용 상태입니다.");
             F("allowDepthMovement", "Z축 이동 허용", "통합 통로·쿼터에서는 허용하며 측면에서는 제한합니다.");
-            F("jumpHeight", "현재/기본 점프 높이 (m)", "폼 설정이 덮어씁니다. 다음 점프의 초기 상승 속도 계산에 사용합니다.");
+            bool jumpChanged = DrawTuningProxy(false);
             F("gravity", "중력 가속도 (m/s²)", "상승·낙하 속도 변화를 조절합니다. 실행 중 편집하면 다음 물리 스텝부터 사용합니다.");
             F("fallGravityMultiplier", "낙하 중력 배수", "하강 중 중력에 곱합니다. 1은 상승과 같은 중력입니다.");
             F("maximumFallSpeed", "최대 낙하속도 (m/s)", "하강 속도의 상한입니다.");
@@ -92,6 +222,8 @@ namespace Cooked.Session.Editor
             F("groundStickSpeed", "접지 유지 속도 (m/s)", "접지 중 바닥을 따라가는 아래 방향 속도입니다.");
             F("externalDeceleration", "외부 수평속도 감속 (m/s²)", "외부 충격의 수평 속도가 줄어드는 빠르기입니다.");
             serializedObject.ApplyModifiedProperties();
+            if (speedChanged || jumpChanged)
+                foreach (CharacterMovement movement in targets) PlayerTuningSynchronization.SyncMovement(movement, speedChanged, jumpChanged);
             if (targets.Length == 1) PlayerTuningInspector.Runtime((CharacterMovement)target);
         }
     }
@@ -107,11 +239,26 @@ namespace Cooked.Session.Editor
             void F(string n, string label, string help) => PlayerTuningInspector.Field(serializedObject, n, label, help);
             using (new EditorGUI.DisabledScope(true)) F("m_Script", "스크립트", "이동축과 속도 설정을 소유합니다.");
             F("initialMode", "초기 이동 모드", "시작할 때 사용합니다. 통합 게임에서는 구간 시점이 이동 모드를 선택합니다.");
+            EditorGUI.BeginChangeCheck();
             F("sideMoveSpeed", "측면 속도 (m/s)", "월드 X축 최대 자체 속도입니다. 초기화 또는 다른 모드에서 진입할 때 적용합니다.");
+            bool sideMoveSpeedChanged = EditorGUI.EndChangeCheck();
+            EditorGUI.BeginChangeCheck();
             F("quarterMoveSpeed", "통로·쿼터 속도 (m/s)", "통합 Corridor와 Quarter 모두 사용하는 XZ 속도입니다. 측면 속도 이하로 자동 제한합니다.");
+            bool quarterMoveSpeedChanged = EditorGUI.EndChangeCheck();
+            EditorGUI.BeginChangeCheck();
             F("backMoveSpeed", "독립 백뷰 속도 (m/s)", "독립 Back/BackFixed의 Z축 속도입니다. 통합 통로에서는 사용하지 않습니다.");
+            bool backMoveSpeedChanged = EditorGUI.EndChangeCheck();
             serializedObject.ApplyModifiedProperties();
-            EditorGUILayout.HelpBox("같은 모드 재요청은 속도를 재적용하지 않습니다. Play 중 즉시 반영하려면 아래 버튼을 누르세요. 이동축이나 현재 모드를 바꾸지 않습니다.", MessageType.Info);
+            foreach (PlayerMovementModeController mode in targets)
+            {
+                string current = PlayerTuningSynchronization.SpeedField(mode.CurrentMode);
+                if ((current == "sideMoveSpeed" && sideMoveSpeedChanged) ||
+                    (current == "quarterMoveSpeed" && (quarterMoveSpeedChanged || sideMoveSpeedChanged)) ||
+                    (current == "backMoveSpeed" && backMoveSpeedChanged))
+                    PlayerTuningSynchronization.ApplyCurrentSpeed(mode);
+            }
+            serializedObject.Update(); // Display validated per-target values, including a secondary Quarter clamp.
+            EditorGUILayout.HelpBox("현재 모드의 속도를 편집하면 Play 중 즉시 적용합니다. 이동축·현재 모드는 바꾸지 않습니다. 기존 HMS 규칙에 따라 측면 속도를 낮추면 그보다 큰 쿼터 속도도 함께 낮아집니다. 쿼터 속도는 측면 이하입니다.", MessageType.Info);
             if (targets.Length == 1)
             {
                 var mode = (PlayerMovementModeController)target;
@@ -119,18 +266,7 @@ namespace Cooked.Session.Editor
                 PlayerTuningInspector.Ratio(mode, serializedObject.FindProperty("sideMoveSpeed").floatValue, true, "측면 속도 / 정상 Capsule 높이 (초⁻¹)");
                 PlayerTuningInspector.Runtime(mode);
             }
-            bool live = targets.Length > 0;
-            foreach (PlayerMovementModeController mode in targets) live &= PlayerTuningInspector.IsLive(mode) && mode.IsInitialized && mode.GetComponent<CharacterMovement>() != null;
-            using (new EditorGUI.DisabledScope(!live))
-                if (GUILayout.Button("현재 플레이어에 속도 적용"))
-                    foreach (PlayerMovementModeController mode in targets)
-                    {
-                        using var data = new SerializedObject(mode);
-                        string field = mode.CurrentMode == PlayerMovementMode.Side ? "sideMoveSpeed" : mode.CurrentMode == PlayerMovementMode.Quarter ? "quarterMoveSpeed" : "backMoveSpeed";
-                        var movement = mode.GetComponent<CharacterMovement>();
-                        Undo.RecordObject(movement, "현재 플레이어 속도 적용");
-                        movement.SetMoveSpeed(data.FindProperty(field).floatValue);
-                    }
+
         }
     }
 
@@ -149,11 +285,18 @@ namespace Cooked.Session.Editor
             F("smallRadius", "소형 반경 (로컬 m)", "소형 전환 때 적용합니다. 월드 크기는 몸체 배율의 영향을 받습니다.");
             F("smallHeight", "소형 전체 높이 (로컬 m)", "소형 전환 때 적용합니다. 지름 이상으로 제한합니다.");
             F("restoreCheckTolerance", "정상 복귀 겹침 허용 (m)", "정상 복귀 공간 검사에서 바닥의 미세 겹침을 허용합니다.");
+            EditorGUI.BeginChangeCheck();
             F("normalJumpHeight", "정상 점프 목표 높이 (m)", "정상 폼 적용 때 이동 컴포넌트에 전달합니다. 실제 정점은 별도 측정합니다.");
+            bool normalJumpHeightChanged = EditorGUI.EndChangeCheck();
+            EditorGUI.BeginChangeCheck();
             F("smallJumpHeight", "소형 점프 목표 높이 (m)", "소형 폼 적용 때 전달합니다. 현재 점프의 속도는 바꾸지 않습니다.");
+            bool smallJumpHeightChanged = EditorGUI.EndChangeCheck();
             F("debrisRecoveryDistance", "근접 회수 API 거리 (m)", "TryRecoverNearbyDebris에 적용하는 플레이어와 껍질 루트 사이의 월드 거리입니다. 통합 Q 정상 복귀는 이 거리로 제한하지 않습니다.");
             serializedObject.ApplyModifiedProperties();
-            EditorGUILayout.HelpBox("정상 형상 원본은 초기 Capsule입니다. 형상 수치는 다음 폼 적용 때 반영됩니다. 아래 버튼은 현재 폼의 점프 설정만 적용하며 폼·껍질·형상을 전환하지 않습니다.", MessageType.Info);
+            foreach (PlayerFormController form in targets)
+                if (form.IsSmall ? smallJumpHeightChanged : normalJumpHeightChanged)
+                    PlayerTuningSynchronization.ApplyCurrentJump(form);
+            EditorGUILayout.HelpBox("현재 폼의 점프 높이는 Play 중 편집 즉시 다음 점프에 반영됩니다. 형상 수치는 다음 폼 적용 때 반영되며 폼·껍질·입력축을 전환하지 않습니다.", MessageType.Info);
             if (targets.Length == 1)
             {
                 var form = (PlayerFormController)target;
@@ -161,17 +304,7 @@ namespace Cooked.Session.Editor
                 EditorGUILayout.LabelField("현재 폼", form.CurrentForm.ToString());
                 PlayerTuningInspector.Runtime(form);
             }
-            bool live = targets.Length > 0;
-            foreach (PlayerFormController form in targets) live &= PlayerTuningInspector.IsLive(form) && form.isActiveAndEnabled && form.GetComponent<CharacterMovement>() != null;
-            using (new EditorGUI.DisabledScope(!live))
-                if (GUILayout.Button("현재 플레이어에 점프 설정 적용"))
-                    foreach (PlayerFormController form in targets)
-                    {
-                        using var data = new SerializedObject(form);
-                        var movement = form.GetComponent<CharacterMovement>();
-                        Undo.RecordObject(movement, "현재 플레이어 점프 설정 적용");
-                        movement.SetJumpHeight(data.FindProperty(form.IsSmall ? "smallJumpHeight" : "normalJumpHeight").floatValue);
-                    }
+
         }
     }
 }

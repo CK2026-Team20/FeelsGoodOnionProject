@@ -65,6 +65,7 @@ GameObject:
   - component: {fileID: 7933119948528341231}
   - component: {fileID: 1733883928137211457}
   - component: {fileID: 5849540893784246026}
+  - component: {fileID: 6898414604573461448}
   m_Layer: 0
   m_Name: Gratan
   m_TagString: Untagged
@@ -155,6 +156,22 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 2c4dd5af7899d294a8f3aee3db8661dc, type: 2}
+--- !u!114 &6898414604573461448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1234797023105397982}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d4fef252faf2664e9f5ee182a069ed3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.GratangDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 9064448583769682760}
+  - {fileID: 1959651206014115888}
 --- !u!1 &1684861657111973802
 GameObject:
   m_ObjectHideFlags: 0
@@ -594,29 +611,8 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3129135165845145969, guid: f1003dc034eca354e8ff71a3df5b482d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 9031795257989973462}
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7767219934062028402, guid: f1003dc034eca354e8ff71a3df5b482d, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2763652478637108710}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f1003dc034eca354e8ff71a3df5b482d, type: 3}
---- !u!1 &2481804586563708046 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7767219934062028402, guid: f1003dc034eca354e8ff71a3df5b482d, type: 3}
-  m_PrefabInstance: {fileID: 5313000164188291836}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &2763652478637108710
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2481804586563708046}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c89f2d7cdc56b44e8bb30e342d2da7b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamageFloorPlatform
-  damageTriggers: []
 --- !u!4 &7122296186012896141 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3129135165845145969, guid: f1003dc034eca354e8ff71a3df5b482d, type: 3}

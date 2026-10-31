@@ -99,11 +99,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Level.StageTrigger
   stage: {fileID: 0}
-  kind: 2
-  checkpoint: {fileID: 0}
+  kind: 1
   dialogue:
     table: {fileID: 0}
     code: 
   independentHost: {fileID: 0}
   once: 1
   chaseRetreatGate: {fileID: 0}
+  chaseDriver: {fileID: 0}

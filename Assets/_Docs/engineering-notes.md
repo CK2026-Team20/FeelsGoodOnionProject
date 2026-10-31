@@ -1,8 +1,12 @@
 # 구현 경계에서 확인할 사항
 
-> 현행 시스템 권위는 사용자의 최신 직접 지시 → V1.6 활성 본문 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
+> 아래 구조·API 설명은 현재 구현 사실이다. V1.8 요구를 이미 구현했다는 뜻이 아니다. 컷신 복귀·타이틀·카메라·추격 차이는 [구조 차이 목록](tracking/system-v18-2026-10-29/구조%20차이%20목록.md)을 따른다.
+
+> 현행 시스템 권위는 V1.8 활성 본문 → 이전 사용자 기능 명세 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
 
 ## Actor와 같은 의미의 위치
+
+일반 적의 위치 작성 대상은 EnemyActor Root가 아니라 자손 Body Transform이다(2026-10-29 T2). Start/End는 Root 내부·Body 외부의 고정 앵커이며 실제 월드 위치로 XYZ 경로를 정한다. Body 원점을 앵커 목표에 맞추므로 Collider.center와 앵커 위치를 혼동하지 않는다. 초기 Body 위치는 선분 밖이어도 보존하고 첫 목표 End 이후 왕복한다. 같은 두 앵커에서는 현재 위치에 정지한다. Retry는 최초 Body localPosition을 복원하고 End 목표·초기 대기·기절·접촉 상태를 재준비한다. Root/Body 회전·양수 비균등 배율을 허용하며 속도는 Body의 실제 월드 거리(m/s)다. 기존 Transform 값을 정규화하지 않는다. 지형 Mask·높이 제한·Cast/Sweep·침투 보정·갇힘 판정은 제거했고 플레이어 피해/기절 감지 Collider는 유지한다. 아래 눈물의 차폐 검사는 적 이동의 지형 검사와 다른 기능이므로 제거하지 않는다.
 
 현재 위치는 PlayerFacade가 있는 실제 ActorBody의 월드 중심이다. 빈 관리 PlayerRoot나 Render Transform으로 CP·껍질 복귀·스킬 중심을 계산하지 않는다. ActorBody 아래 VisualRoot/CameraAnchor를 연결하고 실제 몸체·Collider 이동과 외형/추적이 함께 움직이게 한다. Root scale을 Form 전환 때 다시 줄여 Collider 전환과 이중 적용하지 않는다.
 

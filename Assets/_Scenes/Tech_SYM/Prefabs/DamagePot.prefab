@@ -574,6 +574,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67128e709f098e24e836e7cb99380c7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PlatformContacts
+  surfaces: []
+  drawContacts: 0
 --- !u!114 &8493850915389834618
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -583,10 +585,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 7146634088951379113}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c89f2d7cdc56b44e8bb30e342d2da7b, type: 3}
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamageFloorPlatform
-  physicalContacts: {fileID: 3883345223285594129}
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers: []
 --- !u!1 &7847143903114940442
 GameObject:
   m_ObjectHideFlags: 0

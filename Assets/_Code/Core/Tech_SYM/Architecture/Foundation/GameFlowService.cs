@@ -17,6 +17,8 @@ namespace Cooked.Foundation
         private readonly Action<IEnumerator> schedule;
         private readonly Action<string> log;
         private CancellationTokenSource current;
+        private CancellationTokenSource cinematicCancellation;
+        private bool cinematicReturnRequested;
         private OwnedTransition execution;
         private IDisposable inputLease, worldLease;
         private bool disposed, booted, sessionInitialized;
@@ -46,7 +48,19 @@ namespace Cooked.Foundation
         }
         public bool Request(FlowRequest request)
         {
-            if (disposed || !booted || Snapshot.IsBusy) return false;
+            if (disposed || !booted) return false;
+            // Only a cinematic's title request may interrupt a busy transition. The same
+            // transition owns cancellation, teardown and leases; no second coroutine races it.
+            if (request.Command == FlowCommand.ReturnToTitle &&
+                (Snapshot.State == FlowState.Opening || Snapshot.State == FlowState.Ending))
+            {
+                if (cinematicReturnRequested || cinematicCancellation == null) return false;
+                cinematicReturnRequested = true;
+                cinematicCancellation.Cancel();
+                Publish(FlowState.ReturningToTitle, true, null);
+                return true;
+            }
+            if (Snapshot.IsBusy) return false;
             switch (request.Command)
             {
                 case FlowCommand.NewGame:
@@ -118,6 +132,19 @@ namespace Cooked.Foundation
             IEnumerator guarded = CompleteSequence(sequence, token, result);
             yield return CoroutineOperationRunner.Run(guarded, result, e => log($"Flow revision {revision}: {e}"));
             if (disposed) { completion.Cancel(); yield break; }
+            if (cinematicReturnRequested)
+            {
+                cinematicReturnRequested = false;
+                // A real playback/cleanup failure must still use recovery. An accepted
+                // title request ends the old sequence successfully before entering here.
+                if (result.Status == OperationStatus.Succeeded)
+                {
+                    result = new OperationResult();
+                    yield return CoroutineOperationRunner.Run(CompleteSequence(ReturnToTitle, token, result),
+                        result, e => log($"Cinematic title return revision {revision}: {e}"));
+                    if (disposed) { completion.Cancel(); yield break; }
+                }
+            }
             if (result.Status != OperationStatus.Succeeded)
             {
                 string reason = result.Error ?? "Transition cancelled.";
@@ -182,7 +209,6 @@ namespace Cooked.Foundation
                 if (Path.GetFileNameWithoutExtension(path) == stageId) selectedStagePath = path;
             Publish(FlowState.LoadingGame, true, null);
             if (!alreadyCovered) yield return Step(r => fade.Cover(token, r), token);
-            yield return Step(r => scenes.Unload(catalog.TitlePath, token, r), token);
             foreach (var path in scenes.LoadedGameplayScenes)
                 if (path != catalog.CorePath && !IsStage(Path.GetFileNameWithoutExtension(path)))
                     yield return Step(r => scenes.Unload(path, token, r), token);
@@ -190,6 +216,9 @@ namespace Cooked.Foundation
             scenes.SetRootsActive(catalog.CorePath, true);
             scenes.SetActive(catalog.CorePath); // BEFORE dynamic objects / session initialization
             yield return LoadStages(token); // Session.Begin uses the initial checkpoint trigger's authored Pose.
+            // 타이틀과 Core가 공유하는 표시 자산의 사용자가 없는 틈을 만들지 않습니다.
+            // 페이드가 덮인 상태에서 새 씬을 먼저 확보한 뒤 이전 화면을 해제합니다.
+            yield return Step(r => scenes.Unload(catalog.TitlePath, token, r), token);
             // Mark before initialization so even partially initialized sessions get teardown on error.
             sessionInitialized = true;
             yield return Step(r => runtime.InitializeSession(stageId, token, r), token);
@@ -199,9 +228,8 @@ namespace Cooked.Foundation
             {
                 yield return Step(r => runtime.Cinematics.Prepare(CinematicId.Opening, token, r), token);
                 yield return Step(r => fade.Reveal(token, r), token);
-                Publish(FlowState.Opening, true, null);
-                yield return Step(r => runtime.Cinematics.Play(token, r), token);
-                CheckCinematicOutcome();
+                yield return PlayCinematic(FlowState.Opening, token);
+                if (cinematicReturnRequested) yield break;
                 Publish(FlowState.LoadingGame, true, null);
                 yield return Step(r => fade.Cover(token, r), token);
                 runtime.Cinematics.Hide();
@@ -229,9 +257,8 @@ namespace Cooked.Foundation
             runtime.SetGameplayVisible(false);
             yield return Step(r => runtime.Cinematics.Prepare(CinematicId.Ending, token, r), token);
             yield return Step(r => fade.Reveal(token, r), token);
-            Publish(FlowState.Ending, true, null);
-            yield return Step(r => runtime.Cinematics.Play(token, r), token);
-            CheckCinematicOutcome();
+            yield return PlayCinematic(FlowState.Ending, token);
+            if (cinematicReturnRequested) yield break;
             Publish(FlowState.ReturningToTitle, true, null);
             yield return Step(r => fade.Cover(token, r), token);
             runtime.Cinematics.Hide();
@@ -243,6 +270,46 @@ namespace Cooked.Foundation
             yield return Step(r => fade.Cover(token, r), token);
             yield return Teardown(token);
             yield return ShowTitle(token);
+        }
+        private IEnumerator PlayCinematic(FlowState state, CancellationToken token)
+        {
+            // Create the cancellation owner before publishing Opening/Ending: an observer
+            // can request title synchronously, even before Play's first MoveNext.
+            using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token))
+            {
+                cinematicCancellation = cancellation;
+                try
+                {
+                    Publish(state, true, null);
+                    token.ThrowIfCancellationRequested();
+                    var result = new OperationResult();
+                    Exception failure = null;
+                    yield return CoroutineOperationRunner.Run(
+                        CreateOperation(r => runtime.Cinematics.Play(cancellation.Token, r), result),
+                        result, e => failure = e);
+                    token.ThrowIfCancellationRequested();
+                    // CinematicService normally returns Cancelled without throwing. Also
+                    // accept an exception carrying this exact, requested playback token;
+                    // unrelated cancellation and cleanup exceptions still require recovery.
+                    bool requestedPlaybackCancellation = cinematicReturnRequested && cancellation.IsCancellationRequested &&
+                        failure is OperationCanceledException cancelled && cancelled.CancellationToken == cancellation.Token;
+                    if (failure != null && !requestedPlaybackCancellation) throw failure;
+                    if (result.Status == OperationStatus.Failed) throw new InvalidOperationException(result.Error);
+                    // The last cut can complete just before the option command. The request
+                    // still wins until this coordinator has left the cinematic flow state.
+                    if (cinematicReturnRequested)
+                    {
+                        runtime.Cinematics.Hide();
+                        yield break;
+                    }
+                    if (result.Status != OperationStatus.Succeeded) throw new OperationCanceledException(token);
+                    CheckCinematicOutcome();
+                }
+                finally
+                {
+                    if (ReferenceEquals(cinematicCancellation, cancellation)) cinematicCancellation = null;
+                }
+            }
         }
         private IEnumerator ShowTitle(CancellationToken token)
         {

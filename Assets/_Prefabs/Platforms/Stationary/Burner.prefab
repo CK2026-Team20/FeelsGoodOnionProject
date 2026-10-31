@@ -196,9 +196,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 5707119993530795074}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c89f2d7cdc56b44e8bb30e342d2da7b, type: 3}
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamageFloorPlatform
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
   damageTriggers:
   - {fileID: 4240213141764255358}
 --- !u!1 &6529153256927011656

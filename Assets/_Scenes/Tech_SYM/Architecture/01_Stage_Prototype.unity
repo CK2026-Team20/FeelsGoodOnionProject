@@ -1756,10 +1756,22 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 332424398}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 332424397}
+    - targetCorrespondingSourceObject: {fileID: 1234797023105397982, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 332424396}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
 --- !u!65 &332424388 stripped
 BoxCollider:
@@ -1781,6 +1793,73 @@ BoxCollider:
   m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
   m_PrefabInstance: {fileID: 332424387}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &332424392 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1234797023105397982, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 332424387}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &332424393 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 332424387}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &332424394 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 332424387}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &332424395 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 332424387}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &332424396
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 332424392}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d4fef252faf2664e9f5ee182a069ed3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.GratangDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 332424389}
+  - {fileID: 332424388}
+--- !u!114 &332424397
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 332424393}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 332424391}
+  - {fileID: 332424390}
+--- !u!114 &332424398
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 332424395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 332424394}
 --- !u!1001 &350879955
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2975,6 +3054,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (10)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -51.806
@@ -3019,11 +3102,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 497688273}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 497688272}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &497688267 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 497688266}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &497688268 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 497688266}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &497688269 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 497688266}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &497688270 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 497688266}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &497688271 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 497688266}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &497688272
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497688269}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 497688268}
+  - {fileID: 497688267}
+--- !u!114 &497688273
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497688271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 497688270}
 --- !u!1001 &533381179
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3206,6 +3353,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -28.5
@@ -3250,11 +3401,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 567883162}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 567883161}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &567883156 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 567883155}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &567883157 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 567883155}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &567883158 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 567883155}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &567883159 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 567883155}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &567883160 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 567883155}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &567883161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 567883158}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 567883157}
+  - {fileID: 567883156}
+--- !u!114 &567883162
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 567883160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 567883159}
 --- !u!1001 &586170694
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4157,6 +4372,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (11)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -51.806
@@ -4201,11 +4420,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 624728523}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 624728522}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &624728517 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 624728516}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &624728518 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 624728516}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &624728519 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 624728516}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &624728520 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 624728516}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &624728521 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 624728516}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &624728522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 624728519}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 624728518}
+  - {fileID: 624728517}
+--- !u!114 &624728523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 624728521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 624728520}
 --- !u!1001 &629545517
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5594,6 +5877,54 @@ PrefabInstance:
       propertyPath: m_LocalScale.z
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.1500001
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
     - target: {fileID: 6078098872081707167, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_LocalScale.x
       value: 1
@@ -5669,6 +6000,34 @@ PrefabInstance:
     - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_Size.z
       value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.x
+      value: 0.005718231
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.y
+      value: -0.010979414
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.z
+      value: 0.0069075376
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -6285,6 +6644,54 @@ PrefabInstance:
       propertyPath: m_LocalScale.z
       value: 0.3
       objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.1500001
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
     - target: {fileID: 4900626249236791632, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_LocalScale.x
       value: 1
@@ -6305,10 +6712,6 @@ PrefabInstance:
       propertyPath: definition
       value: 
       objectReference: {fileID: 11400000, guid: d8411a4d443c344408422eaa22f2f33b, type: 2}
-    - target: {fileID: 6007281456219345362, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
-      propertyPath: initialDirection
-      value: 3
-      objectReference: {fileID: 0}
     - target: {fileID: 6078098872081707167, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_LocalScale.x
       value: 1
@@ -6397,10 +6800,38 @@ PrefabInstance:
       propertyPath: m_Size.z
       value: 0.09
       objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.x
+      value: 0.005718231
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.y
+      value: -0.010979414
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.z
+      value: 0.0069075376
+      objectReference: {fileID: 0}
     - target: {fileID: 8620236857385345949, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: definition
       value: 
       objectReference: {fileID: 11400000, guid: 968ebb46d3c3df546a5d6aff993e215a, type: 2}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -7047,6 +7478,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (6)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_IsActive
       value: 1
@@ -7107,10 +7542,18 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1216254120}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1216254119}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
 --- !u!65 &1216254114 stripped
 BoxCollider:
@@ -7122,6 +7565,52 @@ BoxCollider:
   m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
   m_PrefabInstance: {fileID: 1216254113}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1216254116 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1216254113}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1216254117 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1216254113}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1216254118 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1216254113}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1216254119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1216254116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1216254115}
+  - {fileID: 1216254114}
+--- !u!114 &1216254120
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1216254118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1216254117}
 --- !u!1001 &1236113406
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8178,6 +8667,42 @@ PrefabInstance:
       propertyPath: m_LocalScale.z
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 384892521654398909, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.1500001
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 1551326984897372064, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.7071068
+      objectReference: {fileID: 0}
     - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_LocalScale.x
       value: 1
@@ -8189,6 +8714,22 @@ PrefabInstance:
     - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_LocalScale.z
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2857795559892832392, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4900626249236791632, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.029999971
       objectReference: {fileID: 0}
     - target: {fileID: 6078098872081707167, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_LocalScale.x
@@ -8265,6 +8806,34 @@ PrefabInstance:
     - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
       propertyPath: m_Size.z
       value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.x
+      value: 0.005718231
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.y
+      value: -0.010979414
+      objectReference: {fileID: 0}
+    - target: {fileID: 8168932371311218805, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_Center.z
+      value: 0.0069075376
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9070821564800088588, guid: 9fce9db5ea5784e468151e0cdfa3aaca, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -8608,6 +9177,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -30.7
@@ -8652,11 +9225,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1439972649}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1439972648}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &1439972643 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1439972642}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1439972644 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1439972642}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1439972645 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1439972642}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1439972646 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1439972642}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1439972647 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1439972642}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1439972648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1439972645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1439972644}
+  - {fileID: 1439972643}
+--- !u!114 &1439972649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1439972647}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1439972646}
 --- !u!1001 &1440856487
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9389,6 +10026,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (4)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -34.55
@@ -9433,11 +10074,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1553548809}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1553548808}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &1553548803 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1553548802}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1553548804 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1553548802}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1553548805 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1553548802}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1553548806 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1553548802}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1553548807 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1553548802}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1553548808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1553548805}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1553548804}
+  - {fileID: 1553548803}
+--- !u!114 &1553548809
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1553548807}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1553548806}
 --- !u!1001 &1553716503
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9543,6 +10248,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (7)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_IsActive
       value: 1
@@ -9603,10 +10312,18 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1581343812}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1581343811}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
 --- !u!65 &1581343806 stripped
 BoxCollider:
@@ -9618,6 +10335,52 @@ BoxCollider:
   m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
   m_PrefabInstance: {fileID: 1581343805}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1581343808 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1581343805}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1581343809 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1581343805}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1581343810 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1581343805}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1581343811
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1581343808}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1581343807}
+  - {fileID: 1581343806}
+--- !u!114 &1581343812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1581343810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1581343809}
 --- !u!1 &1581829010
 GameObject:
   m_ObjectHideFlags: 0
@@ -10122,6 +10885,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (9)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -51.806
@@ -10166,11 +10933,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1678397832}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1678397831}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &1678397826 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1678397825}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1678397827 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1678397825}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1678397828 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1678397825}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1678397829 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1678397825}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1678397830 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1678397825}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1678397831
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1678397828}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1678397827}
+  - {fileID: 1678397826}
+--- !u!114 &1678397832
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1678397830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1678397829}
 --- !u!1001 &1698363687
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10329,6 +11160,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -29.6
@@ -10373,11 +11208,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1729722422}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1729722421}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &1729722416 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1729722415}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1729722417 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1729722415}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1729722418 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1729722415}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1729722419 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1729722415}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1729722420 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1729722415}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1729722421
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1729722418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1729722417}
+  - {fileID: 1729722416}
+--- !u!114 &1729722422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1729722420}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1729722419}
 --- !u!1001 &1743833241
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17250,6 +18149,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (5)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -35.65
@@ -17294,11 +18197,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1808404023}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1808404022}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &1808404017 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1808404016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1808404018 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1808404016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1808404019 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1808404016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1808404020 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1808404016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1808404021 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1808404016}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1808404022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1808404019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1808404018}
+  - {fileID: 1808404017}
+--- !u!114 &1808404023
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1808404021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1808404020}
 --- !u!1001 &1827346284
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -25361,6 +26328,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: DamageablePlatforms (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 2763652478637108710, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7122296186012896141, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: -33.449997
@@ -25405,11 +26376,75 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5501977054648537774, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+    - {fileID: 1707770376017551122, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1961678790}
+    - targetCorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1961678789}
   m_SourcePrefab: {fileID: 100100000, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+--- !u!65 &1961678784 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 8343076172553905595, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1961678783}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1961678785 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 999192656015784407, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1961678783}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1961678786 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4504448486708787703, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1961678783}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1961678787 stripped
+BoxCollider:
+  m_CorrespondingSourceObject: {fileID: 434428612645895264, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1961678783}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1961678788 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8353304859300451932, guid: 241f31144a9b6c24a9c19d7921e08ec0, type: 3}
+  m_PrefabInstance: {fileID: 1961678783}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1961678789
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961678786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1961678785}
+  - {fileID: 1961678784}
+--- !u!114 &1961678790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961678788}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1728be158388dbe4aa69442e9c011c76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.BurnerDamagePlatform
+  damageAmount: 1
+  damageTriggers:
+  - {fileID: 1961678787}
 --- !u!1001 &1973871233
 PrefabInstance:
   m_ObjectHideFlags: 0

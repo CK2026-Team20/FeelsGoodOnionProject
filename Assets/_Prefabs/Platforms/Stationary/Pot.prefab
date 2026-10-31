@@ -142,9 +142,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 2065606655968519370}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c89f2d7cdc56b44e8bb30e342d2da7b, type: 3}
+  m_Script: {fileID: 11500000, guid: 246dd3d3d79d08d44ad556ac104919b2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.DamageFloorPlatform
+  m_EditorClassIdentifier: Assembly-CSharp::FeelsGoodOnion.TechSYM.Platforms.PotDamagePlatform
+  damageAmount: 1
   damageTriggers:
   - {fileID: 6612471389567012439}
 --- !u!1 &2394652565331070212
