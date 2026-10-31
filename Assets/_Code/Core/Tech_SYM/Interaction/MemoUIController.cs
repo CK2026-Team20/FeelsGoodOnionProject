@@ -22,6 +22,14 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         private bool releasing;
         private int suppressInputThroughFrame = -1;
         public bool IsOpen => model != null;
+        public RectTransform ScreenRoot => screenRoot;
+        public MemoView ViewPrefab => viewPrefab;
+        public void ConfigureScreen(RectTransform root, MemoView prefab)
+        {
+            if (IsOpen) throw new InvalidOperationException("열린 메모 화면의 구성을 바꿀 수 없습니다.");
+            screenRoot = root;
+            viewPrefab = prefab;
+        }
         // 조립 지점은 세션의 공유 서비스를 주입하고 세션 종료 전에 Unbind한다.
         // Facade의 bool 차단으로 되돌아가면 다른 모달의 소유권을 침해한다.
         public void Initialize(IGameplayControlService gameplayControl)

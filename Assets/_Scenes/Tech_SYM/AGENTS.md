@@ -13,7 +13,7 @@
 - 기존 프리팹 삭제·재생성·Apply·리소스 제작은 사람이 한다. 소스 정리는 실제 호출·GUID·중첩 참조 이관 후 수행한다. HudIconGraphic은 하트뿐 아니라 Q/E와 눈물 조각을 포함한 6개 Graphic 소비 전체를 실제 리소스로 이관하고 참조0을 확인한 뒤 삭제한다. 자동 Builder로 자산을 다시 만들지 않는다.
 - HMS 원본 소스의 쓰기 범위는 security.md와 최신 파일별 직접 지시를 확인한다. 보호 HMS 씬·프리팹·meta는 해당 소스 허가에 포함되지 않는다.
 
-App 출력 Camera/Brain/Listener 각 하나와 Core Side/Corridor/Quarter 세 리그를 독립 루트로 연결한다. Player prefab은 비활성, 실제 물리 ActorBody와 VisualRoot/CameraAnchor 동거·자식 계약을 보존한다. 같은 씬 Component 참조를 사용하고 설치 자산은 SceneAsset로 작성한다.
+App 게임 출력 Camera/Brain/Listener 각 하나와 Core Side/Corridor/Quarter 세 리그를 연결한다. Title은 별도 Camera/Listener를 갖고 TitleScenePresentation이 게임 출력과 번갈아 활성화한다. Player prefab은 비활성, 실제 물리 ActorBody와 VisualRoot/CameraAnchor 동거·자식 계약을 보존한다. 같은 씬 Component 참조를 사용하고 설치 자산은 SceneAsset로 작성한다.
 
 씬 작성은 연결된 비 Play Editor로 하며 미저장 씬을 저장하거나 닫아 덮어쓰지 않는다. 기존 월드 pose·배율·Collider·GUID·중첩 override를 대조하고 자산 자체의 일괄 삭제/Unpack을 하지 않는다.
 

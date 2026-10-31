@@ -12,7 +12,7 @@ CheckpointSnapshot은 접촉한 체크포인트 Transform의 유한 월드 Posit
 
 재시도는 같은 Core/Stage와 StageService의 소비 이력을 유지하고 마지막 유효 저장 및 당시 구간·음악·시점을 직접 복원한다. 소비한 센서를 다시 발동하지 않는다. 현재 해금은 GameSessionService 원본이고 저장 시점의 해금은 별도 불변 스냅샷 값이다. Title 복귀에서 세션 종료 후 Stage 전체→Core 순서로 언로드하며 새 게임은 새 객체와 빈 체크포인트 장부로 시작한다.
 
-App 출력 Camera/Brain/AudioListener는 각1개이고 Core의 Side·Corridor·Quarter 리그를 LevelCameraService가 표현한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. [현재 구현·V1.8 미반영] 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
+App의 게임 출력 Camera/Brain/AudioListener와 Title 씬의 전용 Camera/AudioListener를 분리한다. 타이틀 표시 중 게임 출력은 비활성화하고 Title 해제 시 원래 상태를 복원하여 활성 출력·Listener는 하나만 유지한다. Core의 Side·Corridor·Quarter 리그는 게임 출력만 구동한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. [현재 구현·V1.8 미반영] 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
 
 구간 음악은 StageService의 실제 Clip·음량·전환 시간으로 작성하고 새 구간 시작 및 복귀 맥락에서 요청한다. 같은 실제 Clip이면 재생 위치·게인·진행 중 fade를 다시 시작하지 않는다. 첫 구간 선택을 Opening 동안 유지해 Playing에서 적용하며, 타이틀·오프닝·엔딩·추격 음악의 기존 우선순위는 유지한다.
 

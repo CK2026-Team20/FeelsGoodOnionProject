@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using Cooked.Level;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -16,6 +17,8 @@ namespace Cooked.DebugTesting
         private TMP_FontAsset font;
         private DebugLogFont logFont;
         private TextMeshProUGUI pointLabel, platformLabel, invincibleLabel, pauseLabel;
+        private TextMeshProUGUI cameraLabel;
+        private readonly List<UnityEngine.UI.Button> cameraButtons = new List<UnityEngine.UI.Button>();
         private UnityEngine.UI.Button damageButton, pointButton;
         private readonly List<UnityEngine.UI.Button> actorButtons = new List<UnityEngine.UI.Button>();
         private readonly List<Action> release = new List<Action>();
@@ -109,11 +112,18 @@ namespace Cooked.DebugTesting
             var platform = Button(controls, "", 318, model.NextPlatform, false); platformLabel = platform.GetComponentInChildren<TextMeshProUGUI>();
             damageButton = Button(controls, "선택 플랫폼 피해 적용", 348, () => model.ApplySelectedDamage());
             var pause = Button(controls, "", 378, () => model.TogglePause(), false); pauseLabel = pause.GetComponentInChildren<TextMeshProUGUI>();
+            var cameras = Rect("Cameras", transform, 342, 302, 320, 132); Background(cameras);
+            cameraLabel = Text(cameras, "", 10, 8, 300, 22);
+            cameraButtons.Add(Button(cameras, "측면", 36, () => model.SelectCamera(CameraMovementMode.Side), false));
+            cameraButtons.Add(Button(cameras, "통로", 66, () => model.SelectCamera(CameraMovementMode.Corridor), false));
+            cameraButtons.Add(Button(cameras, "쿼터뷰", 96, () => model.SelectCamera(CameraMovementMode.Quarter), false));
         }
         private void Render()
         {
             gameObject.SetActive(model.Visible);
             SummaryLabel.text = model.Summary;
+            cameraLabel.text = "카메라 · " + model.CameraLabel;
+            foreach (var button in cameraButtons) button.interactable = model.CanSelectCamera;
             pointLabel.text = "지점 선택 ▶ " + model.PointLabel;
             platformLabel.text = "피해원 선택 ▶ " + model.PlatformLabel;
             invincibleLabel.text = (model.DebugInvincible ? "[ON]" : "[OFF]") + " 디버그 무적";

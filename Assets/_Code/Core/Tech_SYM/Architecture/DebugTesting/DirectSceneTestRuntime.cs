@@ -7,6 +7,7 @@ using Cooked.Foundation;
 using Cooked.Integration;
 using Cooked.Session;
 using FeelsGoodOnion.TechSYM.Enemies;
+using FeelsGoodOnion.TechSYM.Features;
 using FeelsGoodOnion.TechSYM.Interaction;
 using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEditor;
@@ -25,14 +26,17 @@ namespace Cooked.DebugTesting
         public GameplayControlService Control { get; private set; }
         public DirectSceneTestFlow Flow { get; private set; }
         public SessionActorHost ActorHost { get; private set; }
-        public Camera Output { get; private set; }
+        public Camera Output => testCamera?.Output;
+        public DirectSceneTestCamera TestCamera => testCamera;
         public bool IsRespawning { get; private set; }
         public bool IsReady => !disposed && !IsRespawning && Player != null && Player.HasActor &&
             !Player.Actor.IsDead && Flow.Snapshot.State == FlowState.Playing;
         public event Action ActorReady;
         public event Action ActorRemoving;
         private readonly List<Action> unbind = new List<Action>();
-        private bool disposed, ownsCamera;
+        private bool disposed;
+        private DirectSceneTestCamera testCamera;
+        private DirectSceneTestInteraction testInteraction;
         private Pose initialPose;
         private CheckpointSnapshot initial;
 
@@ -58,38 +62,21 @@ namespace Cooked.DebugTesting
                 ActorHost.HorizontalKnockbackSpeed, ActorHost.UpwardKnockbackSpeed);
             ActorHost.Initialize(Player, Control);
             PrepareOutput();
+            testInteraction = new DirectSceneTestInteraction(transform, Control);
             SpawnActor();
         }
-        private void PrepareOutput()
-        {
-            var cameras = new List<Camera>();
-            foreach (var camera in FindObjectsByType<Camera>(FindObjectsSortMode.None))
-                if (camera.isActiveAndEnabled && camera.targetTexture == null) cameras.Add(camera);
-            if (cameras.Count > 1) throw new InvalidOperationException("활성 출력 카메라가 여러 개입니다. 테스트는 기존 출력을 임의로 변경하지 않습니다.");
-            if (cameras.Count == 1) { Output = cameras[0]; return; }
-            var child = new GameObject("Test Output") { hideFlags = HideFlags.DontSave };
-            child.transform.SetParent(transform, false);
-            Output = child.AddComponent<Camera>();
-            Output.transform.position = initialPose.position + new Vector3(0f, 2f, -10f);
-            Output.transform.LookAt(initialPose.position + Vector3.up);
-            bool listenerPresent = false;
-            foreach (var listener in FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
-                listenerPresent |= listener.isActiveAndEnabled;
-            if (!listenerPresent) child.AddComponent<AudioListener>();
-            ownsCamera = true;
-        }
+        private void PrepareOutput() => testCamera = new DirectSceneTestCamera(transform, Settings);
         private void LateUpdate()
         {
-            if (!ownsCamera || Output == null || Player == null || !Player.HasActor) return;
-            var target = Player.CameraTarget != null ? Player.CameraTarget.position : Player.BodyTransform.position;
-            Output.transform.position = target + new Vector3(0f, 2f, -10f);
-            Output.transform.LookAt(target);
+            testCamera?.Tick();
+            testInteraction?.Tick();
         }
         private void SpawnActor()
         {
             ActorHost.Spawn(initialPose, initial.Fragments);
             // Host spawns into the active scene; explicitly retain this session's scene ownership.
             SceneManager.MoveGameObjectToScene(ActorHost.ActorRoot, gameObject.scene);
+            testCamera.Bind(Player);
             BindWorld();
             ActorReady?.Invoke();
         }
@@ -101,10 +88,7 @@ namespace Cooked.DebugTesting
                 BindOptional(floor, () => floor.BindPlayer(Player), floor.UnbindPlayer);
             foreach (var platform in SceneComponentLookup.FindAll<PeriodicPlatform>(gameObject.scene))
                 BindOptional(platform, () => platform.BindMaterialization(Player), () => platform.BindMaterialization(null));
-            var memos = new List<MemoUIController>();
-            foreach (var memo in SceneComponentLookup.FindAll<MemoUIController>(gameObject.scene))
-                if (BindOptional(memo, () => memo.Initialize(Control), memo.Unbind)) memos.Add(memo);
-            ActorHost.Interaction.BindOverlays(memos);
+            testInteraction.Bind(ActorHost.Interaction, Output);
             // Devices are discovered by the real PlayerInteractionService; fragments use the real PlayerFacade contact path.
         }
         private bool BindOptional(Component owner, Action bind, Action release)
@@ -126,9 +110,11 @@ namespace Cooked.DebugTesting
         private void UnbindWorld()
         {
             var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => testCamera?.Unbind());
             SessionCleanup.Attempt(errors, () => ActorRemoving?.Invoke());
             SessionCleanup.Attempt(errors, () => ActorHost?.Interaction?.ForceCloseOverlays());
             SessionCleanup.Attempt(errors, () => ActorHost?.Interaction?.CancelOperations());
+            SessionCleanup.Attempt(errors, () => testInteraction?.Unbind());
             for (int i = unbind.Count - 1; i >= 0; i--) SessionCleanup.Attempt(errors, unbind[i]);
             unbind.Clear();
             SessionCleanup.ThrowIfAny(errors, "직접 씬 테스트 연결 해제 실패");
@@ -152,6 +138,9 @@ namespace Cooked.DebugTesting
                 UnbindWorld();
                 yield return ActorHost.Despawn();
                 if (disposed) yield break;
+                // Reuse normal retry restoration without requiring a complete StageService setup.
+                foreach (var platform in SceneComponentLookup.FindAll<ShatteredPlatform>(gameObject.scene))
+                    platform.ResetForRetry();
                 Session.RestoreAbilities(initial);
                 SpawnActor();
             }
@@ -197,6 +186,8 @@ namespace Cooked.DebugTesting
             SessionCleanup.Attempt(errors, () => { if (ActorHost != null) ActorHost.Shutdown(); });
             SessionCleanup.Attempt(errors, () => Player?.Dispose());
             SessionCleanup.Attempt(errors, () => Session?.Dispose());
+            SessionCleanup.Attempt(errors, () => testCamera?.Dispose());
+            SessionCleanup.Attempt(errors, () => testInteraction?.Dispose());
             SessionCleanup.Attempt(errors, () => Flow?.Dispose());
             SessionCleanup.Attempt(errors, () => Control?.Dispose());
             ActorReady = null; ActorRemoving = null;

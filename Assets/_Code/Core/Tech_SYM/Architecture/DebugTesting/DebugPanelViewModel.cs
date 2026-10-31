@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
+using Cooked.Level;
 using Cooked.Session;
 using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEditor;
@@ -26,6 +27,15 @@ namespace Cooked.DebugTesting
         public bool Paused => pause != null;
         public bool CanCommand => !disposed && runtime != null && runtime.IsReady && !executing;
         public bool CanDamage => CanCommand && SelectedPlatform != null && SelectedPlatform.isActiveAndEnabled && !runtime.Player.PhysicsPaused;
+        public bool CanSelectCamera => CanCommand && runtime.TestCamera != null && runtime.TestCamera.CanSelect;
+        public string CameraLabel => runtime.TestCamera == null ? "준비 중" : runtime.TestCamera.CurrentView switch
+        {
+            CameraMovementMode.Side => "측면",
+            CameraMovementMode.Corridor => "통로",
+            CameraMovementMode.Quarter => "쿼터뷰",
+            _ => "준비 중"
+        };
+        public bool SelectCamera(CameraMovementMode mode) => CanSelectCamera && Run("카메라 시점 변경", () => runtime.TestCamera.Select(mode));
         public string Summary { get; private set; } = "플레이어 준비 중";
         public string LogText { get; private set; } = string.Empty;
         public long LogVersion => logVersion;

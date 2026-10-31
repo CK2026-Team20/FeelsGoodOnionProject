@@ -28,14 +28,15 @@ namespace Cooked.Integration
         private FadeViewModel fadeModel;
         [Tooltip("앱의 음악·효과음을 재생할 AudioRuntimeHost입니다.")]
         [SerializeField, InspectorLabel("소리 담당")] private AudioRuntimeHost audio;
-        [Tooltip("모든 화면을 출력하는 앱의 단일 Camera입니다. 같은 오브젝트에 Brain과 AudioListener를 두고 앱 종료까지 켜 둡니다.")]
-        [SerializeField, InspectorLabel("출력 카메라")] private Camera presentationCamera;
+        [Tooltip("Core의 게임 화면을 출력하는 Camera입니다. 같은 오브젝트에 Brain과 AudioListener를 둡니다. 타이틀 전용 출력이 활성화된 동안에는 꺼집니다.")]
+        [SerializeField, InspectorLabel("게임 출력 카메라")] private Camera presentationCamera;
         private ServiceLocator services;
         private SceneCatalog catalog;
         private OptionsService options;
         private CursorPresentationBinding cursor;
         private GameRuntimeService runtime;
         private CoreComposition loadedCore;
+        private TitleScenePresentation loadedTitle;
         private static AppComposition active;
         private bool cleaning;
         private bool ownsOutput;
@@ -149,7 +150,7 @@ namespace Cooked.Integration
         }
         private void SetPresentationOutput(bool visible)
         {
-            // App owns the single output. Gameplay visibility belongs to UI/rig readiness.
+            // App owns the gameplay output; Title temporarily suspends it for its own output.
             if (presentationCamera == null || presentationCamera.gameObject.scene != gameObject.scene) return;
             presentationCamera.enabled = visible;
             if (presentationListener != null) presentationListener.enabled = visible;
@@ -160,7 +161,8 @@ namespace Cooked.Integration
             if (catalog == null || scene.path != catalog.TitlePath) return;
             if (options == null) throw new InvalidOperationException("Title loaded before options composition completed.");
             SceneComponentLookup.RequireSingle<TitleUiRoot>(catalog.TitlePath).Bind(services.Get<IGameFlowService>(), options, QuitApplication);
-            SceneComponentLookup.RequireSingle<TitleScenePresentation>(catalog.TitlePath).Bind(presentationCamera);
+            loadedTitle = SceneComponentLookup.RequireSingle<TitleScenePresentation>(catalog.TitlePath);
+            loadedTitle.Bind(presentationCamera);
         }
         private static void QuitApplication()
         {
@@ -187,6 +189,8 @@ namespace Cooked.Integration
                     flow.Dispose();
             });
             Attempt(StopAllCoroutines);
+            Attempt(() => { if (loadedTitle != null) loadedTitle.Unbind(); });
+            loadedTitle = null;
             if (ownsOutput) Attempt(() => SetPresentationOutput(false));
             ownsOutput = false;
             Attempt(() => { if (optionsModel != null && optionsView != null) optionsView.Unbind(); });

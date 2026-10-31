@@ -32,7 +32,7 @@ Scene 설정은 실제 SceneAsset을 사용한다. StageService가 같은 씬의
 
 추격 시작 트리거의 chaseDriver는 같은 씬의 실제 ChaseRuntimeDriver다. BindChase는 작성한 무리와 주입된 실행기의 일치, 같은 씬 Stage/퇴로, 고정 센서·퇴로가 움직이는 무리 밖에 있는 것을 검증한다. Core는 활성 스테이지 트리거에서 받은 실행기만 중복 없이 초기화하고 연결 당시 참조로 Shutdown한다. 추격이 없는 스테이지는 실행기를 요구하지 않는다. 기존 추격의 저장→시작→퇴로 닫기 순서는 유지한다.
 
-App 출력 Camera/Brain/AudioListener는 각1개이고 Core의 Side·Corridor·Quarter 리그를 LevelCameraService가 표현한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. [현재 구현·V1.8 미반영] 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
+App의 게임 출력 Camera/Brain/AudioListener와 Title 씬의 전용 Camera/AudioListener를 분리한다. 타이틀 표시 중 게임 출력은 비활성화하고 Title 해제 시 원래 상태를 복원하여 활성 출력·Listener는 하나만 유지한다. Core의 Side·Corridor·Quarter 리그는 게임 출력만 구동한다. 편집 구도 원본은 StageService의 세 프로필이다. 피사체 중심 반경(m), 수평각·수직각·롤(도), 시선 중심 오프셋·화면 위치·감쇠·시야각을 조절한다. [현재 구현·V1.8 미반영] 카메라 위치 바운더리와 Confiner, 별도 CameraZoneTrigger·SafeAnchor·Alignment는 사용하지 않는다. 플레이어 CameraAnchor는 추적 중심을 제공한다. Side는 X, Corridor/Quarter는 XZ 이동이며 보호 HMS 입력 구현은 유지한다.
 
 구도 수치의 원본은 StageService의 sideView/corridorView/quarterView다. LevelCameraService는 변경된 값만 실제 출력에 적용한다. 잘못된 값은 마지막 유효 구도를 보존하며 일시정지 중에는 표시만 갱신하고 전환 시간을 진행하지 않는다.
 
