@@ -9,7 +9,7 @@ namespace Cooked.UI
         [Tooltip("게임 HUD 전체의 표시 여부를 제어할 CanvasGroup입니다.")]
         [SerializeField, InspectorLabel("HUD 화면")] private CanvasGroup group;
         [SerializeField, InspectorLabel("현재 하트 표시"), Tooltip("왼쪽부터 체력을 표시할 하트 Image 세 개를 연결하세요.")]
-        private UnityEngine.UI.Graphic[] hearts;
+        private UnityEngine.UI.Image[] hearts;
         [SerializeField, InspectorLabel("Q 아이콘"), Tooltip("현재 폼에서 전환할 모습을 표시할 Image를 연결하세요.")]
         private UnityEngine.UI.Image formIcon;
         [SerializeField, InspectorLabel("작아지기 그림"), Tooltip("기본 폼에서 표시할 작아지기 아이콘을 연결하세요.")]
@@ -28,6 +28,8 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("E 해금 표시")] private CanvasGroup tearCard;
         [Tooltip("현재 눈물 조각 수와 최대 5개를 표시할 TMP 텍스트입니다.")]
         [SerializeField, InspectorLabel("조각 개수")] private TMP_Text fragmentCount;
+        [SerializeField, InspectorLabel("눈물 입력 키"), Tooltip("눈물 스킬 준비가 완료되면 조각 개수 대신 표시할 E 키 텍스트입니다.")]
+        private TMP_Text tearKey;
 
         protected override void ConnectInputs()
         {
@@ -44,14 +46,13 @@ namespace Cooked.UI
         private string GetBindingError()
         {
             if (group == null) return "HUD 화면 CanvasGroup을 연결하세요.";
-            if (formCard == null || tearCard == null || fragmentCount == null)
-                return "Q/E 해금 표시와 조각 개수를 모두 연결하세요.";
+            if (formCard == null || tearCard == null || fragmentCount == null || tearKey == null)
+                return "Q/E 해금 표시와 조각 개수·E 키를 모두 연결하세요.";
             if (hearts == null || hearts.Length != 3 || hearts[0] == null || hearts[1] == null || hearts[2] == null)
                 return "현재 하트 표시 세 개를 모두 연결하세요.";
             if (hearts[0] == hearts[1] || hearts[0] == hearts[2] || hearts[1] == hearts[2])
                 return "현재 하트 표시에는 서로 다른 세 개를 연결하세요.";
-            if ((formIcon != null || tearIcon != null) &&
-                (formIcon == null || tearIcon == null || formToSmall == null || formToHuge == null || tearActive == null || tearInactive == null))
+            if (formIcon == null || tearIcon == null || formToSmall == null || formToHuge == null || tearActive == null || tearInactive == null)
                 return "Q/E Image와 폼별·활성별 Sprite를 모두 연결하세요.";
             return null;
         }
@@ -68,16 +69,23 @@ namespace Cooked.UI
             string error = GetBindingError();
             if (error != null) throw new InvalidOperationException($"{name}: {error}");
             fragmentCount.text = Model.FragmentCount;
+            fragmentCount.gameObject.SetActive(!Model.TearReady);
+            tearKey.gameObject.SetActive(Model.TearReady);
             for (int i = 0; i < hearts.Length; i++)
             {
-                if (hearts[i] is UnityEngine.UI.Image image) image.fillAmount = Model.HeartFill(i);
-                // 보존 씬의 임시 표시 호환. 모든 GUID 소비 이관 뒤 HudIconGraphic과 함께 제거한다.
-                else if (hearts[i] is HudIconGraphic legacy) legacy.FillAmount = Model.HeartFill(i);
+                hearts[i].fillAmount = Model.HeartFill(i);
             }
-            if (formIcon != null) formIcon.sprite = Model.IsSmall ? formToHuge : formToSmall;
-            if (tearIcon != null) tearIcon.sprite = Model.TearReady ? tearActive : tearInactive;
+            SetNativeSprite(formIcon, Model.IsSmall ? formToHuge : formToSmall);
+            SetNativeSprite(tearIcon, Model.TearReady ? tearActive : tearInactive);
             formCard.alpha = Model.FormUnlocked ? 1 : .3f;
             tearCard.alpha = Model.TearUnlocked ? 1 : .3f;
+        }
+        private static void SetNativeSprite(UnityEngine.UI.Image image, Sprite sprite)
+        {
+            if (image == null || sprite == null) return;
+            image.sprite = sprite;
+            // PNG 픽셀 크기를 UI 단위로 사용한다. PPU나 부모 프레임 크기에 맞추지 않는다.
+            image.rectTransform.sizeDelta = sprite.rect.size;
         }
     }
 }

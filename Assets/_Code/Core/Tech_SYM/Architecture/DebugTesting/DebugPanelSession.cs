@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System;
 using Cooked.UI;
 using TMPro;
@@ -16,19 +16,22 @@ namespace Cooked.DebugTesting
         public DebugPanelView View { get; private set; }
         public DebugLogBuffer Logs { get; private set; }
         private CursorPresentationBinding cursor;
-        private DebugLogFont logFont;
+        private DebugLogText logText;
+        private IDebugPanelContext context;
         private GameObject ownedEventSystem;
         private float nextRefresh;
         private bool disposed;
-        public void Bind(DirectSceneTestRuntime runtime, CursorPresentationBinding cursorBinding, int logCapacity = 200)
+        public void Bind(IDebugPanelContext runtime, CursorPresentationBinding cursorBinding, int logCapacity = 200, Action click = null)
         {
             if (ViewModel != null || disposed) throw new InvalidOperationException("디버그 패널 세션은 한 번만 연결합니다.");
             if (runtime == null) throw new ArgumentNullException(nameof(runtime));
+            context = runtime;
+            context.RefreshBinding();
             cursor = cursorBinding ?? throw new ArgumentNullException(nameof(cursorBinding));
             try
             {
                 Logs = new DebugLogBuffer(logCapacity);
-                ViewModel = new DebugPanelViewModel(runtime, Logs);
+                ViewModel = new DebugPanelViewModel(runtime, Logs, click);
                 ViewModel.VisibilityChanged += cursor.SetDebugVisible;
                 cursor.SetDebugVisible(false);
                 if (EventSystem.current == null)
@@ -45,16 +48,23 @@ namespace Cooked.DebugTesting
                 viewRoot.hideFlags = HideFlags.DontSave;
                 viewRoot.transform.SetParent(transform, false);
                 View = viewRoot.AddComponent<DebugPanelView>();
-                logFont = new DebugLogFont();
-                View.Bind(ViewModel, AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Art/UI/Fonts/IM_Hyemin-Bold SDF.asset"), logFont);
+                var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Art/UI/Fonts/IM_Hyemin-Bold SDF.asset");
+                logText = new DebugLogText(font);
+                View.Bind(ViewModel, font, logText);
             }
             catch { Dispose(); throw; }
         }
         private void Update()
         {
             if (disposed || ViewModel == null) return;
-            if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame) ViewModel.ToggleVisible();
-            if (Time.unscaledTime < nextRefresh) return;
+            context.RefreshBinding();
+            if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
+            {
+                ViewModel.ToggleVisible();
+                nextRefresh = Time.unscaledTime + .1f;
+                return;
+            }
+            if (!ViewModel.Visible || Time.unscaledTime < nextRefresh) return;
             nextRefresh = Time.unscaledTime + .1f;
             ViewModel.Refresh();
         }
@@ -71,7 +81,7 @@ namespace Cooked.DebugTesting
                 Logs?.Dispose();
                 cursor?.SetDebugVisible(false); cursor = null;
                 if (View != null) { if (Application.isPlaying) Destroy(View.gameObject); else DestroyImmediate(View.gameObject); }
-                logFont?.Dispose(); logFont = null;
+                logText = null; context = null;
                 if (ownedEventSystem != null) { if (Application.isPlaying) Destroy(ownedEventSystem); else DestroyImmediate(ownedEventSystem); }
             }
         }

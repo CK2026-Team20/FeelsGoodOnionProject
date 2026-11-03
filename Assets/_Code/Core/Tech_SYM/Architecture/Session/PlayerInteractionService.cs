@@ -13,6 +13,8 @@ namespace Cooked.Session
         private readonly float distance;
         private readonly int layers;
         private InteractionPromptAnchor target;
+        private readonly HashSet<InteractionPromptAnchor> visited = new HashSet<InteractionPromptAnchor>();
+        private readonly List<OvenTrayObject> completedOperations = new List<OvenTrayObject>();
         private readonly List<IInteractionOverlay> overlays = new List<IInteractionOverlay>();
         private readonly Dictionary<OvenTrayObject, Action<OvenTrayObject.OperationOutcome>> operations =
             new Dictionary<OvenTrayObject, Action<OvenTrayObject.OperationOutcome>>();
@@ -57,7 +59,7 @@ namespace Cooked.Session
             if (disposed) return;
             PruneOperations();
             InteractionPromptAnchor nearest = null;
-            var visited = new HashSet<InteractionPromptAnchor>();
+            visited.Clear();
             if (player.CanAct)
             {
                 Transform body = player.BodyTransform;
@@ -80,6 +82,7 @@ namespace Cooked.Session
                     nearest = candidate; best = square;
                 }
             }
+            visited.Clear();
             if (target == nearest) return;
             target = nearest;
             Changed?.Invoke();
@@ -141,8 +144,12 @@ namespace Cooked.Session
         }
         private void PruneOperations()
         {
-            foreach (var device in new List<OvenTrayObject>(operations.Keys))
-                if (device == null || !device.isActiveAndEnabled || !device.IsMoving) ForgetOperation(device);
+            if (operations.Count == 0) return;
+            completedOperations.Clear();
+            foreach (var device in operations.Keys)
+                if (device == null || !device.isActiveAndEnabled || !device.IsMoving) completedOperations.Add(device);
+            foreach (var device in completedOperations) ForgetOperation(device);
+            completedOperations.Clear();
         }
         public void CancelOperations()
         {
@@ -175,7 +182,7 @@ namespace Cooked.Session
             SessionCleanup.Attempt(errors, ForceCloseBoundOverlays);
             player.ActorChanged -= OnActorChanged;
             SessionCleanup.Attempt(errors, CancelOperations);
-            overlays.Clear(); target = null; Changed = null;
+            overlays.Clear(); visited.Clear(); completedOperations.Clear(); target = null; Changed = null;
             SessionCleanup.ThrowIfAny(errors, "Interaction disposal observer failures.");
         }
     }

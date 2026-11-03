@@ -55,7 +55,7 @@ namespace Cooked.Audio
         {
             if (clip == null) throw new ArgumentNullException(nameof(clip));
             if (musicIds.TryGetValue(clip, out var id)) return id;
-            id = "music.trigger." + checked(++nextMusicId);
+            id = "music.stage." + checked(++nextMusicId);
             musicIds.Add(clip, id); clips.Add(id, clip);
             return id;
         }

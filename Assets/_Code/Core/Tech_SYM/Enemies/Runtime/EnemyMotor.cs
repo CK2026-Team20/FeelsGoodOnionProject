@@ -6,7 +6,6 @@ namespace FeelsGoodOnion.TechSYM.Enemies
     /// <summary>고정 앵커 사이의 월드 거리로 순찰하며 Body 위치만 작성합니다.</summary>
     public sealed class EnemyMotor
     {
-        private readonly EnemyActor owner;
         private readonly Transform movingBody, patrolStart, patrolEnd;
         private readonly bool patrol;
         private Vector3 position;
@@ -15,7 +14,6 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (owner == null) throw new ArgumentNullException(nameof(owner));
             if (body == null) throw new ArgumentNullException(nameof(body));
-            this.owner = owner;
             movingBody = body.transform;
             this.patrolStart = patrolStart;
             this.patrolEnd = patrolEnd;
@@ -51,8 +49,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (!patrol) return;
             if (movingBody == null) throw new InvalidOperationException("이동할 적 몸체가 없습니다.");
-            owner.RequirePatrolPoint(patrolStart, "순찰 시작점");
-            owner.RequirePatrolPoint(patrolEnd, "순찰 끝점");
+            // 연결된 앵커 위치만 사용한다. 레벨/눈물 조각 계층을 탐색하지 않는다.
             position = StepPatrol(movingBody.position, patrolStart.position, patrolEnd.position, distance, ref towardEnd);
         }
 

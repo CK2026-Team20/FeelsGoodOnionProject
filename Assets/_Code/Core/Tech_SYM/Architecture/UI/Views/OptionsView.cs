@@ -19,13 +19,11 @@ namespace Cooked.UI
         [SerializeField, InspectorLabel("음악 음량")] private UnityEngine.UI.Slider music;
         [Tooltip("효과음 음량을 조절할 Slider입니다. 값 0~1이며 전체 음량과 함께 적용됩니다.")]
         [SerializeField, InspectorLabel("효과음 음량")] private UnityEngine.UI.Slider sfx;
-        [Tooltip("현재 음량 설정값을 표시할 TMP 텍스트입니다.")]
-        [SerializeField, InspectorLabel("음량 글자")] private TMP_Text values;
         [Tooltip("설정 저장 실패 등 옵션 오류를 표시할 TMP 텍스트입니다.")]
         [SerializeField, InspectorLabel("저장 오류")] private TMP_Text error;
         protected override void ConnectInputs()
         {
-            if (modal == null || close == null || title == null || master == null || music == null || sfx == null || values == null || error == null ||
+            if (modal == null || close == null || title == null || master == null || music == null || sfx == null || error == null ||
                 close == title || master == music || master == sfx || music == sfx)
                 throw new System.InvalidOperationException("OptionsView의 화면·서로 다른 버튼/음량 Slider·표시 글자를 연결하세요.");
             escapeAction = new InputAction("OptionsToggle", InputActionType.Button, "<Keyboard>/escape");
@@ -43,9 +41,10 @@ namespace Cooked.UI
             if (sfx != null) sfx.onValueChanged.RemoveListener(Sfx);
         }
         private void OnEscape(InputAction.CallbackContext _)
-        { if (Model == null) return; if (Model.IsOpen) Close(); else Model.Open(); }
-        private void Close() => Model?.Close();
-        private void Title() => Model?.ReturnToTitle(); private void Master(float v) => Model?.SetMaster(v);
+        { if (Model == null) return; if (Model.IsOpen) Model.Close(); else Model.Open(); }
+        private static bool PointerClick => UnityEngine.InputSystem.Mouse.current?.leftButton.wasReleasedThisFrame == true;
+        private void Close() => Model?.Close(PointerClick);
+        private void Title() => Model?.ReturnToTitle(PointerClick); private void Master(float v) => Model?.SetMaster(v);
         private void Music(float v) => Model?.SetMusic(v); private void Sfx(float v) => Model?.SetSfx(v);
         protected override void Refresh()
         {
@@ -54,7 +53,7 @@ namespace Cooked.UI
             if (title != null) title.gameObject.SetActive(visible && Model.CanNavigate);
             if (Model == null) return;
             master.SetValueWithoutNotify(Model.Master); music.SetValueWithoutNotify(Model.Music); sfx.SetValueWithoutNotify(Model.Sfx);
-            values.text = $"전체 {Model.Master:P0}   음악 {Model.Music:P0}   효과 {Model.Sfx:P0}"; error.text = Model.Error ?? "";
+            error.text = Model.Error ?? "";
         }
     }
 }

@@ -1,3 +1,15 @@
+## 2026-11-02 튜토리얼 UI·중앙 BGM·첫 체크포인트 무음 등록
+
+최신 사용자 승인(22~24): 튜토리얼 UI는 World Space 프리팹으로 제공하고 사용자가 배치한다. 스프라이트 교체 키는 AnimationClip의 0·40·80…프레임(Samples 60), 최초 접촉만 확대 등장하며 재시도에도 표시/기록을 유지하고 새 게임에서 초기화한다. _Art 원본은 보존한다.
+
+BGM 설정은 Bootstrapper의 AudioCueCatalog에서 SceneAsset별로 연결한다. StageService/StageTrigger는 음악 설정·선택·재생을 소유하지 않는다. 일반/추격/타이틀 Loop, 오프닝/엔딩 One Shot, 이전 곡 페이드아웃 후 다음 곡 시작, 옵션 Pause/Resume. 첫 체크포인트는 초기 위치로 유지하며 시작 시 무음 등록한다. 최초 스폰 리스폰음 없음, 사망 후 Playing 복귀 시 리스폰음 1회. 새 체크포인트만 저장음, 구간 기준 정책은 시작 재생·종료 무음이다.
+
+사운드 원본 30행과 적용 범위는 Assets/_Docs/Audio/사운드 리소스 상세 명세.md, 구현·검증·배치 안내는 Assets/_Docs/tracking/tutorial-audio-2026-11-02/를 따른다. 아래 과거 구간별 음악/옵션 중 음악 계속 재생/최초 장부 미등록 설명은 이번 범위에서 대체한다. 전체 SFX 정합화와 사용자 씬 배치·전체 플레이·빌드 검수는 완료로 승계하지 않는다.
+
+## 2026-11-02 SYM 자산 분리·프로토타입 정리
+
+사용자 직접 지시 및 후속 정정으로 SYM 전용 미사용 프로토타입/테스트 자산을 제거했다. 본편 데이터는 Assets/_Data/Tech_SYM, 관리 씬3개는 Assets/_Scenes/Tech_SYM/Runtime으로 이관했다. 타 작업자 씬과 의존 자산은 원위치/원내용으로 보존하므로 공유 스킬·적·메모 모델7개와 일부 테스트 프리팹은 예외로 남는다. 루트 Tutorial/Stage 및 공용 _Prefabs는 변경하지 않는다. 아래의 이전 Prototype 실행 경로·보존 문구보다 이번 자산 분류가 우선한다. 현재 실행 등록은 ArchitectureInstallation과 IntegrationEntrySettings의 SceneAsset 참조를 따른다. 상세: Assets/_Docs/tracking/asset-organization-2026-11-02/자산 분류 목록.md.
+
 # 시스템 조립
 
 현재 시스템 기준은 Assets/_Docs/planning-index.md의 V1.8이며 이전 사용자 기능 명세와 기존 구현보다 우선한다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.

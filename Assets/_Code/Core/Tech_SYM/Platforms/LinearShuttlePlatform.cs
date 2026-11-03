@@ -64,7 +64,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             OnValidate();
             motion = GetComponent<KinematicPlatformMotion>();
             step = default;
-            initialized = TryGetEndpoints(out _, out _);
+            initialized = ValidateEndpoints() && TryGetEndpoints(out _, out _);
             if (!initialized) { ReportInvalidPath("실물 시작/끝 지점을 같은 씬의 움직이는 몸체 밖에 연결하세요."); enabled = false; }
         }
 
@@ -75,7 +75,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
             if (!float.IsFinite(deltaTime) || deltaTime <= 0f) return;
             if (!TryGetEndpoints(out var start, out var end))
             {
-                ReportInvalidPath("시작/끝 지점이 제거되었거나 유효한 고정 지점이 아닙니다.");
+                ReportInvalidPath("시작/끝 지점이 제거되었거나 좌표가 유한하지 않습니다.");
                 enabled = false;
                 return;
             }
@@ -101,16 +101,18 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         {
             step = default;
             invalidPathReported = false;
-            if (motion != null && TryGetEndpoints(out var start, out _))
+            if (motion != null && ValidateEndpoints() && TryGetEndpoints(out var start, out _))
                 motion.ResetForRetry(new Pose(start, startPoint.rotation));
             else motion?.ResetForRetry();
         }
 
+        // 배치 구조 검사는 준비/복구 시점에만 수행한다. 물리 스텝은 연결된 지점의 현재 좌표만 읽는다.
+        private bool ValidateEndpoints() => motion != null && motion.IsFixedPoint(startPoint) && motion.IsFixedPoint(endPoint);
+
         private bool TryGetEndpoints(out Vector3 start, out Vector3 end)
         {
             start = end = Vector3.zero;
-            var writer = motion != null ? motion : GetComponent<KinematicPlatformMotion>();
-            if (writer == null || !writer.IsFixedPoint(startPoint) || !writer.IsFixedPoint(endPoint)) return false;
+            if (startPoint == null || endPoint == null) return false;
             // Transform.position이 작성 부모→world의 유일한 변환 경계다.
             start = startPoint.position;
             end = endPoint.position;

@@ -1,4 +1,43 @@
+## 2026-11-03 사망·리스폰 음악 유지 / 메모 효과음 원복
+
+메모 열기의 UI 효과음 우회 연결은 철회·원복했다. 월드 정지 효과음 차단을 유지한다. 사망/Retry/직접 테스트 Actor 제거는 BGM을 종료하지 않고 같은 스테이지 곡의 재생 위치를 유지한다. 과거 사망 페이드아웃/리스폰 처음부터 재생 지침보다 우선한다. 옵션 정지와 실제 곡 전환은 기존 정책 유지. 검증/상세: Assets/_Docs/tracking/respawn-music-2026-11-03/.
+
+## 2026-11-03 체크포인트 검사 진입 실패 수정
+
+스폰 검사가 비활성 Stage 지형을 검사해 LoadingGame에서 Title로 복구되는 초기화 순서 오류를 수정했다. 준비된 선택 Stage를 초기 저장/실제 스폰 전에 활성화한다. 실제 Editor Play의 최초 Playing 진입과 사망 API 후 Retry→Playing 복귀를 확인했다. 상세: checkpoint-spawn-2026-11-02/진입 실패 수정 2026-11-03.md. 전체 플레이/Player 빌드는 미검증이다.
+
+## 2026-11-02 후속: 체크포인트 발바닥 스폰
+
+체크포인트 위치는 별도 CheckpointSpawnPoint의 발바닥 좌표로 변경한다. 기존 Trigger/Capsule 중심 기준 설명은 이 범위에서 대체한다. 에디터 파랑=가능/빨강=불가, 저장 및 실제 스폰 시 지면·겹침 검사, 대체 위치 없음. 스냅샷3값은 유지하고 Position 의미만 발바닥으로 통일한다. 초기 무음 등록은 유효한 지점만 수락한다. 직접 테스트의 별도 StartPoint 중심 계약은 유지한다. 구현·배치·검증: Assets/_Docs/tracking/checkpoint-spawn-2026-11-02/. 현재 Tutorial6개 앵커 연결은 미저장 Undo 편집 상태다.
+
+## 2026-11-02 후속: 전체 재생 이벤트 연결 완료
+
+사용자의 전체 효과음 연결 지시에 따라 PlayerAudioBinding/WorldAudioBinding을 AudioRuntimeHost가 소유하도록 구현했다. 플레이어·적·장치 성공 이벤트, UI 수락된 클릭, 환경 위치 Loop와 거리 감쇠 및 직접 씬 테스트 경로를 연결했다. 아래 과거 기록의 “나머지 SFX 발생 이벤트/3D 감쇠 미구현”은 이번 변경으로 대체한다. 실제 음원27종의 카탈로그 연결을 사용하며, 파일이 없는 Sfx_Pc_Hit_Monster / Sfx_Platform_Spawn / Sfx_Pc_Knockback도 호출은 준비했으나 현재 청취할 수 없다. 이3종은 음원과 종료 정책 확정이 남아 있다.
+
+검증은 Editor 자동 검사117건 통과(이벤트31/카탈로그34/튜토리얼43/눈물 차폐9)이며 실제 Play·Player·청취 검증은 이번 작업에서 수행하지 않았다. 상세 명세·코드 리뷰·검증 기록: Assets/_Docs/tracking/audio-event-binding-2026-11-02/. 미저장 Tutorial 씬은 보존했다.
+
+## 2026-11-02 후속: 사운드 카탈로그 27종 사전 연결
+
+사운드 시트 30행 중 로컬 음원 27종을 모두 AudioCueCatalog에 연결했다. 축소/확대는 Size_Down/Size_Up으로 분리하고 Sfx_Ability는 조각 4→5 준비음으로 수정했다. 이전 문서의 단일 폼 전환음·해금음 오연결은 해결됐다. 없는 3종과 나머지 SFX 발생 이벤트/3D 감쇠 구현은 구분한다. 상세: Assets/_Docs/tracking/audio-catalog-2026-11-02/.
+
+## 2026-11-02 튜토리얼 UI·중앙 BGM·초기 체크포인트
+
+[구현/배치 안내](tutorial-audio-2026-11-02/배치%20및%20연결%20가이드.md), [검증](tutorial-audio-2026-11-02/테스트%20및%20검증%20항목.md). 4종 프리팹 제작, 중앙 씬별 BGM 연결, 초기 체크포인트 무음 등록. 자동 검사 39/39 통과, 실제 Tutorial Play에서 UI 표시·API 사망 재시도 유지·옵션 애니메이션/BGM 정지·재개 확인. 사용자 씬 배치·자연 입력 전체 플레이·Player 빌드·팀 청취는 미실행. 기존 작업 보존, Git 작업 없음.
+
+## 2026-11-02 SYM 자산 분리·프로토타입 정리
+
+사용자 직접 지시 및 후속 정정으로 SYM 전용 미사용 프로토타입/테스트 자산을 제거했다. 본편 데이터는 Assets/_Data/Tech_SYM, 관리 씬3개는 Assets/_Scenes/Tech_SYM/Runtime으로 이관했다. 타 작업자 씬과 의존 자산은 원위치/원내용으로 보존하므로 공유 스킬·적·메모 모델7개와 일부 테스트 프리팹은 예외로 남는다. 루트 Tutorial/Stage 및 공용 _Prefabs는 변경하지 않는다. 아래의 이전 Prototype 실행 경로·보존 문구보다 이번 자산 분류가 우선한다. 현재 실행 등록은 ArchitectureInstallation과 IntegrationEntrySettings의 SceneAsset 참조를 따른다. 상세: Assets/_Docs/tracking/asset-organization-2026-11-02/자산 분류 목록.md.
+
+## 2026-11-02 월드 프롬프트 수정 및 Tutorial 연결 조사
+
+월드 프롬프트 세 소비처 최신 폰트/F 한 줄 표시 반영, 12검사 통과. 이전 ui-native-size의 프롬프트 미수정 상태를 대체한다. Tutorial은 EntrySettings의 Prototype 등록 불일치, 구간 시작/끝/음악/첫 시작과 트리거 소속 누락, 이동 시간 0이 확인됨. 설정 변경 없이 [연결 가이드](world-prompt-tutorial-2026-11-02/Tutorial 연결 조사.md)에 기록. Play 미실행.
+
 # 현재 요구와 검증 상태
+
+## 2026-11-01 UI 원본 크기 적용
+
+최신 컷씬01~04/05~08, 하트·Q/E·설정·대화·기록·메모 원본 크기와 참조를 적용했다. E 조각 수/키 상호 배타 표시, 설정 불필요 텍스트 제거, 대화 버튼 하단 정렬, 레이아웃 그룹 및 구식 HudIconGraphic 제거를 완료했다. Bootstrap의 옛 UI override만 정리했다. 실제 DLL·프리팹 기반 HUD24/대화12/설정41/컷씬8 assertions, 그림33개×3상태 크기 검사99건, Bootstrap/Core 크기·Missing Script 검사 통과. 프리팹 프리뷰를 렌더 검수했다. 미저장 Stage_quarter 유지, _Art/UI162개 해시 변경0. 컴파일 오류0이며 변경 밖 deprecated API/PluginImporter 경고는 남는다. Play/Player/전체 QA는 미실행. [검증](ui-native-size-2026-11-01/테스트%20및%20검증%20항목.md), [코드 리뷰](ui-native-size-2026-11-01/코드%20리뷰.md).
+
 
 ## 2026-10-31 디버그 원본 구도 재사용
 
@@ -172,3 +211,11 @@ HMS 누적12파일의 변경57개를 소비 근거로 재검토해 불필요 분
 최종 소스·자산·문서 독립 검토에서 차단 사항은 없었고 과거 검증 링크 권고는 최신 경로로 수정했다. 구조 이관 커밋은 855781a이며 실제 검증과 사람 확인의 경계는 위 문서를 따른다.
 
 
+
+
+## 2026-11-02 프레임 루프 불필요 검사 정리
+사용자 직접 지시로 프로젝트 Update/FixedUpdate/LateUpdate 39개(SYM25/HMS14)와 관련 하위 호출을 확인했다. SYM 11파일에서 발판 고정 앵커 반복 탐색, 붕괴 Animator 구성 반복 검사, 추격 Box 구성 반복 검사, 프롬프트 계층 반복 검사, 효과 재등록 검색 및 불필요한 임시 할당/숨김 디버그 갱신을 정리했다. 컴파일 오류0, 격리 Unity 검사27통과, diff 공백 검사 통과. Play/Profiler 전후 성능 측정은 미실행. 씬·프리팹·타 작업자 원본과 Git은 변경하지 않았다. 세부 범위/리뷰/검증: [update-loop-audit-2026-11-02](update-loop-audit-2026-11-02/기능%20명세서.md).
+
+
+## 2026-11-02 Enemy 실제 프로파일 후속 검증
+현재 Tutorial의 실제 Play를 공식 Profiler로 기록했다. 과거 Enemy27.74~40.77ms 구간과 현재 코드 구간을 분리했다. 과거 버퍼 보존 후 새390프레임 분석에서 Enemy 평균0.01983ms/최대0.13980ms/하위GC0B, FixedBehaviourUpdate 평균0.09996ms/최대0.51180ms였다. 기존 제거 수정이 실제로 적용됨을 확인했고 추가 런타임 코드 변경은 하지 않았다. 남은 EditorLoop/Profiler UI/렌더링 비용과 검증 한계는 enemy-profiler-2026-11-02의 코드 리뷰·테스트 문서에 기록했다. 현재 Play 일시정지와 기록OFF 복원.

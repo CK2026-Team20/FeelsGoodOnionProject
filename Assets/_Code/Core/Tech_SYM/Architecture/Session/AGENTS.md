@@ -1,3 +1,11 @@
+﻿## 2026-11-03 직접 지시: 체크포인트 배치 검사는 에디터 전용
+
+플레이어 Collider 접촉 때문에 체크포인트 저장이 거절되지 않도록 런타임 초기 등록·접촉 저장·실제 스폰의 지면/겹침 검사를 제거한다. 배치 검사는 Edit Mode Inspector와 파랑/빨강 Gizmo에서만 수행하며 Play 중에는 실행하지 않는다. 발바닥 좌표 계산, 필수 참조/스냅샷 유효성, 초기 무음 등록·중복 활성화 억제는 유지한다. 대체 위치 없음. 이전 문서의 런타임 공간 검사 요구를 대체한다. 상세: Assets/_Docs/tracking/checkpoint-editor-validation-2026-11-03/.
+
+## 2026-11-02 후속: 체크포인트 발바닥 스폰
+
+체크포인트 위치는 별도 CheckpointSpawnPoint의 발바닥 좌표로 변경한다. 기존 Trigger/Capsule 중심 기준 설명은 이 범위에서 대체한다. 에디터 파랑=가능/빨강=불가, 저장 및 실제 스폰 시 지면·겹침 검사, 대체 위치 없음. 스냅샷3값은 유지하고 Position 의미만 발바닥으로 통일한다. 초기 무음 등록은 유효한 지점만 수락한다. 직접 테스트의 별도 StartPoint 중심 계약은 유지한다. 구현·배치·검증: Assets/_Docs/tracking/checkpoint-spawn-2026-11-02/. 현재 Tutorial6개 앵커 연결은 미저장 Undo 편집 상태다.
+
 # 세션과 플레이어 연결
 
 체크포인트 payload는 체크포인트 StageTrigger의 유한 월드 Position, 정수 Fragments 0..5, UnlockedAbilities 마스크 None=0/FormChange=1/Tear=2/Both=3의 정확히 세 항목이다. 등장·복귀는 플레이어 CapsuleCollider 월드 중심을 Position에 맞춘다. 비활성 생성 직후와 Normal 준비 뒤 동일 정렬을 적용하며 attachedRigidbody 대신 같은 오브젝트의 Rigidbody를 확인한다. 수락 전 값 검증 실패는 이전 snapshot을 지킨다. 수락한 저장은 소비 이력과 원자 확정하며 이후 표현 취소·사망으로 되돌리지 않는다. 같은 트리거 재접촉 억제를 Actor 교체로 비우지 않는다. 추격 직전만 당시 Collider 중심을 저장한다. StageId/CheckpointId·월드 상태·HP·폼·카메라·시간·대화 완료는 저장하지 않는다.

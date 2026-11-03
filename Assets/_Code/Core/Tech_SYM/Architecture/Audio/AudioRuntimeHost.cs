@@ -16,6 +16,8 @@ namespace Cooked.Audio
         private AudioService service;
         private AudioFlowBinding binding;
         private bool shuttingDown;
+        private PlayerAudioBinding playerAudio;
+        private WorldAudioBinding worldAudio;
         public AudioService Service => service ?? throw new InvalidOperationException("CreateService must run first.");
         public AudioFlowBinding Binding => binding ?? throw new InvalidOperationException("BindFlow must run first.");
 
@@ -25,20 +27,42 @@ namespace Cooked.Audio
             if (catalog == null) throw new InvalidOperationException("Audio catalog not assigned.");
             if (sources == null) throw new InvalidOperationException("재생 채널 목록을 연결하세요.");
             foreach (var source in sources) Cooked.Integration.SceneComponentLookup.RequireSameScene(this, source, "재생 채널");
+            catalog.Gameplay.Validate();
             var settings = catalog.CreateSettings();
             var driver = new UnityAudioPlaybackDriver(sources, catalog);
             var crossfade = new DotweenMusicCrossfadeDriver(gameObject);
-            try { service = new AudioService(settings, driver, crossfade, message => Debug.LogWarning(message, this)); }
-            catch { crossfade.Dispose(); throw; }
+            var worldOutput = new WorldAudioOutput(transform, catalog);
+            try { service = new AudioService(settings, driver, crossfade, message => Debug.LogWarning(message, this), worldOutput: worldOutput); }
+            catch { worldOutput.Dispose(); crossfade.Dispose(); throw; }
             return service;
         }
         // Caller creates SettingsService and applies saved volume before this call.
         public void BindFlow(IGameFlowService flow, IGameplayControlService control)
         {
             if (binding != null) throw new InvalidOperationException("Audio flow already bound.");
-            binding = new AudioFlowBinding(Service, flow, control);
+            binding = new AudioFlowBinding(Service, flow, control, catalog);
         }
-        private void Update() { service?.PollCompletedVoices(); }
+        public void BindGameplay(Cooked.Session.PlayerBridgeService player, UnityEngine.SceneManagement.Scene scene,
+            IGameplayControlService control, IGameFlowService flow)
+        {
+            UnbindGameplay();
+            try
+            {
+                playerAudio = new PlayerAudioBinding(Service, player, control, flow, catalog.Gameplay);
+                worldAudio = new WorldAudioBinding(Service, player, scene, control, flow, catalog.Gameplay);
+            }
+            catch { UnbindGameplay(); throw; }
+        }
+        public void UnbindGameplay()
+        {
+            var world = worldAudio; var player = playerAudio; worldAudio = null; playerAudio = null;
+            try { world?.Dispose(); } finally { player?.Dispose(); }
+        }
+        private void Update()
+        {
+            playerAudio?.Tick(Time.deltaTime); worldAudio?.Tick(Time.deltaTime);
+            service?.PollCompletedVoices();
+        }
         public void Shutdown()
         {
             if (shuttingDown) return;
@@ -50,6 +74,7 @@ namespace Cooked.Audio
             var errors = new List<Exception>();
             try
             {
+                try { UnbindGameplay(); } catch (Exception error) { errors.Add(error); }
                 // 앱 서비스 범위가 먼저 Dispose했어도 Host는 자기 구독을 해제한다.
                 try { previousBinding?.Dispose(); } catch (Exception error) { errors.Add(error); }
                 try { previousService?.Dispose(); } catch (Exception error) { errors.Add(error); }

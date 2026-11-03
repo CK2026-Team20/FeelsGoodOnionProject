@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Cooked.Authoring;
 using Cooked.Chase;
@@ -8,6 +8,12 @@ using Cooked.Session;
 using UnityEngine;
 namespace Cooked.Level
 {
+    public enum CheckpointSoundPolicy
+    {
+        [InspectorName("구간 기준 (시작만 재생)")] SectionDefault = 0,
+        [InspectorName("재생")] Play = 1,
+        [InspectorName("무음")] Silent = 2
+    }
     public enum StageTriggerKind
     {
         // 0 was the redundant stage-music entry trigger. Existing kinds keep their serialized values.
@@ -32,6 +38,12 @@ namespace Cooked.Level
         private SessionActorHost independentHost;
         [SerializeField, InspectorLabel("한 시도에 한 번"), Tooltip("켜면 요청을 한 번만 수락합니다. 체크포인트·포포 도착·데드존은 각 재접촉 규칙을 따릅니다.")]
         private bool once = true;
+        [SerializeField, InspectorLabel("체크포인트 소리"), Tooltip("저장 성공 때의 소리를 정합니다. 구간 기준은 시작만 재생하며 숨겨진 종료 지점은 무음을 사용하세요.")]
+        private CheckpointSoundPolicy checkpointSound;
+        public CheckpointSoundPolicy CheckpointSound => checkpointSound;
+        [SerializeField, InspectorLabel("발바닥 스폰 지점"), Tooltip("같은 씬의 고정 CheckpointSpawnPoint를 연결하세요. Trigger 중심과 별도로 안전한 바닥에 배치합니다.")]
+        private CheckpointSpawnPoint spawnPoint;
+        public CheckpointSpawnPoint SpawnPoint => spawnPoint;
         [SerializeField, InspectorLabel("추격 퇴로"), Tooltip("추격 시작 시 닫을 같은 씬의 퇴로를 연결하세요. 플레이어와 겹치면 시작을 보류합니다.")]
         private ChaseRetreatGate chaseRetreatGate;
         [SerializeField, InspectorLabel("추격 무리"), Tooltip("이 트리거가 시작할 같은 씬의 ChaseRuntimeDriver를 연결하세요. 움직이는 무리 아래에 시작 센서를 넣지 마세요.")]
@@ -107,9 +119,11 @@ namespace Cooked.Level
                 if (kind != StageTriggerKind.Checkpoint || stage == null || volume == null || !volume.isTrigger)
                     throw new InvalidOperationException("체크포인트 종류와 소속 스테이지, Trigger BoxCollider가 필요합니다.");
                 SceneComponentLookup.RequireSameScene(this, stage, "소속 스테이지");
-                SceneComponentLookup.RequireFixedPoint(this, transform, "체크포인트 위치");
-                if (!CameraProfileValidation.IsFinite(transform.position)) throw new InvalidOperationException("체크포인트 위치가 유한하지 않습니다.");
-                return new Pose(transform.position, transform.rotation);
+                if (spawnPoint == null) throw new InvalidOperationException("발바닥 스폰 지점을 연결하세요.");
+                SceneComponentLookup.RequireSameScene(this, spawnPoint, "발바닥 스폰 지점");
+                SceneComponentLookup.RequireFixedPoint(this, spawnPoint.transform, "발바닥 스폰 지점");
+                if (!CameraProfileValidation.IsFinite(spawnPoint.transform.position)) throw new InvalidOperationException("체크포인트 위치가 유한하지 않습니다.");
+                return spawnPoint.FeetPose;
             }
         }
         public DialogueSelection Dialogue => dialogue;

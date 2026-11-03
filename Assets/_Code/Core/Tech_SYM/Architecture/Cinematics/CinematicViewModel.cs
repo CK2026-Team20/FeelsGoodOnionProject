@@ -8,9 +8,10 @@ namespace Cooked.Cinematics
     {
         private readonly CinematicService service;
         private bool disposed;
-        public CinematicViewModel(CinematicService service)
+        private readonly Action click;
+        public CinematicViewModel(CinematicService service, Action click = null)
         {
-            this.service = service ?? throw new ArgumentNullException(nameof(service));
+            this.service = service ?? throw new ArgumentNullException(nameof(service)); this.click = click;
             service.Changed += OnChanged;
         }
         public Texture2D Artwork => disposed ? null : service.Artwork;
@@ -18,7 +19,7 @@ namespace Cooked.Cinematics
         public bool IsVisible => !disposed && service.IsVisible;
         public bool CanSkip => !disposed && service.CanSkip;
         public event Action Changed;
-        public void Skip() { if (CanSkip) service.Skip(); }
+        public void Skip(bool pointer = false) { if (CanSkip) { service.Skip(); if (pointer) click?.Invoke(); } }
         // 표시 소유자가 사라지면 진행 중 회차를 취소한다. 서비스 폐기는 Host의 책임이다.
         public void CancelPresentation() { if (!disposed) service.Hide(); }
         private void OnChanged()

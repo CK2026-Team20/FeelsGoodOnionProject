@@ -31,8 +31,18 @@ namespace Cooked.Integration
         private Func<string, CancellationToken, OperationResult, IEnumerator> prepareStage;
         public string ActiveStageId { get; private set; }
         public StageService ActiveStage => Stages.Require(ActiveStageId);
-        public void BindStageLifecycle(Func<string, CancellationToken, OperationResult, IEnumerator> prepare)
-        { ThrowIfDisposed(); prepareStage = prepare ?? throw new ArgumentNullException(nameof(prepare)); }
+        private Action<string> activateStageForSpawn;
+        public void BindStageLifecycle(Func<string, CancellationToken, OperationResult, IEnumerator> prepare, Action<string> activate)
+        {
+            ThrowIfDisposed();
+            prepareStage = prepare ?? throw new ArgumentNullException(nameof(prepare));
+            activateStageForSpawn = activate ?? throw new ArgumentNullException(nameof(activate));
+        }
+        private void ActivateSpawnWorld(string stageId)
+        {
+            if (activateStageForSpawn == null) throw new InvalidOperationException("스폰 전 스테이지 활성화 연결이 없습니다.");
+            activateStageForSpawn(stageId);
+        }
         public IEnumerator PrepareInitialStages(CancellationToken token, OperationResult result)
         {
             ThrowIfDisposed();
@@ -65,6 +75,7 @@ namespace Cooked.Integration
         }
         private static void CopyFailure(OperationResult source, OperationResult target)
         { if (source.Status == OperationStatus.Cancelled) target.Cancel(); else target.Fail(source.Error ?? "Stage preparation failed."); }
+        public TutorialProgress Tutorials { get; } = new TutorialProgress();
         public GameSessionService Session { get; }
         public PlayerBridgeService Player { get; }
         public DialogueService Dialogue { get; }
@@ -102,7 +113,7 @@ namespace Cooked.Integration
                 Dialogue = new DialogueService(app.Get<IDialogueTableService>(), control, new DOTweenDialogueDelayScheduler(), new DialogueSettings(.3f, 3f));
                 scope.Register<DialogueService>(Dialogue);
                 scope.Register<ICinematicService>(Cinematics);
-                dialogueModel = new DialogueViewModel(Dialogue);
+                dialogueModel = new DialogueViewModel(Dialogue, () => app.Get<IAudioService>().PlaySfx(Cooked.Audio.AudioCueIds.Click));
                 dialogueView.Bind(dialogueModel);
                 host.Initialize(Player, control);
 
@@ -128,6 +139,8 @@ namespace Cooked.Integration
                 mask |= ability == AbilityId.FormChange ? AbilityMask.FormChange : AbilityMask.Tear;
             var initial = new CheckpointSnapshot(initialPose.position, entry.Fragments, mask);
             ActiveStageId = entryStageId;
+            ActivateSpawnWorld(entryStageId);
+            stage.RegisterInitialCheckpoint(initial);
             Session.Begin(initial);
             Dialogue.ResetRound();
         }
@@ -135,14 +148,15 @@ namespace Cooked.Integration
         {
             ThrowIfDisposed();
             if (!Session.IsActive) throw new InvalidOperationException("Session is inactive.");
+            ActivateSpawnWorld(ActiveStageId);
             var saved = ActiveStage.ResolveRestore(Session.InitialConfiguration);
             Session.RestoreAbilities(saved);
             Stages.Require(ActiveStageId);
             // Rotation is fresh authoring; the snapshot retains position, fragments and unlocked abilities.
-            var pose = new Pose(saved.Position, ActiveStage.HasCheckpoint ? Quaternion.identity : ActiveStage.InitialPose.rotation);
+            var pose = new Pose(saved.Position, ActiveStage.HasReachedCheckpoint ? Quaternion.identity : ActiveStage.InitialPose.rotation);
             try
             {
-                host.Spawn(pose, saved.Fragments);
+                host.Spawn(pose, saved.Fragments, feetPosition: true);
             }
             catch (Exception spawnError)
             {

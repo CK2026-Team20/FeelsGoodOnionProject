@@ -37,6 +37,15 @@ namespace Cooked.DebugTesting
         {
             lock (gate) { version = revision; return entries.ToArray(); }
         }
+        public bool TrySnapshot(long knownVersion, out long version, out string[] snapshot)
+        {
+            lock (gate)
+            {
+                version = revision;
+                snapshot = version != knownVersion ? entries.ToArray() : null;
+                return snapshot != null;
+            }
+        }
         public void Dispose()
         {
             lock (gate) { if (disposed) return; disposed = true; entries.Clear(); }

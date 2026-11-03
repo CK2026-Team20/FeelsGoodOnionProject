@@ -118,10 +118,10 @@ TextureImporter:
       name: 5_sheet_0
       rect:
         serializedVersion: 2
-        x: 29
-        y: 3045
-        width: 1132
-        height: 510
+        x: 0
+        y: 3000
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -140,10 +140,10 @@ TextureImporter:
       name: 5_sheet_1
       rect:
         serializedVersion: 2
-        x: 1230
-        y: 3045
-        width: 1132
-        height: 510
+        x: 1200
+        y: 3000
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -162,10 +162,10 @@ TextureImporter:
       name: 5_sheet_2
       rect:
         serializedVersion: 2
-        x: 2428
-        y: 3045
-        width: 1132
-        height: 510
+        x: 2400
+        y: 3000
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -184,10 +184,10 @@ TextureImporter:
       name: 5_sheet_3
       rect:
         serializedVersion: 2
-        x: 29
-        y: 2444
-        width: 1132
-        height: 512
+        x: 0
+        y: 2400
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -206,10 +206,10 @@ TextureImporter:
       name: 5_sheet_4
       rect:
         serializedVersion: 2
-        x: 1230
-        y: 2444
-        width: 1132
-        height: 512
+        x: 1200
+        y: 2400
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -228,10 +228,10 @@ TextureImporter:
       name: 5_sheet_5
       rect:
         serializedVersion: 2
-        x: 2428
-        y: 2444
-        width: 1132
-        height: 512
+        x: 2400
+        y: 2400
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -250,10 +250,10 @@ TextureImporter:
       name: 5_sheet_6
       rect:
         serializedVersion: 2
-        x: 29
-        y: 1845
-        width: 1132
-        height: 510
+        x: 0
+        y: 1800
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -272,10 +272,10 @@ TextureImporter:
       name: 5_sheet_7
       rect:
         serializedVersion: 2
-        x: 1230
-        y: 1845
-        width: 1132
-        height: 510
+        x: 1200
+        y: 1800
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -294,10 +294,10 @@ TextureImporter:
       name: 5_sheet_8
       rect:
         serializedVersion: 2
-        x: 2428
-        y: 1845
-        width: 1132
-        height: 510
+        x: 2400
+        y: 1800
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -316,10 +316,10 @@ TextureImporter:
       name: 5_sheet_9
       rect:
         serializedVersion: 2
-        x: 29
-        y: 1245
-        width: 1132
-        height: 510
+        x: 0
+        y: 1200
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -338,10 +338,10 @@ TextureImporter:
       name: 5_sheet_10
       rect:
         serializedVersion: 2
-        x: 1230
-        y: 1245
-        width: 1132
-        height: 510
+        x: 1200
+        y: 1200
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -360,10 +360,10 @@ TextureImporter:
       name: 5_sheet_11
       rect:
         serializedVersion: 2
-        x: 2428
-        y: 1245
-        width: 1132
-        height: 510
+        x: 2400
+        y: 1200
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -382,10 +382,10 @@ TextureImporter:
       name: 5_sheet_12
       rect:
         serializedVersion: 2
-        x: 29
-        y: 644
-        width: 1132
-        height: 512
+        x: 0
+        y: 600
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -404,10 +404,10 @@ TextureImporter:
       name: 5_sheet_13
       rect:
         serializedVersion: 2
-        x: 1230
-        y: 644
-        width: 1132
-        height: 512
+        x: 1200
+        y: 600
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -426,10 +426,10 @@ TextureImporter:
       name: 5_sheet_14
       rect:
         serializedVersion: 2
-        x: 2428
-        y: 644
-        width: 1132
-        height: 512
+        x: 2400
+        y: 600
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -448,10 +448,10 @@ TextureImporter:
       name: 5_sheet_15
       rect:
         serializedVersion: 2
-        x: 29
-        y: 45
-        width: 1132
-        height: 510
+        x: 0
+        y: 0
+        width: 1200
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -480,7 +480,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries:
       - key: SpriteEditor.SliceSettings
-        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":1200.0,"y":600.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       5_sheet_0: -123828051764169148
       5_sheet_1: 1060032217

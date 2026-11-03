@@ -57,6 +57,8 @@ Bind/Unbind, OnEnable/OnDisable/OnDestroy, 풀 반환의 소유권을 명시한�
 
 ## Unity 자산과 배치
 
+2026-11-02 사용자 정정: 모든 프리팹은 Assets/_Prefabs 아래에 기능별로 배치한다. 프리팹은 공용 자산이므로 작업자 이름으로 폴더를 나누지 않는다. Assets/_Data에는 ScriptableObject·대화 테이블 등 순수 모델/설정 데이터만 둔다. 프리팹·텍스처·애니메이션은 해당 리소스 폴더를 사용한다. 사용 가능한 원본 Sprite가 있으면 직접 참조하고 연결 편의를 위한 PNG 사본을 만들지 않는다. 원본의 import 설정을 임의 변경하지 않는다.
+
 새로 구성하는 완성 오브젝트는 빈 GameObject를 최상위 루트로 둔다. 루트는 제어·공통 데이터, 자식은 Visual·CameraAnchor·VFX·SFX·Collider의 역할을 분리한다. Visual에 업무 스크립트를 몰아넣지 않는다. 같은 역할마다 별도 Canvas나 파일을 강제하지 않는다.
 
 기존 물리 계약 때문에 Facade·Rigidbody·Collider가 같은 ActorBody에 있어야 하는 경우, 빈 PlayerRoot 아래 ActorBody로 묶인 현재 구조를 유지하고 차이를 명시한다. 붕괴 발판은 명시적 supportCollider/physicalContacts 참조를 사용한다. Visual은 물리 없는 표현이고 Animator 없는 경고 Shake도 이동하므로 고정 Marker를 Visual 아래에 두지 않는다. 기존 자산 전체가 새 배치 기준을 만족한다고 주장하지 않는다.
