@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17,7 +17,7 @@ using UnityEngine.SceneManagement;
 namespace Cooked.DebugTesting
 {
     /// <summary>Owns only the temporary test session. Authored world objects are borrowed.</summary>
-    public sealed class DirectSceneTestRuntime : MonoBehaviour
+    public sealed class DirectSceneTestRuntime : MonoBehaviour, IDebugPanelContext
     {
         public const string DefaultPlayerPrefabPath = "Assets/_Prefabs/Characters/Players/Main/PlayerRoot.prefab";
         public DirectSceneTestSettings Settings { get; private set; }
@@ -31,6 +31,16 @@ namespace Cooked.DebugTesting
         public bool IsRespawning { get; private set; }
         public bool IsReady => !disposed && !IsRespawning && Player != null && Player.HasActor &&
             !Player.Actor.IsDead && Flow.Snapshot.State == FlowState.Playing;
+        IGameplayControlService IDebugPanelContext.Control => Control;
+        IGameFlowService IDebugPanelContext.Flow => Flow;
+        public Scene WorldScene => gameObject.scene;
+        public Transform StartPoint => Settings.StartPoint;
+        public IEnumerable<Transform> Points => Settings.AdditionalPoints;
+        public bool PointsUseFeet => false;
+        public bool CanSelectCamera => TestCamera != null && TestCamera.CanSelect;
+        public Cooked.Level.CameraMovementMode CurrentView => TestCamera != null ? TestCamera.CurrentView : default;
+        public bool SelectCamera(Cooked.Level.CameraMovementMode mode) => CanSelectCamera && TestCamera.Select(mode);
+        public void RefreshBinding() { }
         public event Action ActorReady;
         public event Action ActorRemoving;
         private readonly List<Action> unbind = new List<Action>();

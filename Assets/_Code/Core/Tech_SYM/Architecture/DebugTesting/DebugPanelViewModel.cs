@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using Cooked.Contracts;
@@ -12,7 +12,7 @@ namespace Cooked.DebugTesting
     /// <summary>Debug use-case adapter. Gameplay state remains owned by the real session and actor.</summary>
     public sealed class DebugPanelViewModel : IDisposable
     {
-        private readonly DirectSceneTestRuntime runtime;
+        private readonly IDebugPanelContext runtime;
         private readonly DebugLogBuffer logs;
         private readonly Action click;
         private bool pointerCommand;
@@ -29,15 +29,15 @@ namespace Cooked.DebugTesting
         public bool Paused => pause != null;
         public bool CanCommand => !disposed && runtime != null && runtime.IsReady && !executing;
         public bool CanDamage => CanCommand && SelectedPlatform != null && SelectedPlatform.isActiveAndEnabled && !runtime.Player.PhysicsPaused;
-        public bool CanSelectCamera => CanCommand && runtime.TestCamera != null && runtime.TestCamera.CanSelect;
-        public string CameraLabel => runtime.TestCamera == null ? "준비 중" : runtime.TestCamera.CurrentView switch
+        public bool CanSelectCamera => CanCommand && runtime.CanSelectCamera;
+        public string CameraLabel => !runtime.IsReady ? "준비 중" : runtime.CurrentView switch
         {
             CameraMovementMode.Side => "측면",
             CameraMovementMode.Corridor => "통로",
             CameraMovementMode.Quarter => "쿼터뷰",
             _ => "준비 중"
         };
-        public bool SelectCamera(CameraMovementMode mode) => CanSelectCamera && Run("카메라 시점 변경", () => runtime.TestCamera.Select(mode));
+        public bool SelectCamera(CameraMovementMode mode) => CanSelectCamera && Run("카메라 시점 변경", () => runtime.SelectCamera(mode));
         public string Summary { get; private set; } = "플레이어 준비 중";
         public string LogText { get; private set; } = string.Empty;
         public long LogVersion => logVersion;
@@ -47,18 +47,27 @@ namespace Cooked.DebugTesting
         public DamageFloorPlatform SelectedPlatform => platforms.Count == 0 ? null : platforms[PlatformIndex % platforms.Count];
         public string PointLabel => SelectedPoint != null ? SelectedPoint.name : "이동 지점 없음";
         public string PlatformLabel => SelectedPlatform != null ? SelectedPlatform.name + " / 피해 " + SelectedPlatform.DamageAmount : "피해 플랫폼 없음";
-        public DebugPanelViewModel(DirectSceneTestRuntime runtime, DebugLogBuffer logs, Action click = null)
+        public DebugPanelViewModel(IDebugPanelContext runtime, DebugLogBuffer logs, Action click = null)
         {
             this.runtime = runtime != null ? runtime : throw new ArgumentNullException(nameof(runtime));
             this.logs = logs ?? throw new ArgumentNullException(nameof(logs)); this.click = click;
-            if (runtime.Settings.StartPoint != null) points.Add(runtime.Settings.StartPoint);
-            foreach (var point in runtime.Settings.AdditionalPoints) if (point != null && !points.Contains(point)) points.Add(point);
-            foreach (var root in runtime.gameObject.scene.GetRootGameObjects())
-                foreach (var platform in root.GetComponentsInChildren<DamageFloorPlatform>(true))
-                    if (platform.enabled) platforms.Add(platform);
+            RefreshTargets();
             runtime.ActorReady += OnActorReady;
             runtime.ActorRemoving += OnActorRemoving;
             Refresh();
+        }
+        private UnityEngine.SceneManagement.Scene targetScene;
+        private void RefreshTargets()
+        {
+            var scene = runtime.WorldScene;
+            if (targetScene == scene && (points.Count > 0 || platforms.Count > 0)) return;
+            targetScene = scene; points.Clear(); platforms.Clear(); PointIndex = PlatformIndex = 0;
+            if (!scene.IsValid() || !scene.isLoaded) return;
+            if (runtime.StartPoint != null) points.Add(runtime.StartPoint);
+            foreach (var point in runtime.Points) if (point != null && !points.Contains(point)) points.Add(point);
+            foreach (var root in scene.GetRootGameObjects())
+                foreach (var platform in root.GetComponentsInChildren<DamageFloorPlatform>(true))
+                    if (platform.enabled) platforms.Add(platform);
         }
         public void ExecutePointerCommand(Action command, bool pointer)
         {
@@ -78,6 +87,7 @@ namespace Cooked.DebugTesting
         public void Refresh()
         {
             if (disposed) return;
+            RefreshTargets();
             if (logs.TrySnapshot(logVersion, out long version, out var snapshot))
             { logVersion = version; LogText = string.Join("\n", snapshot); }
             if (runtime != null && runtime.Player != null && runtime.Player.HasActor)
@@ -132,10 +142,10 @@ namespace Cooked.DebugTesting
             invincibleActor = null;
         }
         private void OnActorReady() { if (DebugInvincible) ApplyInvincible(); Refresh(); }
-        private void OnActorRemoving() { ReleaseInvincible(); }
+        private void OnActorRemoving() { ReleaseInvincible(); pause?.Dispose(); pause = null; }
         public void NextPoint() { if (!disposed && points.Count > 0) { PointIndex = (PointIndex + 1) % points.Count; Changed?.Invoke(); Accepted(); } }
         public void NextPlatform() { if (!disposed && platforms.Count > 0) { PlatformIndex = (PlatformIndex + 1) % platforms.Count; Changed?.Invoke(); Accepted(); } }
-        public bool MoveToStart() => Teleport(runtime != null ? runtime.Settings.StartPoint : null);
+        public bool MoveToStart() => Teleport(runtime != null ? runtime.StartPoint : null);
         public bool MoveToSelectedPoint() => Teleport(SelectedPoint);
         private bool Teleport(Transform point)
         {
@@ -149,7 +159,10 @@ namespace Cooked.DebugTesting
                 var movement = actor.GetComponent<CharacterMovement>();
                 movement?.ResetForRevive(true);
                 if (!runtime.Player.IsCurrentActor(actor, generation) || actor.IsDead) return;
-                SessionActorHost.PlaceColliderCenter(actor.GetComponent<CapsuleCollider>(), new Pose(point.position, point.rotation));
+                var shape = actor.GetComponent<CapsuleCollider>();
+                var pose = new Pose(point.position, point.rotation);
+                if (runtime.PointsUseFeet) pose.position = SpawnPlacement.Center(shape, pose);
+                SessionActorHost.PlaceColliderCenter(shape, pose);
                 Physics.SyncTransforms();
             });
         }

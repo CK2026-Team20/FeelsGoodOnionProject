@@ -1516,7 +1516,7 @@ MonoBehaviour:
     screenPercent: {x: 40, y: 50}
     deadZone: {x: 0.1, y: 0.1}
     damping: {x: 1, y: 1, z: 1}
-    distance: 10
+    distance: 4.5
     angles: {x: 0, y: 0, z: 0}
     focusOffset: {x: 0, y: 0, z: 0}
     fieldOfView: 40

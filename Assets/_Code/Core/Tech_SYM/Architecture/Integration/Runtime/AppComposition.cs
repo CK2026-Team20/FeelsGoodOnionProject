@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Cooked.Audio;
 using Cooked.Authoring;
@@ -34,6 +34,10 @@ namespace Cooked.Integration
         private SceneCatalog catalog;
         private OptionsService options;
         private CursorPresentationBinding cursor;
+#if UNITY_EDITOR
+        private Cooked.DebugTesting.DebugPanelSession debugPanel;
+        private Cooked.DebugTesting.GameDebugPanelContext debugContext;
+#endif
         private GameRuntimeService runtime;
         private CoreComposition loadedCore;
         private TitleScenePresentation loadedTitle;
@@ -127,6 +131,11 @@ namespace Cooked.Integration
                 options = new OptionsService(flow, control, settings);
                 services.Register<OptionsService>(options);
                 cursor = new CursorPresentationBinding(flow, options);
+#if UNITY_EDITOR
+                debugContext = new Cooked.DebugTesting.GameDebugPanelContext(() => runtime.CurrentSession, control, flow);
+                debugPanel = gameObject.AddComponent<Cooked.DebugTesting.DebugPanelSession>();
+                debugPanel.Bind(debugContext, cursor, click: () => audio.Service.PlaySfx(AudioCueIds.Click));
+#endif
                 optionsModel = new OptionsViewModel(options, settings, () => audio.Service.PlaySfx(AudioCueIds.Click));
                 fadeModel = new FadeViewModel(fade);
                 optionsView.Bind(optionsModel);
@@ -181,6 +190,11 @@ namespace Cooked.Integration
             void Attempt(Action action) { try { action(); } catch (Exception error) { errors.Add(error); } }
             if (subscribed) SceneManager.sceneLoaded -= SceneLoaded;
             subscribed = false;
+#if UNITY_EDITOR
+            Attempt(() => debugPanel?.Dispose());
+            Attempt(() => debugContext?.Dispose());
+            debugPanel = null; debugContext = null;
+#endif
             Attempt(() => cursor?.Dispose());
             cursor = null;
             runtime = null;
