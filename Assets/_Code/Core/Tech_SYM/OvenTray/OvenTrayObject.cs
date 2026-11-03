@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using FeelsGoodOnion.TechSYM.Interaction;
 using FeelsGoodOnion.TechSYM.Platforms;
@@ -29,6 +29,7 @@ namespace FeelsGoodOnion.TechSYM.OvenTray
         private bool anchorDefault;
         private bool resetting;
         public event Action<OperationOutcome> OperationEnded;
+        public event Action OperationStarted;
         public OvenTrayState State { get; private set; } = OvenTrayState.Closed;
         public bool IsMoving => State == OvenTrayState.Opening || State == OvenTrayState.Closing;
         public Pose ClosedPose => ResolvePose(closedPose, "닫힘");
@@ -50,6 +51,7 @@ namespace FeelsGoodOnion.TechSYM.OvenTray
             if (!accepted) return false;
             acceptedFrom = State; State = next; requestPending = true;
             if (anchor != null) anchor.enabled = false;
+            GameplayEvent.Publish(OperationStarted, this);
             return true;
         }
         private static Pose ResolvePose(Transform point, string field)

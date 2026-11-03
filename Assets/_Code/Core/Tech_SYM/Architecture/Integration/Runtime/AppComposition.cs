@@ -97,6 +97,7 @@ namespace Cooked.Integration
                 fade.SetCoveredImmediate();
                 var sound = audio.CreateService();
                 services.Register<IAudioService>(sound);
+                services.Register<AudioRuntimeHost>(audio);
                 var settings = new SettingsService(new PlayerPrefsSettingsStore(), sound);
                 services.Register<SettingsService>(settings);
                 runtime = new GameRuntimeService(() =>
@@ -126,7 +127,7 @@ namespace Cooked.Integration
                 options = new OptionsService(flow, control, settings);
                 services.Register<OptionsService>(options);
                 cursor = new CursorPresentationBinding(flow, options);
-                optionsModel = new OptionsViewModel(options, settings);
+                optionsModel = new OptionsViewModel(options, settings, () => audio.Service.PlaySfx(AudioCueIds.Click));
                 fadeModel = new FadeViewModel(fade);
                 optionsView.Bind(optionsModel);
                 fadeView.Bind(fadeModel);
@@ -160,7 +161,7 @@ namespace Cooked.Integration
         {
             if (catalog == null || scene.path != catalog.TitlePath) return;
             if (options == null) throw new InvalidOperationException("Title loaded before options composition completed.");
-            SceneComponentLookup.RequireSingle<TitleUiRoot>(catalog.TitlePath).Bind(services.Get<IGameFlowService>(), options, QuitApplication);
+            SceneComponentLookup.RequireSingle<TitleUiRoot>(catalog.TitlePath).Bind(services.Get<IGameFlowService>(), options, QuitApplication, () => audio.Service.PlaySfx(AudioCueIds.Click));
             loadedTitle = SceneComponentLookup.RequireSingle<TitleScenePresentation>(catalog.TitlePath);
             loadedTitle.Bind(presentationCamera);
         }

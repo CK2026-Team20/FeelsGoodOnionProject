@@ -70,7 +70,7 @@ namespace Cooked.DebugTesting
             text.textWrappingMode = TextWrappingModes.NoWrap;
             text.enableAutoSizing = true; text.fontSizeMin = 10; text.fontSizeMax = 15;
             text.overflowMode = TextOverflowModes.Ellipsis;
-            UnityEngine.Events.UnityAction click = () => command();
+            UnityEngine.Events.UnityAction click = () => model?.ExecutePointerCommand(command, UnityEngine.InputSystem.Mouse.current?.leftButton.wasReleasedThisFrame == true);
             button.onClick.AddListener(click);
             release.Add(() => { if (button != null) button.onClick.RemoveListener(click); });
             if (actorCommand) actorButtons.Add(button);

@@ -20,7 +20,7 @@ namespace Cooked.DebugTesting
         private GameObject ownedEventSystem;
         private float nextRefresh;
         private bool disposed;
-        public void Bind(DirectSceneTestRuntime runtime, CursorPresentationBinding cursorBinding, int logCapacity = 200)
+        public void Bind(DirectSceneTestRuntime runtime, CursorPresentationBinding cursorBinding, int logCapacity = 200, Action click = null)
         {
             if (ViewModel != null || disposed) throw new InvalidOperationException("디버그 패널 세션은 한 번만 연결합니다.");
             if (runtime == null) throw new ArgumentNullException(nameof(runtime));
@@ -28,7 +28,7 @@ namespace Cooked.DebugTesting
             try
             {
                 Logs = new DebugLogBuffer(logCapacity);
-                ViewModel = new DebugPanelViewModel(runtime, Logs);
+                ViewModel = new DebugPanelViewModel(runtime, Logs, click);
                 ViewModel.VisibilityChanged += cursor.SetDebugVisible;
                 cursor.SetDebugVisible(false);
                 if (EventSystem.current == null)
@@ -53,8 +53,13 @@ namespace Cooked.DebugTesting
         private void Update()
         {
             if (disposed || ViewModel == null) return;
-            if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame) ViewModel.ToggleVisible();
-            if (Time.unscaledTime < nextRefresh) return;
+            if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
+            {
+                ViewModel.ToggleVisible();
+                nextRefresh = Time.unscaledTime + .1f;
+                return;
+            }
+            if (!ViewModel.Visible || Time.unscaledTime < nextRefresh) return;
             nextRefresh = Time.unscaledTime + .1f;
             ViewModel.Refresh();
         }

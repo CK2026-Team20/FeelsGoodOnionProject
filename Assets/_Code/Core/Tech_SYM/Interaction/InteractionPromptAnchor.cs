@@ -15,14 +15,21 @@ namespace FeelsGoodOnion.TechSYM.Interaction
         public Transform InteractionPoint => interactionPoint;
         public Vector3 WorldPosition => promptPoint != null ? promptPoint.position : throw new InvalidOperationException("F 안내 지점을 연결하세요.");
         public Vector3 InteractionPosition => interactionPoint != null ? interactionPoint.position : throw new InvalidOperationException("F 조작 지점을 연결하세요.");
-        public IInteractable Interactable => GetComponent<IInteractable>();
-        public bool CanInteract => isActiveAndEnabled && ValidPoints && Interactable is Behaviour behaviour && behaviour.isActiveAndEnabled;
+        private IInteractable interactable;
+        private Behaviour interactionBehaviour;
+        private bool validSetup;
+        public IInteractable Interactable => interactable;
+        public bool CanInteract => isActiveAndEnabled && validSetup && promptPoint != null && interactionPoint != null
+            && interactionBehaviour != null && interactionBehaviour.isActiveAndEnabled;
         private bool ValidPoints => promptPoint != null && interactionPoint != null
             && promptPoint.IsChildOf(transform) && interactionPoint.IsChildOf(transform)
             && promptPoint.gameObject.scene == gameObject.scene && interactionPoint.gameObject.scene == gameObject.scene;
         private void Awake()
         {
-            if (!ValidPoints) Debug.LogError("F 안내/조작 지점을 이 상호작용 루트 아래의 실제 지점으로 연결하세요.", this);
+            interactable = GetComponent<IInteractable>();
+            interactionBehaviour = interactable as Behaviour;
+            validSetup = ValidPoints;
+            if (!validSetup) Debug.LogError("F 안내/조작 지점을 이 상호작용 루트 아래의 실제 지점으로 연결하세요.", this);
         }
         private void OnDrawGizmos()
         {

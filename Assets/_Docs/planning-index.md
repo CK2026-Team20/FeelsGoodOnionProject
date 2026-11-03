@@ -1,4 +1,47 @@
+﻿## 2026-11-03 동일 효과음 재생 제한
+
+동일 효과음 ID 전체에 최대 동시 재생 2개·최소 간격 0.08초를 적용한다. 일반/위치 기반 출력을 합산하며 초과 요청은 예약·기존 소리 중단 없이 무시한다. AudioCueCatalog 각 항목의 최대 동시 재생 수/최소 재생 간격으로 조절한다. 음악은 제외하며 기존 사망/Retry BGM 유지 정책을 보존한다. 상세: Assets/_Docs/tracking/audio-sfx-limits-2026-11-03/.
+
+## 2026-11-03 직접 지시: 체크포인트 배치 검사는 에디터 전용
+
+플레이어 Collider 접촉 때문에 체크포인트 저장이 거절되지 않도록 런타임 초기 등록·접촉 저장·실제 스폰의 지면/겹침 검사를 제거한다. 배치 검사는 Edit Mode Inspector와 파랑/빨강 Gizmo에서만 수행하며 Play 중에는 실행하지 않는다. 발바닥 좌표 계산, 필수 참조/스냅샷 유효성, 초기 무음 등록·중복 활성화 억제는 유지한다. 대체 위치 없음. 이전 문서의 런타임 공간 검사 요구를 대체한다. 상세: Assets/_Docs/tracking/checkpoint-editor-validation-2026-11-03/.
+
+## 2026-11-03 사망·리스폰 음악 유지 / 메모 효과음 원복
+
+메모 열기의 UI 효과음 우회 연결은 철회·원복했다. 월드 정지 효과음 차단을 유지한다. 사망/Retry/직접 테스트 Actor 제거는 BGM을 종료하지 않고 같은 스테이지 곡의 재생 위치를 유지한다. 과거 사망 페이드아웃/리스폰 처음부터 재생 지침보다 우선한다. 옵션 정지와 실제 곡 전환은 기존 정책 유지. 검증/상세: Assets/_Docs/tracking/respawn-music-2026-11-03/.
+
+## 2026-11-02 후속: 체크포인트 발바닥 스폰
+
+체크포인트 위치는 별도 CheckpointSpawnPoint의 발바닥 좌표로 변경한다. 기존 Trigger/Capsule 중심 기준 설명은 이 범위에서 대체한다. 에디터 파랑=가능/빨강=불가, 저장 및 실제 스폰 시 지면·겹침 검사, 대체 위치 없음. 스냅샷3값은 유지하고 Position 의미만 발바닥으로 통일한다. 초기 무음 등록은 유효한 지점만 수락한다. 직접 테스트의 별도 StartPoint 중심 계약은 유지한다. 구현·배치·검증: Assets/_Docs/tracking/checkpoint-spawn-2026-11-02/. 현재 Tutorial6개 앵커 연결은 미저장 Undo 편집 상태다.
+
+## 2026-11-02 후속: 전체 재생 이벤트 연결 완료
+
+사용자의 전체 효과음 연결 지시에 따라 PlayerAudioBinding/WorldAudioBinding을 AudioRuntimeHost가 소유하도록 구현했다. 플레이어·적·장치 성공 이벤트, UI 수락된 클릭, 환경 위치 Loop와 거리 감쇠 및 직접 씬 테스트 경로를 연결했다. 아래 과거 기록의 “나머지 SFX 발생 이벤트/3D 감쇠 미구현”은 이번 변경으로 대체한다. 실제 음원27종의 카탈로그 연결을 사용하며, 파일이 없는 Sfx_Pc_Hit_Monster / Sfx_Platform_Spawn / Sfx_Pc_Knockback도 호출은 준비했으나 현재 청취할 수 없다. 이3종은 음원과 종료 정책 확정이 남아 있다.
+
+검증은 Editor 자동 검사117건 통과(이벤트31/카탈로그34/튜토리얼43/눈물 차폐9)이며 실제 Play·Player·청취 검증은 이번 작업에서 수행하지 않았다. 상세 명세·코드 리뷰·검증 기록: Assets/_Docs/tracking/audio-event-binding-2026-11-02/. 미저장 Tutorial 씬은 보존했다.
+
+## 2026-11-02 후속: 사운드 카탈로그 27종 사전 연결
+
+사운드 시트 30행 중 로컬 음원 27종을 모두 AudioCueCatalog에 연결했다. 축소/확대는 Size_Down/Size_Up으로 분리하고 Sfx_Ability는 조각 4→5 준비음으로 수정했다. 이전 문서의 단일 폼 전환음·해금음 오연결은 해결됐다. 없는 3종과 나머지 SFX 발생 이벤트/3D 감쇠 구현은 구분한다. 상세: Assets/_Docs/tracking/audio-catalog-2026-11-02/.
+
+## 2026-11-02 튜토리얼 UI·중앙 BGM·첫 체크포인트 무음 등록
+
+최신 사용자 승인(22~24): 튜토리얼 UI는 World Space 프리팹으로 제공하고 사용자가 배치한다. 스프라이트 교체 키는 AnimationClip의 0·40·80…프레임(Samples 60), 최초 접촉만 확대 등장하며 재시도에도 표시/기록을 유지하고 새 게임에서 초기화한다. _Art 원본은 보존한다.
+
+BGM 설정은 Bootstrapper의 AudioCueCatalog에서 SceneAsset별로 연결한다. StageService/StageTrigger는 음악 설정·선택·재생을 소유하지 않는다. 일반/추격/타이틀 Loop, 오프닝/엔딩 One Shot, 이전 곡 페이드아웃 후 다음 곡 시작, 옵션 Pause/Resume. 첫 체크포인트는 초기 위치로 유지하며 시작 시 무음 등록한다. 최초 스폰 리스폰음 없음, 사망 후 Playing 복귀 시 리스폰음 1회. 새 체크포인트만 저장음, 구간 기준 정책은 시작 재생·종료 무음이다.
+
+사운드 원본 30행과 적용 범위는 Assets/_Docs/Audio/사운드 리소스 상세 명세.md, 구현·검증·배치 안내는 Assets/_Docs/tracking/tutorial-audio-2026-11-02/를 따른다. 아래 과거 구간별 음악/옵션 중 음악 계속 재생/최초 장부 미등록 설명은 이번 범위에서 대체한다. 전체 SFX 정합화와 사용자 씬 배치·전체 플레이·빌드 검수는 완료로 승계하지 않는다.
+
+## 2026-11-02 SYM 자산 분리·프로토타입 정리
+
+사용자 직접 지시 및 후속 정정으로 SYM 전용 미사용 프로토타입/테스트 자산을 제거했다. 본편 데이터는 Assets/_Data/Tech_SYM, 관리 씬3개는 Assets/_Scenes/Tech_SYM/Runtime으로 이관했다. 타 작업자 씬과 의존 자산은 원위치/원내용으로 보존하므로 공유 스킬·적·메모 모델7개와 일부 테스트 프리팹은 예외로 남는다. 루트 Tutorial/Stage 및 공용 _Prefabs는 변경하지 않는다. 아래의 이전 Prototype 실행 경로·보존 문구보다 이번 자산 분류가 우선한다. 현재 실행 등록은 ArchitectureInstallation과 IntegrationEntrySettings의 SceneAsset 참조를 따른다. 상세: Assets/_Docs/tracking/asset-organization-2026-11-02/자산 분류 목록.md.
+
 # 기획 문서 버전과 적용 기준
+
+## 2026-11-01 UI 원본 크기 직접 지시
+
+최신 Icons 및 CutScenes를 사용한다. 각 Image의 RectTransform 가로·세로는 원본 PNG 픽셀 크기와 같아야 하며 부모 프레임에 맞춘 개별 확대·축소를 하지 않는다. 이는 최초 비례 스케일 설명을 대체한 사용자 정정이다. 컷씬01~04는 오프닝,05~08은 엔딩이다. 상단 눈물 조각 아이콘을 제거하고 E 카드 안에서 조각 수/입력 키를 준비 조건에 따라 상호 배타 표시한다. 설정 Min/Max·백분율 제거, 닫기 버튼 내부 배치, 대화 버튼 하단 정렬, LayoutGroup 사용과 미사용 Graphic 제거를 적용한다. [명세](tracking/ui-native-size-2026-11-01/기능%20명세서.md), 검증은 해당 tracking 문서 참조. 월드 프롬프트는 원인 조사만 수행했다.
+
 
 ## 2026-10-31 디버그 원본 구도 재사용 직접 지시
 

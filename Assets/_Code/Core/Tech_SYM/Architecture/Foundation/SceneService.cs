@@ -19,7 +19,6 @@ namespace Cooked.Foundation
             this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             paths = new HashSet<string>(catalog.StagePaths, StringComparer.Ordinal) { catalog.BootstrapPath, catalog.TitlePath, catalog.CorePath };
             gameplayPaths = new HashSet<string>(catalog.StagePaths, StringComparer.Ordinal) { catalog.CorePath };
-            foreach (var retired in BootstrapEntryRoute.RetiredStagePaths) gameplayPaths.Add(retired);
         }
         public bool IsLoaded(string scenePath) { Validate(scenePath, true); return SceneManager.GetSceneByPath(scenePath).isLoaded; }
         public IReadOnlyList<string> LoadedGameplayScenes

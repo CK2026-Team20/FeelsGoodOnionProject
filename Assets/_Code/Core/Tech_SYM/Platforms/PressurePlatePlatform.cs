@@ -22,6 +22,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private KinematicPlatformMotion motion;
         public float Progress { get; private set; }
         public bool Pressed { get; private set; }
+        public event Action<bool> PressedChanged;
         /// <summary>버튼의 전체 이동 시간(초).</summary>
         public float TravelSeconds => float.IsFinite(travelSeconds) ? Mathf.Max(0.02f, travelSeconds) : 0.02f;
 
@@ -56,7 +57,7 @@ namespace FeelsGoodOnion.TechSYM.Platforms
                         && (!actor.TryGetComponent<PlayerFormController>(out var form) || form.CurrentForm == PlayerForm.Normal))))
                 { pressed = true; break; }
             }
-            Pressed = pressed;
+            if (Pressed != pressed) { Pressed = pressed; GameplayEvent.Publish(PressedChanged, pressed, this); }
             Progress = AdvanceProgress(Progress, pressed, TravelSeconds, Time.fixedDeltaTime);
             // 고정 부모의 좌표계에서 깊이를 변환한다. 움직이는 캡 위치를 누적 기준으로 사용하지 않는다.
             Transform frame = motion.PhysicsBody != null ? motion.PhysicsBody.transform.parent : null;

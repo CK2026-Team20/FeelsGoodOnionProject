@@ -14,7 +14,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
     {
         [SerializeField, InspectorLabel("종류"), Tooltip("고정 또는 순찰 종류를 정합니다. 순찰 시작점과 끝점은 씬의 적에서 연결합니다.")]
         private EnemyKind kind = EnemyKind.Patrol;
-        [SerializeField, Min(.01f), InspectorLabel("이동 속도"), Tooltip("Body가 실제 공간에서 초당 이동할 거리를 정합니다(m/s). 루트 배율과 무관하며 양수가 필요합니다.")]
+        [SerializeField, Min(.01f), InspectorLabel("기본 이동 속도"), Tooltip("개체별 속도를 사용하지 않는 적의 기본 속도입니다(m/s). 각 EnemyActor에서 별도 속도를 설정할 수 있습니다. 양수가 필요합니다.")]
         private float speed = 2f;
         [SerializeField, Min(0), InspectorLabel("첫 대기 시간"), Tooltip("순찰을 시작하기 전 대기 시간을 정합니다(초). 0이면 바로 이동합니다.")]
         private float initialIdle = .5f;

@@ -127,7 +127,6 @@ namespace Cooked.Chase
             if (frontCollider == null || !frontCollider.enabled || !frontCollider.gameObject.activeInHierarchy ||
                 boundPresentation == null || !boundPresentation.isActiveAndEnabled)
                 throw new InvalidOperationException("실행 중 추격 물리 자식 또는 표현 연결이 사라졌습니다.");
-            ValidateBox(frontCollider);
             Vector3 actorPosition = actorCollider.transform.position;
             Vector3 actorDelta = actorPosition - previousActorPosition;
             Vector3 displacement = Vector3.right * (speed * deltaTime);

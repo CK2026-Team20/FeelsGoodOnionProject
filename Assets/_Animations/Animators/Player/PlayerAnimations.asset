@@ -27,4 +27,4 @@ MonoBehaviour:
   tear: {fileID: 7400000, guid: 8b735d2cd6044c940a2e7191c12be0a0, type: 2}
   shrink: {fileID: 7400000, guid: bce0d50a28095de4a953e6ec0e4987f8, type: 2}
   restoreForm: {fileID: 7400000, guid: 306e63a1107e8de4da21db4640295937, type: 2}
-  interact: {fileID: 0}
+  interact: {fileID: 7400000, guid: 3462e30595a1fbc46abceb458fd889a2, type: 2}

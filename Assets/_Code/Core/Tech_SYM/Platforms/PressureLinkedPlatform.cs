@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using Cooked.Authoring;
 
@@ -20,6 +20,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         [Tooltip("버튼을 놓았을 때의 복귀 속도(m/s). 버튼 시간과 별개입니다.")]
         [SerializeField, InspectorLabel("복귀 속도"), Min(0.01f)] private float returnSpeed = 1f;
         private KinematicPlatformMotion motion;
+        private bool advancing;
+        public event Action AdvanceStarted;
         public Vector3 StartPosition => startPoint != null ? startPoint.position : throw new InvalidOperationException("연결 발판의 시작 지점이 없습니다.");
         public Vector3 TargetPosition => targetPoint != null ? targetPoint.position : throw new InvalidOperationException("연결 발판의 목표 지점이 없습니다.");
 
@@ -41,12 +43,18 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         private void FixedUpdate()
         {
             if (motion == null || !motion.isActiveAndEnabled || Time.timeScale <= 0f) return;
-            if (!ValidReferences()) { Debug.LogError("연결 발판의 압력판/고정 지점이 유효하지 않습니다.", this); enabled = false; return; }
+            if (pressurePlate == null || startPoint == null || targetPoint == null) { Debug.LogError("연결 발판의 압력판/고정 지점이 유효하지 않습니다.", this); enabled = false; return; }
             bool pressed = pressurePlate.isActiveAndEnabled && pressurePlate.Pressed;
-            Vector3 destination = pressed ? TargetPosition : StartPosition;
-            float length = Vector3.Distance(StartPosition, TargetPosition);
+            Vector3 start = StartPosition;
+            Vector3 target = TargetPosition;
+            Vector3 destination = pressed ? target : start;
+            float length = Vector3.Distance(start, target);
             float speed = MovementSpeed(pressed, length, pressurePlate.TravelSeconds, returnSpeed);
-            motion.MoveTo(Vector3.MoveTowards(motion.Position, destination, speed * Time.fixedDeltaTime));
+            var next = Vector3.MoveTowards(motion.Position, destination, speed * Time.fixedDeltaTime);
+            bool starts = pressed && (next - motion.Position).sqrMagnitude > .00000001f;
+            motion.MoveTo(next);
+            if (starts && !advancing) GameplayEvent.Publish(AdvanceStarted, this);
+            advancing = starts;
         }
 
         public static float MovementSpeed(bool pressed, float pathLength, float pressSeconds, float returnSpeed)
@@ -62,10 +70,11 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         public void ResetForRetry()
         {
+            advancing = false;
             if (motion != null && ValidReferences()) motion.ResetForRetry(new Pose(StartPosition, startPoint.rotation));
             else motion?.ResetForRetry();
         }
-        private void OnDisable() => motion?.CancelMotion();
+        private void OnDisable() { advancing = false; motion?.CancelMotion(); }
 
         private void OnValidate()
         {

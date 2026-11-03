@@ -32,8 +32,8 @@ MonoBehaviour:
     m_path: Assets/_Scenes/Tech_SYM/Architecture/03_InGameCore.unity
     m_guid: 64162a88361db4941993f19cec2926e8
   - m_enabled: 1
-    m_path: Assets/_Scenes/Tech_SYM/Architecture/01_Stage_Prototype.unity
-    m_guid: 08fec95c5d68743458f9083d0fe5f95d
+    m_path: Assets/_Scenes/01_Stage_Tutorial.unity
+    m_guid: 1385a53070aaddb489be73c8d3ab12a5
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
@@ -55,7 +55,7 @@ MonoBehaviour:
         m_ExplicitNullChecks: 0
         m_ExplicitDivideByZeroChecks: 0
         m_ExplicitArrayBoundsChecks: 0
-        m_CompressionType: -1
+        m_CompressionType: 0
         m_InstallInBuildFolder: 0
         m_InsightsSettingsContainer:
           m_BuildProfileEngineDiagnosticsState: 2

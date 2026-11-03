@@ -18,6 +18,7 @@ namespace Cooked.Contracts
                 throw new ArgumentOutOfRangeException(nameof(unlockedAbilities), "해금 마스크는 0, 1, 2, 3만 허용합니다.");
             Position = position; Fragments = fragments; UnlockedAbilities = unlockedAbilities;
         }
+        /// <summary>체크포인트 발바닥 월드 좌표. 복귀 폼의 Capsule 중심으로 변환하여 배치한다.</summary>
         public Vector3 Position { get; }
         public int Fragments { get; }
         public AbilityMask UnlockedAbilities { get; }

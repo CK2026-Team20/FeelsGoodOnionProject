@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using Cooked.Audio;
+using Cooked.UI;
 using Cooked.Chase;
 using Cooked.Contracts;
 using Cooked.Level;
@@ -22,31 +23,30 @@ namespace Cooked.Integration
         private readonly IGameFlowService flow;
         private readonly IGameplayControlService control;
         private readonly IDialogueTableService dialogueTable;
-        private readonly IAudioService audio;
         private readonly AudioFlowBinding audioFlow;
+        private readonly AudioRuntimeHost audioHost;
         private readonly ISceneService scenes;
         private readonly Camera output;
         private readonly CinemachineBrain brain;
         private StageService stage;
+        private readonly List<TutorialPrompt> tutorials = new List<TutorialPrompt>();
         private readonly List<MemoUIController> memos = new List<MemoUIController>();
         private readonly List<StageTrigger> chaseTriggers = new List<StageTrigger>();
         private readonly List<ChaseRuntimeDriver> chases = new List<ChaseRuntimeDriver>();
         private readonly List<PeriodicPlatform> periodicPlatforms = new List<PeriodicPlatform>();
-        private AbilityMask observedUnlocks;
-        private int fragments;
         private bool observing, subscriptionsDetached, disposed;
         public CoreWorldBinding(GameSessionRuntime runtime, LevelCameraService camera,
             CoreUiBinding ui, IGameFlowService flow, IGameplayControlService control, IDialogueTableService dialogueTable,
-            IAudioService audio, AudioFlowBinding audioFlow, ISceneService scenes, Camera output,
-            CinemachineBrain brain)
+            AudioFlowBinding audioFlow, ISceneService scenes, Camera output,
+            CinemachineBrain brain, AudioRuntimeHost audioHost)
         {
             this.runtime = runtime; this.camera = camera; this.ui = ui; this.flow = flow;
-            this.control = control; this.dialogueTable = dialogueTable; this.audio = audio; this.audioFlow = audioFlow; this.scenes = scenes;
-            this.output = output; this.brain = brain;
+            this.control = control; this.dialogueTable = dialogueTable; this.audioFlow = audioFlow; this.scenes = scenes;
+            this.output = output; this.brain = brain; this.audioHost = audioHost;
             if (output == null || brain == null || output.gameObject != brain.gameObject)
                 throw new ArgumentException("World requires explicit App output and distinct Core rigs.");
             runtime.ActorReady += BindActor; runtime.ActorRemoving += UnbindActor;
-            runtime.Player.AbilitySucceeded += OnAbility; runtime.Player.AbilityRejected += OnAbilityRejected;
+
         }
         public IEnumerator PrepareStage(string stageId, CancellationToken token, OperationResult result)
         {
@@ -71,6 +71,17 @@ namespace Cooked.Integration
             }
             finally { scenes.SetRootsActive(path, false); }
         }
+        public void ActivateForSpawn(string stageId)
+        {
+            if (disposed) throw new ObjectDisposedException(nameof(CoreWorldBinding));
+            if (runtime.Player.HasActor) throw new InvalidOperationException("스폰 월드 활성화는 Actor 생성 전에 수행해야 합니다.");
+            runtime.Stages.Require(stageId);
+            foreach (var item in runtime.Stages.Stages)
+                scenes.SetRootsActive(runtime.Stages.ScenePath(item.StageId), item.StageId == stageId);
+            // PrepareStage deliberately leaves roots disabled. Queries must see the reset physical world
+            // before checkpoint registration and before Host's first and post-Awake placement checks.
+            Physics.SyncTransforms();
+        }
         private void BindActor()
         {
             if (stage != null || observing) throw new InvalidOperationException("Old world bindings remain.");
@@ -79,7 +90,7 @@ namespace Cooked.Integration
             stage = runtime.ActiveStage;
             try
             {
-                foreach (var item in runtime.Stages.Stages) scenes.SetRootsActive(runtime.Stages.ScenePath(item.StageId), item.StageId == runtime.ActiveStageId);
+                // The selected physical world was enabled before spawning; bind its gameplay observers now.
                 var active = stage;
                 stage.Initialize(flow, actor, code => runtime.TryStartSafeDialogue(active.StageId, code));
                 stage.BindFinalDialogueStart((trigger, source, generation, code) =>
@@ -87,8 +98,9 @@ namespace Cooked.Integration
                     runtime.Session, () => runtime.IsCurrentStage(active));
                 stage.BindRequests(runtime.Player, control, runtime.Dialogue,
                     (ability, code) => Unlock(active, ability, code), StopChase);
-                stage.CheckpointCaptured += OnCheckpointCaptured;
-                stage.BindSectionPresentation((section, restore) => camera.EnterSection(section, restore), audioFlow.SetStageMusic);
+
+                stage.BindSectionPresentation((section, restore) => camera.EnterSection(section, restore));
+                audioFlow.SetStage(stage.StageId);
                 stage.BindDialogueTable(dialogueTable);
                 stage.BindFallRequests((source, shell) => runtime.Player.IsCurrentActor(source, runtime.Player.ActorGeneration) &&
                     (shell != null ? runtime.Player.ReturnOwnedDebris(shell) : runtime.Player.ForceDeath(Vector3.zero, skipPresentation: true) > 0));
@@ -114,9 +126,12 @@ namespace Cooked.Integration
                 camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), brain, stage, flow);
                 ui.SetActorCamera(output);
                 stage.RestorePresentation();
-                fragments = runtime.Player.Snapshot.Fragments;
-                observedUnlocks = runtime.Session.UnlockedAbilities;
-                runtime.Session.Changed += OnSession; runtime.Player.Changed += OnPlayer; observing = true;
+                foreach (var prompt in stage.FindComponents<TutorialPrompt>())
+                {
+                    tutorials.Add(prompt);
+                    prompt.Bind(runtime.Tutorials, actor, flow, control, output);
+                }
+                audioHost.BindGameplay(runtime.Player, stage.gameObject.scene, control, flow); observing = true;
             }
             catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, UnbindActor); }
         }
@@ -133,40 +148,19 @@ namespace Cooked.Integration
             foreach (var chase in chases) if (chase != null) chase.Stop();
             audioFlow.SetChaseActive(false);
         }
-        private void OnCheckpointCaptured(StageTrigger checkpoint)
-        {
-            if (!observing) return;
-            audio.PlaySfx(AudioCueIds.Checkpoint);
-        }
         private void OnChaseStarted(StageService value) => audioFlow.SetChaseActive(true);
-        private void OnAbility(AbilityId ability)
-        {
-            if (!observing || !runtime.Player.HasActor) return;
-            if (ability == AbilityId.Tear) audio.PlaySfx(AudioCueIds.Tear);
-            else if (ability == AbilityId.FormChange) audio.PlaySfx(AudioCueIds.Form);
-        }
-        private void OnAbilityRejected(AbilityId ability, PlayerSkillBlockReason reason)
-        { if (observing && ability == AbilityId.FormChange && reason == PlayerSkillBlockReason.NotEnoughSpace) audio.PlaySfx(AudioCueIds.Click); }
-        private void OnPlayer(PlayerSnapshot value)
-        { if (observing && value.Fragments > fragments) audio.PlaySfx(AudioCueIds.Pickup); fragments = value.Fragments; }
-        private void OnSession()
-        {
-            if (!observing || !runtime.Session.IsActive) return;
-            var current = runtime.Session.UnlockedAbilities;
-            bool added = (current & ~observedUnlocks) != AbilityMask.None;
-            observedUnlocks = current;
-            if (added) audio.PlaySfx(AudioCueIds.Unlock);
-        }
         private void UnbindActor()
         {
             observing = false;
-            runtime.Session.Changed -= OnSession; runtime.Player.Changed -= OnPlayer;
+            audioHost.UnbindGameplay();
             var errors = new List<Exception>();
             SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.ForceCloseOverlays());
             SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.CancelOperations());
             SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.BindOverlays(null));
             foreach (var memo in memos) if (memo != null) SessionCleanup.Attempt(errors, memo.Unbind);
             memos.Clear();
+            foreach (var prompt in tutorials) if (prompt != null) SessionCleanup.Attempt(errors, prompt.Unbind);
+            tutorials.Clear();
             // Release only the objects borrowed at bind time. Unity may already be
             // unloading this Stage during app shutdown, when scene lookup is invalid.
             foreach (var trigger in chaseTriggers) if (trigger != null) SessionCleanup.Attempt(errors, trigger.UnbindChase);
@@ -176,7 +170,7 @@ namespace Cooked.Integration
             if (stage != null)
             {
                 stage.ChaseStarted -= OnChaseStarted;
-                stage.CheckpointCaptured -= OnCheckpointCaptured;
+
                 SessionCleanup.Attempt(errors, stage.Dispose);
             }
             stage = null;
@@ -192,7 +186,7 @@ namespace Cooked.Integration
             if (!subscriptionsDetached)
             {
                 runtime.ActorReady -= BindActor; runtime.ActorRemoving -= UnbindActor;
-                runtime.Player.AbilitySucceeded -= OnAbility; runtime.Player.AbilityRejected -= OnAbilityRejected;
+
                 subscriptionsDetached = true;
             }
             SessionCleanup.Attempt(errors, UnbindActor);

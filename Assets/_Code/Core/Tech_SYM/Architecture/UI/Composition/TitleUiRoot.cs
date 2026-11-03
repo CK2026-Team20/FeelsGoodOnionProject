@@ -10,7 +10,7 @@ namespace Cooked.UI
     {
         private TitleView view;
         private TitleViewModel model;
-        public void Bind(IGameFlowService flow, OptionsService options, Action quit)
+        public void Bind(IGameFlowService flow, OptionsService options, Action quit, Action click = null)
         {
             if (view == null) view = GetComponent<TitleView>();
             if (view == null) throw new InvalidOperationException("TitleUiRoot와 같은 오브젝트에 TitleView가 필요합니다.");
@@ -18,7 +18,7 @@ namespace Cooked.UI
             if (options == null) throw new ArgumentNullException(nameof(options));
             if (quit == null) throw new ArgumentNullException(nameof(quit));
             Unbind();
-            try { model = new TitleViewModel(flow, options, quit); view.Bind(model); }
+            try { model = new TitleViewModel(flow, options, quit, click); view.Bind(model); }
             catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, Unbind); throw; }
         }
         public void Unbind()

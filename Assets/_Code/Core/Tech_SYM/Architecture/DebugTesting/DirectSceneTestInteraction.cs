@@ -27,7 +27,7 @@ namespace Cooked.DebugTesting
         {
             try
             {
-                var promptRoot = Create("Assets/_Scenes/Tech_SYM/Prefabs/Interaction/InteractionPromptCanvas.prefab", owner);
+                var promptRoot = Create("Assets/_Prefabs/UI/Interaction/InteractionPromptCanvas.prefab", owner);
                 prompt = promptRoot.GetComponentInChildren<WorldPromptView>(true);
                 if (prompt == null) throw new InvalidOperationException("기존 F 안내 프리팹에 WorldPromptView가 없습니다.");
                 prompt.Bind(promptModel);

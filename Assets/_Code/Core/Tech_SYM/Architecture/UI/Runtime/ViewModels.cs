@@ -6,33 +6,35 @@ namespace Cooked.UI
     public sealed class TitleViewModel : ObservableViewModel
     {
         private readonly IGameFlowService flow; private readonly OptionsService options; private readonly Action quit;
+        private readonly Action click;
         public bool CanStart => !IsDisposed && flow.Snapshot.State == FlowState.Title && !flow.Snapshot.IsBusy && !options.IsOpen;
-        public TitleViewModel(IGameFlowService flow, OptionsService options, Action quit)
+        public TitleViewModel(IGameFlowService flow, OptionsService options, Action quit, Action click = null)
         {
             this.flow = flow ?? throw new ArgumentNullException(nameof(flow));
             this.options = options ?? throw new ArgumentNullException(nameof(options));
-            this.quit = quit ?? throw new ArgumentNullException(nameof(quit));
+            this.quit = quit ?? throw new ArgumentNullException(nameof(quit)); this.click = click;
             flow.Changed += OnFlow; options.Changed += OnOptions;
         }
-        public void NewGame() { if (CanStart) flow.Request(new FlowRequest(FlowCommand.NewGame)); }
-        public void Quit() { if (CanStart) quit(); }
-        public void OpenOptions() { if (CanStart) options.Open(); }
+        public void NewGame(bool pointer = false) { if (CanStart && flow.Request(new FlowRequest(FlowCommand.NewGame)) && pointer) click?.Invoke(); }
+        public void Quit(bool pointer = false) { if (CanStart) { if (pointer) click?.Invoke(); quit(); } }
+        public void OpenOptions(bool pointer = false) { if (CanStart) { options.Open(); if (options.IsOpen && pointer) click?.Invoke(); } }
         private void OnFlow(FlowSnapshot _) => Notify(); private void OnOptions() => Notify();
         protected override void Release() { try { flow.Changed -= OnFlow; } finally { options.Changed -= OnOptions; } }
     }
     public sealed class OptionsViewModel : ObservableViewModel
     {
         private readonly OptionsService options; private readonly SettingsService settings;
+        private readonly Action click;
         public bool IsOpen => options.IsOpen; public bool CanOpen => options.CanOpen;
         public bool CanNavigate => options.CanNavigate; public string Error => options.Error;
         public float Master => settings.Master; public float Music => settings.Music; public float Sfx => settings.Sfx;
-        public OptionsViewModel(OptionsService options, SettingsService settings)
-        { this.options = options; this.settings = settings; options.Changed += OnChanged; settings.Changed += OnChanged; }
+        public OptionsViewModel(OptionsService options, SettingsService settings, Action click = null)
+        { this.options = options; this.settings = settings; this.click = click; options.Changed += OnChanged; settings.Changed += OnChanged; }
         private void OnChanged() => Notify();
         public void Toggle() { if (!IsDisposed) options.Toggle(); }
         public void Open() { if (!IsDisposed) options.Open(); }
-        public void Close() { if (!IsDisposed) options.Close(); }
-        public void ReturnToTitle() { if (!IsDisposed) options.Navigate(FlowCommand.ReturnToTitle); }
+        public void Close(bool pointer = false) { if (!IsDisposed && IsOpen) { options.Close(); if (!IsOpen && pointer) click?.Invoke(); } }
+        public void ReturnToTitle(bool pointer = false) { if (!IsDisposed && CanNavigate) { options.Navigate(FlowCommand.ReturnToTitle); if (!options.IsOpen && options.Error == null && pointer) click?.Invoke(); } }
         public void SetMaster(float value) { if (!IsDisposed) settings.SetVolumes(value, Music, Sfx); }
         public void SetMusic(float value) { if (!IsDisposed) settings.SetVolumes(Master, value, Sfx); }
         public void SetSfx(float value) { if (!IsDisposed) settings.SetVolumes(Master, Music, value); }
@@ -101,7 +103,7 @@ namespace Cooked.UI
         public Quaternion Facing { get; private set; } = Quaternion.identity;
         public string Label { get; private set; } = "";
         public void SetPrompt(bool visible, Vector3 position, Quaternion facing, string label)
-        { if (IsDisposed) return; targetVisible = visible; Position = position; Facing = facing; Label = "F  " + (label ?? "상호작용"); Notify(); }
+        { if (IsDisposed) return; targetVisible = visible; Position = position; Facing = facing; Label = "F"; Notify(); }
         public void SetGameplayVisible(bool value) { if (IsDisposed) return; gameplayVisible = value; Notify(); }
         public void Clear() => SetPrompt(false, Vector3.zero, Quaternion.identity, "");
     }

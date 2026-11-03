@@ -118,10 +118,10 @@ TextureImporter:
       name: 3_sheet_0
       rect:
         serializedVersion: 2
-        x: 29
-        y: 646
-        width: 742
-        height: 508
+        x: 0
+        y: 600
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -140,10 +140,10 @@ TextureImporter:
       name: 3_sheet_1
       rect:
         serializedVersion: 2
-        x: 829
-        y: 646
-        width: 742
-        height: 508
+        x: 800
+        y: 600
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -162,10 +162,10 @@ TextureImporter:
       name: 3_sheet_2
       rect:
         serializedVersion: 2
-        x: 1629
-        y: 646
-        width: 742
-        height: 508
+        x: 1600
+        y: 600
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -184,10 +184,10 @@ TextureImporter:
       name: 3_sheet_3
       rect:
         serializedVersion: 2
-        x: 2429
-        y: 646
-        width: 742
-        height: 508
+        x: 2400
+        y: 600
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -206,10 +206,10 @@ TextureImporter:
       name: 3_sheet_4
       rect:
         serializedVersion: 2
-        x: 29
-        y: 46
-        width: 742
-        height: 508
+        x: 0
+        y: 0
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -228,10 +228,10 @@ TextureImporter:
       name: 3_sheet_5
       rect:
         serializedVersion: 2
-        x: 829
-        y: 46
-        width: 742
-        height: 508
+        x: 800
+        y: 0
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -250,10 +250,10 @@ TextureImporter:
       name: 3_sheet_6
       rect:
         serializedVersion: 2
-        x: 1629
-        y: 46
-        width: 742
-        height: 508
+        x: 1600
+        y: 0
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -272,10 +272,10 @@ TextureImporter:
       name: 3_sheet_7
       rect:
         serializedVersion: 2
-        x: 2429
-        y: 46
-        width: 742
-        height: 508
+        x: 2400
+        y: 0
+        width: 800
+        height: 600
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -304,7 +304,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries:
       - key: SpriteEditor.SliceSettings
-        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":800.0,"y":600.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       3_sheet_0: 4932407066850670218
       3_sheet_1: 52096715

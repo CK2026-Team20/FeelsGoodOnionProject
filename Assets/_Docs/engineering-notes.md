@@ -1,3 +1,11 @@
+## 2026-11-02 튜토리얼 UI·중앙 BGM·첫 체크포인트 무음 등록
+
+최신 사용자 승인(22~24): 튜토리얼 UI는 World Space 프리팹으로 제공하고 사용자가 배치한다. 스프라이트 교체 키는 AnimationClip의 0·40·80…프레임(Samples 60), 최초 접촉만 확대 등장하며 재시도에도 표시/기록을 유지하고 새 게임에서 초기화한다. _Art 원본은 보존한다.
+
+BGM 설정은 Bootstrapper의 AudioCueCatalog에서 SceneAsset별로 연결한다. StageService/StageTrigger는 음악 설정·선택·재생을 소유하지 않는다. 일반/추격/타이틀 Loop, 오프닝/엔딩 One Shot, 이전 곡 페이드아웃 후 다음 곡 시작, 옵션 Pause/Resume. 첫 체크포인트는 초기 위치로 유지하며 시작 시 무음 등록한다. 최초 스폰 리스폰음 없음, 사망 후 Playing 복귀 시 리스폰음 1회. 새 체크포인트만 저장음, 구간 기준 정책은 시작 재생·종료 무음이다.
+
+사운드 원본 30행과 적용 범위는 Assets/_Docs/Audio/사운드 리소스 상세 명세.md, 구현·검증·배치 안내는 Assets/_Docs/tracking/tutorial-audio-2026-11-02/를 따른다. 아래 과거 구간별 음악/옵션 중 음악 계속 재생/최초 장부 미등록 설명은 이번 범위에서 대체한다. 전체 SFX 정합화와 사용자 씬 배치·전체 플레이·빌드 검수는 완료로 승계하지 않는다.
+
 # 구현 경계에서 확인할 사항
 
 > 아래 구조·API 설명은 현재 구현 사실이다. V1.8 요구를 이미 구현했다는 뜻이 아니다. 컷신 복귀·타이틀·카메라·추격 차이는 [구조 차이 목록](tracking/system-v18-2026-10-29/구조%20차이%20목록.md)을 따른다.
@@ -18,7 +26,7 @@ TearFragment는 Sensor와 같은 GameObject에서 Trigger를 받되 pickupRoot �
 
 ## 접촉·피해·생성 발판
 
-Physics.OverlapSphere는 후보 탐색이다. 실제 Hurt Collider까지의 선분 차폐를 확인하고 Trigger Body를 탐지 Sensor라는 이유로 일괄 제외하지 않는다. 후보 검증 뒤 dedupe하여 Sensor 후보가 먼저 나와 Body 후보를 소진하지 않게 한다. 기절은 일반 적만이고 공통 피해/무적을 적마다 다시 계산하지 않는다.
+Physics.OverlapSphere는 후보 탐색이다. 실제 Hurt Collider를 후보로 유지하고 검증 뒤 dedupe하여 Sensor 후보가 먼저 나와 Body 후보를 소진하지 않게 한다. 2026-11-02 사용자 정정으로 차폐 Raycast에서는 모든 적 소속 Collider를 제외한다. 적끼리 겹쳐도 서로 차폐하지 않으며 실제 지형/벽은 차단한다. 시전 중심이 몸체 내부이면 허용하고, 외부이면 ClosestPoint까지 검사한다. 기절은 일반 적만이고 공통 피해/무적을 적마다 다시 계산하지 않는다.
 
 생성 발판의 최소 분리 거리와 수직 몸 높이 침투는 다른 값이다. 현재 몸 Collider의 실제 높이와 세로 침투로 분류한다. 정확히1/4는 사망, 얕은 경우 actual Body를 정상 지지 위치로 보정한다. 몸/Render만 움직이는 이중 writer·가짜 Grounded·별도45도 상수를 만들지 않는다. HMS MaximumGroundAngle getter로 실제 Inspector 접지 설정을 읽는다. 정상 상부 착지와 이동 중 materialization도 구분한다.
 
@@ -26,7 +34,7 @@ Shell 끼임은 플레이어 사망으로 변환하지 않는다. 현재 Form의
 
 ## CP와 최종 대화 맥락
 
-시작 체크포인트와 저장 체크포인트는 같은 StageTrigger다. 최초 등장 전에는 완료 Snapshot이 없으며 초기 트리거의 Transform 위치와 Entry 조각·마스크를 사용한다. 접촉은 트리거의 고정 위치·현재 조각·마스크를 전부 검증하고 교체한다. 같은 트리거 재접촉 억제를 Actor 교체로 비우지 않는다. 등장·복귀는 플레이어 CapsuleCollider 월드 중심을 목적지에 맞춘다. 비활성 Collider의 attachedRigidbody는 비어 있으므로 같은 오브젝트의 Rigidbody를 직접 확인하고 Normal 준비 후 중심을 다시 맞춘다. 추격은 당시 Collider 중심 저장 성공 뒤 시작한다. 저장 실패가 문 닫힘·추격 시작으로 이어지지 않아야 한다.
+시작 체크포인트와 저장 체크포인트는 같은 StageTrigger다. 최초 등장 전 초기 트리거의 Transform 위치와 Entry 조각·마스크를 무음 Snapshot과 활성화 장부로 등록한다. 접촉은 트리거의 고정 위치·현재 조각·마스크를 전부 검증하고 교체한다. 같은 트리거 재접촉 억제를 Actor 교체로 비우지 않는다. 등장·복귀는 플레이어 CapsuleCollider 월드 중심을 목적지에 맞춘다. 비활성 Collider의 attachedRigidbody는 비어 있으므로 같은 오브젝트의 Rigidbody를 직접 확인하고 Normal 준비 후 중심을 다시 맞춘다. 추격은 당시 Collider 중심 저장 성공 뒤 시작한다. 저장 실패가 문 닫힘·추격 시작으로 이어지지 않아야 한다.
 
 일반 대화 Completed/Skipped 장부와 능력 마스크 rollback은 수명이 다르다. 해금을 복원해도 안내 완료 기록은 지우지 않는다. 최종 포포만 사용자가 선택한 재실행 예외이며 Code 전체 장부를 Clear해서 해결하지 않는다. 한 회차의 Stage·Trigger·선택 객체·Table·Code·Actor세대·Round·예상 Session을 캡처하고 준비/시작/종료/예약 실행에서 재검증한다. 값이 같은 다른 선택 객체, 같은 위치의 다른 트리거, 같은 Code의 다른 판을 같은 요청으로 취급하지 않는다.
 

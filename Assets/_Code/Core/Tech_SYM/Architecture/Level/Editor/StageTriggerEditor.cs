@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 namespace Cooked.Level.Editor
@@ -16,7 +16,15 @@ namespace Cooked.Level.Editor
             Draw("stage");
             if (mixed || request == StageTriggerKind.Checkpoint)
             {
-                EditorGUILayout.HelpBox("시작·끝 역할과 시점·음악은 StageService 구간에서 작성합니다. 이 위치에 Capsule 중심을 맞추며 최초 실제 접촉만 저장합니다.", MessageType.Info);
+                Draw("spawnPoint");
+                Draw("checkpointSound");
+                EditorGUILayout.HelpBox("발바닥 스폰 지점을 Trigger와 별도로 배치하세요. 지점의 파랑은 배치 가능, 빨강은 불가입니다. 대체 위치는 사용하지 않습니다.", MessageType.Info);
+                foreach (var selected in targets)
+                {
+                    var trigger = (StageTrigger)selected;
+                    if (trigger.SpawnPoint == null) EditorGUILayout.HelpBox("발바닥 스폰 지점이 없습니다.", MessageType.Error);
+                    else if (!Application.isPlaying && !trigger.SpawnPoint.CanPlace(out string reason)) EditorGUILayout.HelpBox(reason, MessageType.Error);
+                }
             }
             if (mixed || request == StageTriggerKind.UnlockForm || request == StageTriggerKind.UnlockTear ||
                 request == StageTriggerKind.Dialogue || request == StageTriggerKind.Escape) Draw("dialogue");
@@ -107,13 +115,13 @@ namespace Cooked.Level.Editor
                 foreach (var section in stage.Sections)
                 {
                     if (section?.Start == null || section.End == null) continue;
-                    Vector3 start = section.Start.transform.position, end = section.End.transform.position;
+                    Vector3 start = section.Start.SpawnPoint != null ? section.Start.SpawnPoint.transform.position : section.Start.transform.position, end = section.End.SpawnPoint != null ? section.End.SpawnPoint.transform.position : section.End.transform.position;
                     Handles.color = Color.cyan; Handles.DrawLine(start, end); Handles.Label((start + end) * .5f, section.DisplayName);
                     if (correctionOrigin != null)
                     { Handles.color = Color.yellow; Handles.DrawDottedLine(correctionOrigin.position, start, 4); }
                     if (previewCapsule != null)
                     {
-                        StageAuthoringDiagnostics.Geometry(previewCapsule, start, out var a, out var b, out float radius);
+                        StageAuthoringDiagnostics.Geometry(previewCapsule, SpawnPlacement.Center(previewCapsule, new Pose(start, previewCapsule.transform.rotation)), out var a, out var b, out float radius);
                         Handles.color = Color.yellow;
                         Handles.DrawWireDisc(a, Vector3.up, radius); Handles.DrawWireDisc(b, Vector3.up, radius);
                         Handles.DrawLine(a + Vector3.right * radius, b + Vector3.right * radius);
@@ -196,7 +204,9 @@ namespace Cooked.Level.Editor
             {
                 if (section?.Start == null) continue;
                 string label = section.DisplayName + " / " + section.Start.name;
-                Vector3 target = section.Start.transform.position;
+                if (section.Start.SpawnPoint == null)
+                { Add("SPAWN_REQUIRED", label, "발바닥 스폰 지점을 연결하세요."); continue; }
+                Vector3 target = SpawnPlacement.Center(source, new Pose(section.Start.CheckpointPose.position, source.transform.rotation));
                 Geometry(source, target, out var a, out var b, out float radius);
                 if (!float.IsFinite(radius) || radius <= correctionSkin)
                 { Add("CAPSULE_INVALID", label, "검사불가: 실제 반경이 보정 경로 여유 0.002m보다 커야 합니다."); continue; }

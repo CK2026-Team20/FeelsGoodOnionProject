@@ -1,41 +1,41 @@
 using System;
 using Cooked.Contracts;
-using UnityEngine;
 
 namespace Cooked.Audio
 {
-    /// <summary>Integration forwards accepted stage/chase state here; it must not also select music directly.</summary>
+    /// <summary>앱 오디오 정책. 트리거 대신 수락된 Flow/Stage/Chase 상태만 받는다.</summary>
     public sealed class AudioFlowBinding : IDisposable
     {
         private readonly AudioService audio;
         private readonly IGameFlowService flow;
         private readonly IGameplayControlService control;
+        private readonly AudioCueCatalog catalog;
+        private AudioCueCatalog.StageMusic stageMusic;
         private FlowState state;
-        private AudioClip stageMusic;
-        private float stageGain, stageTransition;
         private bool chase, disposed;
 
-        public AudioFlowBinding(AudioService audio, IGameFlowService flow, IGameplayControlService control)
+        public AudioFlowBinding(AudioService audio, IGameFlowService flow, IGameplayControlService control,
+            AudioCueCatalog catalog = null)
         {
             this.audio = audio ?? throw new ArgumentNullException(nameof(audio));
             this.flow = flow ?? throw new ArgumentNullException(nameof(flow));
             this.control = control ?? throw new ArgumentNullException(nameof(control));
+            this.catalog = catalog;
             ApplyControl(control.State); ApplyFlow(flow.Snapshot);
             flow.Changed += ApplyFlow; control.Changed += ApplyControl;
         }
-
-        public void SetStageMusic(AudioClip clip, float gain, float transitionSeconds)
+        public void SetStage(string stageId)
         {
             RequireAlive();
-            if (clip == null) throw new ArgumentNullException(nameof(clip));
-            AudioCue.ValidateUnit(gain, nameof(gain));
-            if (!float.IsFinite(transitionSeconds) || transitionSeconds < 0) throw new ArgumentOutOfRangeException(nameof(transitionSeconds));
-            stageMusic = clip; stageGain = gain; stageTransition = transitionSeconds; SelectMusic();
+            if (catalog == null) throw new InvalidOperationException("앱 오디오 카탈로그가 없습니다.");
+            stageMusic = catalog.RequireStage(stageId);
+            SelectMusic();
         }
         public void SetChaseActive(bool active)
         {
             RequireAlive();
             if (active && state != FlowState.Playing) throw new InvalidOperationException("Chase can start only while Playing.");
+            if (chase == active) return;
             chase = active; SelectMusic();
         }
         private void ApplyControl(ControlState value)
@@ -43,21 +43,23 @@ namespace Cooked.Audio
         private void ApplyFlow(FlowSnapshot value)
         {
             if (disposed) return;
-            bool changedState = state != value.State;
+            var previous = state;
+            bool changed = previous != value.State;
             state = value.State;
-            if (changedState)
+            if (changed)
             {
                 switch (state)
                 {
                     case FlowState.ReturningToTitle:
                     case FlowState.Recovering:
+                        stageMusic = null; chase = false; audio.ClearWorldSfx(); audio.FadeOutMusic(); break;
                     case FlowState.Title:
                         stageMusic = null; chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.LoadingGame:
-                        // 오프닝 종료 후 같은 진입 상태로 돌아와도 이미 연결한 첫 구간 음악은 유지한다.
-                        chase = false; audio.ClearWorldSfx(); break;
+                        chase = false; audio.ClearWorldSfx(); audio.FadeOutMusic(); break;
                     case FlowState.Retrying:
-                        stageMusic = null; chase = false; audio.ClearWorldSfx(); break;
+                        // Actor/Stage reset does not own the app's ongoing music playback cursor.
+                        chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.Ending:
                         chase = false; audio.ClearWorldSfx(); break;
                     case FlowState.Faulted:
@@ -66,6 +68,9 @@ namespace Cooked.Audio
                 }
             }
             SelectMusic();
+            // Playing은 Actor 생성/카메라 준비/표시 전환이 성공한 뒤에만 진입한다.
+            if (changed && previous == FlowState.Retrying && state == FlowState.Playing)
+                audio.PlaySfx(AudioCueIds.Respawn);
         }
         private void SelectMusic()
         {
@@ -76,7 +81,7 @@ namespace Cooked.Audio
                 case FlowState.Ending: audio.PlayMusic(AudioCueIds.Ending); break;
                 case FlowState.Playing:
                     if (chase) audio.PlayMusic(AudioCueIds.Chase);
-                    else if (stageMusic != null) audio.PlayMusic(stageMusic, stageGain, stageTransition);
+                    else if (stageMusic != null) audio.PlayMusic(stageMusic.Clip, stageMusic.Gain, stageMusic.TransitionSeconds);
                     break;
             }
         }

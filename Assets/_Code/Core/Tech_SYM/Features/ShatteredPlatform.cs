@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using FeelsGoodOnion.TechSYM.Platforms;
 using UnityEngine;
 using System;
@@ -9,12 +9,12 @@ namespace FeelsGoodOnion.TechSYM.Features
     [DisallowMultipleComponent]
     public sealed class ShatteredPlatform : MonoBehaviour
     {
-        public enum CollapsePhase { Ready = 0, Wiggling = 1, Collapsed = 2, Animating = 5 }
+        public enum CollapsePhase { Ready = 0, Wiggling = 1, Collapsed = 2, Animating = 5, Failed = 6, Interrupted = 7 }
         [Tooltip("붕괴 표시를 담당하는 Collider 없는 Visual 자식입니다. 원래 위치·회전·크기는 재시도에만 복원합니다.")]
         [SerializeField, InspectorLabel("외형")] private Transform visual;
         [Tooltip("실제 지지 Collider를 연결합니다. 경고가 끝나면 즉시 꺼집니다.")]
         [SerializeField, InspectorLabel("지지 콜라이더")] private Collider supportCollider;
-        [Tooltip("위 Visual 자신에 있는 붕괴 Animator입니다. Collapse Motion이 없으면 연결 대기를 기록하고 외형을 숨깁니다.")]
+        [Tooltip("위 Visual 자신에 있는 붕괴 Animator입니다. 정상 완료 후 외형을 비활성화합니다. 재생 실패는 원인을 기록하고 외형을 유지합니다.")]
         [SerializeField, InspectorLabel("붕괴 애니메이터")] private Animator collapseAnimator;
         [Tooltip("지지 Collider와 같은 물리 객체의 접촉 전달자입니다. 루트 컨트롤러와 물리 자식을 연결합니다.")]
         [SerializeField, InspectorLabel("지지 접촉")] private PlatformContacts physicalContacts;
@@ -31,6 +31,8 @@ namespace FeelsGoodOnion.TechSYM.Features
         private float warningElapsed;
         private int version;
         public CollapsePhase Phase { get; private set; } = CollapsePhase.Ready;
+        public event Action CollapseStarted;
+        public Vector3 SurfacePosition => supportCollider != null ? supportCollider.bounds.center : transform.position;
         /// <summary>Animator 없이 경고 Tween이 회전하는 실제 외형과 그 자식을 판별한다.</summary>
         public bool OwnsMovingVisual(Transform point) => visual != null && point != null &&
             (point == visual || point.IsChildOf(visual));
@@ -50,6 +52,7 @@ namespace FeelsGoodOnion.TechSYM.Features
         }
         private void OnEnable()
         {
+            presentation?.CompletePendingRestore();
             if (contacts != null) { contacts.ContactReported -= TryCollapseFromContact; contacts.ContactReported += TryCollapseFromContact; }
             if (Phase == CollapsePhase.Wiggling && presentation != null)
                 presentation.Shake(Mathf.Max(.02f, warningEndSeconds - warningElapsed), shakeAngleDegrees, shakeFrequency);
@@ -79,27 +82,39 @@ namespace FeelsGoodOnion.TechSYM.Features
             supportCollider.enabled = false;
             presentation.Restore();
             Phase = CollapsePhase.Animating;
-            animation = StartCoroutine(PlayCollapse(++version));
+            int request = ++version;
+            GameplayEvent.Publish(CollapseStarted, this);
+            if (request != version || !isActiveAndEnabled || Phase != CollapsePhase.Animating) return;
+            var started = StartCoroutine(PlayCollapse(request));
+            animation = request == version && Phase == CollapsePhase.Animating ? started : null;
         }
         private IEnumerator PlayCollapse(int request)
         {
+            bool completed = false;
             if (presentation.TryBeginCollapseAnimation())
             {
                 while (request == version)
                 {
                     if (Time.timeScale <= 0f) { yield return null; continue; }
                     var progress = presentation.ObserveCollapseAnimation(Time.deltaTime);
-                    if (progress == PlatformPresentation.AnimationProgress.Completed) break;
+                    if (progress == PlatformPresentation.AnimationProgress.Completed) { completed = true; break; }
                     if (progress == PlatformPresentation.AnimationProgress.Failed || progress == PlatformPresentation.AnimationProgress.ClipNotLinked)
-                    { Debug.LogWarning(presentation.AnimationIssue, this); break; }
+                    { break; }
                     yield return null;
                 }
             }
-            else Debug.LogWarning(presentation.AnimationIssue, this);
             if (request != version) yield break;
             presentation.EndCollapseAnimation();
-            presentation.SetVisible(false);
-            Phase = CollapsePhase.Collapsed;
+            if (completed)
+            {
+                Phase = CollapsePhase.Collapsed;
+                presentation.DeactivateVisual();
+            }
+            else
+            {
+                Phase = CollapsePhase.Failed;
+                Debug.LogError($"붕괴 발판 '{name}' 재생 실패: {presentation.AnimationIssue} 외형을 유지하며 지지면은 복구하지 않습니다.", this);
+            }
             animation = null;
         }
         private void CancelOwnedWork()
@@ -109,7 +124,7 @@ namespace FeelsGoodOnion.TechSYM.Features
             animation = null;
             presentation?.CancelTween();
             if (Phase == CollapsePhase.Animating)
-            { presentation?.EndCollapseAnimation(); presentation?.SetVisible(false); Phase = CollapsePhase.Collapsed; }
+            { presentation?.EndCollapseAnimation(); Phase = CollapsePhase.Interrupted; }
         }
         public void ResetForRetry()
         {

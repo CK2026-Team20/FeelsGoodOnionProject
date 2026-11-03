@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 
@@ -35,10 +36,11 @@ namespace FeelsGoodOnion.TechSYM.Features
         private readonly Vector3[] restScales;
         private readonly Renderer[] renderers;
         private readonly bool[] rendererDefaults;
+        private readonly List<AnimatorClipInfo> collapseClips = new List<AnimatorClipInfo>(4);
         private Tween ownedTween;
         private bool ownsShake;
         private Quaternion shakeOrigin;
-        private bool animatorSuspended;
+        private bool animatorSuspended, restorePending;
         private RuntimeAnimatorController requestedController;
         private bool observedCollapse;
         private float entryElapsed;
@@ -109,7 +111,9 @@ namespace FeelsGoodOnion.TechSYM.Features
         /// <summary>실제 상태와 클립의 진행만 완료 근거로 사용한다. 시간 제한은 실패 진단용이다.</summary>
         public AnimationProgress ObserveCollapseAnimation(float scaledDeltaSeconds)
         {
-            if (!ValidateAnimator()) return AnimationProgress.Failed;
+            // 고정 Controller 구성은 재생 요청에서 검사했다. 관찰 중에는 수명과 실제 재생만 확인한다.
+            if (animator == null || !animator.isActiveAndEnabled || !animator.isInitialized)
+                return Fail("붕괴 재생 중 Animator가 비활성화되었거나 제거되었습니다.");
             if (animator.runtimeAnimatorController != requestedController)
                 return Fail("재생 중 Animator Controller가 바뀌었습니다.");
 
@@ -117,8 +121,8 @@ namespace FeelsGoodOnion.TechSYM.Features
             bool transitioning = animator.IsInTransition(AnimatorLayerIndex);
             if (state.fullPathHash == CollapseStateHash)
             {
-                AnimationProgress playback = ObserveCollapseState(state,
-                    animator.GetCurrentAnimatorClipInfo(AnimatorLayerIndex), scaledDeltaSeconds, true);
+                animator.GetCurrentAnimatorClipInfo(AnimatorLayerIndex, collapseClips);
+                AnimationProgress playback = ObserveCollapseState(state, collapseClips, scaledDeltaSeconds, true);
                 if (playback == AnimationProgress.ClipNotLinked || playback == AnimationProgress.Failed) return playback;
                 if (transitioning)
                 {
@@ -132,14 +136,14 @@ namespace FeelsGoodOnion.TechSYM.Features
             }
             if (state.fullPathHash == CompletedStateHash)
             {
-                if (animator.GetCurrentAnimatorClipInfo(AnimatorLayerIndex).Length != 0)
+                if (animator.GetCurrentAnimatorClipInfoCount(AnimatorLayerIndex) != 0)
                     return Fail("Completed 상태의 Motion은 비워 두어야 합니다. 실제 클립은 Collapse에만 연결하세요.");
                 if (observedCollapse) return AnimationProgress.Completed;
                 return Fail("실제 붕괴 클립의 진입을 관찰하지 못한 채 Completed 상태로 전환되었습니다.");
             }
             if (state.fullPathHash != ReadyStateHash)
                 return Fail("요청된 Collapse 상태가 아닌 상태에서 Animator가 실행 중입니다.");
-            if (animator.GetCurrentAnimatorClipInfo(AnimatorLayerIndex).Length != 0)
+            if (animator.GetCurrentAnimatorClipInfoCount(AnimatorLayerIndex) != 0)
                 return Fail("Ready 상태의 Motion은 비워 두어야 합니다. 실제 클립은 Collapse에만 연결하세요.");
             entryElapsed += scaledDeltaSeconds;
             if (entryElapsed >= EntryTimeoutSeconds)
@@ -150,16 +154,17 @@ namespace FeelsGoodOnion.TechSYM.Features
                 if (next.fullPathHash != CollapseStateHash)
                     return Fail("Ready 상태에서 Collapse 이외의 상태로 전환하고 있습니다.");
                 // 짧은 클립이 다음 프레임에 Completed에 도달해도 실제 진입 증거를 잃지 않는다.
-                return ObserveCollapseState(next, animator.GetNextAnimatorClipInfo(AnimatorLayerIndex), scaledDeltaSeconds, false);
+                animator.GetNextAnimatorClipInfo(AnimatorLayerIndex, collapseClips);
+                return ObserveCollapseState(next, collapseClips, scaledDeltaSeconds, false);
             }
             if (observedCollapse) return Fail("붕괴 재생이 완료 상태에 도달하지 않고 Ready로 되돌아갔습니다.");
             return AnimationProgress.Waiting;
         }
 
-        private AnimationProgress ObserveCollapseState(AnimatorStateInfo state, AnimatorClipInfo[] clips,
+        private AnimationProgress ObserveCollapseState(AnimatorStateInfo state, List<AnimatorClipInfo> clips,
             float scaledDeltaSeconds, bool canComplete)
         {
-            if (clips.Length == 0)
+            if (clips.Count == 0)
             {
                 AnimationIssue = "Collapse 상태의 Motion에 실제 붕괴 클립이 연결되지 않았습니다.";
                 return AnimationProgress.ClipNotLinked;
@@ -239,10 +244,38 @@ namespace FeelsGoodOnion.TechSYM.Features
             animator.enabled = false;
         }
 
-        public void SetVisible(bool visible)
+        public void DeactivateVisual()
         {
-            for (int index = 0; index < renderers.Length; index++)
-                if (renderers[index] != null) renderers[index].enabled = visible && rendererDefaults[index];
+            if (visual != null) visual.gameObject.SetActive(false);
+        }
+
+        public void CompletePendingRestore()
+        {
+            if (!restorePending || visual == null || !visual.gameObject.activeInHierarchy) return;
+            if (animator != null && animator.transform == visual && animator.runtimeAnimatorController != null
+                && animator.isActiveAndEnabled)
+            {
+                animator.Rebind();
+                if (animator.HasState(AnimatorLayerIndex, ReadyStateHash))
+                {
+                    if (HasCollapseTrigger()) animator.ResetTrigger(CollapseTriggerHash);
+                    animator.Play(ReadyStateHash, AnimatorLayerIndex, 0f);
+                    animator.Update(0f);
+                }
+            }
+            RestoreTransforms();
+            restorePending = false;
+        }
+
+        private void RestoreTransforms()
+        {
+            for (int index = 0; index < transforms.Length; index++)
+            {
+                if (transforms[index] == null) continue;
+                transforms[index].localPosition = restPositions[index];
+                transforms[index].localRotation = restRotations[index];
+                transforms[index].localScale = restScales[index];
+            }
         }
 
         /// <summary>자기 트윈과 재생 요청을 해제하고 애니메이션으로 바뀐 자식의 원래 배치를 복원한다.</summary>
@@ -257,23 +290,14 @@ namespace FeelsGoodOnion.TechSYM.Features
                 animatorSuspended = false;
                 animator.enabled = animatorWasEnabled;
             }
-            if (animator != null && animator.transform == visual && animator.runtimeAnimatorController != null
-                && animator.isActiveAndEnabled && animator.layerCount > 0
-                && animator.HasState(AnimatorLayerIndex, ReadyStateHash))
-            {
-                if (HasCollapseTrigger()) animator.ResetTrigger(CollapseTriggerHash);
-                animator.Rebind();
-                animator.Play(ReadyStateHash, AnimatorLayerIndex, 0f);
-                animator.Update(0f);
-            }
-            for (int index = 0; index < transforms.Length; index++)
-            {
-                if (transforms[index] == null) continue;
-                transforms[index].localPosition = restPositions[index];
-                transforms[index].localRotation = restRotations[index];
-                transforms[index].localScale = restScales[index];
-            }
-            SetVisible(true);
+            // Retry can run with the Stage root disabled. Restore local activation now,
+            // then rebind the Animator from the owner's OnEnable once the hierarchy is active.
+            if (visual != null) visual.gameObject.SetActive(true);
+            RestoreTransforms();
+            for (int index = 0; index < renderers.Length; index++)
+                if (renderers[index] != null) renderers[index].enabled = rendererDefaults[index];
+            restorePending = true;
+            CompletePendingRestore();
         }
     }
 }

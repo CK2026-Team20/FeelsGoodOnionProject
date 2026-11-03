@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using Cooked.Contracts;
@@ -74,8 +74,8 @@ namespace Cooked.Session
             if (control == null) throw new ArgumentNullException(nameof(control));
             this.bridge = bridge; this.control = control;
         }
-        /// <summary>Pose is the player CapsuleCollider world center, including nonzero local center.</summary>
-        public void Spawn(Pose pose, int fragments)
+        /// <summary>Checkpoint callers pass feetPosition=true; legacy direct-test center poses remain explicit.</summary>
+        public void Spawn(Pose pose, int fragments, bool feetPosition = false)
         {
             if (releasing || shutdown || spawning) throw new InvalidOperationException("Actor host is releasing or shut down.");
             if (bridge == null) throw new InvalidOperationException("Actor host not initialized.");
@@ -92,7 +92,9 @@ namespace Cooked.Session
                 var reader = actorRoot.GetComponentInChildren<PlayerInputReader>(true);
                 if (actor == null || reader == null) throw new InvalidOperationException("Actor prefab dependencies missing.");
                 reader.SetTearSkillBinding("<Keyboard>/e");
-                PlaceColliderCenter(actor.GetComponent<CapsuleCollider>(), pose);
+                var shape = actor.GetComponent<CapsuleCollider>();
+                var centerPose = feetPosition ? new Pose(SpawnPlacement.Center(shape, pose), pose.rotation) : pose;
+                PlaceColliderCenter(shape, centerPose);
                 if (actorRoot.GetComponentsInChildren<Camera>(true).Length != 0 ||
                     actorRoot.GetComponentsInChildren<Unity.Cinemachine.CinemachineBrain>(true).Length != 0 ||
                     actorRoot.GetComponentsInChildren<AudioListener>(true).Length != 0 ||
@@ -103,7 +105,8 @@ namespace Cooked.Session
                 var forms = actor.GetComponent<PlayerFormController>();
                 if (forms == null || forms.CurrentForm != PlayerForm.Normal || forms.OwnedDebris != null)
                     throw new InvalidOperationException("A fresh Actor must start Normal with no shell.");
-                PlaceColliderCenter(actor.GetComponent<CapsuleCollider>(), pose);
+                centerPose = feetPosition ? new Pose(SpawnPlacement.Center(shape, pose), pose.rotation) : pose;
+                PlaceColliderCenter(shape, centerPose);
                 actor.SetMaxHP(3);
                 actor.SetInvincible(false);
                 actor.SetHitInvincibilityDuration(2f);

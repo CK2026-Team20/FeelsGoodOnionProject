@@ -10,7 +10,7 @@ namespace Cooked.Integration
     [CreateAssetMenu(menuName = "Cooked/Integration Entry Settings")]
     public sealed class IntegrationEntrySettings : ScriptableObject
     {
-        public const string AssetPath = "Assets/_Scenes/Tech_SYM/Architecture/Configuration/IntegrationEntrySettings.asset";
+        public const string AssetPath = "Assets/_Data/Tech_SYM/Configuration/IntegrationEntrySettings.asset";
         [Serializable]
         public sealed class Entry
         {

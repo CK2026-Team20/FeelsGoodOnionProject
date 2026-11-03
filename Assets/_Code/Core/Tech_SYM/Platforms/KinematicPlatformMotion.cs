@@ -198,9 +198,9 @@ namespace FeelsGoodOnion.TechSYM.Platforms
         public bool RegisterEffect(Component owner)
         {
             if (owner == null) return false;
+            if (effects.ContainsKey(owner)) return true;
             if (path == MotionPath.Travel || path == MotionPath.Tween || HasTravelDriver())
             { ReportConflict(); return false; }
-            if (effects.ContainsKey(owner)) return true;
             if (path == MotionPath.None) { effectOrigin = RestPosition; path = MotionPath.Effect; }
             effects[owner] = Vector3.zero;
             return true;

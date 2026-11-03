@@ -7,7 +7,7 @@ namespace Cooked.Foundation
     [CreateAssetMenu(menuName = "Cooked/Architecture Installation")]
     public sealed class ArchitectureInstallation : ScriptableObject
     {
-        public const string AssetPath = "Assets/_Scenes/Tech_SYM/Architecture/Configuration/ArchitectureInstallation.asset";
+        public const string AssetPath = "Assets/_Data/Tech_SYM/Configuration/ArchitectureInstallation.asset";
         // 기존 직렬화 이름/GUID 보존. 사람이 입력하지 않는 Player용 생성 값이다.
         [SerializeField, HideInInspector] private string bootstrapPath;
         [SerializeField, HideInInspector] private string titlePath;

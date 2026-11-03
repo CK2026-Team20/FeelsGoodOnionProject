@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.ComponentModel;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using DG.Tweening;
@@ -11,6 +12,7 @@ using UnityEngine.InputSystem;
 namespace Cooked.Dialogue
 {
     /// <summary>UGUI presentation only. Composition supplies a VM; no global lookups or model access.</summary>
+    [DefaultExecutionOrder(100)]
     public sealed class DialogueView : MonoBehaviour
     {
         [Tooltip("대화 본문 화면의 표시·입력을 제어할 CanvasGroup입니다. 로그 그룹과 구분해 연결하세요.")]
@@ -25,6 +27,9 @@ namespace Cooked.Dialogue
         [SerializeField, InspectorLabel("자동 상태")] private TMP_Text autoLabel;
         [Tooltip("이전에 표시한 문장 로그를 출력할 TMP 텍스트입니다.")]
         [SerializeField, InspectorLabel("대화 기록")] private TMP_Text history;
+        [SerializeField, InspectorLabel("기록 말풍선"), Tooltip("대화 기록 한 줄에 원본 크기로 표시할 말풍선 Sprite입니다.")]
+        private Sprite historyBubble;
+        private readonly List<GameObject> historyRows = new List<GameObject>();
         [Tooltip("문장 표시가 끝나 다음 입력을 기다릴 때 보이는 안내 오브젝트입니다.")]
         [SerializeField, InspectorLabel("다음 안내")] private GameObject nextMarker;
         [Tooltip("대화 본문 클릭으로 표시 완료 또는 다음 문장 진행을 요청하는 버튼입니다. 한 입력에 한 번만 진행합니다.")]
@@ -57,6 +62,9 @@ namespace Cooked.Dialogue
             ValidateReferences();
             if (ReferenceEquals(model, viewModel)) { Present(); return; }
             Unbind();
+            UnityEngine.UI.CanvasUpdateRegistry.IsRebuildingLayout();
+            Canvas.willRenderCanvases += ApplyLogScrollbarSize;
+            ApplyLogScrollbarSize();
             lifetime = new CancellationTokenSource();
             model = viewModel;
             model.PropertyChanged += OnChanged;
@@ -70,26 +78,35 @@ namespace Cooked.Dialogue
         }
         private void Awake() { if (rootGroup != null) SetGroup(rootGroup, false); }
         private void OnChanged(object sender, PropertyChangedEventArgs args) { Present(); }
+        private static bool PointerClick => Mouse.current?.leftButton.wasReleasedThisFrame == true;
         private void OnAdvance()
         {
             if (model == null || !model.CanAdvance || consumedFrame == Time.frameCount) return;
-            consumedFrame = Time.frameCount; model.Advance(Time.frameCount);
+            consumedFrame = Time.frameCount; model.Advance(Time.frameCount, PointerClick);
         }
         // Enter belongs to dialogue advancement even if UGUI submits a selected auxiliary button.
         private bool AuxiliaryInputAllowed => consumedFrame != Time.frameCount &&
             (Keyboard.current == null || !Keyboard.current.enterKey.wasPressedThisFrame);
-        private void OnAuto() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.ToggleAuto(); }
-        private void OnHistory() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.OpenLog(); }
-        private void OnLogClose() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.CloseLog(); }
+        private void OnAuto() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.ToggleAuto(PointerClick); }
+        private void OnHistory() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.OpenLog(PointerClick); }
+        private void OnLogClose() { if (!AuxiliaryInputAllowed) return; consumedFrame = Time.frameCount; model?.CloseLog(PointerClick); }
         private void OnSkip()
         {
             if (!AuxiliaryInputAllowed || model == null || !model.CanSkip) return;
             consumedFrame = Time.frameCount;
-            model.SkipAll();
+            model.SkipAll(PointerClick);
         }
 
+        // ScrollRect updates the proportional thumb during layout and LateUpdate.
+        // Keep its value/listeners intact; only the requested visual length is fixed.
+        private void ApplyLogScrollbarSize()
+        {
+            if (logScroll != null && logScroll.verticalScrollbar != null)
+                logScroll.verticalScrollbar.size = .2f;
+        }
         private void LateUpdate()
         {
+            ApplyLogScrollbarSize();
             if (model == null || !model.CanAdvance || model.LogOpen || consumedFrame == Time.frameCount) return;
             var keyboard = Keyboard.current;
             if (keyboard == null || keyboard.escapeKey.wasPressedThisFrame || !keyboard.enterKey.wasPressedThisFrame) return;
@@ -106,6 +123,7 @@ namespace Cooked.Dialogue
             {
                 StopTyping(); shownSession = shownRow = -1; shownHistory = null;
                 body.text = speaker.text = history.text = string.Empty;
+                ClearHistoryRows();
                 SetGroup(logGroup, false);
                 skipButton.interactable = false;
                 panelButton.interactable = false;
@@ -166,12 +184,68 @@ namespace Cooked.Dialogue
                 if (shownHistory != next)
                 {
                     shownHistory = next;
-                    history.text = next;
+                    PresentHistory();
                     UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(logScroll.content);
                     logScroll.verticalNormalizedPosition = 0;
                 }
             }
         }
+        private void PresentHistory()
+        {
+            ClearHistoryRows();
+            history.gameObject.SetActive(model.History.Count == 0);
+            history.text = "아직 전체 출력된 대화가 없습니다.";
+            foreach (var entry in model.History)
+            {
+                var row = new GameObject("HistoryRow", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
+                historyRows.Add(row);
+                row.transform.SetParent(logScroll.content, false);
+                var layout = row.GetComponent<UnityEngine.UI.LayoutElement>();
+                layout.preferredHeight = historyBubble.rect.height;
+                layout.minHeight = historyBubble.rect.height;
+                var bubble = new GameObject("Bubble", typeof(RectTransform));
+                bubble.transform.SetParent(row.transform, false);
+                var rect = (RectTransform)bubble.transform;
+                bool right = string.Equals(entry.Name, "포포", StringComparison.Ordinal);
+                rect.anchorMin = rect.anchorMax = new Vector2(right ? 1 : 0, .5f);
+                rect.pivot = new Vector2(right ? 1 : 0, .5f);
+                rect.sizeDelta = historyBubble.rect.size;
+                var frame = new GameObject("Frame", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                frame.transform.SetParent(bubble.transform, false);
+                var image = frame.GetComponent<UnityEngine.UI.Image>();
+                image.sprite = historyBubble;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+                image.rectTransform.anchorMin = image.rectTransform.anchorMax = new Vector2(.5f, .5f);
+                image.rectTransform.sizeDelta = historyBubble.rect.size;
+                image.rectTransform.localRotation = Quaternion.Euler(0, 0, right ? 180 : 0);
+                var text = Instantiate(history, bubble.transform, false);
+                text.name = "Text";
+                text.gameObject.SetActive(true);
+                text.rectTransform.anchorMin = text.rectTransform.anchorMax = new Vector2(.5f, .5f);
+                text.rectTransform.pivot = new Vector2(.5f, .5f);
+                text.rectTransform.anchoredPosition = Vector2.zero;
+                text.rectTransform.sizeDelta = historyBubble.rect.size - new Vector2(110, 45);
+                text.text = entry.Name + "\n" + entry.Context;
+                text.enableAutoSizing = true;
+                text.fontSizeMin = 16;
+                text.fontSizeMax = 26;
+                text.alignment = TextAlignmentOptions.MidlineLeft;
+                text.raycastTarget = false;
+            }
+        }
+
+        private void ClearHistoryRows()
+        {
+            foreach (var row in historyRows)
+            {
+                if (row == null) continue;
+                row.SetActive(false);
+                if (Application.isPlaying) Destroy(row); else DestroyImmediate(row);
+            }
+            historyRows.Clear();
+        }
+
         private void StopTyping()
         {
             presentationGeneration++;
@@ -186,6 +260,7 @@ namespace Cooked.Dialogue
         }
         public void Unbind()
         {
+            Canvas.willRenderCanvases -= ApplyLogScrollbarSize;
             lifetime?.Cancel(); lifetime?.Dispose(); lifetime = null;
             StopTyping();
             var previous = model;
@@ -197,6 +272,7 @@ namespace Cooked.Dialogue
             if (logCloseButton != null) logCloseButton.onClick.RemoveListener(OnLogClose);
             if (skipButton != null) { skipButton.onClick.RemoveListener(OnSkip); skipButton.interactable = false; }
             shownSession = shownRow = -1; shownHistory = null;
+            ClearHistoryRows();
             if (rootGroup != null) SetGroup(rootGroup, false);
             if (logGroup != null) SetGroup(logGroup, false);
             // Rendering disappeared: end its conversation rather than leave the player's lease stranded.
@@ -204,7 +280,7 @@ namespace Cooked.Dialogue
         }
         private void ValidateReferences()
         {
-            if (rootGroup == null || logGroup == null || speaker == null || body == null || autoLabel == null || history == null || nextMarker == null ||
+            if (rootGroup == null || logGroup == null || speaker == null || body == null || autoLabel == null || history == null || historyBubble == null || nextMarker == null ||
                 panelButton == null || autoButton == null || historyButton == null || logCloseButton == null || logScroll == null || logScroll.content == null || skipButton == null)
                 throw new InvalidOperationException("DialogueView prefab references are incomplete.");
             if (panelButton == skipButton || autoButton == skipButton || historyButton == skipButton || logCloseButton == skipButton ||
