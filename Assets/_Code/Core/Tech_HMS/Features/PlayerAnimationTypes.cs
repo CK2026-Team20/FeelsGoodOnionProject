@@ -24,7 +24,13 @@ public enum PlayerAnimationId
     /// <summary>일회성 복귀 표현</summary>
     RestoreForm,
     /// <summary>일회성 장치 상호작용 표현</summary>
-    Interact
+    Interact,
+    /// <summary>점프 시작 준비 표현</summary>
+    JumpReady,
+    /// <summary>장치를 닫거나 넣는 일회성 밀기 표현</summary>
+    Push,
+    /// <summary>장치를 열거나 꺼내는 일회성 당기기 표현</summary>
+    Pull
 }
 
 /// <summary>유효한 재생 요청의 종료 결과. 스킬 성공이나 FSM의 조작 제한 시간을 변경하지 않습니다.</summary>
