@@ -26,13 +26,30 @@ namespace Cooked.HMS.AnimationIntegration
         private float shellGroundingDelay = .35f;
         [SerializeField, Min(.01f), InspectorLabel("껍질 착지 보정 시간"), Tooltip("각 껍질 조각의 외형 바닥을 물리 껍질의 충돌체 바닥에 부드럽게 맞추는 시간입니다(초). 충돌체와 실제 물리 위치는 바꾸지 않습니다.")]
         private float shellGroundingDuration = .3f;
+        [Header("벗겨지는 껍질 물리 연출")]
+        [SerializeField, InspectorLabel("조각 물리 사용")]
+        private bool usePhysicsPieces = true;
+        [SerializeField, Min(0f), InspectorLabel("물리 전환 시점"), Tooltip("벗겨지는 애니메이션 시작 후 물리로 전환할 시간입니다(초). 물리 사용 시 기존 Y축 착지 보정은 적용하지 않습니다.")]
+        private float physicsHandoffTime = .35f;
+        [SerializeField, Min(0f), InspectorLabel("조각 벌어지는 속도")]
+        private float pieceOutwardSpeed = .7f;
+        [SerializeField, Min(0f), InspectorLabel("조각 위쪽 속도")]
+        private float pieceUpwardSpeed = .5f;
+        [SerializeField, Min(0f), InspectorLabel("조각 회전 속도"), Tooltip("무작위 축으로 회전할 각속력입니다(rad/s).")]
+        private float pieceSpinSpeed = 5f;
+        [SerializeField, Min(.01f), InspectorLabel("조각 수명")]
+        private float pieceLifetime = 2f;
+        [SerializeField, Min(0f), InspectorLabel("조각 소멸 시간"), Tooltip("수명 마지막에 작아지며 사라지는 시간입니다(초).")]
+        private float pieceShrinkSeconds = .35f;
+        [SerializeField, InspectorLabel("조각 지형 충돌 레이어"), Tooltip("지형과 충돌할 레이어입니다. 캐릭터·실제 껍질·Trigger·동적 Rigidbody는 별도로 제외합니다.")]
+        private LayerMask pieceCollisionLayers = Physics.DefaultRaycastLayers;
         private PlayerFormController form;
         private GameObject shellVisual;
         private Collider shellCollider;
         private float shellCreatedAt;
         private readonly List<ShellPiece> shellPieces = new List<ShellPiece>();
-        private readonly List<Renderer> hiddenShellRenderers = new List<Renderer>();
         private readonly List<GameObject> restoreEffects = new List<GameObject>();
+        private readonly List<PlayerPeelPhysicsPiece> physicsPieces = new List<PlayerPeelPhysicsPiece>();
         private sealed class ShellPiece
         {
             public MeshRenderer Renderer;
@@ -47,9 +64,8 @@ namespace Cooked.HMS.AnimationIntegration
                 ReleaseShellVisual();
                 var shell = form.OwnedDebris;
                 if (!shell || !shrinkVisual || !normalVisualAnchor) return;
-                foreach (var renderer in shell.GetComponentsInChildren<Renderer>(true))
-                    if (renderer.enabled) { renderer.enabled = false; hiddenShellRenderers.Add(renderer); }
                 shellVisual = CreateVisual(shrinkVisual, shrinkController, shell.transform);
+                shellVisual.transform.localPosition = new Vector3(0f, -.09f, 0f);
                 shellCollider = shell.GetComponent<Collider>();
                 shellCreatedAt = Time.time;
                 // 분리 FBX의 메시 노드에는 위치 키가 없어 부모 Dummy의 애니메이션을 유지하며 보정할 수 있습니다.
@@ -69,6 +85,11 @@ namespace Cooked.HMS.AnimationIntegration
         private void LateUpdate()
         {
             if (!shellVisual || !shellCollider) return;
+            if (usePhysicsPieces)
+            {
+                if (Time.time - shellCreatedAt >= physicsHandoffTime) CreatePhysicsPieces();
+                return;
+            }
             float weight = Mathf.Clamp01((Time.time - shellCreatedAt - shellGroundingDelay) / Mathf.Max(.01f, shellGroundingDuration));
             weight = weight * weight * (3f - 2f * weight);
             float floorY = shellCollider.bounds.min.y;
@@ -85,6 +106,27 @@ namespace Cooked.HMS.AnimationIntegration
                 float offsetY = floorY - piece.Renderer.bounds.min.y;
                 target.position += Vector3.up * (offsetY * weight);
             }
+        }
+        private void CreatePhysicsPieces()
+        {
+            var body = shellCollider.attachedRigidbody;
+            for (int i = 0; i < shellPieces.Count; i++)
+            {
+                var renderer = shellPieces[i].Renderer;
+                if (!renderer || !renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                Vector3 outward = Vector3.ProjectOnPlane(renderer.bounds.center - shellCollider.bounds.center, Vector3.up);
+                if (outward.sqrMagnitude < .0001f) outward = i % 2 == 0 ? Vector3.left : Vector3.right;
+                Vector3 velocity = body ? body.GetPointVelocity(renderer.bounds.center) : Vector3.zero;
+                velocity += outward.normalized * pieceOutwardSpeed + Vector3.up * pieceUpwardSpeed;
+                var piece = PlayerPeelPhysicsPiece.Create(renderer, velocity, Random.onUnitSphere * pieceSpinSpeed,
+                    pieceLifetime, pieceShrinkSeconds, pieceCollisionLayers);
+                if (piece) physicsPieces.Add(piece);
+            }
+            shellVisual.SetActive(false);
+            Destroy(shellVisual);
+            shellVisual = null;
+            shellCollider = null;
+            shellPieces.Clear();
         }
         private GameObject CreateVisual(GameObject source, RuntimeAnimatorController controller, Transform parent)
         {
@@ -110,10 +152,10 @@ namespace Cooked.HMS.AnimationIntegration
         }
         private void ReleaseShellVisual()
         {
+            foreach (var piece in physicsPieces) if (piece) { piece.gameObject.SetActive(false); Destroy(piece.gameObject); }
+            physicsPieces.Clear();
             shellPieces.Clear();
             shellCollider = null;
-            foreach (var renderer in hiddenShellRenderers) if (renderer) renderer.enabled = true;
-            hiddenShellRenderers.Clear();
             if (shellVisual) { shellVisual.SetActive(false); Destroy(shellVisual); }
             shellVisual = null;
         }
