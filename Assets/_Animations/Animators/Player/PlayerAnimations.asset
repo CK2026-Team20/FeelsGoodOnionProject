@@ -29,7 +29,7 @@ MonoBehaviour:
   dead: {fileID: 7400000, guid: 4324f5f4b9e980f4ab6897c5a9724f34, type: 2}
   land: {fileID: 7400000, guid: 8ece6706106d133479c74c131bd77fa4, type: 2}
   landPlaybackSpeed: 1.5
-  tear: {fileID: 7400000, guid: 47c3c56c3eff7ae48aee2f1c759e48b5, type: 2}
+  tear: {fileID: 7400000, guid: ba366f8c933d5ef44886bb5b86833e24, type: 2}
   shrink: {fileID: 7400000, guid: 1614ec0baa6205b4abbc390a728d5267, type: 2}
   restoreForm: {fileID: 7400000, guid: 3db982dcb24c61742ac57681b3c0e276, type: 2}
   interact: {fileID: 7400000, guid: 3462e30595a1fbc46abceb458fd889a2, type: 2}
