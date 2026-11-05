@@ -26,6 +26,8 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private PlayerFormController formController;
     private readonly PlayerAnimationPlayback playback = new PlayerAnimationPlayback();
     private long publishedRequestId;
+    /// <summary>이번 실제 점프에서 선택한 B형 여부. 착지·피격·사망에 초기화됩니다.</summary>
+    public bool UseJumpVariantB { get; private set; }
 
     /// <summary>현재 재생 대상으로 선택한 요청. 실제 클립 재생 여부를 뜻하지 않습니다.</summary>
     public PlayerAnimationRequest CurrentRequest => playback.CurrentRequest;
@@ -52,6 +54,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
     {
         playback.PlaybackEnded += HandlePlaybackEnded;
         player.Landed += HandleLanded;
+        player.Jumped += HandleJumped;
         player.StateChanged += HandleStateChanged;
         player.SkillAnimationRequested += HandleSkillAnimationRequested;
         publishedRequestId = 0;
@@ -76,14 +79,24 @@ public sealed class PlayerAnimationController : MonoBehaviour
     /// <param name="currentState">변경 후 상태</param>
     private void HandleStateChanged(PlayerState previousState, PlayerState currentState)
     {
+        if (currentState == PlayerState.Dead || currentState == PlayerState.Knockback) UseJumpVariantB = false;
         RefreshContext();
     }
 
     /// <summary>실제 착지 이벤트를 일회성 표현으로 요청합니다. 이동·재점프 상태에서는 거절됩니다.</summary>
     private void HandleLanded()
     {
+        UseJumpVariantB = false;
         RefreshContext();
         playback.TryRequest(PlayerAnimationId.Land);
+    }
+
+    /// <summary>실제 점프마다 상승·낙하 형식을 한 번 선택하고 준비 표현을 시작합니다.</summary>
+    private void HandleJumped()
+    {
+        UseJumpVariantB = UnityEngine.Random.value < 0.5f;
+        RefreshContext();
+        playback.TryRequest(PlayerAnimationId.JumpReady);
     }
 
     /// <summary>스킬 발동 표현을 요청합니다. 스킬의 실제 효과나 조작 허용 여부는 변경하지 않습니다.</summary>
@@ -137,6 +150,16 @@ public sealed class PlayerAnimationController : MonoBehaviour
         return playback.TryRequest(PlayerAnimationId.Interact);
     }
 
+    /// <summary>수락된 장치 조작에 맞는 밀기·당기기 표현을 한 번 요청합니다.</summary>
+    /// <param name="isPull">열거나 꺼내면 true, 닫거나 넣으면 false입니다.</param>
+    /// <remarks>장치 이동이나 플레이어 조작을 제어하지 않습니다. 공통 상호작용과 같은 우선순위입니다.</remarks>
+    public bool TryRequestInteract(bool isPull)
+    {
+        if (!isActiveAndEnabled) return false;
+        RefreshContext();
+        return playback.TryRequest(isPull ? PlayerAnimationId.Pull : PlayerAnimationId.Push);
+    }
+
     /// <summary>새 요청만 전달하여 동일 기본 애니메이션을 매 프레임 다시 시작하지 않도록 합니다.</summary>
     private void PublishRequest()
     {
@@ -151,6 +174,8 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private void OnDisable()
     {
         player.Landed -= HandleLanded;
+        player.Jumped -= HandleJumped;
+        UseJumpVariantB = false;
         player.StateChanged -= HandleStateChanged;
         player.SkillAnimationRequested -= HandleSkillAnimationRequested;
         try

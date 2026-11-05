@@ -14,17 +14,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationSet
   controllerTemplate: {fileID: 9100000, guid: 8b33f75a498b61b47a9c30712d706935, type: 2}
   blendDuration: 0.1
-  walkReferenceSpeed: 5
-  runReferenceSpeed: 5
-  idle: {fileID: 7400000, guid: 6368422747298ec43a37476c99d76d42, type: 2}
-  walk: {fileID: 7400000, guid: 2221aa6d1d0956440855e728581bde06, type: 2}
-  run: {fileID: 7400000, guid: 2221aa6d1d0956440855e728581bde06, type: 2}
-  jump: {fileID: 7400000, guid: 4847f89a99c287843930fa57ef410896, type: 2}
-  fall: {fileID: 7400000, guid: 19106eb7be3be3049af789777c2aba79, type: 2}
-  knockback: {fileID: 7400000, guid: b9860b8b11474c849a23282aaeca8f12, type: 2}
-  dead: {fileID: 7400000, guid: 2ee99f3e3f383774ab86a41647eb7ed1, type: 2}
-  land: {fileID: 7400000, guid: a3a5ee5b7671a4843a1530d44764dc02, type: 2}
-  tear: {fileID: 7400000, guid: 8b735d2cd6044c940a2e7191c12be0a0, type: 2}
-  shrink: {fileID: 7400000, guid: bce0d50a28095de4a953e6ec0e4987f8, type: 2}
-  restoreForm: {fileID: 7400000, guid: 306e63a1107e8de4da21db4640295937, type: 2}
+  useReferenceSpeed: 0
+  walkReferenceSpeed: 3
+  runReferenceSpeed: 3
+  idle: {fileID: 7400000, guid: e586554495f661b44887d2040e1ac905, type: 2}
+  walk: {fileID: 7400000, guid: 9c992617544858b498d5e8de3070088b, type: 2}
+  run: {fileID: 7400000, guid: 9c992617544858b498d5e8de3070088b, type: 2}
+  jump: {fileID: 7400000, guid: 24845c2d5ffb8a94fa38f16c62f0464c, type: 2}
+  fall: {fileID: 7400000, guid: 92d1c1c82402a814191595c196b008ad, type: 2}
+  jumpReady: {fileID: 7400000, guid: 0d1e90739db4c7841a5c3b535914409e, type: 2}
+  jumpB: {fileID: 7400000, guid: 78674509010943442a24db2d7573b28a, type: 2}
+  fallB: {fileID: 7400000, guid: 27449e1404a45ef4ea93f86ac000c25b, type: 2}
+  knockback: {fileID: 7400000, guid: aa19cd9b9071b2546a038518d5f2cfb4, type: 2}
+  dead: {fileID: 7400000, guid: 4324f5f4b9e980f4ab6897c5a9724f34, type: 2}
+  land: {fileID: 7400000, guid: 8ece6706106d133479c74c131bd77fa4, type: 2}
+  landPlaybackSpeed: 1.5
+  tear: {fileID: 7400000, guid: 47c3c56c3eff7ae48aee2f1c759e48b5, type: 2}
+  shrink: {fileID: 7400000, guid: 1614ec0baa6205b4abbc390a728d5267, type: 2}
+  restoreForm: {fileID: 7400000, guid: 3db982dcb24c61742ac57681b3c0e276, type: 2}
   interact: {fileID: 7400000, guid: 3462e30595a1fbc46abceb458fd889a2, type: 2}
+  push: {fileID: 7400000, guid: 324f2d21772bd86488a6424a487c394a, type: 2}
+  pull: {fileID: 7400000, guid: d7b0a210713a9f54a8a472c4a0e0a2a1, type: 2}

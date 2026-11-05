@@ -31,6 +31,8 @@ public sealed class CharacterMovement : MonoBehaviour
     
     [Header("Jump")]
     [SerializeField, Min(0f)] private float jumpHeight = 2f;
+    [SerializeField, Min(0f), Cooked.Authoring.InspectorLabel("코요테 타임"), Tooltip("발판에서 벗어난 뒤 점프를 허용하는 유예 시간입니다(초). 0이면 끕니다. 실제 점프·넉백·부활 시 남은 기회는 초기화하며 착지 전 입력을 예약하지는 않습니다.")]
+    private float coyoteTime = 0.15f;
     [SerializeField, Min(0.01f)] private float gravity = 25f;
     [SerializeField, Min(1f)] private float fallGravityMultiplier = 1.5f;
     [SerializeField, Min(0.01f)] private float maximumFallSpeed = 35f;
@@ -62,6 +64,7 @@ public sealed class CharacterMovement : MonoBehaviour
     private float movementLockRemaining;
 
     private bool jumpRequested;
+    private double lastGroundedTime = double.NegativeInfinity;
     private float originalSleepThreshold;
     private bool sleepSettingsOverridden;
     /// <summary>접촉 검사에서 연속으로 접지하지 않은 시간. (단위: s)</summary>
@@ -72,6 +75,8 @@ public sealed class CharacterMovement : MonoBehaviour
     private const float MinimumLandingAirTime = 0.06f;
 
     public bool IsGrounded { get; private set; }
+    /// <summary>발판 이탈 뒤 점프를 허용하는 시간입니다(초). 0이면 지상 점프만 허용합니다.</summary>
+    public float CoyoteTime => float.IsFinite(coyoteTime) ? Mathf.Max(0f, coyoteTime) : 0f;
     public Collider GroundCollider { get; private set; }
     public Vector3 GroundNormal { get; private set; } = Vector3.up;
     /// <summary>접지할 수 있는 지면의 최대 기울기입니다. 단위: 도. 실제 HMS 접지 설정을 읽습니다.</summary>
@@ -141,6 +146,7 @@ public sealed class CharacterMovement : MonoBehaviour
 
         jumpRequested = false;
         movementLockRemaining = 0f;
+        lastGroundedTime = double.NegativeInfinity;
         hasPendingKnockback = false;
         pendingKnockbackVelocity = Vector3.zero;
 
@@ -190,6 +196,7 @@ public sealed class CharacterMovement : MonoBehaviour
         }
 
         bool movementLocked = IsMovementLocked;
+        if (IsGrounded && !movementLocked) lastGroundedTime = Time.fixedTimeAsDouble;
 
         UpdateSelfVelocity(deltaTime, movementLocked);
 
@@ -200,6 +207,7 @@ public sealed class CharacterMovement : MonoBehaviour
         // 위쪽 충격은 접지를 해제한다.
         if (pendingImpulse.y > 0f)
         {
+            lastGroundedTime = double.NegativeInfinity;
             if (IsGrounded)
             {
                 verticalVelocity = platformVelocity.y;
@@ -216,9 +224,12 @@ public sealed class CharacterMovement : MonoBehaviour
         verticalVelocity += pendingImpulse.y;
         pendingImpulse = Vector3.zero;
 
-        if (jumpRequested && IsGrounded && !movementLocked)
+        bool withinCoyoteTime = CoyoteTime > 0f && Time.fixedTimeAsDouble - lastGroundedTime <= CoyoteTime;
+        if (jumpRequested && (IsGrounded || withinCoyoteTime) && !movementLocked)
         {
             verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight) + platformVelocity.y;
+            // 점프를 실행한 뒤에는 새로 착지하기 전까지 유예 점프를 다시 허용하지 않습니다.
+            lastGroundedTime = double.NegativeInfinity;
 
             IsGrounded = false;
             GroundCollider = null;
@@ -424,7 +435,7 @@ public sealed class CharacterMovement : MonoBehaviour
 
     /// <summary>
     /// 이동이 잠기지 않았다면 다음 물리 스텝에 점프를 시도하도록 요청한다.
-    /// 접지 중일 때만 실행하며, 키 유지 시간과 관계없이 jumpHeight로 계산한 초기 상승 속도를 사용한다.
+    /// 접지 중이거나 발판 이탈 후 코요테 타임 안이면 실행하며, 키 유지 시간과 관계없이 jumpHeight로 계산한 초기 상승 속도를 사용한다.
     /// 공중에서 소비된 요청은 착지할 때까지 보관하지 않는다.
     /// </summary>
     public void RequestJump()
@@ -467,6 +478,7 @@ public sealed class CharacterMovement : MonoBehaviour
             return;
         }
         pendingKnockbackVelocity = ConstrainMovementAxes(knockbackVelocity);
+        lastGroundedTime = double.NegativeInfinity;
         hasPendingKnockback = true;
         selfVelocity = Vector3.zero;
         externalHorizontalVelocity = Vector3.zero;
@@ -518,6 +530,7 @@ public sealed class CharacterMovement : MonoBehaviour
         }
 
         movementLockRemaining = Mathf.Max(movementLockRemaining, duration);
+        lastGroundedTime = double.NegativeInfinity;
 
         jumpRequested = false;
 
@@ -547,6 +560,7 @@ public sealed class CharacterMovement : MonoBehaviour
         hasPendingKnockback = false;
         movementLockRemaining = 0f;
         jumpRequested = false;
+        lastGroundedTime = double.NegativeInfinity;
         airborneDuration = 0f;
         landingArmed = false;
         if (clearGround)
