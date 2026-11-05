@@ -269,7 +269,7 @@ namespace Cooked.Level
             var capsule=acceptedActor.GetComponent<CapsuleCollider>();
             var rigidbody=acceptedActor.GetComponent<Rigidbody>();
             if(capsule == null || rigidbody == null) throw new InvalidOperationException("진입 보정 Capsule/Rigidbody가 필요합니다.");
-            playerGoal=rigidbody.position + section.Start.CheckpointPose.position - capsule.transform.TransformPoint(capsule.center);
+            playerGoal=rigidbody.position + SpawnPlacement.Center(capsule, new Pose(section.Start.CheckpointPose.position, capsule.transform.rotation)) - capsule.transform.TransformPoint(capsule.center);
             blockerGoal=section.BlockerBody != null ? section.BlockerGoal : Vector3.zero;
             State=CameraTransitionState.Accepted;initialSelection=restore;motionsComplete=restore;viewCommitted=false;
             playerMoveSubmitted=blockerMoveSubmitted=false;TransitionFailure=null;LastRejectionReason=null;

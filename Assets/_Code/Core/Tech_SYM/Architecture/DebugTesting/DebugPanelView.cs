@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using Cooked.Level;
@@ -15,7 +15,7 @@ namespace Cooked.DebugTesting
         public TextMeshProUGUI SummaryLabel { get; private set; }
         private DebugPanelViewModel model;
         private TMP_FontAsset font;
-        private DebugLogFont logFont;
+        private DebugLogText logFont;
         private TextMeshProUGUI pointLabel, platformLabel, invincibleLabel, pauseLabel;
         private TextMeshProUGUI cameraLabel;
         private readonly List<UnityEngine.UI.Button> cameraButtons = new List<UnityEngine.UI.Button>();
@@ -23,7 +23,7 @@ namespace Cooked.DebugTesting
         private readonly List<UnityEngine.UI.Button> actorButtons = new List<UnityEngine.UI.Button>();
         private readonly List<Action> release = new List<Action>();
         private long renderedLogVersion = -1;
-        public void Bind(DebugPanelViewModel value, TMP_FontAsset fontAsset, DebugLogFont logFontAsset)
+        public void Bind(DebugPanelViewModel value, TMP_FontAsset fontAsset, DebugLogText logFontAsset)
         {
             if (model != null) throw new InvalidOperationException("디버그 View는 한 번만 연결합니다.");
             model = value ?? throw new ArgumentNullException(nameof(value));
@@ -70,7 +70,7 @@ namespace Cooked.DebugTesting
             text.textWrappingMode = TextWrappingModes.NoWrap;
             text.enableAutoSizing = true; text.fontSizeMin = 10; text.fontSizeMax = 15;
             text.overflowMode = TextOverflowModes.Ellipsis;
-            UnityEngine.Events.UnityAction click = () => command();
+            UnityEngine.Events.UnityAction click = () => model?.ExecutePointerCommand(command, UnityEngine.InputSystem.Mouse.current?.leftButton.wasReleasedThisFrame == true);
             button.onClick.AddListener(click);
             release.Add(() => { if (button != null) button.onClick.RemoveListener(click); });
             if (actorCommand) actorButtons.Add(button);
@@ -90,7 +90,7 @@ namespace Cooked.DebugTesting
             viewport.gameObject.AddComponent<UnityEngine.UI.Image>().color = new Color(0, 0, 0, .01f);
             viewport.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
             LogLabel = Text(viewport, "", 0, 0, 560, 242, 14);
-            LogLabel.font = logFont.Asset;
+            LogLabel.font = font;
             LogLabel.parseCtrlCharacters = false; // 파일 경로의 \\n 등을 실제 줄바꿈으로 해석하지 않습니다.
             LogLabel.rectTransform.anchorMax = new Vector2(1, 1);
             LogLabel.rectTransform.sizeDelta = new Vector2(-14, 242);

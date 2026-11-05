@@ -1,0 +1,182 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7dc6850f8fdf5edbbf7c816afa4ee029, type: 3}
+  m_Name: AudioCueCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Audio.AudioCueCatalog
+  gameplay:
+    footstepSeconds: 0.5
+    idleMinimum: 10
+    idleMaximum: 15
+    nearDistance: 1
+    farDistance: 20
+    falloff: 1
+  entries:
+  - purpose: 1
+    clip: {fileID: 8300000, guid: 4b2a74027c3c9fa4c96914fb8e66d86b, type: 3}
+    gain: 0.6
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 2
+    clip: {fileID: 8300000, guid: e0196dd95d0a4cf45a8e4687621154d0, type: 3}
+    gain: 0.6
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 3
+    clip: {fileID: 8300000, guid: 91d114c423b0c0046861c6ed76ed1504, type: 3}
+    gain: 0.6
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 6
+    clip: {fileID: 8300000, guid: f3146b85da7fd3142926ad5b967ac931, type: 3}
+    gain: 0.6
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 7
+    clip: {fileID: 8300000, guid: 4e6ee3636373aad48a3ba82076fcb65a, type: 3}
+    gain: 0.6
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 8
+    clip: {fileID: 8300000, guid: 4e7f29cf93e249445b048280e9a6cfdf, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 17
+    clip: {fileID: 8300000, guid: 173c29f736c6860459715de1b4869ac3, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 18
+    clip: {fileID: 8300000, guid: 1bd8090274a8d0b41b6249ddf0318e8e, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 19
+    clip: {fileID: 8300000, guid: 2afb25b78b956df418c59a14c53a071b, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 20
+    clip: {fileID: 8300000, guid: 126c09ed6b2e4dc4f8f8068e5867fe97, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 11
+    clip: {fileID: 8300000, guid: 737f4df0cd9c9994ea3cc9051d7fe98a, type: 3}
+    gain: 0.35
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 10
+    clip: {fileID: 8300000, guid: fe83ced4843f9dd459112de865f27cab, type: 3}
+    gain: 0.35
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 16
+    clip: {fileID: 8300000, guid: d4e0f33f03f11304db770285eedaf2af, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 14
+    clip: {fileID: 8300000, guid: 0e877ab5ba0e8d748ae78b50c53e7b1d, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 15
+    clip: {fileID: 8300000, guid: 73cfe6351f3c14a4db330fc1195572d5, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 12
+    clip: {fileID: 8300000, guid: a0b2795835cd395439cf49748d34e42b, type: 3}
+    gain: 0.35
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 21
+    clip: {fileID: 8300000, guid: d56f52482b5e445448bf5b7dae00d394, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 22
+    clip: {fileID: 8300000, guid: 90d6951b54ae1bc4ba3485e6ccc4eb24, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 9
+    clip: {fileID: 8300000, guid: a47ddc08c689af34e93aa7efc21df61e, type: 3}
+    gain: 0.35
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 13
+    clip: {fileID: 8300000, guid: 1851a0379c1ff4345826f034669dda38, type: 3}
+    gain: 0.35
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 23
+    clip: {fileID: 8300000, guid: e7fcf1b0072d31e44b563de7ca3a9cae, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 24
+    clip: {fileID: 8300000, guid: 22827506d689606419e62882bde06660, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 25
+    clip: {fileID: 8300000, guid: 347ae5f9331d68840adb2d60dc7501b5, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 26
+    clip: {fileID: 8300000, guid: ed5c497dd7a2d9a42b7180a5cc20fe9e, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 27
+    clip: {fileID: 8300000, guid: f02374f591bf6d442b9d793224b5b1ae, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 28
+    clip: {fileID: 8300000, guid: e3404f6d8d5a95e448c4ea52d7939f66, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  - purpose: 29
+    clip: {fileID: 8300000, guid: 6f4a1ef8c18993e4896da5cceffc0761, type: 3}
+    gain: 0.5
+    maxConcurrent: 2
+    minimumInterval: 0.08
+  stages:
+  - scene:
+      runtimePath: Assets/_Scenes/01_Stage_Tutorial.unity
+      scene: {fileID: 102900000, guid: 1385a53070aaddb489be73c8d3ab12a5, type: 3}
+    clip: {fileID: 8300000, guid: 91d114c423b0c0046861c6ed76ed1504, type: 3}
+    gain: 0.6
+    transitionSeconds: 0.3
+  - scene:
+      runtimePath: Assets/_Scenes/Stage_2.unity
+      scene: {fileID: 102900000, guid: 6ad8b3d67d8932b4992d19dc1e492de2, type: 3}
+    clip: {fileID: 8300000, guid: 91d114c423b0c0046861c6ed76ed1504, type: 3}
+    gain: 0.6
+    transitionSeconds: 0.3
+  - scene:
+      runtimePath: Assets/_Scenes/Stage_4.unity
+      scene: {fileID: 102900000, guid: 957a984981fa0354fa32981789a1ffe8, type: 3}
+    clip: {fileID: 8300000, guid: 91d114c423b0c0046861c6ed76ed1504, type: 3}
+    gain: 0.6
+    transitionSeconds: 0.3
+  - scene:
+      runtimePath: Assets/_Scenes/Stage_quarter.unity
+      scene: {fileID: 102900000, guid: 278c1200c035d204f96a1351b6ecfc32, type: 3}
+    clip: {fileID: 8300000, guid: 91d114c423b0c0046861c6ed76ed1504, type: 3}
+    gain: 0.6
+    transitionSeconds: 0.3

@@ -1,3 +1,7 @@
+## 2026-11-02 SYM 자산 분리·프로토타입 정리
+
+사용자 직접 지시 및 후속 정정으로 SYM 전용 미사용 프로토타입/테스트 자산을 제거했다. 본편 데이터는 Assets/_Data/Tech_SYM, 관리 씬3개는 Assets/_Scenes/Tech_SYM/Runtime으로 이관했다. 타 작업자 씬과 의존 자산은 원위치/원내용으로 보존하므로 공유 스킬·적·메모 모델7개와 일부 테스트 프리팹은 예외로 남는다. 루트 Tutorial/Stage 및 공용 _Prefabs는 변경하지 않는다. 아래의 이전 Prototype 실행 경로·보존 문구보다 이번 자산 분류가 우선한다. 현재 실행 등록은 ArchitectureInstallation과 IntegrationEntrySettings의 SceneAsset 참조를 따른다. 상세: Assets/_Docs/tracking/asset-organization-2026-11-02/자산 분류 목록.md.
+
 # 실행 및 검증 절차
 
 > 현행 시스템 권위는 V1.8 활성 본문 → 이전 사용자 기능 명세 → 기존 구현 설명 순서다. 지정 원본·예외는 [planning-index](planning-index.md)를 따른다. 구현과 검증 상태는 tracking/status.md 및 실제 증거로 확인하며 문서 개정만으로 완료를 선언하지 않는다.
@@ -21,7 +25,7 @@ Unity Hub에서 위 프로젝트를 지정한 버전으로 열고 import·컴파
 
 ## 사람이 확인할 플레이
 
-Assets/_Scenes/Tech_SYM/Architecture/01_Bootstrapper.unity에서 Play하여 Title의 실제 새 게임 명령→Opening→Playing→포포 대화→Ending→Title을 확인한다. Stage 직접 Play는 EditorStart 경로라 Opening을 생략하므로 두 진입을 혼동하지 않는다. 2026-10-15 직접 지시로 에이전트 Play/Player 금지와 과거 검증·QA 역할 고정을 철회했다. 승인된 기능의 실제 Editor Play를 공식 Unity 플러그인으로 수행하고 실행 근거대로 판정한다. API 위치 준비, 실제 InputSystem 합성 입력, 사람 직접 조작, 빌드·Player 실행, 팀 평가를 구분한다. 미저장 작업·파일 소유권·Git 승인 경계는 유지하며 실행하지 않은 항목을 통과로 기록하지 않는다.
+Assets/_Scenes/Tech_SYM/Runtime/01_Bootstrapper.unity에서 Play하여 Title의 실제 새 게임 명령→Opening→Playing→포포 대화→Ending→Title을 확인한다. Stage 직접 Play는 EditorStart 경로라 Opening을 생략하므로 두 진입을 혼동하지 않는다. 2026-10-15 직접 지시로 에이전트 Play/Player 금지와 과거 검증·QA 역할 고정을 철회했다. 승인된 기능의 실제 Editor Play를 공식 Unity 플러그인으로 수행하고 실행 근거대로 판정한다. API 위치 준비, 실제 InputSystem 합성 입력, 사람 직접 조작, 빌드·Player 실행, 팀 평가를 구분한다. 미저장 작업·파일 소유권·Git 승인 경계는 유지하며 실행하지 않은 항목을 통과로 기록하지 않는다.
 
 Architecture의 Bootstrapper·Title·Core·01_Stage_Prototype 네 경로에만 통합 Bootstrap 시작을 적용한다. 현재 설치와 진입 설정에 등록한 Stage는 01_Stage_Prototype 하나다. Stage2/3와 역사적 Stages/03_1_Stage는 보존 자산이며 통합 실행 대상에서 제외한다. 그 밖의 저장 기능 씬은 기존 직접 진입 정책을 유지한다. 대상을 바꿀 때 BootstrapEntryRoute·설치 SceneAsset 목록·직접 진입 설정·빌드 생성 경로와 Catalog를 함께 맞춘다.
 

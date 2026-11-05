@@ -73,13 +73,12 @@ namespace Cooked.Session
             if (bodyCollider != null && footAnchor != null)
                 footAnchor.position = bodyCollider.transform.TransformPoint(bodyCollider.center - Vector3.up * (bodyCollider.height * .5f));
         }
-
+        
         private void OnJumped()
         {
             walkDust.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             walking = false;
             UpdateFootPosition();
-            PlayBurst(jumpDust);
         }
 
         private void OnLanded()

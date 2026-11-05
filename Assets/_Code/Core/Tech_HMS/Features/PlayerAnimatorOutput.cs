@@ -147,7 +147,7 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
             AnimationClip placeholder = overrides[index].Key;
             if (Enum.TryParse(placeholder.name.Replace("__PC_", ""), out PlayerAnimationId animation))
             {
-                AnimationClip clip = animationSet.Resolve(animation, out _);
+                AnimationClip clip = animationSet.Resolve(animation, requests.UseJumpVariantB, out _);
                 overrides[index] = new KeyValuePair<AnimationClip, AnimationClip>(placeholder, clip != null ? clip : placeholder);
             }
         }
@@ -167,7 +167,24 @@ public sealed class PlayerAnimatorOutput : MonoBehaviour
     {
         activeRequestId = request.RequestId;
         savedNormalizedTime = resumeTime;
-        AnimationClip clip = animationSet.Resolve(request.Animation, out resolvedAnimation);
+        AnimationClip clip = animationSet.Resolve(request.Animation, requests.UseJumpVariantB, out resolvedAnimation);
+        if (runtimeController != null)
+        {
+            // 형식은 점프 시작에만 선택하며, 현재 Animator의 교체표만 갱신합니다.
+            var overrides = new List<KeyValuePair<AnimationClip, AnimationClip>>();
+            runtimeController.GetOverrides(overrides);
+            for (int i = 0; i < overrides.Count; i++)
+            {
+                var placeholder = overrides[i].Key;
+                if (Enum.TryParse(placeholder.name.Replace("__PC_", ""), out PlayerAnimationId id) &&
+                    (id == PlayerAnimationId.Jump || id == PlayerAnimationId.Fall))
+                {
+                    var selected = animationSet.Resolve(id, requests.UseJumpVariantB, out _);
+                    overrides[i] = new KeyValuePair<AnimationClip, AnimationClip>(placeholder, selected != null ? selected : placeholder);
+                }
+            }
+            runtimeController.ApplyOverrides(overrides);
+        }
         hasClip = clip != null;
         if (!hasClip && warnedMissing.Add(request.Animation))
         {

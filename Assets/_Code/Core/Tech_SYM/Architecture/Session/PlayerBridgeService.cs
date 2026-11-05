@@ -20,11 +20,14 @@ namespace Cooked.Session
             public int RequestedAmount { get; }
             public int AppliedAmount { get; }
             public bool IsFatal { get; }
+            public EnemyActor EnemySource { get; }
+            public bool KnockbackApplied { get; }
             internal AcceptedDamage(PlayerFacade actor, long generation, DamageFloorPlatform source,
-                int requestedAmount, int appliedAmount, bool isFatal)
+                int requestedAmount, int appliedAmount, bool isFatal, EnemyActor enemySource = null, bool knockbackApplied = false)
             {
                 Actor = actor; ActorGeneration = generation; Source = source;
                 RequestedAmount = requestedAmount; AppliedAmount = appliedAmount; IsFatal = isFatal;
+                EnemySource = enemySource; KnockbackApplied = knockbackApplied;
             }
         }
         // HMS의 실제 HP/피격 처리 완료 후 전달한다. 플랫폼은 애니메이션 선택을 알지 않는다.
@@ -493,6 +496,8 @@ namespace Cooked.Session
 
         /// <summary>적 등 기존 위치 기반 호출은 피해1을 유지합니다.</summary>
         public int Damage(Vector3 sourcePosition) => ApplyDamage(null, 1, sourcePosition);
+        public int DamageFromEnemy(EnemyActor source, Vector3 position)
+            => source != null && source.isActiveAndEnabled ? ApplyDamage(null, 1, position, source) : 0;
 
         /// <summary>디버그 명령도 선택한 실제 플랫폼의 Inspector 피해량과 구체 타입을 그대로 사용합니다.</summary>
         public int Damage(DamageFloorPlatform source)
@@ -509,7 +514,7 @@ namespace Cooked.Session
             return ApplyDamage(source, source.DamageAmount, sourcePosition);
         }
 
-        private int ApplyDamage(DamageFloorPlatform source, int amount, Vector3 sourcePosition)
+        private int ApplyDamage(DamageFloorPlatform source, int amount, Vector3 sourcePosition, EnemyActor enemySource = null)
         {
             ThrowIfDisposed();
             // 거절된 피해는 보정 이동·넉백·사망 관측·마지막 피해원을 변경하지 않는다.
@@ -531,7 +536,7 @@ namespace Cooked.Session
                 finally { if (mayDie && IsCurrentActor(expected, generation) && !expected.IsDead) ClearDeathObservation(); }
                 if (applied > 0 && IsCurrentActor(expected, generation))
                 {
-                    var result = new AcceptedDamage(expected, generation, source, amount, applied, expected.IsDead);
+                    var result = new AcceptedDamage(expected, generation, source, amount, applied, expected.IsDead, enemySource, velocity.sqrMagnitude > 0);
                     LastAcceptedDamage = result;
                     var errors = new List<Exception>();
                     SessionCleanup.Notify(errors, DamageAccepted, result);
@@ -924,24 +929,26 @@ namespace Cooked.Session
             Collider body = enemy.HurtCollider;
             // EnemyContactSensor is the body contact relay; its presence does NOT exclude a hurt body.
             if (body == null || candidate != body || !body.enabled || !body.gameObject.activeInHierarchy) return false;
-            Vector3 delta = body.bounds.center - origin;
-            if (delta.sqrMagnitude < .000001f) return false;
-            var hits = Physics.RaycastAll(origin, delta.normalized, delta.magnitude + .01f,
+            return IsTearPathClear(origin, body, actor.transform);
+        }
+        // 범위 후보는 HMS가 수집한다. 이 검사는 적을 가리는 실제 지형만 판정한다.
+        private static bool IsTearPathClear(Vector3 origin, Collider body, Transform actorRoot)
+        {
+            Vector3 delta = body.ClosestPoint(origin) - origin;
+            // 시전 중심이 적 몸체 안에 있으면 Raycast가 자기 몸체를 찾지 못해도 적중한다.
+            if (delta.sqrMagnitude < .000001f) return true;
+            var hits = Physics.RaycastAll(origin, delta.normalized, delta.magnitude,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide);
-            Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
             foreach (var hit in hits)
             {
                 var shape = hit.collider;
-                if (shape == null || IsSelfCollider(shape)) continue;
-                var hitEnemy = shape.GetComponentInParent<EnemyActor>();
-                if (hitEnemy != null)
-                {
-                    if (hitEnemy.HurtCollider != shape) continue; // actual sensors, not body relay
-                }
-                else if (shape.isTrigger) continue; // nonphysical interaction/detection volumes
-                return shape == body; // first physical body/wall/object must be the candidate body
+                if (shape == null || shape.transform.IsChildOf(actorRoot) ||
+                    (shape.attachedRigidbody != null && shape.attachedRigidbody.gameObject == actorRoot.gameObject)) continue;
+                // 다른 적의 몸체/자식 Collider는 차폐물이 아니다. 대상 수집과 접촉 피해는 유지한다.
+                if (shape.GetComponentInParent<EnemyActor>() != null || shape.isTrigger) continue;
+                return false;
             }
-            return false;
+            return true;
         }
         private void OnFragmentsChanged(int count)
         {

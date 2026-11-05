@@ -18,7 +18,7 @@ namespace Cooked.Cinematics
         private bool changingLifetime;
         public ICinematicService Service => service ?? throw new InvalidOperationException("Initialize CinematicHost first.");
 
-        public ICinematicService Initialize(IGameplayControlService control)
+        public ICinematicService Initialize(IGameplayControlService control, Action click = null)
         {
             if (changingLifetime || service != null) throw new InvalidOperationException("CinematicHost is already initialized or changing lifetime.");
             if (view == null || !view.IsConfigured) throw new InvalidOperationException("CinematicView serialized bindings are incomplete.");
@@ -27,7 +27,7 @@ namespace Cooked.Cinematics
             try
             {
                 service = new CinematicService(catalog, control);
-                viewModel = new CinematicViewModel(service);
+                viewModel = new CinematicViewModel(service, click);
                 view.Bind(viewModel);
                 return service;
             }

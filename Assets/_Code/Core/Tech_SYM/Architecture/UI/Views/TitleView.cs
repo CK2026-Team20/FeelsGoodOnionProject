@@ -23,8 +23,9 @@ namespace Cooked.UI
             if (quit != null) quit.onClick.RemoveListener(Quit);
             if (settings != null) settings.onClick.RemoveListener(Settings);
         }
-        private void Settings() => Model?.OpenOptions();
-        private void StartGame() => Model?.NewGame(); private void Quit() => Model?.Quit();
+        private static bool PointerClick => UnityEngine.InputSystem.Mouse.current?.leftButton.wasReleasedThisFrame == true;
+        private void Settings() => Model?.OpenOptions(PointerClick);
+        private void StartGame() => Model?.NewGame(PointerClick); private void Quit() => Model?.Quit(PointerClick);
         protected override void Refresh() { if (newGame != null) newGame.interactable = Model != null && Model.CanStart; if (quit != null) quit.interactable = Model != null && Model.CanStart; if (settings != null) settings.interactable = Model != null && Model.CanStart; }
     }
 }

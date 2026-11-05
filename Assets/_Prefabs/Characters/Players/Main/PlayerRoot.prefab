@@ -283,6 +283,8 @@ GameObject:
   - component: {fileID: 2680084503640675786}
   - component: {fileID: 5922411530676881932}
   - component: {fileID: 4266102778214499789}
+  - component: {fileID: 8333719999355707336}
+  - component: {fileID: 1794799594807117737}
   m_Layer: 0
   m_Name: ActorBody
   m_TagString: Untagged
@@ -391,6 +393,7 @@ MonoBehaviour:
   allowDepthMovement: 0
   allowHorizontalMovement: 1
   jumpHeight: 1
+  coyoteTime: 0.15
   gravity: 12
   fallGravityMultiplier: 1.5
   maximumFallSpeed: 35
@@ -592,6 +595,42 @@ MonoBehaviour:
   jumpDust: {fileID: 979391838420243701}
   spawnBurst: {fileID: 680979337806382960}
   minimumMoveSpeed: 0.1
+--- !u!114 &8333719999355707336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8755916027795869297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bede39d2fbf2ace41b35076ec8628a54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.HMS.AnimationIntegration.PlayerPeelPresentation
+  normalVisualAnchor: {fileID: 7391610665551101890}
+  shrinkVisual: {fileID: 919132149155446097, guid: 29bd7d48def8c1f488c9179681a4e233, type: 3}
+  restoreVisual: {fileID: 919132149155446097, guid: 1e9cc84bb7e4d6e4dadd3fd178da1dd0, type: 3}
+  shrinkController: {fileID: 9100000, guid: ff90d5f94f03a934385ea907daac7ebe, type: 2}
+  restoreController: {fileID: 9100000, guid: c0cc3c72d9e3bfd4b9afef52edde4dc4, type: 2}
+  restoreSeconds: 1
+  peelMaterial: {fileID: 2100000, guid: 180ba5dbfc7aac849b344dff6dc072cc, type: 2}
+  shellGroundingDelay: 0.35
+  shellGroundingDuration: 0.3
+--- !u!114 &1794799594807117737
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8755916027795869297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af967c4a39726784bb66181bae08bb99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerTearVfxPresenter
+  effectPrefab: {fileID: 9127580198904251783, guid: 98d6ab8b85d1f5f40b2b391a5b657e44, type: 3}
+  localOffset: {x: 0, y: 0, z: 0}
+  effectScale: 1
 --- !u!1001 &3805852158935204887
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -734,6 +773,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1041522786456574757}
     m_Modifications:
+    - target: {fileID: 2567748726900286636, guid: a156d175ea2820940a916fb1215c2435, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7411731127103132148, guid: a156d175ea2820940a916fb1215c2435, type: 3}
       propertyPath: m_Name
       value: SmallOnionVisual
@@ -788,6 +831,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7894830609934076750, guid: a156d175ea2820940a916fb1215c2435, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8117536759199683998, guid: a156d175ea2820940a916fb1215c2435, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -862,6 +909,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 783161081731976198, guid: eca34316b9290dd42983cd69541f90b9, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4966401226117850084, guid: eca34316b9290dd42983cd69541f90b9, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5913494197125723744, guid: eca34316b9290dd42983cd69541f90b9, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

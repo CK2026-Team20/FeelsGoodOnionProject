@@ -21,10 +21,13 @@ namespace Cooked.DebugTesting
         private AudioRuntimeHost audio;
         private GameObject ui;
         private bool disposed;
+        private DirectSceneTestRuntime runtime;
+        private bool restoring;
 
         public void Initialize(DirectSceneTestRuntime runtime)
         {
             if (Options != null) throw new InvalidOperationException("테스트 화면은 한 번만 조립합니다.");
+            this.runtime = runtime;
             try
             {
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Prefabs/UI/GlobalUiRoot.prefab");
@@ -59,20 +62,42 @@ namespace Cooked.DebugTesting
                     serialized.ApplyModifiedPropertiesWithoutUndo();
                 }
                 settings = new SettingsService(new TestSettingsStore(), audio.CreateService());
+                audio.BindFlow(runtime.Flow, runtime.Control);
+                SelectStageMusic();
+                runtime.ActorReady += BindActorAudio; runtime.ActorRemoving += UnbindActorAudio;
+                BindActorAudio();
                 Options = new OptionsService(runtime.Flow, runtime.Control, settings);
                 Cursor = new CursorPresentationBinding(runtime.Flow, Options);
-                model = new OptionsViewModel(Options, settings);
+                model = new OptionsViewModel(Options, settings, () => audio.Service.PlaySfx(AudioCueIds.Click));
                 view.Bind(model);
                 Panel = gameObject.AddComponent<DebugPanelSession>();
-                Panel.Bind(runtime, Cursor, runtime.Settings.LogCapacity);
+                Panel.Bind(runtime, Cursor, runtime.Settings.LogCapacity, () => audio.Service.PlaySfx(AudioCueIds.Click));
             }
             catch { Dispose(); throw; }
+        }
+        private void SelectStageMusic()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<AudioCueCatalog>(AudioCueCatalog.AssetPath);
+            var id = Cooked.Contracts.SceneCatalog.StageIdFromPath(runtime.gameObject.scene.path);
+            if (catalog.HasStage(id)) audio.Binding.SetStage(id);
+            else { Debug.LogWarning("직접 테스트 씬의 BGM 매핑이 없어 카탈로그 일반 음악을 사용합니다: " + id, this); audio.Service.PlayMusic(AudioCueIds.Stage1); }
+        }
+        private void BindActorAudio()
+        {
+            audio.BindGameplay(runtime.Player, runtime.gameObject.scene, runtime.Control, runtime.Flow);
+            SelectStageMusic();
+            if (restoring) { restoring = false; audio.Service.PlaySfx(AudioCueIds.Respawn); }
+        }
+        private void UnbindActorAudio()
+        {
+            restoring = true; audio.UnbindGameplay(); audio.Service.ClearWorldSfx();
         }
         private void OnApplicationFocus(bool focused) { if (focused) Cursor?.RestoreOnFocus(); }
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
+            if (runtime != null) { runtime.ActorReady -= BindActorAudio; runtime.ActorRemoving -= UnbindActorAudio; }
             var errors = new List<Exception>();
             void Release(Action action) { try { action(); } catch (Exception e) { errors.Add(e); } }
             Release(() => Panel?.Dispose());

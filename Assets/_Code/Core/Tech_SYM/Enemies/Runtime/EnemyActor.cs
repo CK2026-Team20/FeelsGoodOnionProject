@@ -1,6 +1,5 @@
 using System;
 using Cooked.Authoring;
-using Cooked.Integration;
 using UnityEngine;
 
 namespace FeelsGoodOnion.TechSYM.Enemies
@@ -8,8 +7,18 @@ namespace FeelsGoodOnion.TechSYM.Enemies
     [DisallowMultipleComponent, DefaultExecutionOrder(-200)]
     public sealed class EnemyActor : MonoBehaviour, IStunnable, IStunState
     {
-        [SerializeField, InspectorLabel("설정 자산"), Tooltip("적 종류와 이동 속도, 첫 대기 시간을 정할 자산을 연결하세요.")]
+        [SerializeField, InspectorLabel("설정 자산"), Tooltip("적 종류와 기본 이동 속도, 첫 대기 시간을 정할 자산을 연결하세요. 속도는 개체별로 변경할 수 있습니다.")]
         private EnemyDefinition definition;
+        [SerializeField, InspectorLabel("개체별 속도 사용"), Tooltip("켜면 이 적의 개체 이동 속도를 사용합니다. 끄면 설정 자산의 기본 속도를 사용합니다.")]
+        private bool useIndividualSpeed;
+        [SerializeField, Min(0f), InspectorLabel("개체 이동 속도"), Tooltip("이 적 몸체의 월드 이동 속도입니다(m/s). 개체별 속도 사용을 켰을 때 적용되며 0이면 순찰 이동을 멈춥니다. 루트 배율과 무관합니다.")]
+        private float individualSpeed = 2f;
+        public float MovementSpeed => useIndividualSpeed ? individualSpeed : definition != null ? definition.Speed : 0f;
+        private void ValidateMovementSpeed()
+        {
+            if (!float.IsFinite(MovementSpeed) || MovementSpeed < 0f)
+                throw new InvalidOperationException("적 개체 이동 속도는 0 이상의 유한값이어야 합니다.");
+        }
         [SerializeField, InspectorLabel("몸체"), Tooltip("고정 기능 루트 안에서 움직일 몸체 Trigger를 연결하세요. 같은 객체에 접촉 센서, 그 아래에 외형과 효과를 둡니다.")]
         private BoxCollider body;
         [SerializeField, InspectorLabel("순찰 시작점"), Tooltip("기능 루트 안, 몸체 밖의 고정 시작점을 연결하세요. 하늘색으로 표시하며 고정 적은 비워 둡니다.")]
@@ -30,6 +39,8 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         /// <summary>위치 작성 대상입니다. 고정 Root와 그 아래 Anchors는 이동하지 않습니다.</summary>
         public Transform MotionBody => body != null ? body.transform : null;
         public event Action<bool> StunStateChanged;
+        public event Action StunApplied;
+        public event Action Prepared;
 
         private void OnEnable()
         {
@@ -49,6 +60,7 @@ namespace FeelsGoodOnion.TechSYM.Enemies
         {
             if (definition == null || !definition.IsValid || body == null)
                 throw new InvalidOperationException("설정 자산과 실제 몸체, 유효한 설정이 필요합니다.");
+            ValidateMovementSpeed();
             if (body.transform == transform || !body.transform.IsChildOf(transform) || !body.isTrigger)
                 throw new InvalidOperationException("고정 기능 루트 안의 별도 몸체 Trigger가 필요합니다.");
             contactSensor = body.GetComponent<EnemyContactSensor>();
@@ -68,14 +80,14 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             }
             towardEnd = true;
         }
-        internal void RequirePatrolPoint(Transform point, string label)
+        private void RequirePatrolPoint(Transform point, string label)
         {
             if (!IsPatrolPoint(point))
                 throw new InvalidOperationException(label + ": 기능 루트 안, 몸체 밖의 유효한 고정 지점을 연결하세요.");
         }
         private bool IsPatrolPoint(Transform point) => point != null && body != null && point != transform
             && point.IsChildOf(transform) && !point.IsChildOf(body.transform)
-            && SceneComponentLookup.IsFixedPoint(this, point);
+            && point.gameObject.scene == gameObject.scene && Finite(point.position);
         private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
         private static bool PositiveScale(Vector3 value) => Finite(value) && value.x > 0 && value.y > 0 && value.z > 0;
         private void FixedUpdate() => Tick(Time.fixedDeltaTime);
@@ -89,9 +101,10 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             {
                 if (definition == null || !definition.IsValid)
                     throw new InvalidOperationException("실행할 적 설정 자산과 유효한 속도·대기 시간이 필요합니다.");
+                ValidateMovementSpeed();
                 float patrolSeconds = AdvanceState(definition.Kind, deltaSeconds, ref currentState, resumeState,
                     ref idleRemaining, ref stunMilliseconds);
-                if (patrolSeconds > 0) Motor.Move(definition.Speed * patrolSeconds, ref towardEnd);
+                if (patrolSeconds > 0) Motor.Move(MovementSpeed * patrolSeconds, ref towardEnd);
                 if (!IsStunned) Motor.ApplyPosition();
             }
             catch (InvalidOperationException exception) { FailSetup(exception); }
@@ -138,12 +151,14 @@ namespace FeelsGoodOnion.TechSYM.Enemies
             setupFailed = false;
             if (recoverFailedSetup) enabled = true;
             PublishStunStateChanged();
+            GameplayEvent.Publish(Prepared, this);
         }
         public int TryStun(int stunDur)
         {
             if (!isActiveAndEnabled || !prepared) return 0;
             int applied = AddStun(stunDur, ref currentState, ref resumeState, ref stunMilliseconds);
             PublishStunStateChanged();
+            if (applied > 0) GameplayEvent.Publish(StunApplied, this);
             return applied;
         }
         /// <summary>Actor가 소유한 실행 상태를 초기화하는 순수 규칙입니다. 공유 설정 자산을 변경하지 않습니다.</summary>

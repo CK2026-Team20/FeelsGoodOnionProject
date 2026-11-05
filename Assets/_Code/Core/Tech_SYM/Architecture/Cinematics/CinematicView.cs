@@ -10,7 +10,7 @@ namespace Cooked.Cinematics
     {
         [Tooltip("원화·문구·Skip 버튼을 포함한 화면의 CanvasGroup입니다. 연출 표시 중 아래 화면의 포인터 입력을 막습니다.")]
         [SerializeField, InspectorLabel("연출 화면")] private CanvasGroup visibility;
-        [Tooltip("원화 한 장이 들어갈 RectTransform 영역입니다. 하단 문구 영역을 제외하고 배치하면 원화 비율을 유지하며 이 영역 안에 맞춥니다.")]
+        [Tooltip("원화 한 장이 들어갈 RectTransform 영역입니다. 원본 PNG 크기를 유지하며 하단 문구는 별도 텍스트로 표시합니다.")]
         [SerializeField, InspectorLabel("원화 영역")] private RectTransform artworkViewport;
         [Tooltip("기존 원화 Texture2D 한 장을 표시할 RawImage입니다. 지정한 원화 영역 아래의 이미지 하나를 연결하세요.")]
         [SerializeField, InspectorLabel("원화 이미지")] private RawImage artwork;
@@ -74,7 +74,7 @@ namespace Cooked.Cinematics
         {
             if (!bound || !isActiveAndEnabled || viewModel == null || !viewModel.CanSkip || consumedFrame == Time.frameCount) return;
             consumedFrame = Time.frameCount;
-            viewModel.Skip();
+            viewModel.Skip(UnityEngine.InputSystem.Mouse.current?.leftButton.wasReleasedThisFrame == true);
         }
         private void Refresh()
         {
@@ -88,7 +88,7 @@ namespace Cooked.Cinematics
             artwork.raycastTarget = true;
             caption.text = viewModel.Caption;
             caption.raycastTarget = false;
-            FitArtwork();
+            ApplyNativeArtworkSize();
         }
         private void Clear()
         {
@@ -97,14 +97,12 @@ namespace Cooked.Cinematics
             if (artwork != null) { artwork.texture = null; artwork.enabled = false; }
             if (caption != null) caption.text = string.Empty;
         }
-        private void FitArtwork()
+        private void ApplyNativeArtworkSize()
         {
             var texture = artwork.texture;
             if (texture == null || texture.width <= 0 || texture.height <= 0) return;
-            Vector2 size = artworkViewport.rect.size;
-            float ratio = (float)texture.width / texture.height;
-            float width = Mathf.Min(size.x, size.y * ratio);
-            artwork.rectTransform.sizeDelta = new Vector2(width, width / ratio);
+            // 원화 원본 픽셀 크기를 유지한다. 화면 크기 보정은 상위 Canvas가 담당한다.
+            artwork.rectTransform.sizeDelta = new Vector2(texture.width, texture.height);
         }
     }
 }

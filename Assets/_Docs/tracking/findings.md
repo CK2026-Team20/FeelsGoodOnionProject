@@ -1,4 +1,31 @@
+## 2026-11-03 체크포인트 검사 진입 실패 수정
+
+스폰 검사가 비활성 Stage 지형을 검사해 LoadingGame에서 Title로 복구되는 초기화 순서 오류를 수정했다. 준비된 선택 Stage를 초기 저장/실제 스폰 전에 활성화한다. 실제 Editor Play의 최초 Playing 진입과 사망 API 후 Retry→Playing 복귀를 확인했다. 상세: checkpoint-spawn-2026-11-02/진입 실패 수정 2026-11-03.md. 전체 플레이/Player 빌드는 미검증이다.
+
+## 2026-11-02 후속: 전체 재생 이벤트 연결 완료
+
+사용자의 전체 효과음 연결 지시에 따라 PlayerAudioBinding/WorldAudioBinding을 AudioRuntimeHost가 소유하도록 구현했다. 플레이어·적·장치 성공 이벤트, UI 수락된 클릭, 환경 위치 Loop와 거리 감쇠 및 직접 씬 테스트 경로를 연결했다. 아래 과거 기록의 “나머지 SFX 발생 이벤트/3D 감쇠 미구현”은 이번 변경으로 대체한다. 실제 음원27종의 카탈로그 연결을 사용하며, 파일이 없는 Sfx_Pc_Hit_Monster / Sfx_Platform_Spawn / Sfx_Pc_Knockback도 호출은 준비했으나 현재 청취할 수 없다. 이3종은 음원과 종료 정책 확정이 남아 있다.
+
+검증은 Editor 자동 검사117건 통과(이벤트31/카탈로그34/튜토리얼43/눈물 차폐9)이며 실제 Play·Player·청취 검증은 이번 작업에서 수행하지 않았다. 상세 명세·코드 리뷰·검증 기록: Assets/_Docs/tracking/audio-event-binding-2026-11-02/. 미저장 Tutorial 씬은 보존했다.
+
+## 2026-11-02 후속: 사운드 카탈로그 27종 사전 연결
+
+사운드 시트 30행 중 로컬 음원 27종을 모두 AudioCueCatalog에 연결했다. 축소/확대는 Size_Down/Size_Up으로 분리하고 Sfx_Ability는 조각 4→5 준비음으로 수정했다. 이전 문서의 단일 폼 전환음·해금음 오연결은 해결됐다. 없는 3종과 나머지 SFX 발생 이벤트/3D 감쇠 구현은 구분한다. 상세: Assets/_Docs/tracking/audio-catalog-2026-11-02/.
+
+## 2026-11-02 사운드 명세 후속 정합화
+
+[상세 명세](../Audio/사운드%20리소스%20상세%20명세.md) 전체 30행을 저장했다. 이번 구현은 BGM/스폰/체크포인트에 한정. FormChange의 Sfx_Ability 연결과 조각 4→5·해금 효과음 조건, 발소리/기름/공간음/환경 Loop는 후속 대조 필요. 미정 Sfx_Pc_Hit_Monster/Sfx_Platform_Spawn/Sfx_Pc_Knockback의 종료·반복 조건은 팀 확정 필요. Bgm_Final_Stage는 시트 다운로드 FALSE이나 로컬 BGM_Final_Stage.mp3 연결은 존재한다. 사용자 최종 프리팹 배치·자연 입력·빌드/청취 검증은 남아 있다.
+
+## 2026-11-02 월드 프롬프트 수정 및 Tutorial 연결 조사
+
+월드 프롬프트 세 소비처 최신 폰트/F 한 줄 표시 반영, 12검사 통과. 이전 ui-native-size의 프롬프트 미수정 상태를 대체한다. Tutorial은 EntrySettings의 Prototype 등록 불일치, 구간 시작/끝/음악/첫 시작과 트리거 소속 누락, 이동 시간 0이 확인됨. 설정 변경 없이 [연결 가이드](world-prompt-tutorial-2026-11-02/Tutorial 연결 조사.md)에 기록. Play 미실행.
+
 # 열린 문제와 검증 제한
+
+## 2026-11-01 테스트 월드 프롬프트 한글·줄바꿈 — 원인 확정, 미수정
+
+InteractionPromptCanvas의 한 글자용85×80/글자68/일반 줄바꿈 영역에 실제 WorldPromptViewModel이 F와 상호작용 전체 문구를 전달한다. LiberationSans SDF와 fallback에 한글4자가 없으며 실제 TMP 재현에서 □4개, 총5줄을 확인했다. 현재 지침의 F 단일 키 표시와 문자열 계약이 다르다. 이번 사용자 범위는 이유 조사이므로 프롬프트 자체는 수정하지 않았다. [원인과 수정 방향](ui-native-size-2026-11-01/월드%20프롬프트%20원인%20조사.md).
+
 
 ## 2026-10-29 본편 Editor 네이티브 충돌 — 전환 순서 수정 후 비재현
 
@@ -81,4 +108,14 @@ StageManager 추가 후에도 기존 StageTriggerPoint6개 소속/Trigger 미설
 ## 2026-10-15 수동 변경 이후 재점검
 
 앞선 Stage 참조/Trigger/시작 음악/Memo 및 중복 Actor/Camera 항목은 현재 저장본에서 해소 확인. 현재 미해결은 구간 CameraZoneTrigger0개와 Quarter 복귀 기본 시점에 의한 최초/재시도 모드 불일치, Small 충돌체가 Normal보다 큰 설정이다. [재점검 근거와 영향](flow-diagnosis-2026-10-15/코드%20리뷰.md). 읽기 전용 검수이므로 제품 수정은 하지 않았다.
+
+
+
+## 2026-11-02 보호 원본의 반복 검색 후보
+- `Assets/_Code/Core/Tech_HMS/Occlusion/OcclusionFadeController.cs`의 `OnCamera`는 Game camera/Play 조건에서 0.5초마다 `playerRoot.GetComponentsInChildren(true, playerRenderers)`를 실행한다. 루트가 같아도 타이머 경과 시 다시 수집한다. Actor/폼 변경 시 renderer 목록 갱신으로 줄일 수 있는지 담당자 검토 대상이다. 현재 씬에서 실제 비용은 프로파일 미측정이며 HMS 원본 수정 금지에 따라 읽기 전용으로 보존했다.
+- RealToon `CustomShadowResolution.Update`의 매 프레임 `GetComponent<Light>` 및 해상도 재설정도 확인했다. 계층 전체 탐색은 아니며 외부 보호 코드이므로 유지했다.
+- 이번 SYM 프레임 루프 정리의 상세 범위와 유지한 게임 판정은 [코드 리뷰](update-loop-audit-2026-11-02/코드%20리뷰.md)에 기록했다.
+## 2026-11-02 전체 사운드 재생 연결 누락
+
+사운드 명세30종 조사: 정상 Bootstrapper 통합 경로에 BGM5/SFX7 호출 연결, 음원 보유·호출 미연결15종, 음원 미확보3종. 점프/착지/피해/사망 이벤트는 있지만 오디오 구독이 없다. 적 피격은 TryStun만 있고 매 적중 성공 통지/재생 연결이 없다. 출력은 전부2D이며 위치·거리·개별 환경 Loop 수명 계약이 빠져 있다. DirectSceneTestPresentation에는 BindFlow/SetStage/CoreWorldBinding 조립도 없어 직접 씬 테스트에서는 통합 경로 소리까지 빠진다. 이번 요청의 전수 조사 결과로 기록하며 전체 오디오 신규 구현은 미완료다. 상세 대조표·연결 가능한 메서드·후속 구현 순서는 [전수 코드 리뷰](audio-runtime-audit-2026-11-02/코드%20리뷰.md)를 참조한다. 적끼리 눈물을 차폐하던 판정은 별도로 수정하고 PhysX 검사9개를 통과했다.
 

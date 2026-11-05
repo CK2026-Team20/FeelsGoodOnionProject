@@ -38,6 +38,7 @@ namespace FeelsGoodOnion.TechSYM.Interaction
             hasRestScale = true;
             model = viewModel;
             memoImage.sprite = model.Image;
+            if (model.Image != null) memoImage.rectTransform.sizeDelta = model.Image.rect.size;
             model.StateChanged += Present;
             model.SuspensionChanged += SetSuspended;
             try { Present(model.State); SetSuspended(model.IsSuspended); }

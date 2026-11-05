@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Cooked.Authoring;
 using Cooked.Contracts;
@@ -27,13 +27,7 @@ namespace Cooked.Level
             private StageTrigger end;
             [SerializeField, InspectorLabel("시점"), Tooltip("측면은 X, 통로와 쿼터는 XZ 이동을 사용합니다.")]
             private CameraMovementMode view = CameraMovementMode.Side;
-            [SerializeField, InspectorLabel("음악"), Tooltip("구간 시작과 복귀에서 사용할 실제 음원을 연결하세요.")]
-            private AudioClip music;
-            [SerializeField, InspectorLabel("음량"), Tooltip("사용자 음악 음량에 곱할 기본 음량입니다."), Range(0,1)]
-            private float musicGain = .6f;
-            [SerializeField, InspectorLabel("음악 전환 시간"), Tooltip("음악 교차 전환 시간입니다(초). 0은 즉시 변경합니다."), Min(0)]
-            private float musicTransitionSeconds = .3f;
-            [SerializeField, InspectorLabel("진입 보정 시간"), Tooltip("Capsule 중심을 시작 위치에 맞추는 시간입니다(초)."), Min(.01f)]
+            [SerializeField, InspectorLabel("진입 보정 시간"), Tooltip("플레이어 발바닥을 스폰 지점에 맞추는 시간입니다(초)."), Min(.01f)]
             private float correctionSeconds = .6f;
             [SerializeField, InspectorLabel("시점 전환 시간"), Tooltip("다른 시점으로 전환할 시간입니다(초)."), Min(.01f)]
             private float transitionSeconds = .6f;
@@ -47,9 +41,6 @@ namespace Cooked.Level
             public StageTrigger Start => start;
             public StageTrigger End => end;
             public CameraMovementMode View => view;
-            public AudioClip Music => music;
-            public float MusicGain => musicGain;
-            public float MusicTransitionSeconds => musicTransitionSeconds;
             public float CorrectionSeconds => correctionSeconds;
             public float TransitionSeconds => transitionSeconds;
             public Rigidbody BlockerBody => blockerBody;
@@ -59,8 +50,8 @@ namespace Cooked.Level
             private bool hasBlockerInitial;
             internal void Validate(StageService owner)
             {
-                if (start == null || end == null || start == end || music == null)
-                    throw new InvalidOperationException("구간 '" + displayName + "'의 서로 다른 시작·끝과 음악을 연결하세요.");
+                if (start == null || end == null || start == end)
+                    throw new InvalidOperationException("구간 '" + displayName + "'의 서로 다른 시작·끝을 연결하세요.");
                 foreach (var point in new[]{start,end})
                 {
                     if (point.Owner != owner || point.Kind != StageTriggerKind.Checkpoint)
@@ -69,9 +60,6 @@ namespace Cooked.Level
                     _ = point.CheckpointPose;
                 }
                 CameraProfileValidation.Validate(view, start.transform.position);
-                if (!float.IsFinite(musicGain) || musicGain < 0 || musicGain > 1 ||
-                    !float.IsFinite(musicTransitionSeconds) || musicTransitionSeconds < 0)
-                    throw new InvalidOperationException("구간 음악 음량/전환 시간을 확인하세요: " + displayName);
                 foreach (float seconds in new[]{correctionSeconds,transitionSeconds,blockerSeconds})
                     if (!float.IsFinite(seconds) || seconds < .01f) throw new InvalidOperationException("구간 이동 시간은 0.01초 이상의 유한 값이어야 합니다.");
                 if ((blockerBody == null) != (blockerTarget == null)) throw new InvalidOperationException("차단 몸체와 목표를 함께 연결하세요.");
@@ -135,9 +123,9 @@ namespace Cooked.Level
         private CheckpointSnapshot? checkpoint;
         private StageTrigger lastCheckpoint;
         private Section currentSection, savedSection;
-        private long entryRevision;
         private Action<Section, bool> enterSection;
-        private Action<AudioClip,float,float> sectionMusic;
+        private bool reachedCheckpoint;
+        public bool HasReachedCheckpoint => reachedCheckpoint;
         public Section CurrentSection => currentSection ?? FirstSection;
         public Section RestoreSection => savedSection ?? FirstSection;
         public Section FirstSection
@@ -170,13 +158,31 @@ namespace Cooked.Level
             currentSection = RestoreSection;
             return checkpoint ?? new CheckpointSnapshot(FirstSection.Start.CheckpointPose.position, initial.Fragments, initial.UnlockedAbilities);
         }
-        public void BindSectionPresentation(Action<Section,bool> enter, Action<AudioClip,float,float> music)
-        { enterSection = enter ?? throw new ArgumentNullException(nameof(enter)); sectionMusic = music ?? throw new ArgumentNullException(nameof(music)); }
+        public void RegisterInitialCheckpoint(CheckpointSnapshot initial)
+        {
+            if (checkpoint.HasValue) return;
+            ValidateSections();
+            var section = FirstSection;
+            var point = section.Start;
+            checkpoint = new CheckpointSnapshot(point.CheckpointPose.position, initial.Fragments, initial.UnlockedAbilities);
+            activated.Add(point);
+            lastCheckpoint = point;
+            currentSection = savedSection = section;
+            // 초기 준비는 도달 이벤트/진입 보정/효과음을 발생시키지 않는다.
+        }
+        public bool ShouldPlayCheckpointSound(StageTrigger point)
+        {
+            if (point == null || point.Owner != this) return false;
+            if (point.CheckpointSound == CheckpointSoundPolicy.Silent) return false;
+            if (point.CheckpointSound == CheckpointSoundPolicy.Play) return true;
+            return Array.Exists(sections, section => section.Start == point);
+        }
+        public void BindSectionPresentation(Action<Section,bool> enter)
+        { enterSection = enter ?? throw new ArgumentNullException(nameof(enter)); }
         public void RestorePresentation()
         {
             var section = CurrentSection;
             enterSection(section, true);
-            sectionMusic(section.Music, section.MusicGain, section.MusicTransitionSeconds);
         }
         private bool AcceptCheckpoint(StageTrigger point, PlayerFacade candidate)
         {
@@ -186,7 +192,7 @@ namespace Cooked.Level
             CheckpointSnapshot next;
             try
             {
-                if (enterSection == null || sectionMusic == null) throw new InvalidOperationException("구간 표현/음악 연결이 준비되지 않았습니다.");
+                if (enterSection == null) throw new InvalidOperationException("구간 표현 연결이 준비되지 않았습니다.");
                 ValidateSections();
                 section = Array.Find(sections, s => s.Start == point || s.End == point);
                 if (section == null) throw new InvalidOperationException("구간에 배정되지 않은 체크포인트입니다.");
@@ -202,17 +208,13 @@ namespace Cooked.Level
             bool start = section.Start == point;
             // No callbacks before the ledger, three-value payload and execution context are committed together.
             rejectedContacts.Remove(point);
-            activated.Add(point); checkpoint = next; lastCheckpoint = point;
+            activated.Add(point); checkpoint = next; lastCheckpoint = point; reachedCheckpoint = true;
             if (start) currentSection = section;
             savedSection = CurrentSection;
-            long revision = start ? ++entryRevision : entryRevision;
             if (start)
             {
                 try { enterSection?.Invoke(section, false); }
                 catch (Exception error) { Debug.LogException(new InvalidOperationException("수락한 구간의 표현 실패. 저장/소비 이력은 유지됩니다.", error), this); }
-                if (revision == entryRevision && bound)
-                    try { sectionMusic?.Invoke(section.Music,section.MusicGain,section.MusicTransitionSeconds); }
-                    catch (Exception error) { Debug.LogException(error,this); }
             }
             var observers = CheckpointCaptured;
             if (observers != null)
@@ -228,8 +230,8 @@ namespace Cooked.Level
             {
                 var capsule=candidate.GetComponent<CapsuleCollider>();
                 if (capsule == null) throw new InvalidOperationException("현재 Capsule이 없습니다.");
-                var next=new CheckpointSnapshot(capsule.transform.TransformPoint(capsule.center),bridge.Snapshot.Fragments,boundRound.UnlockedAbilities);
-                checkpoint=next; savedSection=CurrentSection;
+                var next=new CheckpointSnapshot(SpawnPlacement.Feet(capsule),bridge.Snapshot.Fragments,boundRound.UnlockedAbilities);
+                checkpoint=next; savedSection=CurrentSection; reachedCheckpoint=true;
                 return true;
             }
             catch (Exception error) { Debug.LogException(error,this); return false; }
@@ -502,7 +504,7 @@ namespace Cooked.Level
         }
         public void Dispose()
         {
-            bound = false; bindingRevision++; entryRevision++;
+            bound = false; bindingRevision++;
             chaseAccepted = false;
             var errors = new List<Exception>();
             SessionCleanup.Notify(errors, Releasing);
@@ -511,7 +513,7 @@ namespace Cooked.Level
             foreach (var floor in sceneFloors) if (floor != null) SessionCleanup.Attempt(errors, floor.UnbindPlayer);
             actor = null; bridge = null; control = null; dialogue = null; dialogueTable = null; flow = null;
             boundRound = null; isCurrentStage = null;
-            tryStartSafeDialogue = null; tryStartFinalDialogue = null; enterSection = null; sectionMusic = null; unlockAbility = null; fallRequest = null; stopChase = null;
+            tryStartSafeDialogue = null; tryStartFinalDialogue = null; enterSection = null; unlockAbility = null; fallRequest = null; stopChase = null;
             ChaseStarted = null;
             SessionCleanup.ThrowIfAny(errors, "Stage connection release failed.");
         }

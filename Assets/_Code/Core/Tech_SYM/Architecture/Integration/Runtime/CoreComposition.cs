@@ -40,13 +40,13 @@ namespace Cooked.Integration
                 SceneComponentLookup.RequireSameScene(this, reference, "Core 연결");
             try
             {
-                var cinematics = cinematic.Initialize(app.Get<IGameplayControlService>());
+                var cinematics = cinematic.Initialize(app.Get<IGameplayControlService>(), () => app.Get<IAudioService>().PlaySfx(AudioCueIds.Click));
                 runtime = new GameSessionRuntime(app, catalog, actor, dialogueView, cinematics, entries);
                 ui.Bind(runtime, cinematic.transform);
                 world = new CoreWorldBinding(runtime, cameraService, ui, app.Get<IGameFlowService>(),
-                    app.Get<IGameplayControlService>(), app.Get<IDialogueTableService>(), app.Get<IAudioService>(), audioFlow,
-                    app.Get<ISceneService>(), output, brain);
-                runtime.BindStageLifecycle(world.PrepareStage);
+                    app.Get<IGameplayControlService>(), app.Get<IDialogueTableService>(), audioFlow,
+                    app.Get<ISceneService>(), output, brain, app.Get<AudioRuntimeHost>());
+                runtime.BindStageLifecycle(world.PrepareStage, world.ActivateForSpawn);
                 runtime.BindActorViewReadiness(() => cameraService.IsViewReady);
                 return runtime;
             }

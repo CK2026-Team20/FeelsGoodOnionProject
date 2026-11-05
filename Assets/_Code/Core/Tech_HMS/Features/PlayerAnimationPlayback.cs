@@ -44,7 +44,8 @@ public sealed class PlayerAnimationPlayback
         }
 
         if (state == PlayerState.Dead || state == PlayerState.Knockback ||
-            (activeOneShot == PlayerAnimationId.Land && state != PlayerState.Idle && state != PlayerState.Move))
+            (activeOneShot == PlayerAnimationId.Land && state != PlayerState.Idle && state != PlayerState.Move) ||
+            (activeOneShot == PlayerAnimationId.JumpReady && state != PlayerState.Jump))
         {
             activeOneShot = null;
         }
@@ -56,7 +57,7 @@ public sealed class PlayerAnimationPlayback
     }
 
     /// <summary>일회성 표현을 요청합니다. 수락된 요청은 완료 또는 중단까지 유지됩니다.</summary>
-    /// <param name="animation">Interact, Tear, Shrink, RestoreForm 또는 Land</param>
+    /// <param name="animation">장치 상호작용, 눈물, 형태 전환, 점프 준비 또는 착지</param>
     /// <returns><c>true</c>: 새 재생 요청 수락<br/><c>false</c>: 현재 상태 또는 우선순위에 의해 거절</returns>
     /// <exception cref="ArgumentOutOfRangeException">일회성 표현이 아닌 종류를 전달한 경우</exception>
     /// <remarks>동일 우선순위는 마지막 요청으로 다시 시작합니다. 중단·거절된 요청은 나중에 재생하지 않으며 이동·점프 실행 제한과는 별개입니다.</remarks>
@@ -65,6 +66,7 @@ public sealed class PlayerAnimationPlayback
         int priority = GetPriority(animation);
         if (currentState == PlayerState.Dead || currentState == PlayerState.Knockback) return false;
         if (animation == PlayerAnimationId.Land && currentState != PlayerState.Idle && currentState != PlayerState.Move) return false;
+        if (animation == PlayerAnimationId.JumpReady && currentState != PlayerState.Jump) return false;
         if (activeOneShot.HasValue && GetPriority(activeOneShot.Value) > priority) return false;
 
         activeOneShot = animation;
@@ -140,10 +142,13 @@ public sealed class PlayerAnimationPlayback
     {
         switch (animation)
         {
+            case PlayerAnimationId.JumpReady:
             case PlayerAnimationId.Land: return 1;
             case PlayerAnimationId.Shrink:
             case PlayerAnimationId.RestoreForm: return 2;
             case PlayerAnimationId.Tear: return 3;
+            case PlayerAnimationId.Push:
+            case PlayerAnimationId.Pull:
             case PlayerAnimationId.Interact: return 4;
             default: throw new ArgumentOutOfRangeException(nameof(animation));
         }

@@ -33,7 +33,7 @@ namespace Cooked.Integration.Editor
             var scenes = new[] { catalog.BootstrapPath, catalog.TitlePath, catalog.CorePath }.Concat(catalog.StagePaths).ToArray();
             foreach (var path in scenes)
             {
-                if (!path.StartsWith("Assets/_Scenes/Tech_SYM/Architecture/", StringComparison.Ordinal) ||
+                if (!path.StartsWith("Assets/_Scenes/", StringComparison.Ordinal) ||
                     AssetDatabase.LoadAssetAtPath<SceneAsset>(path) == null)
                     throw new InvalidOperationException("Missing or unapproved scene: " + path);
             }

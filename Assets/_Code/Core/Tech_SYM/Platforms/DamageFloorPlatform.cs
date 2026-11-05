@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Cooked.Authoring;
 using Cooked.Session;
@@ -17,6 +17,8 @@ namespace FeelsGoodOnion.TechSYM.Platforms
 
         [SerializeField, InspectorLabel("피해 감지 영역"), Tooltip("루트 또는 자식의 피해 Trigger들을 연결하세요. 메시 Trigger는 Convex여야 하며 지지면은 제외합니다. 비워 두면 피해를 감지하지 않습니다. 선택 시 주황색은 Box 영역, 자홍색은 Convex 입력 메시 참고선입니다.")]
         private Collider[] damageTriggers = Array.Empty<Collider>();
+        public Collider PrimaryDamageTrigger
+        { get { if (damageTriggers != null) foreach (var shape in damageTriggers) if (shape != null) return shape; return null; } }
         private readonly List<DamageTriggerRelay> subscribedRelays = new List<DamageTriggerRelay>();
         private PlayerBridgeService bridge;
         private PlayerFacade actor;

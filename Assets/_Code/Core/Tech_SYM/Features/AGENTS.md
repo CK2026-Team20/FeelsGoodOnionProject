@@ -1,3 +1,7 @@
+## 2026-11-03 붕괴 완료·실패 처리 정정
+
+정상 붕괴 클립 완료 시 Visual 자식만 SetActive(false), Root는 유지한다. 실패는 Failed/원인 Error 및 외형 유지, 지지는 복구하지 않는다. 중단은 Interrupted다. Retry는 비활성 Stage에서도 외형 활성/초기 자세/지지면을 복원하고 OnEnable에서 지연된 Animator Ready 초기화를 완료한다. 아래 과거 누락 클립 숨김 정책보다 우선한다. 상세: Assets/_Docs/tracking/collapse-lifecycle-2026-11-03/.
+
 # 붕괴·수집 기능
 
 현재 시스템 기준은 Assets/_Docs/planning-index.md의 V1.8이며 이전 사용자 기능 명세와 기존 구현보다 우선한다. 구현·검증 완료는 tracking/status.md와 실제 증거로 확인한다. 보호 원본·메타·아트의 쓰기 권한은 최신 파일별 허용 범위로 한정한다.

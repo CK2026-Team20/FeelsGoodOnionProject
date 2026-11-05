@@ -1,3 +1,7 @@
+## 2026-11-02 직접 지시: 적의 눈물 조각·레벨 계층 탐색 금지
+
+적은 순찰 앵커 참조로 이동하고 플레이어 접촉 및 눈물 스킬 피격을 처리한다. EnemyActor/EnemyMotor의 준비·Retry·Gizmo·물리 갱신 경로에서 눈물 조각 또는 레벨 전체를 탐색하지 않는다. SceneComponentLookup.IsFixedPoint/RequireFixedPoint로 간접 탐색하는 것도 금지한다. 순찰 배치 확인은 연결된 참조와 적 내부 관계만 확인하고, Move에서 배치 계층 검증을 반복하지 않는다. 이 지시를 방어적 무결성 검사라는 이유로 되돌리지 않는다.
+
 # 일반 적
 
 2026-10-29 승인된 T2 기준: EnemyActor가 Idle/Patrol/Stunned 상태·기절 시간·현재 목표 끝점을 소유한다. EnemyMotor는 고정 Start/End 앵커의 월드 위치를 기준으로 Body Transform의 위치만 변경하고, EnemyContactSensor는 실제 Trigger 접촉 피해를 담당한다. Root와 앵커는 이동시키지 않는다. Stationary 또는 XYZ 대각선을 포함한 Patrol 배치를 지원한다. 삭제한 EnemyStateMachine/EnemyCombat을 다시 붙이거나 생성하지 않으며 적 HP·처치·Dead·Chase/Return·사망 기름·몸체 bob을 추가하지 않는다.
@@ -13,3 +17,6 @@ ResetForRetry의 준비 오류는 해당 적이 원인 로그를 남기고 비�
 Stage 초기 재준비는 최초 기록한 Body localPosition을 복원하고 첫 목표 End·초기 대기·기절·접촉 상태를 재준비한다. Root/Body의 회전·배율을 덮어쓰지 않는다. 비활성 Stage는 target·자기 작업을 해제한다. Hurt Collider는 실제 Body이며 Sensor 후보라는 이유로 눈물 차폐 검사에서 무조건 제외하지 않는다. 수평·수직·XYZ 순찰, 회전·비균등 배율에서의 Body 월드 속도, 선분 밖 초기 배치·동일 앵커, 기절/재기절·지속 접촉·Options·Retry/비활성 Stage를 기능 단위로 검증한다.
 
 Inspector 이름·Tooltip은 연결 대상/조절 효과를 짧은 한국어로 설명한다. 씬 월드 Root를 Manager의 자식으로 묶지 않는다. 에이전트 Play 금지는 철회됐으며 공식 Unity 도구를 사용한다. prefab 삭제/재생성/Apply·자동 Builder·리소스 제작은 해당 작업의 명시 허용 범위를 따른다. 실제 컴파일/격리 엔진/API 검사와 사람의 자연 충돌·VFX·플레이를 구분해 보고한다.
+## 2026-11-02 후속 직접 지시: 적끼리 눈물 차폐 금지
+
+눈물 범위 후보는 실제 HurtCollider로 수집하되, 차폐 Raycast에서는 모든 EnemyActor 소속 Collider를 제외한다. 적끼리 겹치거나 앞뒤로 서 있어도 서로의 적중을 막지 않는다. 벽/지형 차폐와 적 접촉 피해는 유지한다. 기존 Hurt Body 차폐 관련 과거 문구보다 이 규칙이 우선한다. 사운드 전수 조사 결과는 Assets/_Docs/tracking/audio-runtime-audit-2026-11-02/에 있으며 적 피격음을 포함한 미연결 효과음을 완료로 취급하지 않는다.
