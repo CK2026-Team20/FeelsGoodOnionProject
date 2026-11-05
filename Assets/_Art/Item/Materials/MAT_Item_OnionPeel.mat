@@ -193,7 +193,7 @@ Material:
     - _Compa: 4
     - _ComputeMeshIndex: 0
     - _Cull: 2
-    - _Culling: 2
+    - _Culling: 0
     - _CustomLightDirectionFollowObjectRotation: 0
     - _CustomLightDirectionIntensity: 0
     - _Cutoff: 0.5
@@ -209,7 +209,7 @@ Material:
     - _DynamicNoisyOutline: 0
     - _EnvironmentReflections: 1
     - _EnvironmentalLightingIntensity: 0.25
-    - _FarDistanceMaxWidth: 0.5
+    - _FarDistanceMaxWidth: 0.8
     - _FresnelEdge: 0
     - _Frost: 0
     - _GIFlatShade: 1
@@ -401,7 +401,7 @@ Material:
     - _ObjectForward: {r: 0, g: 0, b: 0, a: 0}
     - _ObjectRight: {r: 0, g: 0, b: 0, a: 0}
     - _OutResi: {r: 1, g: 1, b: 1, a: 1}
-    - _OutlineColor: {r: 0.122641504, g: 0.081568174, b: 0.081568174, a: 1}
+    - _OutlineColor: {r: 0.11320752, g: 0.050869197, b: 0.049661785, a: 1}
     - _OutlineOffset: {r: 0, g: 0, b: 0, a: 0}
     - _OverallShadowColor: {r: 0.6981132, g: 0.6157885, b: 0.6157885, a: 1}
     - _PTCol: {r: 0, g: 0, b: 0, a: 1}
