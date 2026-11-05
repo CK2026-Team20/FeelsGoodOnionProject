@@ -284,6 +284,7 @@ GameObject:
   - component: {fileID: 5922411530676881932}
   - component: {fileID: 4266102778214499789}
   - component: {fileID: 8333719999355707336}
+  - component: {fileID: 1794799594807117737}
   m_Layer: 0
   m_Name: ActorBody
   m_TagString: Untagged
@@ -615,6 +616,21 @@ MonoBehaviour:
   peelMaterial: {fileID: 2100000, guid: 180ba5dbfc7aac849b344dff6dc072cc, type: 2}
   shellGroundingDelay: 0.35
   shellGroundingDuration: 0.3
+--- !u!114 &1794799594807117737
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8755916027795869297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af967c4a39726784bb66181bae08bb99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerTearVfxPresenter
+  effectPrefab: {fileID: 9127580198904251783, guid: 98d6ab8b85d1f5f40b2b391a5b657e44, type: 3}
+  localOffset: {x: 0, y: 0, z: 0}
+  effectScale: 1
 --- !u!1001 &3805852158935204887
 PrefabInstance:
   m_ObjectHideFlags: 0
