@@ -32,7 +32,7 @@ namespace Cooked.Level
         private StageService stage;
         [SerializeField, InspectorLabel("요청 종류"), Tooltip("접촉으로 요청할 기능 또는 해금할 능력을 선택하세요.")]
         private StageTriggerKind kind = StageTriggerKind.Checkpoint;
-        [SerializeField, InspectorLabel("대화 선택"), Tooltip("원본 JSON TextAsset를 연결하고 그 표의 Code를 선택하세요. 해금 안내는 비워도 됩니다.")]
+        [SerializeField, InspectorLabel("대화 선택"), Tooltip("Bootstrapper 대화 원본의 Dialogue_Code를 선택하세요. JSON 변경 시 목록이 갱신되며 해금 안내는 비워도 됩니다.")]
         private DialogueSelection dialogue = new DialogueSelection();
         [SerializeField, InspectorLabel("독립 플레이어 담당"), Tooltip("독립 씬 데드존의 SessionActorHost를 연결하세요. 현재 Player와 소유 Shell은 실행 중 주입받습니다.")]
         private SessionActorHost independentHost;

@@ -266,7 +266,6 @@ namespace Cooked.Level
         private StageTrigger finalTrigger;
         private string finalCode;
         private DialogueSelection finalSelection;
-        private TextAsset finalTable;
         private IDialogueTableService finalTableService;
         private DialogueService finalConversation;
         private GameSessionService boundRound, finalRound;
@@ -364,7 +363,7 @@ namespace Cooked.Level
                         boundRound == null || !boundRound.IsActive || isCurrentStage == null || !isCurrentStage() ||
                         !TryResolveDialogue(trigger, false, out var exitCode)) return false;
                     finalActor = candidate; finalActorGeneration = bridge.ActorGeneration; finalTrigger = trigger; finalCode = exitCode;
-                    finalSelection = trigger.Dialogue; finalTable = finalSelection.Table; finalTableService = dialogueTable;
+                    finalSelection = trigger.Dialogue; finalTableService = dialogueTable;
                     finalConversation = dialogue; finalRound = boundRound; finalRoundId = boundRound.RoundId; finalBindingRevision = bindingRevision;
                     finalPending = true; return true; // Resolve after all physics contacts and chase capture for this frame.
                 default: return false;
@@ -373,7 +372,7 @@ namespace Cooked.Level
         private bool TryResolveDialogue(StageTrigger trigger, bool optional, out string code)
         {
             code = null;
-            if (trigger.Dialogue != null && trigger.Dialogue.Table != null)
+            if (trigger.Dialogue != null && !string.IsNullOrEmpty(trigger.Dialogue.Code))
             {
                 if (dialogueTable == null) return false;
                 code = dialogueTable.RequireSelection(trigger.Dialogue);
@@ -437,8 +436,8 @@ namespace Cooked.Level
                 finalActor == null || finalActor != actor || !finalActor.isActiveAndEnabled || finalActor.IsDead || bridge == null ||
                 !bridge.IsCurrentActor(finalActor, finalActorGeneration) || finalTrigger == null || !finalTrigger.isActiveAndEnabled ||
                 finalTrigger.Kind != StageTriggerKind.Escape || finalTrigger.Owner != this || finalTrigger.gameObject.scene != gameObject.scene ||
-                finalSelection == null || !ReferenceEquals(finalTrigger.Dialogue, finalSelection) || finalTable == null ||
-                !ReferenceEquals(finalSelection.Table, finalTable) || !string.Equals(finalSelection.Code, finalCode, StringComparison.Ordinal) ||
+                finalSelection == null || !ReferenceEquals(finalTrigger.Dialogue, finalSelection) ||
+                !string.Equals(finalSelection.Code, finalCode, StringComparison.Ordinal) ||
                 finalConversation == null || !ReferenceEquals(dialogue, finalConversation) || !ReferenceEquals(dialogueTable, finalTableService) ||
                 flow == null || flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy ||
                 (published && finalConversation.SessionId != finalDialogueSession)) return false;
@@ -467,7 +466,7 @@ namespace Cooked.Level
             long sessionId = finalDialogueSession;
             if (conversation != null) conversation.Ended -= OnFinalDialogueEnded;
             finalPending = finalStarted = endingPending = false;
-            finalActor = null; finalTrigger = null; finalCode = null; finalSelection = null; finalTable = null;
+            finalActor = null; finalTrigger = null; finalCode = null; finalSelection = null;
             finalTableService = null; finalConversation = null; finalRound = null;
             finalDialogueSession = finalActorGeneration = finalRoundId = finalBindingRevision = 0;
             // 다른 시작이 이미 게시한 새 회차를 취소하지 않는다. 장부는 DialogueService 소유다.

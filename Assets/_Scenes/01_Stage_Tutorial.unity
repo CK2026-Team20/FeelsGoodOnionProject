@@ -6989,12 +6989,12 @@ PrefabInstance:
       objectReference: {fileID: 210126996}
     - target: {fileID: 5084847184656688347, guid: 7fd55339cca733647913482d9b8ca274, type: 3}
       propertyPath: dialogue.code
-      value: EXPLORE_OVEN_01
+      value: STORY_START_01
       objectReference: {fileID: 0}
     - target: {fileID: 5084847184656688347, guid: 7fd55339cca733647913482d9b8ca274, type: 3}
       propertyPath: dialogue.table
       value: 
-      objectReference: {fileID: 4900000, guid: d2124d2b7929444891b8336ed3fd37d6, type: 3}
+      objectReference: {fileID: 4900000, guid: dce09d75f5122524aade696bc8fe06af, type: 3}
     - target: {fileID: 6194543839690079501, guid: 7fd55339cca733647913482d9b8ca274, type: 3}
       propertyPath: stage
       value: 
@@ -10010,7 +10010,7 @@ PrefabInstance:
       objectReference: {fileID: 210126996}
     - target: {fileID: 5084847184656688347, guid: 7fd55339cca733647913482d9b8ca274, type: 3}
       propertyPath: dialogue.code
-      value: POPO
+      value: ENDING_POPO_01
       objectReference: {fileID: 0}
     - target: {fileID: 5084847184656688347, guid: 7fd55339cca733647913482d9b8ca274, type: 3}
       propertyPath: dialogue.table

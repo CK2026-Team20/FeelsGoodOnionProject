@@ -1397,6 +1397,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2109316082}
     - target: {fileID: 1522029497213122991, guid: aca5467baa29a8540a5e43a3e6dc0f72, type: 3}
+      propertyPath: dialogueTable
+      value: 
+      objectReference: {fileID: 4900000, guid: dce09d75f5122524aade696bc8fe06af, type: 3}
+    - target: {fileID: 1522029497213122991, guid: aca5467baa29a8540a5e43a3e6dc0f72, type: 3}
       propertyPath: presentationCamera
       value: 
       objectReference: {fileID: 1547377900}
