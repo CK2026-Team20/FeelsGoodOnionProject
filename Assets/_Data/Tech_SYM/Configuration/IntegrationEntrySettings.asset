@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Cooked.Integration.IntegrationEntrySettings
   entries:
   - stageScene:
-      runtimePath: Assets/_Scenes/01_Stage_Tutorial.unity
+      runtimePath: Assets/_Scenes/Tech_SYM/Runtime/03_Stage01_Tutorial.unity
       scene: {fileID: 102900000, guid: 1385a53070aaddb489be73c8d3ab12a5, type: 3}
     fragments: 0
     abilities: 
