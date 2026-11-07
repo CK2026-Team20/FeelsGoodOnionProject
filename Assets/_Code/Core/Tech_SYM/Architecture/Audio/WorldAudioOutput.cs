@@ -1,104 +1,124 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Cooked.Audio
 {
-    /// <summary>중앙 Host가 소유하는 위치 기반 출력. 반복음은 핸들로 반환하고 완료된 단발 출력은 재사용한다.</summary>
-    public sealed class WorldAudioOutput : IDisposable
+    /// <summary>중앙 Host의 2D/위치 SFX 풀. 음악 채널을 빌리거나 재생 중인 슬롯을 선점하지 않는다.</summary>
+    public sealed class WorldAudioOutput : ISfxOutput
     {
-        private sealed class Voice
+        private sealed class Slot
         {
             public AudioSource Source;
-            public Transform Follow;
-            public Vector3 Position, LocalOffset;
-            public float Gain;
-            public int Handle;
+            public int Token;
             public string CueId;
             public bool Paused;
         }
         private readonly Transform root;
-        private readonly GameplayAudioSettings settings;
         private readonly Dictionary<string, AudioClip> clips;
-        private readonly List<Voice> voices = new List<Voice>();
+        private readonly List<Slot> slots = new List<Slot>();
+        private readonly Dictionary<int, Slot> activeSlots = new Dictionary<int, Slot>();
         private int sequence;
-        private Transform listener;
-        private float volume = 1;
-        private bool paused, disposed;
+        private bool disposed;
+        public GameplayAudioSettings Gameplay { get; }
+        public int ActiveSourceCount { get { int n = 0; foreach (var s in slots) if (s.Token != 0 && s.Source != null) n++; return n; } }
+        public int PooledSourceCount { get { int n = 0; foreach (var s in slots) if (s.Token == 0 && s.Source != null) n++; return n; } }
+        public int CreatedSourceCount => ActiveSourceCount + PooledSourceCount;
+
         public WorldAudioOutput(Transform root, AudioCueCatalog catalog)
-        { this.root = root; clips = catalog.CreateClipMap(); settings = catalog.Gameplay; settings.Validate(); }
-        public void SetListener(Transform value) { listener = value; Refresh(); }
-        public int Play(AudioCue cue, Vector3 position, Transform follow = null)
         {
-            if (disposed) throw new ObjectDisposedException(nameof(WorldAudioOutput));
-            Voice voice = voices.Find(v => v.Handle == 0);
-            if (voice == null)
+            if (root == null) throw new ArgumentNullException(nameof(root));
+            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
+            this.root = root;
+            clips = catalog.CreateClipMap(); Gameplay = catalog.Gameplay; Gameplay.Validate();
+        }
+        public float ClipLength(string cueId)
+        {
+            RequireAlive();
+            if (!clips.TryGetValue(cueId, out var clip) || clip == null || !float.IsFinite(clip.length) || clip.length <= 0)
+                throw new InvalidOperationException("재생 가능한 효과음 파일이 없습니다: " + cueId);
+            return clip.length;
+        }
+        public int Start(AudioCue cue, bool spatial, Vector3 position, float gain, float seekSeconds, bool paused)
+        {
+            RequireAlive();
+            if (cue == null || cue.Kind == AudioCueKind.Music) throw new ArgumentException("효과음 설정이 필요합니다.", nameof(cue));
+            float length = ClipLength(cue.Id);
+            AudioCue.ValidateUnit(gain, nameof(gain));
+            if (!float.IsFinite(seekSeconds) || seekSeconds < 0 || seekSeconds >= length) throw new ArgumentOutOfRangeException(nameof(seekSeconds));
+            if (root == null) throw new InvalidOperationException("효과음 출력의 소유자가 파괴되었습니다.");
+            int token = checked(++sequence);
+            var slot = slots.Find(s => s.Token == 0 && s.Source != null);
+            if (slot == null)
             {
-                var node = new GameObject("World SFX " + voices.Count); node.transform.SetParent(root, false);
-                var source = node.AddComponent<AudioSource>(); source.playOnAwake = false; source.spatialBlend = 1;
-                // 거리 감쇠는 카메라 AudioListener가 아니라 PC 위치로 계산한다. Unity는 방향감을 담당한다.
+                var node = new GameObject("Pooled SFX " + slots.Count);
+                node.transform.SetParent(root, false);
+                var source = node.AddComponent<AudioSource>();
+                source.playOnAwake = false; source.dopplerLevel = 0; source.ignoreListenerPause = false;
                 source.SetCustomCurve(AudioSourceCurveType.CustomRolloff, AnimationCurve.Linear(0, 1, 1, 1));
-                source.rolloffMode = AudioRolloffMode.Custom; source.dopplerLevel = 0;
-                voice = new Voice { Source = source }; voices.Add(voice);
+                source.rolloffMode = AudioRolloffMode.Custom;
+                slot = new Slot { Source = source }; slots.Add(slot);
             }
-            voice.Handle = checked(++sequence); voice.Position = position; voice.Follow = follow;
-            voice.LocalOffset = follow != null ? follow.InverseTransformPoint(position) : Vector3.zero;
-            voice.CueId = cue.Id;
-            voice.Gain = cue.Gain; voice.Paused = false;
-            voice.Source.clip = clips[cue.Id]; voice.Source.loop = cue.Loop;
-            Refresh(voice); voice.Source.Play();
-            if (paused) { voice.Source.Pause(); voice.Paused = true; }
-            return voice.Handle;
+            activeSlots.Add(token, slot);
+            slot.Token = token; slot.CueId = cue.Id; slot.Paused = paused;
+            try
+            {
+                var source = slot.Source;
+                source.transform.position = position; source.spatialBlend = spatial ? 1 : 0;
+                source.priority = cue.PlaybackPolicy == SfxPlaybackPolicy.AlwaysPlay ? AudioOutputPriority.AlwaysPlay :
+                    cue.PlaybackPolicy == SfxPlaybackPolicy.VirtualLoop ? AudioOutputPriority.VirtualLoop : AudioOutputPriority.LimitedOneShot;
+                source.volume = gain; source.clip = clips[cue.Id]; source.loop = cue.Loop;
+                // 압축 Clip의 seek 정밀도는 Unity import 설정에 따른다.
+                source.time = seekSeconds; source.Play();
+                if (paused) source.Pause();
+                return token;
+            }
+            catch { Stop(token); throw; }
+        }
+        public bool IsActive(int token)
+        {
+            var slot = Find(token);
+            return slot != null && slot.Source != null && (slot.Paused || slot.Source.isPlaying);
         }
         public int CountActive(string cueId)
         {
             int count = 0;
-            foreach (var voice in voices)
-                if (voice.Handle != 0 && voice.CueId == cueId && voice.Source != null &&
-                    (voice.Paused || voice.Source.isPlaying)) count++;
+            foreach (var slot in slots) if (slot.CueId == cueId && IsActive(slot.Token)) count++;
             return count;
         }
-        public void Stop(int handle)
+        public void SetGain(int token, float gain)
+        { AudioCue.ValidateUnit(gain, nameof(gain)); var slot = Find(token); if (slot?.Source != null) slot.Source.volume = gain; }
+        public void SetPosition(int token, Vector3 position)
+        { var slot = Find(token); if (slot?.Source != null) slot.Source.transform.position = position; }
+        public void SetPaused(int token, bool paused)
         {
-            var voice = voices.Find(v => v.Handle == handle && handle != 0);
-            if (voice == null) return;
-            if (voice.Source != null) { voice.Source.Stop(); voice.Source.clip = null; }
-            voice.CueId = null;
-            voice.Handle = 0; voice.Follow = null; voice.Paused = false;
+            var slot = Find(token);
+            if (slot?.Source == null || slot.Paused == paused) return;
+            if (paused) slot.Source.Pause(); else slot.Source.UnPause();
+            slot.Paused = paused;
         }
-        public void Clear() { foreach (var v in voices) if (v.Handle != 0) Stop(v.Handle); }
-        public void SetState(float gain, bool pause)
+        public void Stop(int token)
         {
-            volume = gain; paused = pause;
-            foreach (var v in voices)
-            {
-                if (v.Handle == 0 || v.Source == null) continue;
-                if (v.Paused != pause) { if (pause) v.Source.Pause(); else v.Source.UnPause(); v.Paused = pause; }
-            }
-            Refresh();
+            var slot = Find(token);
+            if (slot == null) return;
+            if (slot.Source != null) { slot.Source.Stop(); slot.Source.clip = null; slot.Source.volume = 0; slot.Source.loop = false; }
+            // 실제 반환에 성공한 뒤에만 토큰을 제거한다. Stop 실패는 같은 토큰으로 재시도한다.
+            activeSlots.Remove(token);
+            slot.Token = 0; slot.CueId = null; slot.Paused = false;
         }
-        public void Tick()
-        {
-            foreach (var v in voices)
-            {
-                if (v.Handle == 0) continue;
-                if (v.Source == null || (!v.Paused && !v.Source.isPlaying)) Stop(v.Handle);
-                else Refresh(v);
-            }
-        }
-        private void Refresh() { foreach (var v in voices) if (v.Handle != 0 && v.Source != null) Refresh(v); }
-        private void Refresh(Voice v)
-        {
-            if (v.Follow != null) v.Position = v.Follow.TransformPoint(v.LocalOffset);
-            v.Source.transform.position = v.Position;
-            v.Source.volume = listener == null ? 0 : volume * v.Gain * settings.Attenuation(Vector3.Distance(listener.position, v.Position));
-        }
+        public void Clear() { foreach (var slot in slots) Stop(slot.Token); }
+        private Slot Find(int token) => activeSlots.TryGetValue(token, out var slot) ? slot : null;
+        private void RequireAlive() { if (disposed) throw new ObjectDisposedException(nameof(WorldAudioOutput)); }
         public void Dispose()
         {
-            if (disposed) return; disposed = true; Clear();
-            foreach (var v in voices) if (v.Source != null)
-            { if (Application.isPlaying) UnityEngine.Object.Destroy(v.Source.gameObject); else UnityEngine.Object.DestroyImmediate(v.Source.gameObject); }
-            voices.Clear(); listener = null;
+            if (disposed) return;
+            disposed = true; Clear();
+            foreach (var slot in slots) if (slot.Source != null)
+            {
+                if (Application.isPlaying) UnityEngine.Object.Destroy(slot.Source.gameObject);
+                else UnityEngine.Object.DestroyImmediate(slot.Source.gameObject);
+            }
+            slots.Clear(); activeSlots.Clear();
         }
     }
 }

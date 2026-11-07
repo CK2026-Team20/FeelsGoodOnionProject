@@ -1,4 +1,8 @@
-﻿## 2026-11-03 동일 효과음 재생 제한
+## 2026-11-06 효과음 정책 분리
+
+효과음은 카탈로그 SfxPlaybackPolicy로 AlwaysPlay17/ LimitedOneShot3/ VirtualLoop2개를 구분한다. 동일 ID2개·0.08초 제한은 LimitedOneShot에만 적용한다. AlwaysPlay는 기존 SFX를 선점하지 않는 풀 출력이며 음악2채널과 분리한다. VirtualLoop는 거리20m 및 무음 시 Stop·풀 반환하고 논리 위상을 유지한다. 아래 전 효과음 동일 제한·고정 SFX채널 수 설명을 대체한다. BGM 정지/재시도 유지 정책은 보존한다. 실제 결과와 미검증은 Assets/_Docs/tracking/tutorial-render-audio-2026-11-06/를 참조한다.
+
+## 2026-11-03 동일 효과음 재생 제한
 
 동일 효과음 ID 전체에 최대 동시 재생 2개·최소 간격 0.08초를 적용한다. 일반/위치 기반 출력을 합산하며 초과 요청은 예약·기존 소리 중단 없이 무시한다. AudioCueCatalog 각 항목의 최대 동시 재생 수/최소 재생 간격으로 조절한다. 음악은 제외하며 기존 사망/Retry BGM 유지 정책을 보존한다. 상세: Assets/_Docs/tracking/audio-sfx-limits-2026-11-03/.
 

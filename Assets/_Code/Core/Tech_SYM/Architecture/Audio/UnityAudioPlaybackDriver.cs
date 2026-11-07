@@ -28,6 +28,8 @@ namespace Cooked.Audio
                 source.Stop(); source.playOnAwake = false; source.spatialBlend = 0;
                 source.ignoreListenerPause = false; source.volume = 0;
             }
+            this.sources[0].priority = AudioOutputPriority.Music;
+            this.sources[1].priority = AudioOutputPriority.Music;
         }
         public void Start(int channel, string cueId, bool loop)
         {

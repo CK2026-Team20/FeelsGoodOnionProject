@@ -51,6 +51,13 @@ namespace Cooked.Audio
         [InspectorName("이전 3 스테이지 용도")] Stage3Music = 5
     }
 
+    public enum SfxPlaybackPolicy
+    {
+        [InspectorName("제한 단발음")] LimitedOneShot = 0,
+        [InspectorName("요청마다 재생")] AlwaysPlay = 1,
+        [InspectorName("거리 기반 반복음")] VirtualLoop = 2
+    }
+
     /// <summary>Validated immutable playback settings; the driver owns clip references.</summary>
     public sealed class AudioCue
     {
@@ -60,9 +67,12 @@ namespace Cooked.Audio
         public bool Loop { get; }
         public int MaxConcurrent { get; }
         public float MinimumInterval { get; }
-        public AudioCue(AudioCuePurpose purpose, float gain, int maxConcurrent = 2, float minimumInterval = .08f)
-            : this(AudioCueIds.ForPurpose(purpose), AudioCueIds.KindForPurpose(purpose), gain, maxConcurrent, minimumInterval) { }
-        public AudioCue(string id, AudioCueKind kind, float gain, int maxConcurrent = 2, float minimumInterval = .08f)
+        public SfxPlaybackPolicy PlaybackPolicy { get; }
+        public AudioCue(AudioCuePurpose purpose, float gain, int maxConcurrent = 2, float minimumInterval = .08f,
+            SfxPlaybackPolicy? playbackPolicy = null)
+            : this(AudioCueIds.ForPurpose(purpose), AudioCueIds.KindForPurpose(purpose), gain, maxConcurrent, minimumInterval, playbackPolicy) { }
+        public AudioCue(string id, AudioCueKind kind, float gain, int maxConcurrent = 2, float minimumInterval = .08f,
+            SfxPlaybackPolicy? playbackPolicy = null)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Cue ID required.", nameof(id));
             if (!Enum.IsDefined(typeof(AudioCueKind), kind)) throw new ArgumentOutOfRangeException(nameof(kind));
@@ -72,6 +82,12 @@ namespace Cooked.Audio
             MaxConcurrent = maxConcurrent; MinimumInterval = minimumInterval;
             Id = id; Kind = kind; Gain = gain;
             Loop = kind == AudioCueKind.Music ? id != AudioCueIds.Opening && id != AudioCueIds.Ending : id == AudioCueIds.Fire || id == AudioCueIds.Pot;
+            PlaybackPolicy = playbackPolicy ?? AudioCueIds.DefaultPolicy(id);
+            if (!Enum.IsDefined(typeof(SfxPlaybackPolicy), PlaybackPolicy)) throw new ArgumentOutOfRangeException(nameof(playbackPolicy));
+            if (PlaybackPolicy == SfxPlaybackPolicy.VirtualLoop && (kind != AudioCueKind.World || !Loop))
+                throw new ArgumentException("VirtualLoop는 위치 기반 월드 반복음에만 사용할 수 있습니다.", nameof(playbackPolicy));
+            if (kind != AudioCueKind.Music && Loop && PlaybackPolicy != SfxPlaybackPolicy.VirtualLoop)
+                throw new ArgumentException("월드 반복음에는 VirtualLoop 정책을 지정하세요.", nameof(playbackPolicy));
         }
 
         internal static void ValidateUnit(float value, string name)
@@ -97,6 +113,20 @@ namespace Cooked.Audio
 
     public static class AudioCueIds
     {
+        // 생성자 호환과 Editor 이관이 공유하는 기본 분류. 직렬화된 정책은 이 값으로 덮어쓰지 않는다.
+        public static SfxPlaybackPolicy DefaultPolicy(string id)
+        {
+            switch (id)
+            {
+                case Fire: case Pot: return SfxPlaybackPolicy.VirtualLoop;
+                case Click: case Jump: case Land: case Run: case Hit: case Tear:
+                case FormDown: case FormUp: case Death: case Respawn: case Checkpoint:
+                case Pickup: case Unlock: case Oil: case Interaction: case WeightOn: case WeightOff:
+                case HitMonster: case Knockback: case PlatformSpawn:
+                    return SfxPlaybackPolicy.AlwaysPlay;
+                default: return SfxPlaybackPolicy.LimitedOneShot;
+            }
+        }
         public const string Title = "music.title";
         public const string Opening = "music.opening";
         public const string Stage1 = "music.stage1";

@@ -80,18 +80,21 @@ namespace Cooked.Audio
         { if (Playing && position != null) audio.PlaySfxAt(cue, position.position); }
         public void Tick(float delta)
         {
-            if (!Playing || delta <= 0) return;
+            if (disposed) return;
             foreach (var item in ambient)
             {
-                bool active = item.Owner != null && item.Owner.isActiveAndEnabled;
+                // Owner 정리는 게임/옵션 정지 중에도 수행한다. ClearWorld 이후 낡은 핸들도 버린다.
+                if (item.Handle != 0 && !audio.IsWorldVoiceRegistered(item.Handle)) item.Handle = 0;
+                bool active = item.Owner != null && item.Owner.isActiveAndEnabled && item.Owner.gameObject.scene.isLoaded;
                 if (!active && item.Handle != 0) { audio.StopWorldVoice(item.Handle); item.Handle = 0; }
-                else if (active && item.Handle == 0)
+                else if (active && item.Handle == 0 && Playing)
                 {
                     var shape = item.Owner.PrimaryDamageTrigger;
                     var anchor = shape != null ? shape.transform : item.Owner.transform;
                     item.Handle = audio.PlaySfxAt(item.Cue, shape != null ? shape.bounds.center : anchor.position, anchor);
                 }
             }
+            if (!Playing || delta <= 0) return;
             foreach (var item in enemies)
             {
                 var enemy = item.Enemy;

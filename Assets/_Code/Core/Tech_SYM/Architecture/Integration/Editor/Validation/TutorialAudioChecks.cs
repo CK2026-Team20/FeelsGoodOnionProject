@@ -82,23 +82,24 @@ namespace Cooked.Validation
                 check(driver.voices.Count==0,"명시적 페이드아웃 요청 후 음악 종료");
             }
             driver=new Driver();fade=new Fade();
-            using(var audio=new AudioService(catalog.CreateSettings(),driver,fade,_=>{}))
+            var sfxOutput=new AudioSfxLimitChecks.RecordingOutput();
+            using(var audio=new AudioService(catalog.CreateSettings(),driver,fade,_=>{},sfxOutput:sfxOutput))
             using(var control=new GameplayControlService(()=>1,_=>{}))
             using(var flow=new Flow())
             using(var binding=new AudioFlowBinding(audio,flow,control,catalog))
             {
                 flow.Emit(FlowState.LoadingGame);fade.Finish();
-                binding.SetStage("01_Stage_Tutorial");
+                binding.SetStage("03_Stage01_Tutorial");
                 flow.Emit(FlowState.Playing);fade.Finish();
-                check(driver.starts.Count(x=>x==AudioCueIds.Respawn)==0,"최초 스폰 리스폰음 없음");
+                check(sfxOutput.Starts.Count(x=>x==AudioCueIds.Respawn)==0,"최초 스폰 리스폰음 없음");
                 var first=driver.starts.Count;
-                binding.SetStage("01_Stage_Tutorial");flow.Emit(FlowState.Playing);
+                binding.SetStage("03_Stage01_Tutorial");flow.Emit(FlowState.Playing);
                 check(driver.starts.Count==first,"스테이지 재알림 BGM 재시작 없음");
                 flow.Emit(FlowState.Retrying);fade.Finish();flow.Emit(FlowState.Playing);fade.Finish();
-                check(driver.starts.Count(x=>x==AudioCueIds.Respawn)==1,"재시도 성공 리스폰음 1회");
+                check(sfxOutput.Starts.Count(x=>x==AudioCueIds.Respawn)==1,"재시도 성공 리스폰음 1회");
                 check(driver.starts.Count(x=>x.StartsWith("stage:"))==1,"재시도 일반 BGM 기존 재생 유지");
                 flow.Emit(FlowState.Playing);
-                check(driver.starts.Count(x=>x==AudioCueIds.Respawn)==1,"Playing 중복 알림 리스폰음 중복 없음");
+                check(sfxOutput.Starts.Count(x=>x==AudioCueIds.Respawn)==1,"Playing 중복 알림 리스폰음 중복 없음");
                 binding.SetChaseActive(true);
                 check(driver.starts.Last()!=AudioCueIds.Chase,"추격은 이전 음악 페이드 완료 대기");
                 fade.Finish();check(driver.starts.Last()==AudioCueIds.Chase&&driver.loops[0],"추격 Loop");
@@ -158,14 +159,27 @@ namespace Cooked.Validation
             finally {EditorSceneManager.ClosePreviewScene(preview);}
             foreach(var pair in new[]{("Move",4),("Jump",2),("Tear",8),("Form",16)})
             {
-                var clip=AssetDatabase.LoadAssetAtPath<AnimationClip>("Assets/_Animations/Tech_SYM/Tutorial/"+pair.Item1+".anim");
-                var keys=AnimationUtility.GetObjectReferenceCurve(clip,AnimationUtility.GetObjectReferenceCurveBindings(clip)[0]);
-                check(keys.Take(pair.Item2).Select((k,i)=>Mathf.Abs(k.time*60-i*40)<.01f).All(x=>x)&&
-                    Mathf.Abs(clip.length-pair.Item2*40f/60)<.001f, pair.Item1+" 40프레임 교체 및 마지막 유지");
-                check(keys.All(k=>k.value is Sprite && AssetDatabase.GetAssetPath(k.value).StartsWith("Assets/_Art/UI/Tutorials/")),pair.Item1+" 원본 Sprite 직접 참조");
+                // 현재 이관된 Form 클립 이름을 사용한다. 파일 이름 변경은 타이밍 요구 변경으로 간주하지 않는다.
+                var clipName=pair.Item1=="Form"?"Form_Change":pair.Item1;
+                var clipPath="Assets/_Animations/Tech_SYM/Tutorial/"+clipName+".anim";
+                var clip=AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+                check(clip!=null,pair.Item1+" 현재 AnimationClip 연결: "+clipPath);
+                if(clip!=null)
+                {
+                    var spriteBindings=AnimationUtility.GetObjectReferenceCurveBindings(clip).Where(b=>b.propertyName=="m_Sprite").ToArray();
+                    check(spriteBindings.Length==1,pair.Item1+" Sprite 교체 곡선 한 개");
+                    if(spriteBindings.Length==1)
+                    {
+                        var keys=AnimationUtility.GetObjectReferenceCurve(clip,spriteBindings[0]);
+                        check(keys!=null&&keys.Length>=pair.Item2&&keys.Take(pair.Item2).Select((k,i)=>Mathf.Abs(k.time*60-i*40)<.01f).All(x=>x)&&
+                            Mathf.Abs(clip.length-pair.Item2*40f/60)<.001f,pair.Item1+" 40프레임 교체 및 마지막 유지 (실제 길이 "+clip.length+"초)");
+                        check(keys!=null&&keys.Length>0&&keys.All(k=>k.value is Sprite && AssetDatabase.GetAssetPath(k.value).StartsWith("Assets/_Art/UI/Tutorials/")),pair.Item1+" 원본 Sprite 직접 참조");
+                    }
+                }
                 var prefab=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Prefabs/UI/Tutorial/Tutorial_"+pair.Item1+".prefab");
-                check(prefab.GetComponentsInChildren<Transform>(true).All(t=>GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject)==0)&&
-                    prefab.GetComponentInChildren<Canvas>(true).renderMode==RenderMode.WorldSpace,pair.Item1+" 프리팹 참조/월드 Canvas");
+                var canvas=prefab!=null?prefab.GetComponentInChildren<Canvas>(true):null;
+                check(prefab!=null&&prefab.GetComponentsInChildren<Transform>(true).All(t=>GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject)==0)&&
+                    canvas!=null&&canvas.renderMode==RenderMode.WorldSpace,pair.Item1+" 프리팹 참조/월드 Canvas");
             }
             return report;
         }
