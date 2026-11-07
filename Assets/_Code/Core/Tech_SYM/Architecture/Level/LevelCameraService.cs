@@ -278,8 +278,9 @@ namespace Cooked.Level
                 var lease=control.BlockGameplay("구간 진입 보정");
                 if(!IsCurrent(generation)){lease.Dispose();return;}
                 inputLease=lease;player.ClearInput();
-                if(!restore && (!player.IsCorrectionPathSafe(playerGoal) || !HasSupport(playerGoal) || !section.IsBlockerPathSafe(acceptedActor,playerGoal)))
-                    throw new InvalidOperationException("수락한 구간 '"+section.DisplayName+"' 보정 경로·지지면·차단 경로가 안전하지 않습니다.");
+                // 스폰 앵커의 충돌·지지면 검사는 에디터 작성 단계에서만 수행한다.
+                if(!restore && !section.IsBlockerPathSafe(acceptedActor,playerGoal))
+                    throw new InvalidOperationException("수락한 구간 '"+section.DisplayName+"' 차단 장치 경로가 안전하지 않습니다.");
                 requestedCamera=selected;
                 if(restore || !sameView)
                 {
@@ -303,19 +304,6 @@ namespace Cooked.Level
             }
             catch(Exception error){if(generation==requestGeneration)Fail(error);throw;}
         }
-        private bool HasSupport(Vector3 goal)
-        {
-            var capsule=acceptedActor.GetComponent<CapsuleCollider>();
-            PlayerBridgeService.CapsuleGeometry(capsule,out var a,out var b,out float radius);
-            var delta=goal-acceptedActor.GetComponent<Rigidbody>().position;
-            var bottom=(a.y<b.y?a:b)+delta;
-            foreach(var hit in Physics.SphereCastAll(bottom+Vector3.up*.02f,Mathf.Max(.001f,radius-.002f),Vector3.down,.15f,~0,QueryTriggerInteraction.Ignore))
-                if(hit.collider.attachedRigidbody!=acceptedActor.GetComponent<Rigidbody>() &&
-                    !Physics.GetIgnoreLayerCollision(capsule.gameObject.layer,hit.collider.gameObject.layer) &&
-                    !Physics.GetIgnoreCollision(capsule,hit.collider) && Vector3.Angle(hit.normal,Vector3.up)<=acceptedActor.GetComponent<CharacterMovement>().MaximumGroundAngle)
-                    return true;
-            return false;
-        }
         private bool IsCurrent(long generation) => generation==requestGeneration && IsTransitioning && HasBinding &&
             requestedSection!=null && ReferenceEquals(stage.CurrentSection,requestedSection) &&
             player.IsCurrentActor(acceptedActor,actorGeneration) && !acceptedActor.IsDead &&
@@ -329,7 +317,7 @@ namespace Cooked.Level
             {
                 if (State == CameraTransitionState.CorrectingPlayer && !playerMoveSubmitted)
                 {
-                    if (!player.IsCorrectionPathSafe(playerGoal)) throw new InvalidOperationException("진행 중 플레이어 보정 경로가 막혔습니다.");
+
                     playerMoveSubmitted = Advance(playerTween, Time.fixedDeltaTime);
                 }
                 else if (State == CameraTransitionState.MovingBlocker && !blockerMoveSubmitted)

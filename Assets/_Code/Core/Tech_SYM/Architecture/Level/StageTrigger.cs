@@ -187,7 +187,7 @@ namespace Cooked.Level
             else if (!body.TryGetComponent<PlayerFacade>(out var player) || player != current) return false;
             // Checkpoint progress has exactly one owner; local occupancy/reset flags do not participate.
             if (kind == StageTriggerKind.Checkpoint)
-                return stage != null && shell == null && HasActualContact(current) && stage.TryDispatch(this,current);
+                return stage != null && shell == null && HasActualContact(current) && stage.QueueCheckpoint(this,current);
             occupants.RemoveWhere(c => c == null || !c.enabled || !c.gameObject.activeInHierarchy);
             acceptedFallBodies.RemoveWhere(acceptedBody => acceptedBody == null ||
                 !System.Linq.Enumerable.Any(occupants, occupant => occupant.attachedRigidbody == acceptedBody));

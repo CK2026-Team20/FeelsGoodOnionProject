@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Cooked.Authoring;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -15,6 +15,8 @@ namespace Cooked.Level
 #if UNITY_EDITOR
         public bool CanPlace(out string reason)
         {
+            if (Application.isPlaying) { reason = null; return true; }
+
             if (!Cooked.Integration.SceneComponentLookup.IsFixedPoint(this, transform))
             { reason = "스폰 지점은 같은 씬의 고정 오브젝트여야 합니다."; return false; }
             return SpawnPlacement.Check(normalCapsule, FeetPose, gameObject.scene.GetPhysicsScene(),

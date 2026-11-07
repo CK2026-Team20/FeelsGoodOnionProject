@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 
 namespace Cooked.Level.Editor
@@ -170,6 +170,8 @@ namespace Cooked.Level.Editor
         }
         public static Issue[] Inspect(StageService stage, CapsuleCollider source, Transform origin, float supportDistance)
         {
+            if (Application.isPlaying) return new[] { new Issue { Code = "EDIT_MODE_ONLY", Target = stage != null ? stage.name : "Stage", Reason = "충돌 배치 검사는 Edit Mode에서만 실행합니다.", Severity = MessageType.Info } };
+
             var results = new System.Collections.Generic.List<Issue>();
             void Add(string code, string target, string reason, MessageType severity = MessageType.Error)
                 => results.Add(new Issue { Code = code, Target = target, Reason = reason, Severity = severity });
@@ -211,9 +213,9 @@ namespace Cooked.Level.Editor
                 if (!float.IsFinite(radius) || radius <= correctionSkin)
                 { Add("CAPSULE_INVALID", label, "검사불가: 실제 반경이 보정 경로 여유 0.002m보다 커야 합니다."); continue; }
                 // prefab asset에는 PhysX shape가 없을 수 있으므로 전체 형상 후보를 보수적으로 표시한다.
-                // 런타임은 이 전체 후보의 ComputePenetration 깊이 > 0.002m를 거절한다. 여기서는 얕은 접촉도 검토 대상으로 남긴다.
+                // 에디터 배치 검수만 수행한다. 런타임 앵커 이동은 이 결과로 거절하지 않는다.
                 foreach (var other in Physics.OverlapCapsule(a, b, radius, ~0, QueryTriggerInteraction.Ignore))
-                    if (Obstacle(other)) Add("TARGET_BLOCKED", label, "보정 목표의 전체 Capsule이 " + other.name + "과 겹치는 후보입니다(보수적 진단). 런타임 침투 허용치 0.002m 이하 접촉도 작성 검토 대상으로 표시합니다.");
+                    if (Obstacle(other)) Add("TARGET_BLOCKED", label, "보정 목표의 전체 Capsule이 " + other.name + "과 겹치는 후보입니다(보수적 진단). 얕은 접촉도 작성 검토 대상으로 표시하며 런타임 이동은 차단하지 않습니다.");
                 if (origin != null)
                 {
                     Vector3 delta = target - origin.position;
