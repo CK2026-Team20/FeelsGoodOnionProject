@@ -156,6 +156,23 @@ namespace Cooked.Level
         private CinemachineBrain.BrainUpdateMethods previousBlendUpdate;
         private bool previousIgnoreTimeScale;
         private PlayerMovementMode requestedMode;
+        /// <summary>실제 출력에 확정된 시점. 미연결·다른 시점으로 블렌드 중에는 null입니다.</summary>
+        public CameraMovementMode? PresentedView { get; private set; }
+        public event Action<CameraMovementMode?> PresentedViewChanged;
+        private void SetPresentedView(CameraMovementMode? view)
+        {
+            if (PresentedView == view) return;
+            PresentedView = view;
+            PresentedViewChanged?.Invoke(view);
+        }
+        private void RefreshPresentedView()
+        {
+            bool settled = HasBinding && !player.Actor.IsDead && committedCamera != null &&
+                ReferenceEquals(brain.ActiveVirtualCamera, committedCamera) && !brain.IsBlending &&
+                (!IsTransitioning || requestedCamera == committedCamera);
+            SetPresentedView(!settled ? null : committedCamera == side ? CameraMovementMode.Side :
+                committedCamera == corridor ? CameraMovementMode.Corridor : CameraMovementMode.Quarter);
+        }
         public CameraTransitionState State { get; private set; }
         public bool IsTransitioning => State >= CameraTransitionState.Accepted && State <= CameraTransitionState.WaitingForCamera;
         public bool IsViewReady => viewCommitted && !IsTransitioning && HasBinding && modes.IsInitialized && modes.CurrentMode == requestedMode && SelectionComplete;
@@ -259,6 +276,7 @@ namespace Cooked.Level
                 throw new InvalidOperationException("현재 Stage가 선택한 구간과 살아 있는 Actor가 필요합니다.");
             var selected = section.View == CameraMovementMode.Side ? side : section.View == CameraMovementMode.Corridor ? corridor : quarter;
             bool sameView = IsTransitioning ? requestedCamera == selected : committedCamera == selected;
+            if (!sameView || restore) SetPresentedView(null);
             // New accepted starts replace old work even when their view is identical.
             CancelTransition(false, true);
             if (!HasBinding || !ReferenceEquals(stage.CurrentSection,section)) return;
@@ -372,6 +390,7 @@ namespace Cooked.Level
                     }
                 }
                 brain.ManualUpdate(Time.frameCount, initialCut ? -1 : Time.deltaTime);
+                RefreshPresentedView();
                 if (!IsTransitioning || !motionsComplete || !SelectionComplete || !modes.IsInitialized) return;
                 correction?.Dispose(); correction = null;
                 if (!IsCurrent(generation)) return;
@@ -379,6 +398,7 @@ namespace Cooked.Level
                 if (!IsCurrent(generation)) return;
                 requestedCamera.Follow = target; committedCamera = requestedCamera;
                 State = CameraTransitionState.Completed; viewCommitted = true; initialSelection = false;
+                RefreshPresentedView();
                 player.ClearInput(); ReleaseLease();
             }
             catch (Exception error) { if (generation == requestGeneration) Fail(error); Debug.LogException(error, this); }
@@ -406,6 +426,7 @@ namespace Cooked.Level
         private void CancelTransition(bool failed, bool preserveView = false)
         {
             if (cancellingTransition) return;
+            if (!preserveView) SetPresentedView(null);
             cancellingTransition = true;
             try
             {
@@ -448,6 +469,7 @@ namespace Cooked.Level
         public void Unbind()
         {
             if (unbinding) return;
+            SetPresentedView(null);
             unbinding = true;
             try
             {

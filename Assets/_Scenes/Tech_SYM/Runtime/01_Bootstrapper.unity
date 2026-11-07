@@ -1089,7 +1089,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4939319603769586351, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4279640379
+      value: 4280564567
       objectReference: {fileID: 0}
     - target: {fileID: 4939319603769586351, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_TextStyleHashCode
@@ -1329,7 +1329,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8803643525034375672, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4279640379
+      value: 4280564567
       objectReference: {fileID: 0}
     - target: {fileID: 8803643525034375672, guid: f9ba65480362e4a4b9004be9781d94d7, type: 3}
       propertyPath: m_TextStyleHashCode
@@ -1568,7 +1568,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 306331039704301418, guid: 81a2d9955c070a34a8cc6c5fa3e6f30c, type: 3}
       propertyPath: m_RenderPostProcessing
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2884980114525279022, guid: 81a2d9955c070a34a8cc6c5fa3e6f30c, type: 3}
       propertyPath: m_Name
@@ -1621,8 +1621,42 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2884980114525279022, guid: 81a2d9955c070a34a8cc6c5fa3e6f30c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7167971837267748517}
   m_SourcePrefab: {fileID: 100100000, guid: 81a2d9955c070a34a8cc6c5fa3e6f30c, type: 3}
+--- !u!1 &7167971837267748516 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2884980114525279022, guid: 81a2d9955c070a34a8cc6c5fa3e6f30c, type: 3}
+  m_PrefabInstance: {fileID: 7167971837267748515}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7167971837267748517
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7167971837267748516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3ed53f6faca4fc986b780af73d97dd1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Occlusion.OcclusionFadeController
+  playerRoot: {fileID: 0}
+  occluderLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  includeTriggers: 0
+  occludedAlpha: 0.3
+  fadeSeconds: 0.2
+  restoreSeconds: 0.35
+  restoreDelay: 0.12
+  castRadius: 0
+  endpointInset: 0.03
+  sampleAnchors: []
+  fadeShader: {fileID: 4800000, guid: dac2cc01e5d94a12b5dc3a19b3e34b21, type: 3}
+  showDebug: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
