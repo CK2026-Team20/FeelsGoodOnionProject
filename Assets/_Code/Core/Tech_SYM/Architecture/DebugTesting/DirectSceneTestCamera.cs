@@ -20,6 +20,7 @@ namespace Cooked.DebugTesting
         private CinemachineBrain brain;
         private PlayerBridgeService player;
         private PlayerMovementModeController movement;
+        private CameraOcclusionBinding occlusion;
         private bool disposed, bound;
         public Camera Output { get; private set; }
         public CameraMovementMode CurrentView { get; private set; }
@@ -58,6 +59,12 @@ namespace Cooked.DebugTesting
                 var output = new GameObject("Test Output") { hideFlags = HideFlags.DontSave, tag = "MainCamera" };
                 output.transform.SetParent(root.transform, false);
                 Output = output.AddComponent<Camera>();
+                // 본편의 라이팅 롤백 환경과 동일하게 후처리를 사용하지 않는다.
+                Output.allowHDR = true;
+                var renderData = output.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                renderData.renderPostProcessing = false;
+                // 본편과 같은 HMS 가림 계약을 임시 출력 카메라에도 적용한다.
+                occlusion = new CameraOcclusionBinding(output.AddComponent<Cooked.Occlusion.OcclusionFadeController>());
                 output.AddComponent<AudioListener>();
                 brain = output.AddComponent<CinemachineBrain>();
                 brain.ChannelMask = (OutputChannels)channel;
@@ -113,17 +120,19 @@ namespace Cooked.DebugTesting
             var mapped = LevelCameraService.ResolveMode(mode);
             CopySourceProfile(mode);
             if (!CanSelect || !profiles[mode].IsValidForAspect(Output.aspect) || !movement.TrySetMode(mapped)) return false;
+            if (CurrentView != mode) occlusion.ApplyView(null);
             CurrentView = mode;
             foreach (var pair in rigs)
                 pair.Value.Priority = pair.Key == mode ? 100 : 0;
             profiles[mode].Apply(rigs[mode], Output.aspect);
             rigs[mode].PreviousStateIsValid = false;
             brain.ManualUpdate();
+            RefreshOcclusion();
             return true;
         }
         public void Tick()
         {
-            if (!CanSelect) return;
+            if (!CanSelect) { occlusion?.ApplyView(null); return; }
             if (movement.CurrentMode != LevelCameraService.ResolveMode(CurrentView) || rigs[CurrentView].Priority.Value != 100)
             {
                 Select(CurrentView);
@@ -132,7 +141,10 @@ namespace Cooked.DebugTesting
             CopySourceProfile(CurrentView);
             profiles[CurrentView].Refresh(rigs[CurrentView], Output.aspect);
             brain.ManualUpdate();
+            RefreshOcclusion();
         }
+        private void RefreshOcclusion() => occlusion.ApplyView(CanSelect && !brain.IsBlending &&
+            ReferenceEquals(brain.ActiveVirtualCamera, rigs[CurrentView]) ? CurrentView : null);
         private void CopySourceProfile(CameraMovementMode mode)
         {
             var source = sourceProfiles[mode];
@@ -148,6 +160,7 @@ namespace Cooked.DebugTesting
         }
         public void Unbind()
         {
+            occlusion?.ApplyView(null);
             bound = false;
             foreach (var camera in rigs.Values)
                 if (camera != null) { camera.Follow = null; camera.Priority = 0; camera.PreviousStateIsValid = false; }
@@ -158,6 +171,7 @@ namespace Cooked.DebugTesting
             if (disposed) return;
             disposed = true;
             Unbind();
+            occlusion?.Dispose();
             if (root != null)
             {
                 root.SetActive(false);

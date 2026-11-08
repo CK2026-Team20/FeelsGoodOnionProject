@@ -1,0 +1,186 @@
+{
+  "Dialogues": [
+    {
+      "Dialogue_Code": "STORY_START_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "여기가… 버그가 난 오래된 주방이구나…",
+      "ContextRevealDuration": 1.8
+    },
+    {
+      "Dialogue_Code": "STORY_START_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "포포도 저 안에 있을 거야…! 무섭긴 해도 내가 가야 해…!",
+      "ContextRevealDuration": 2.9
+    },
+    {
+      "Dialogue_Code": "HAZARD_DEADZONE_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "길이 텅 비어 있어… 저 아래로 떨어지면 나도 사라질지 몰라…",
+      "ContextRevealDuration": 2.9
+    },
+    {
+      "Dialogue_Code": "HAZARD_DEADZONE_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "이러다 포포가 있는 곳까지 사라지면 안 되는데… 서둘러야겠어!",
+      "ContextRevealDuration": 2.9
+    },
+    {
+      "Dialogue_Code": "HAZARD_MONSTER_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "저 이상하게 생긴 건… 버근가? 엄청 많아졌잖아…",
+      "ContextRevealDuration": 2.3
+    },
+    {
+      "Dialogue_Code": "HAZARD_MONSTER_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "닿으면 나도 이상해질지 몰라… 조심해야겠어! 포포는 괜찮겠지…?",
+      "ContextRevealDuration": 3.0
+    },
+    {
+      "Dialogue_Code": "HAZARD_GAS_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "으아, 아무도 게임을 안 하고 있는데도 불꽃이 이글거리잖아!!",
+      "ContextRevealDuration": 2.9
+    },
+    {
+      "Dialogue_Code": "HAZARD_GAS_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "공기까지 타들어가는 것 같아… 저기 슬쩍만 스쳐도 바로 푹 익어버릴 거야… 정신 바짝 차리자!",
+      "ContextRevealDuration": 4.4
+    },
+    {
+      "Dialogue_Code": "HAZARD_POT_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "가스레인지 위에 냄비까지… 안에서 물이 펄펄 끓고 있잖아!",
+      "ContextRevealDuration": 2.7
+    },
+    {
+      "Dialogue_Code": "HAZARD_POT_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "저기 빠지면 푹 익어버리고 말겠지…?",
+      "ContextRevealDuration": 1.7
+    },
+    {
+      "Dialogue_Code": "HAZARD_POT_01",
+      "Sequence": 3,
+      "Name": "어니",
+      "Context": "으아… 아니야 아니야 생각하지 말자!! 포포가 위험해지기 전에 얼른 가야 해!",
+      "ContextRevealDuration": 3.6
+    },
+    {
+      "Dialogue_Code": "STORY_QUARTER_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "이 통로 너머가 주방 안쪽으로 들어가는 곳인가? …괜히 좀 겁이 나네…",
+      "ContextRevealDuration": 3.3
+    },
+    {
+      "Dialogue_Code": "STORY_QUARTER_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "무슨 생각을 하는 거야! 포포는 나한테 소중한 친구인데 구하러 가야지!",
+      "ContextRevealDuration": 3.3
+    },
+    {
+      "Dialogue_Code": "STORY_QUARTER_01",
+      "Sequence": 3,
+      "Name": "어니",
+      "Context": "좋아!! 힘내서 계속 가 보자!!",
+      "ContextRevealDuration": 1.5
+    },
+    {
+      "Dialogue_Code": "EXPLORE_OVEN_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "이 트레이를 움직이면 안쪽으로 갈 수 있겠어.",
+      "ContextRevealDuration": 2.1
+    },
+    {
+      "Dialogue_Code": "REACT_MEMO_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "헉, 주방이 삭제되면 안에 있는 건 전부 사라진다고?!",
+      "ContextRevealDuration": 2.5
+    },
+    {
+      "Dialogue_Code": "REACT_MEMO_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "그럼 안에 있는 포포도 같이 사라진다는 거잖아!",
+      "ContextRevealDuration": 2.2
+    },
+    {
+      "Dialogue_Code": "REACT_MEMO_01",
+      "Sequence": 3,
+      "Name": "어니",
+      "Context": "수정도 벌써 80%나?… 포포가 사라지기 전에 가야 해!",
+      "ContextRevealDuration": 2.6
+    },
+    {
+      "Dialogue_Code": "STORY_APPROACH_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "거의 다 왔어! 이 통로 너머에 포포가 있을 거야.",
+      "ContextRevealDuration": 2.4
+    },
+    {
+      "Dialogue_Code": "STORY_APPROACH_01",
+      "Sequence": 2,
+      "Name": "어니",
+      "Context": "조금만 더 버텨 줘, 포포야…!",
+      "ContextRevealDuration": 1.5
+    },
+    {
+      "Dialogue_Code": "ENDING_POPO_01",
+      "Sequence": 1,
+      "Name": "어니",
+      "Context": "포포야! 포포야, 정말 너 맞지…? 무사했구나!!",
+      "ContextRevealDuration": 2.3
+    },
+    {
+      "Dialogue_Code": "ENDING_POPO_01",
+      "Sequence": 2,
+      "Name": "포포",
+      "Context": "어, 어니…? 진짜 어니야? 나 혼자인 줄 알았어…",
+      "ContextRevealDuration": 2.4
+    },
+    {
+      "Dialogue_Code": "ENDING_POPO_01",
+      "Sequence": 3,
+      "Name": "어니",
+      "Context": "늦게 와서 미안해. 다친 데는 없어?",
+      "ContextRevealDuration": 1.7
+    },
+    {
+      "Dialogue_Code": "ENDING_POPO_01",
+      "Sequence": 4,
+      "Name": "포포",
+      "Context": "나, 너무 무서웠어… 자고 일어났는데 아무도 없고… 나가는 길도 없어서… 와 줘서 정말 고마워.",
+      "ContextRevealDuration": 4.5
+    },
+    {
+      "Dialogue_Code": "ENDING_POPO_01",
+      "Sequence": 5,
+      "Name": "어니",
+      "Context": "이제 괜찮아, 내가 옆에 있잖아. 같이 나가자!",
+      "ContextRevealDuration": 2.2
+    },
+    {
+      "Dialogue_Code": "ENDING_POPO_01",
+      "Sequence": 6,
+      "Name": "포포",
+      "Context": "으, 응… 어니가 같이 있으면… 나도 따라갈게…",
+      "ContextRevealDuration": 2.2
+    }
+  ]
+}

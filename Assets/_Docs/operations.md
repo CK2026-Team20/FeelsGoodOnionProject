@@ -1,3 +1,7 @@
+## 2026-11-08 빌드 프로필 단일 경로
+
+최신 사용자 지시에 따라 별도 `Cooked/Integration/Build Windows Player` 메뉴와 IntegrationBuildPipeline 코드를 제거했다. 아래의 해당 메뉴·코드 기반 빌드 설명은 과거 기록이다. 이제 Unity Build Profiles의 `Assets/Settings/Build Profiles/Cooked_Prototype_Windows.asset` 하나에서 씬·Player 설정·빌드 옵션을 확인하고 Build한다. 코드에서 씬 목록·Development 옵션·출력 경로를 덮어쓰는 별도 빌드 경로를 사용하지 않는다. 기존 프로필 내용은 이번 작업에서 변경하지 않았다. 라이팅 롤백 후 새 Player 빌드는 아직 수행하지 않았다.
+
 ## 2026-11-02 SYM 자산 분리·프로토타입 정리
 
 사용자 직접 지시 및 후속 정정으로 SYM 전용 미사용 프로토타입/테스트 자산을 제거했다. 본편 데이터는 Assets/_Data/Tech_SYM, 관리 씬3개는 Assets/_Scenes/Tech_SYM/Runtime으로 이관했다. 타 작업자 씬과 의존 자산은 원위치/원내용으로 보존하므로 공유 스킬·적·메모 모델7개와 일부 테스트 프리팹은 예외로 남는다. 루트 Tutorial/Stage 및 공용 _Prefabs는 변경하지 않는다. 아래의 이전 Prototype 실행 경로·보존 문구보다 이번 자산 분류가 우선한다. 현재 실행 등록은 ArchitectureInstallation과 IntegrationEntrySettings의 SceneAsset 참조를 따른다. 상세: Assets/_Docs/tracking/asset-organization-2026-11-02/자산 분류 목록.md.

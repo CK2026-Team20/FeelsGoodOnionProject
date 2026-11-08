@@ -29,6 +29,7 @@ namespace Cooked.Integration
         private readonly Camera output;
         private readonly CinemachineBrain brain;
         private StageService stage;
+        private CameraOcclusionBinding occlusion;
         private readonly List<TutorialPrompt> tutorials = new List<TutorialPrompt>();
         private readonly List<MemoUIController> memos = new List<MemoUIController>();
         private readonly List<StageTrigger> chaseTriggers = new List<StageTrigger>();
@@ -123,6 +124,7 @@ namespace Cooked.Integration
                 periodicPlatforms.AddRange(stage.FindComponents<PeriodicPlatform>());
                 foreach (var periodic in periodicPlatforms)
                     periodic.BindMaterialization(runtime.Player);
+                occlusion = new CameraOcclusionBinding(output.GetComponent<Cooked.Occlusion.OcclusionFadeController>(), camera);
                 camera.Bind(runtime.Player, control, actor.GetComponent<PlayerMovementModeController>(), brain, stage, flow);
                 ui.SetActorCamera(output);
                 stage.RestorePresentation();
@@ -152,8 +154,9 @@ namespace Cooked.Integration
         private void UnbindActor()
         {
             observing = false;
-            audioHost.UnbindGameplay();
             var errors = new List<Exception>();
+            SessionCleanup.Attempt(errors, () => { occlusion?.Dispose(); occlusion = null; });
+            SessionCleanup.Attempt(errors, audioHost.UnbindGameplay);
             SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.ForceCloseOverlays());
             SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.CancelOperations());
             SessionCleanup.Attempt(errors, () => runtime.ActorHost.Interaction?.BindOverlays(null));

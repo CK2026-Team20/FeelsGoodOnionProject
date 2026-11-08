@@ -99,23 +99,16 @@ namespace Cooked.Integration.Editor
         private static string[] ReadChoices(SerializedProperty property, out string error)
         {
             error = null;
-            var asset = property.FindPropertyRelative("table");
-            if (asset.hasMultipleDifferentValues) { error = "대화 표가 서로 다릅니다. 같은 JSON 자산을 먼저 연결하세요."; return Array.Empty<string>(); }
-            var table = asset.objectReferenceValue as TextAsset;
-            if (table == null) { error = property.displayName + " / 대화 표: JSON TextAsset를 연결하세요."; return Array.Empty<string>(); }
             try
             {
-                var service = new DialogueTableService(table.name);
-                service.LoadJson(table.text);
+                var codes = DialogueAuthoringSource.ReadChoices(out _);
                 var code = property.FindPropertyRelative("code");
-                if (!code.hasMultipleDifferentValues)
-                {
-                    try { service.RequireCode(code.stringValue); }
-                    catch (FormatException failure) { error = failure.Message; }
-                }
-                return service.Codes.ToArray();
+                if (!code.hasMultipleDifferentValues && !string.IsNullOrEmpty(code.stringValue) &&
+                    Array.IndexOf(codes, code.stringValue) < 0)
+                    error = "대화 키 '" + code.stringValue + "'가 원본에서 삭제되거나 변경되었습니다. 새 키를 선택하세요.";
+                return codes;
             }
-            catch (FormatException failure)
+            catch (Exception failure) when (failure is FormatException || failure is InvalidOperationException || failure is ArgumentException)
             {
                 error = failure.Message;
                 return Array.Empty<string>();
@@ -139,7 +132,7 @@ namespace Cooked.Integration.Editor
                 EditorGUI.LabelField(row, label);
                 EditorGUI.indentLevel++;
                 row.y += Line + Gap;
-                EditorGUI.PropertyField(row, property.FindPropertyRelative("table"), new GUIContent("대화 표", "Code를 선택할 원본 JSON TextAsset를 연결하세요."));
+                EditorGUI.LabelField(row, "대화 원본", "Bootstrapper의 대화 테이블 사용");
                 string[] codes = ReadChoices(property, out string error);
                 var selected = property.FindPropertyRelative("code");
                 int index = Array.IndexOf(codes, selected.stringValue) + 1;
@@ -149,7 +142,7 @@ namespace Cooked.Integration.Editor
                 {
                     EditorGUI.showMixedValue = selected.hasMultipleDifferentValues;
                     EditorGUI.BeginChangeCheck();
-                    int next = EditorGUI.Popup(row, new GUIContent("대화", "연결한 JSON 안의 검증된 Code를 선택하세요."), index, choices.Select(s => new GUIContent(s)).ToArray());
+                    int next = EditorGUI.Popup(row, new GUIContent("대화", "Bootstrapper JSON의 Dialogue_Code를 선택하세요. 원본 변경 시 목록이 갱신됩니다."), index, choices.Select(s => new GUIContent(s)).ToArray());
                     if (EditorGUI.EndChangeCheck()) selected.stringValue = next == 0 ? string.Empty : codes[next - 1];
                 }
                 if (error != null)

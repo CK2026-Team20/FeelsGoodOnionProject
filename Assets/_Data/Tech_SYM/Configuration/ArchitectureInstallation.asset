@@ -16,7 +16,7 @@ MonoBehaviour:
   titlePath: Assets/_Scenes/Tech_SYM/Runtime/02_Title.unity
   corePath: Assets/_Scenes/Tech_SYM/Runtime/03_InGameCore.unity
   stagePaths:
-  - Assets/_Scenes/01_Stage_Tutorial.unity
+  - Assets/_Scenes/Tech_SYM/Runtime/03_Stage01_Tutorial.unity
   bootstrapScene:
     runtimePath: Assets/_Scenes/Tech_SYM/Runtime/01_Bootstrapper.unity
     scene: {fileID: 102900000, guid: 7add50bb3137ca04cb4cbb2b5ac1715c, type: 3}
@@ -27,5 +27,5 @@ MonoBehaviour:
     runtimePath: Assets/_Scenes/Tech_SYM/Runtime/03_InGameCore.unity
     scene: {fileID: 102900000, guid: 64162a88361db4941993f19cec2926e8, type: 3}
   stageScenes:
-  - runtimePath: Assets/_Scenes/01_Stage_Tutorial.unity
+  - runtimePath: Assets/_Scenes/Tech_SYM/Runtime/03_Stage01_Tutorial.unity
     scene: {fileID: 102900000, guid: 1385a53070aaddb489be73c8d3ab12a5, type: 3}

@@ -4,22 +4,18 @@ using Cooked.Authoring;
 using UnityEngine;
 namespace Cooked.Contracts
 {
-    /// <summary>원본 JSON 자산과 그 안의 Code 선택. 테이블 행을 별도 자산에 복제하지 않는다.</summary>
+    /// <summary>Bootstrapper의 중앙 대화 테이블에서 선택한 키. 트리거는 JSON을 소유하지 않는다.</summary>
     [Serializable]
     public sealed class DialogueSelection
     {
-        [SerializeField, InspectorLabel("대화 표"), Tooltip("Code를 선택할 원본 JSON TextAsset를 연결하세요.")]
-        private TextAsset table;
         [SerializeField, HideInInspector] private string code;
-        public TextAsset Table => table;
         public string Code => code;
         public DialogueSelection() { }
 
-        public DialogueSelection(TextAsset table, string code)
+        public DialogueSelection(string code)
         {
-            if (table == null) throw new ArgumentNullException(nameof(table));
             if (string.IsNullOrWhiteSpace(code) || code != code.Trim()) throw new ArgumentException("대화 Code 선택이 필요합니다.", nameof(code));
-            this.table = table; this.code = code;
+            this.code = code;
         }
     }
 

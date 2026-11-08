@@ -26,15 +26,19 @@ namespace Cooked.Audio
             private int maxConcurrent = 2;
             [SerializeField, Min(0), InspectorLabel("최소 재생 간격"), Tooltip("동일 효과음의 재생 수락 후 추가 요청을 무시하는 시간입니다(초). 0은 간격 제한 없음이며 음악에는 적용하지 않습니다. 초과 요청은 예약하지 않습니다.")]
             private float minimumInterval = .08f;
+            [SerializeField, InspectorLabel("효과음 재생 정책"), Tooltip("제한 단발음은 동일 ID의 간격과 동시 수를 제한합니다. 요청마다 재생은 제한 없이 독립 출력하며, 거리 기반 반복음은 PC 청취 범위에서만 출력을 사용합니다. 음악에는 적용하지 않습니다.")]
+            private SfxPlaybackPolicy playbackPolicy;
             public AudioCuePurpose Purpose => purpose;
             public string ResourceId => AudioCueIds.ResourceForPurpose(purpose);
             public string Id => AudioCueIds.ForPurpose(purpose);
             public AudioCueKind Kind => AudioCueIds.KindForPurpose(purpose);
             public AudioClip Clip => clip;
             public float Gain => gain;
+            public SfxPlaybackPolicy PlaybackPolicy => playbackPolicy;
             public Entry(AudioCuePurpose purpose, AudioClip clip, float gain)
             {
-                var cue = new AudioCue(purpose, gain, maxConcurrent, minimumInterval);
+                playbackPolicy = AudioCueIds.DefaultPolicy(AudioCueIds.ForPurpose(purpose));
+                var cue = new AudioCue(purpose, gain, maxConcurrent, minimumInterval, playbackPolicy);
                 this.purpose = purpose; this.clip = clip; this.gain = gain;
             }
 
@@ -42,8 +46,10 @@ namespace Cooked.Audio
             {
                 try
                 {
-                    var cue = new AudioCue(purpose, gain, maxConcurrent, minimumInterval);
+                    var cue = new AudioCue(purpose, gain, maxConcurrent, minimumInterval, playbackPolicy);
                     if (clip == null) throw new InvalidOperationException("AudioClip을 연결하세요.");
+                    if (!float.IsFinite(clip.length) || clip.length <= 0 || clip.samples <= 0 || clip.frequency <= 0 || clip.channels <= 0)
+                        throw new InvalidOperationException("유효한 길이와 샘플을 가진 AudioClip을 연결하세요.");
                     return cue;
                 }
                 catch (ArgumentException error) { throw new InvalidOperationException(fieldName + " (" + purpose + "): " + error.Message, error); }

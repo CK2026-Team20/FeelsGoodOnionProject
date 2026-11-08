@@ -86,6 +86,9 @@ namespace Cooked.Session
             {
                 actorRoot = Instantiate(actorPrefab, pose.position, pose.rotation);
                 actorRoot.name = "PlayerRoot";
+                // HMS 가림 카메라가 Normal/Small 외형 전체를 찾는 공개 태그 계약.
+                // 보호 프리팹을 바꾸지 않고 이 Host가 생성한 실행 인스턴스에만 적용한다.
+                actorRoot.tag = "Player";
                 var createdRoot = actorRoot;
                 ValidateInputOwnership(actorRoot);
                 var actor = actorRoot.GetComponentInChildren<PlayerFacade>(true);

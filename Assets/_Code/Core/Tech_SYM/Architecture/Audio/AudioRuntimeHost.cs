@@ -11,7 +11,7 @@ namespace Cooked.Audio
     {
         [Tooltip("게임에 사용할 소리 용도와 실제 AudioClip을 연결한 AudioCueCatalog 자산을 연결하세요.")]
         [SerializeField, InspectorLabel("소리 목록")] private AudioCueCatalog catalog = null;
-        [Tooltip("소리를 재생할 AudioSource 목록입니다. 서로 다른 AudioSource를 정확히 10개 연결해야 합니다. 음악·효과음 재생에 사용하며 null이나 중복 참조는 허용하지 않습니다.")]
+        [Tooltip("기존 씬 연결을 유지하는 서로 다른 AudioSource 10개입니다. 앞 2개는 음악 전용이며 나머지는 호환용으로 비워 둡니다. 효과음은 별도 풀에서 재생합니다. null이나 중복 참조는 허용하지 않습니다.")]
         [SerializeField, InspectorLabel("재생 채널")] private AudioSource[] sources = Array.Empty<AudioSource>();
         private AudioService service;
         private AudioFlowBinding binding;

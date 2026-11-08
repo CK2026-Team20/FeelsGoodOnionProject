@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Cooked.Authoring;
 using Cooked.Contracts;
@@ -40,6 +40,9 @@ namespace Cooked.Level
             public string DisplayName => displayName;
             public StageTrigger Start => start;
             public StageTrigger End => end;
+            [SerializeField, InspectorLabel("이전 구간 종료"), Tooltip("이 시작점과 경계를 이루는 이전 구간의 종료 체크포인트입니다. 첫 구간은 비워 둡니다. 높이는 달라도 됩니다.")]
+            private StageTrigger previousEnd;
+            public StageTrigger PreviousEnd => previousEnd;
             public CameraMovementMode View => view;
             public float CorrectionSeconds => correctionSeconds;
             public float TransitionSeconds => transitionSeconds;
@@ -141,6 +144,50 @@ namespace Cooked.Level
         public int ActivatedCheckpointCount => activated.Count;
         public bool IsActivated(StageTrigger point) => activated.Contains(point);
         public event Action<StageTrigger> CheckpointCaptured;
+        public event Action CheckpointStateChanged;
+        private readonly HashSet<StageTrigger> pendingCheckpoints = new HashSet<StageTrigger>();
+        private PlayerFacade pendingCheckpointActor;
+        private long pendingCheckpointGeneration;
+        private long pendingCheckpointRound;
+        private void NotifyCheckpointState()
+        {
+            var listeners = CheckpointStateChanged;
+            if (listeners == null) return;
+            foreach (Action listener in listeners.GetInvocationList())
+                try { listener(); } catch (Exception error) { Debug.LogException(error, this); }
+        }
+        public bool IsBoundaryAligned(Section section)
+        {
+            if (section == null || section.PreviousEnd == null || section.Start == null) return true;
+            var delta = section.Start.transform.position - section.PreviousEnd.transform.position;
+            return section.View == CameraMovementMode.Side ? Mathf.Abs(delta.z) <= .01f :
+                section.View == CameraMovementMode.Quarter ? Mathf.Abs(delta.x) <= .01f : true;
+        }
+        public bool IsStartCheckpoint(StageTrigger point) => Array.Exists(sections, s => s != null && s.Start == point);
+        public bool QueueCheckpoint(StageTrigger point, PlayerFacade candidate)
+        {
+            if (!CanDispatch(candidate) || !ContainsCheckpoint(point) || IsActivated(point) || bridge == null) return false;
+            if (pendingCheckpointActor != candidate || pendingCheckpointGeneration != bridge.ActorGeneration) pendingCheckpoints.Clear();
+            pendingCheckpointActor = candidate; pendingCheckpointGeneration = bridge.ActorGeneration; pendingCheckpointRound = boundRound != null ? boundRound.RoundId : -1;
+            pendingCheckpoints.Add(point);
+            return true;
+        }
+        private void FlushCheckpoints()
+        {
+            if (pendingCheckpoints.Count == 0) return;
+            var candidate = pendingCheckpointActor;
+            var requests = new HashSet<StageTrigger>(pendingCheckpoints);
+            pendingCheckpoints.Clear();
+            if (!CanDispatch(candidate) || bridge == null || boundRound == null || !boundRound.IsActive || boundRound.RoundId != pendingCheckpointRound || !bridge.IsCurrentActor(candidate, pendingCheckpointGeneration)) return;
+            // Pair membership, not callback order or world height, determines the boundary order.
+            foreach (var section in sections)
+                if (requests.Contains(section.Start) && section.PreviousEnd != null && section.PreviousEnd.HasActualContact(candidate))
+                    requests.Add(section.PreviousEnd);
+            foreach (var section in sections)
+                if (requests.Contains(section.End) && CanDispatch(candidate)) AcceptCheckpoint(section.End, candidate);
+            foreach (var section in sections)
+                if (requests.Contains(section.Start) && CanDispatch(candidate)) AcceptCheckpoint(section.Start, candidate);
+        }
         public void ValidateSections()
         {
             if (sections == null || sections.Length == 0) throw new InvalidOperationException("StageService에 하나 이상의 구간을 작성하세요.");
@@ -152,6 +199,11 @@ namespace Cooked.Level
                 if (!unique.Add(section.Start) || !unique.Add(section.End)) throw new InvalidOperationException("체크포인트가 여러 구간에 중복 배정되었습니다.");
             }
             _ = FirstSection;
+            var pairedEnds = new HashSet<StageTrigger>();
+            foreach (var section in sections)
+                if (section.PreviousEnd != null && (section == FirstSection || section.PreviousEnd == section.End ||
+                    !Array.Exists(sections, other => other.End == section.PreviousEnd) || !pairedEnds.Add(section.PreviousEnd)))
+                    throw new InvalidOperationException("이전 구간 종료 연결이 잘못되었거나 중복되었습니다.");
         }
         public CheckpointSnapshot ResolveRestore(CheckpointSnapshot initial)
         {
@@ -169,10 +221,12 @@ namespace Cooked.Level
             lastCheckpoint = point;
             currentSection = savedSection = section;
             // 초기 준비는 도달 이벤트/진입 보정/효과음을 발생시키지 않는다.
+            NotifyCheckpointState();
         }
         public bool ShouldPlayCheckpointSound(StageTrigger point)
         {
             if (point == null || point.Owner != this) return false;
+            if (!IsStartCheckpoint(point)) return false;
             if (point.CheckpointSound == CheckpointSoundPolicy.Silent) return false;
             if (point.CheckpointSound == CheckpointSoundPolicy.Play) return true;
             return Array.Exists(sections, section => section.Start == point);
@@ -186,7 +240,7 @@ namespace Cooked.Level
         }
         private bool AcceptCheckpoint(StageTrigger point, PlayerFacade candidate)
         {
-            if (activated.Contains(point) || !point.HasActualContact(candidate) || bridge == null ||
+            if (point == null || !point.isActiveAndEnabled || point.Owner != this || activated.Contains(point) || !point.HasActualContact(candidate) || bridge == null ||
                 !bridge.IsCurrentActor(candidate, bridge.ActorGeneration) || boundRound == null || !boundRound.IsActive) return false;
             Section section;
             CheckpointSnapshot next;
@@ -206,6 +260,8 @@ namespace Cooked.Level
                 return false;
             }
             bool start = section.Start == point;
+            // A late/reverse contact must not overwrite the newer boundary save.
+            if (!start && Array.Exists(sections, next => next.PreviousEnd == point && IsActivated(next.Start))) return false;
             // No callbacks before the ledger, three-value payload and execution context are committed together.
             rejectedContacts.Remove(point);
             activated.Add(point); checkpoint = next; lastCheckpoint = point; reachedCheckpoint = true;
@@ -216,6 +272,7 @@ namespace Cooked.Level
                 try { enterSection?.Invoke(section, false); }
                 catch (Exception error) { Debug.LogException(new InvalidOperationException("수락한 구간의 표현 실패. 저장/소비 이력은 유지됩니다.", error), this); }
             }
+            NotifyCheckpointState();
             var observers = CheckpointCaptured;
             if (observers != null)
                 foreach (Action<StageTrigger> observer in observers.GetInvocationList())
@@ -242,6 +299,14 @@ namespace Cooked.Level
             foreach(var section in sections)
             {
                 if (section == null || section.Start == null || section.End == null) continue;
+                if (!Application.isPlaying && section.PreviousEnd != null)
+                {
+                    Gizmos.color = IsBoundaryAligned(section) ? Color.blue : Color.red;
+                    Gizmos.DrawLine(section.PreviousEnd.transform.position, section.Start.transform.position);
+#if UNITY_EDITOR
+                    UnityEditor.Handles.Label(section.Start.transform.position, IsBoundaryAligned(section) ? "경계 축 정렬 (Y 자유)" : "경계 X/Z축 정렬 확인");
+#endif
+                }
                 Gizmos.color = Color.cyan; Gizmos.DrawLine(section.Start.transform.position,section.End.transform.position);
                 Gizmos.DrawWireSphere(section.Start.transform.position,.2f);Gizmos.DrawWireSphere(section.End.transform.position,.2f);
 #if UNITY_EDITOR
@@ -266,7 +331,6 @@ namespace Cooked.Level
         private StageTrigger finalTrigger;
         private string finalCode;
         private DialogueSelection finalSelection;
-        private TextAsset finalTable;
         private IDialogueTableService finalTableService;
         private DialogueService finalConversation;
         private GameSessionService boundRound, finalRound;
@@ -364,7 +428,7 @@ namespace Cooked.Level
                         boundRound == null || !boundRound.IsActive || isCurrentStage == null || !isCurrentStage() ||
                         !TryResolveDialogue(trigger, false, out var exitCode)) return false;
                     finalActor = candidate; finalActorGeneration = bridge.ActorGeneration; finalTrigger = trigger; finalCode = exitCode;
-                    finalSelection = trigger.Dialogue; finalTable = finalSelection.Table; finalTableService = dialogueTable;
+                    finalSelection = trigger.Dialogue; finalTableService = dialogueTable;
                     finalConversation = dialogue; finalRound = boundRound; finalRoundId = boundRound.RoundId; finalBindingRevision = bindingRevision;
                     finalPending = true; return true; // Resolve after all physics contacts and chase capture for this frame.
                 default: return false;
@@ -373,7 +437,7 @@ namespace Cooked.Level
         private bool TryResolveDialogue(StageTrigger trigger, bool optional, out string code)
         {
             code = null;
-            if (trigger.Dialogue != null && trigger.Dialogue.Table != null)
+            if (trigger.Dialogue != null && !string.IsNullOrEmpty(trigger.Dialogue.Code))
             {
                 if (dialogueTable == null) return false;
                 code = dialogueTable.RequireSelection(trigger.Dialogue);
@@ -395,6 +459,7 @@ namespace Cooked.Level
         }
         private void LateUpdate()
         {
+            FlushCheckpoints();
             if (endingPending)
             {
                 if (!IsFinalContextCurrent(true) ||
@@ -437,8 +502,8 @@ namespace Cooked.Level
                 finalActor == null || finalActor != actor || !finalActor.isActiveAndEnabled || finalActor.IsDead || bridge == null ||
                 !bridge.IsCurrentActor(finalActor, finalActorGeneration) || finalTrigger == null || !finalTrigger.isActiveAndEnabled ||
                 finalTrigger.Kind != StageTriggerKind.Escape || finalTrigger.Owner != this || finalTrigger.gameObject.scene != gameObject.scene ||
-                finalSelection == null || !ReferenceEquals(finalTrigger.Dialogue, finalSelection) || finalTable == null ||
-                !ReferenceEquals(finalSelection.Table, finalTable) || !string.Equals(finalSelection.Code, finalCode, StringComparison.Ordinal) ||
+                finalSelection == null || !ReferenceEquals(finalTrigger.Dialogue, finalSelection) ||
+                !string.Equals(finalSelection.Code, finalCode, StringComparison.Ordinal) ||
                 finalConversation == null || !ReferenceEquals(dialogue, finalConversation) || !ReferenceEquals(dialogueTable, finalTableService) ||
                 flow == null || flow.Snapshot.State != FlowState.Playing || flow.Snapshot.IsBusy ||
                 (published && finalConversation.SessionId != finalDialogueSession)) return false;
@@ -467,7 +532,7 @@ namespace Cooked.Level
             long sessionId = finalDialogueSession;
             if (conversation != null) conversation.Ended -= OnFinalDialogueEnded;
             finalPending = finalStarted = endingPending = false;
-            finalActor = null; finalTrigger = null; finalCode = null; finalSelection = null; finalTable = null;
+            finalActor = null; finalTrigger = null; finalCode = null; finalSelection = null;
             finalTableService = null; finalConversation = null; finalRound = null;
             finalDialogueSession = finalActorGeneration = finalRoundId = finalBindingRevision = 0;
             // 다른 시작이 이미 게시한 새 회차를 취소하지 않는다. 장부는 DialogueService 소유다.
@@ -504,6 +569,7 @@ namespace Cooked.Level
         }
         public void Dispose()
         {
+            pendingCheckpoints.Clear(); pendingCheckpointActor = null;
             bound = false; bindingRevision++;
             chaseAccepted = false;
             var errors = new List<Exception>();
