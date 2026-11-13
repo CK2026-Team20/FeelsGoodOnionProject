@@ -1,5 +1,67 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-5750589692701972329
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70afe9e12c7a7ed47911bb608a23a8ff, type: 3}
+  m_Name: SplitToning
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.SplitToning
+  active: 0
+  shadows:
+    m_OverrideState: 1
+    m_Value: {r: 0.21698111, g: 0.21698111, b: 0.21698111, a: 1}
+  highlights:
+    m_OverrideState: 1
+    m_Value: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  balance:
+    m_OverrideState: 1
+    m_Value: 14
+--- !u!114 &-4170574288618123906
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdfbdbb87d3286943a057f7791b43141, type: 3}
+  m_Name: ChannelMixer
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.ChannelMixer
+  active: 1
+  redOutRedIn:
+    m_OverrideState: 1
+    m_Value: 93
+  redOutGreenIn:
+    m_OverrideState: 1
+    m_Value: 0
+  redOutBlueIn:
+    m_OverrideState: 0
+    m_Value: 0
+  greenOutRedIn:
+    m_OverrideState: 1
+    m_Value: 0
+  greenOutGreenIn:
+    m_OverrideState: 1
+    m_Value: 95
+  greenOutBlueIn:
+    m_OverrideState: 0
+    m_Value: 0
+  blueOutRedIn:
+    m_OverrideState: 0
+    m_Value: 0
+  blueOutGreenIn:
+    m_OverrideState: 0
+    m_Value: 0
+  blueOutBlueIn:
+    m_OverrideState: 1
+    m_Value: 90
 --- !u!114 &-2840918253978724346
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -12,7 +74,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3eb4b772797da9440885e8bd939e9560, type: 3}
   m_Name: ColorCurves
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.ColorCurves
-  active: 1
+  active: 0
   master:
     m_OverrideState: 1
     m_Value:
@@ -33,8 +95,8 @@ MonoBehaviour:
           inWeight: 0
           outWeight: 0
         - serializedVersion: 3
-          time: 0.248394
-          value: 0.17937219
+          time: 0.27088606
+          value: 0.20320857
           inSlope: 1.0667049
           outSlope: 1.0667049
           tangentMode: 0
@@ -42,8 +104,8 @@ MonoBehaviour:
           inWeight: 0
           outWeight: 0
         - serializedVersion: 3
-          time: 0.49892932
-          value: 0.56950676
+          time: 0.5113924
+          value: 0.5294118
           inSlope: 1
           outSlope: 1
           tangentMode: 0
@@ -219,25 +281,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a074ec59f6e910b4e8c49f57e56cf95a, type: 3}
   m_Name: VolumetricFogVolumeComponent
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricFogVolumeComponent
-  active: 1
+  active: 0
   distance:
-    m_OverrideState: 0
-    m_Value: 64
+    m_OverrideState: 1
+    m_Value: 93
   baseHeight:
-    m_OverrideState: 0
-    m_Value: 0
+    m_OverrideState: 1
+    m_Value: 4.02
   maximumHeight:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 50
   enableGround:
-    m_OverrideState: 0
-    m_Value: 0
+    m_OverrideState: 1
+    m_Value: 1
   groundHeight:
     m_OverrideState: 0
     m_Value: 0
   density:
-    m_OverrideState: 0
-    m_Value: 0.2
+    m_OverrideState: 1
+    m_Value: 0.505
   attenuationDistance:
     m_OverrideState: 0
     m_Value: 128
@@ -252,27 +314,27 @@ MonoBehaviour:
     m_Value: 1
   anisotropy:
     m_OverrideState: 1
-    m_Value: -0.216
+    m_Value: 1
   scattering:
-    m_OverrideState: 0
-    m_Value: 0.15
+    m_OverrideState: 1
+    m_Value: 0.31
   tint:
-    m_OverrideState: 0
-    m_Value: {r: 1, g: 1, b: 1, a: 1}
+    m_OverrideState: 1
+    m_Value: {r: 1, g: 0, b: 0, a: 1}
   enableAdditionalLightsContribution:
     m_OverrideState: 1
     m_Value: 1
   maxSteps:
-    m_OverrideState: 0
-    m_Value: 128
+    m_OverrideState: 1
+    m_Value: 123
   blurIterations:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 2
   enabled:
     m_OverrideState: 1
     m_Value: 1
   renderPassEvent:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 550
 --- !u!114 &-967602416472024484
 MonoBehaviour:
@@ -292,16 +354,16 @@ MonoBehaviour:
     m_Value: 0.97
   contrast:
     m_OverrideState: 1
-    m_Value: -14
+    m_Value: -7
   colorFilter:
-    m_OverrideState: 0
-    m_Value: {r: 1, g: 0.6839622, b: 0.6839622, a: 1}
+    m_OverrideState: 1
+    m_Value: {r: 0.8254717, g: 0.86729884, b: 1, a: 1}
   hueShift:
     m_OverrideState: 0
     m_Value: 21
   saturation:
     m_OverrideState: 1
-    m_Value: 4.6
+    m_Value: -4
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -321,6 +383,9 @@ MonoBehaviour:
   - {fileID: -967602416472024484}
   - {fileID: 641207303183894523}
   - {fileID: 5724096552621583695}
+  - {fileID: -5750589692701972329}
+  - {fileID: -4170574288618123906}
+  - {fileID: 9045406616729179770}
 --- !u!114 &641207303183894523
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -367,13 +432,13 @@ MonoBehaviour:
     m_Value: 1
   threshold:
     m_OverrideState: 1
-    m_Value: 0.33
+    m_Value: 0.69
   intensity:
     m_OverrideState: 1
-    m_Value: 0.43
+    m_Value: 1.2
   scatter:
     m_OverrideState: 1
-    m_Value: 0.369
+    m_Value: 0.269
   clamp:
     m_OverrideState: 0
     m_Value: 65472
@@ -385,7 +450,7 @@ MonoBehaviour:
     m_Value: 0
   filter:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 2
   downscale:
     m_OverrideState: 0
     m_Value: 0
@@ -414,9 +479,9 @@ MonoBehaviour:
   active: 1
   shadows:
     m_OverrideState: 1
-    m_Value: {x: 0.99069285, y: 0.9930185, z: 1, w: 0.11940299}
+    m_Value: {x: 1, y: 0.9655374, z: 0.9253842, w: 0.0838158}
   midtones:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: {x: 1, y: 1, z: 1, w: 0.02985075}
   highlights:
     m_OverrideState: 1
@@ -433,3 +498,22 @@ MonoBehaviour:
   highlightsEnd:
     m_OverrideState: 0
     m_Value: 1
+--- !u!114 &9045406616729179770
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 221518ef91623a7438a71fef23660601, type: 3}
+  m_Name: WhiteBalance
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.WhiteBalance
+  active: 1
+  temperature:
+    m_OverrideState: 1
+    m_Value: 16
+  tint:
+    m_OverrideState: 1
+    m_Value: 9
