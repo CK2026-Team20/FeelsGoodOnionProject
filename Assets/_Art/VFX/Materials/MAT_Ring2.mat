@@ -32,6 +32,7 @@ Material:
   - _FADE_TRANSITION_ENABLED
   - _FLOW_MAP_TARGET_BASE
   - _PARALLAX_MAP_MODE_2D
+  - _SOFT_PARTICLES_ENABLED
   - _TINT_AREA_ALL
   - _TINT_COLOR_ENABLED
   m_InvalidKeywords: []
@@ -333,7 +334,7 @@ Material:
     - _ShadowCasterEnabled: 0
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
-    - _SoftParticlesEnabled: 0
+    - _SoftParticlesEnabled: 1
     - _SoftParticlesIntensity: 1
     - _SpecularHighlights: 1
     - _SrcBlend: 1
