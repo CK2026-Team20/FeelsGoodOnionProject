@@ -1467,12 +1467,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 408700982}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.103375256, y: -0.6407348, z: 0.75104743, w: 0.1212449}
-  m_LocalPosition: {x: -39, y: 3, z: -0.13344467}
+  m_LocalRotation: {x: -0.00005774945, y: 0.6151354, z: -0.098137334, w: 0.78229}
+  m_LocalPosition: {x: -12.19, y: 16.97, z: 12.93}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 2038609963}
   m_LocalEulerAnglesHint: {x: 69.616, y: -63.108, z: 115.42}
 --- !u!114 &408700986
 MonoBehaviour:
@@ -1486,9 +1486,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c8bca95f7c947b4db5fb152a0d693d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
-  anisotropy: 0.25
-  scattering: 1
-  radius: 0.2
+  anisotropy: 0.52
+  scattering: 2.25
+  radius: 0.354
 --- !u!1001 &413043884
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7466,7 +7466,8 @@ Transform:
   m_LocalPosition: {x: -71.15, y: 3, z: -0.13344467}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 408700985}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 30.843, y: 79.426, z: 264.528}
 --- !u!1001 &2047361466
@@ -7930,7 +7931,6 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 508108535}
-  - {fileID: 408700985}
   - {fileID: 2038609963}
   - {fileID: 1969661281}
   - {fileID: 2074295565}
