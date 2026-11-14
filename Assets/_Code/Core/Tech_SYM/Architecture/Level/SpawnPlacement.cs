@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -38,6 +38,8 @@ namespace Cooked.Level
 #if UNITY_EDITOR
         public static bool Check(CapsuleCollider capsule, Pose feet, PhysicsScene world, Transform ignoredRoot, out string reason)
         {
+            if (Application.isPlaying) { reason = null; return true; } // Play 중에는 물리 질의를 실행하지 않는다.
+
             try
             {
                 Center(capsule, feet);

@@ -18,6 +18,7 @@ namespace Cooked.Integration
     {
         [Tooltip("시작 시 검증할 대화 JSON TextAsset를 연결하세요.")]
         [SerializeField, InspectorLabel("대화 원본")] private TextAsset dialogueTable;
+        public TextAsset DialogueSource => dialogueTable;
         [Tooltip("부트·타이틀·Core·스테이지 경로를 지정한 설치 자산입니다. 실제 씬 흐름을 이 자산에서 설정합니다.")]
         [SerializeField, InspectorLabel("씬 설치 설정")] private ArchitectureInstallation installation;
         [SerializeField, InspectorLabel("옵션 화면"), Tooltip("이 씬에서 음량과 닫기를 표시할 OptionsView를 연결하세요.")]
@@ -95,7 +96,7 @@ namespace Cooked.Integration
                 services.Register<IGameplayControlService>(control);
                 services.Register<IFadeService>(fade);
                 services.Register<ISceneService>(new SceneService(catalog));
-                var table = new DialogueTableService();
+                var table = new DialogueTableService(dialogueTable.name);
                 services.Register<IDialogueTableService>(table);
                 table.LoadJson(dialogueTable.text);
                 fade.SetCoveredImmediate();

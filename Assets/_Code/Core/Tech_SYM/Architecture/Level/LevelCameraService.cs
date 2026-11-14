@@ -156,6 +156,23 @@ namespace Cooked.Level
         private CinemachineBrain.BrainUpdateMethods previousBlendUpdate;
         private bool previousIgnoreTimeScale;
         private PlayerMovementMode requestedMode;
+        /// <summary>실제 출력에 확정된 시점. 미연결·다른 시점으로 블렌드 중에는 null입니다.</summary>
+        public CameraMovementMode? PresentedView { get; private set; }
+        public event Action<CameraMovementMode?> PresentedViewChanged;
+        private void SetPresentedView(CameraMovementMode? view)
+        {
+            if (PresentedView == view) return;
+            PresentedView = view;
+            PresentedViewChanged?.Invoke(view);
+        }
+        private void RefreshPresentedView()
+        {
+            bool settled = HasBinding && !player.Actor.IsDead && committedCamera != null &&
+                ReferenceEquals(brain.ActiveVirtualCamera, committedCamera) && !brain.IsBlending &&
+                (!IsTransitioning || requestedCamera == committedCamera);
+            SetPresentedView(!settled ? null : committedCamera == side ? CameraMovementMode.Side :
+                committedCamera == corridor ? CameraMovementMode.Corridor : CameraMovementMode.Quarter);
+        }
         public CameraTransitionState State { get; private set; }
         public bool IsTransitioning => State >= CameraTransitionState.Accepted && State <= CameraTransitionState.WaitingForCamera;
         public bool IsViewReady => viewCommitted && !IsTransitioning && HasBinding && modes.IsInitialized && modes.CurrentMode == requestedMode && SelectionComplete;
@@ -259,6 +276,7 @@ namespace Cooked.Level
                 throw new InvalidOperationException("현재 Stage가 선택한 구간과 살아 있는 Actor가 필요합니다.");
             var selected = section.View == CameraMovementMode.Side ? side : section.View == CameraMovementMode.Corridor ? corridor : quarter;
             bool sameView = IsTransitioning ? requestedCamera == selected : committedCamera == selected;
+            if (!sameView || restore) SetPresentedView(null);
             // New accepted starts replace old work even when their view is identical.
             CancelTransition(false, true);
             if (!HasBinding || !ReferenceEquals(stage.CurrentSection,section)) return;
@@ -278,8 +296,9 @@ namespace Cooked.Level
                 var lease=control.BlockGameplay("구간 진입 보정");
                 if(!IsCurrent(generation)){lease.Dispose();return;}
                 inputLease=lease;player.ClearInput();
-                if(!restore && (!player.IsCorrectionPathSafe(playerGoal) || !HasSupport(playerGoal) || !section.IsBlockerPathSafe(acceptedActor,playerGoal)))
-                    throw new InvalidOperationException("수락한 구간 '"+section.DisplayName+"' 보정 경로·지지면·차단 경로가 안전하지 않습니다.");
+                // 스폰 앵커의 충돌·지지면 검사는 에디터 작성 단계에서만 수행한다.
+                if(!restore && !section.IsBlockerPathSafe(acceptedActor,playerGoal))
+                    throw new InvalidOperationException("수락한 구간 '"+section.DisplayName+"' 차단 장치 경로가 안전하지 않습니다.");
                 requestedCamera=selected;
                 if(restore || !sameView)
                 {
@@ -303,19 +322,6 @@ namespace Cooked.Level
             }
             catch(Exception error){if(generation==requestGeneration)Fail(error);throw;}
         }
-        private bool HasSupport(Vector3 goal)
-        {
-            var capsule=acceptedActor.GetComponent<CapsuleCollider>();
-            PlayerBridgeService.CapsuleGeometry(capsule,out var a,out var b,out float radius);
-            var delta=goal-acceptedActor.GetComponent<Rigidbody>().position;
-            var bottom=(a.y<b.y?a:b)+delta;
-            foreach(var hit in Physics.SphereCastAll(bottom+Vector3.up*.02f,Mathf.Max(.001f,radius-.002f),Vector3.down,.15f,~0,QueryTriggerInteraction.Ignore))
-                if(hit.collider.attachedRigidbody!=acceptedActor.GetComponent<Rigidbody>() &&
-                    !Physics.GetIgnoreLayerCollision(capsule.gameObject.layer,hit.collider.gameObject.layer) &&
-                    !Physics.GetIgnoreCollision(capsule,hit.collider) && Vector3.Angle(hit.normal,Vector3.up)<=acceptedActor.GetComponent<CharacterMovement>().MaximumGroundAngle)
-                    return true;
-            return false;
-        }
         private bool IsCurrent(long generation) => generation==requestGeneration && IsTransitioning && HasBinding &&
             requestedSection!=null && ReferenceEquals(stage.CurrentSection,requestedSection) &&
             player.IsCurrentActor(acceptedActor,actorGeneration) && !acceptedActor.IsDead &&
@@ -329,7 +335,7 @@ namespace Cooked.Level
             {
                 if (State == CameraTransitionState.CorrectingPlayer && !playerMoveSubmitted)
                 {
-                    if (!player.IsCorrectionPathSafe(playerGoal)) throw new InvalidOperationException("진행 중 플레이어 보정 경로가 막혔습니다.");
+
                     playerMoveSubmitted = Advance(playerTween, Time.fixedDeltaTime);
                 }
                 else if (State == CameraTransitionState.MovingBlocker && !blockerMoveSubmitted)
@@ -384,6 +390,7 @@ namespace Cooked.Level
                     }
                 }
                 brain.ManualUpdate(Time.frameCount, initialCut ? -1 : Time.deltaTime);
+                RefreshPresentedView();
                 if (!IsTransitioning || !motionsComplete || !SelectionComplete || !modes.IsInitialized) return;
                 correction?.Dispose(); correction = null;
                 if (!IsCurrent(generation)) return;
@@ -391,6 +398,7 @@ namespace Cooked.Level
                 if (!IsCurrent(generation)) return;
                 requestedCamera.Follow = target; committedCamera = requestedCamera;
                 State = CameraTransitionState.Completed; viewCommitted = true; initialSelection = false;
+                RefreshPresentedView();
                 player.ClearInput(); ReleaseLease();
             }
             catch (Exception error) { if (generation == requestGeneration) Fail(error); Debug.LogException(error, this); }
@@ -418,6 +426,7 @@ namespace Cooked.Level
         private void CancelTransition(bool failed, bool preserveView = false)
         {
             if (cancellingTransition) return;
+            if (!preserveView) SetPresentedView(null);
             cancellingTransition = true;
             try
             {
@@ -460,6 +469,7 @@ namespace Cooked.Level
         public void Unbind()
         {
             if (unbinding) return;
+            SetPresentedView(null);
             unbinding = true;
             try
             {

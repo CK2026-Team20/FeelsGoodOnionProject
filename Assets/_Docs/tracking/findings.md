@@ -119,3 +119,22 @@ StageManager 추가 후에도 기존 StageTriggerPoint6개 소속/Trigger 미설
 
 사운드 명세30종 조사: 정상 Bootstrapper 통합 경로에 BGM5/SFX7 호출 연결, 음원 보유·호출 미연결15종, 음원 미확보3종. 점프/착지/피해/사망 이벤트는 있지만 오디오 구독이 없다. 적 피격은 TryStun만 있고 매 적중 성공 통지/재생 연결이 없다. 출력은 전부2D이며 위치·거리·개별 환경 Loop 수명 계약이 빠져 있다. DirectSceneTestPresentation에는 BindFlow/SetStage/CoreWorldBinding 조립도 없어 직접 씬 테스트에서는 통합 경로 소리까지 빠진다. 이번 요청의 전수 조사 결과로 기록하며 전체 오디오 신규 구현은 미완료다. 상세 대조표·연결 가능한 메서드·후속 구현 순서는 [전수 코드 리뷰](audio-runtime-audit-2026-11-02/코드%20리뷰.md)를 참조한다. 적끼리 눈물을 차폐하던 판정은 별도로 수정하고 PhysX 검사9개를 통과했다.
 
+
+
+## 2026-11-05 UI 텍스트 통일 검증 중 발견
+
+- Bootstrapper AppComposition.dialogueTable 참조가 null이어서 Play 시작 시 Bootstrap composition dependencies are incomplete 발생. 작업 전 DialogueTable.json 삭제 및 Cooked_Dialogue.json 신규 상태가 존재하므로 대화 자료 교체를 임의로 확정하지 않았다. 본편 실행 검증 차단.
+- Assets/_Scenes/art_kjh/04_InGame.unity 미리보기 로드에서 Memo_1001/1002, MemoScreenCanvas 등 기존 누락 프리팹 GUID가 확인됐다. 보호된 타 작업자 씬이므로 복구하지 않았다.
+- HMS 테스트 씬01_PlayerMovementTest/02_OccluTest의 TMP7개는 LiberationSans를 사용한다. 보호 씬 수정 권한이 필요하며 본편 UI 프리팹6개에는 불일치가 없다.
+
+
+## 2026-11-05 중앙 대화 테이블 후속 검증
+
+- 앞서 기록한 Bootstrap dialogueTable 누락은 Cooked_Dialogue.json 연결 및 Dialogues 스키마 반영 후 실제 Bootstrap→Title→Opening→Playing으로 해결 확인. 트리거는 중앙 테이블의 키만 보관한다.
+- 남은 시각 문제: 동일 갈색 #573B24 자막이 어두운 시네마틱 원화에서 대비가 낮고 타이틀 우하단 팀명도 어두운 배경에서 읽기 어렵다. 문자 출력·머테리얼 참조는 정상. 요청된 색상 통일과 크기/배치 유지 범위 때문에 자막 배경·색상을 임의 수정하지 않았다. 실화면 근거는 dialogue-central-table-2026-11-05 검증 문서 참조.
+
+## 2026-11-05 UGUI 편집기 목록 오류 후속 확인
+
+- Selectable.OnEnable의 IndexOutOfRangeException 발생 시 내부 s_SelectableCount=-1, 배열 길이20을 읽기 전용으로 확인했다. 음수 인덱스가 직접 오류 원인이다.
+- 최초 목록 불일치 유발 경로는 확정하지 않았다. Domain/Scene Reload 비활성 설정과 프리팹/Play 전환, DialogueAuthoringSource의 OpenPreviewScene 기반 조회에 따른 UI 수명 호출은 추가 조사 대상이다. 해당 Inspector 구현이 유일 원인이라고 단정하지 않는다.
+- 사용자 지시에 따라 오류 수정은 진행하지 않았다. 패키지 코드·정적 카운터 강제 수정 없음. 이전의 제한된 Play 구간 오류0 기록은 이 편집기 문제의 해결 증거가 아니다.

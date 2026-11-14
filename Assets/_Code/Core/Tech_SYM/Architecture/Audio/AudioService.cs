@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Cooked.Audio
 {
-    /// <summary>App-lifetime policy. Contains no scene, UI, disk, or player-model access.</summary>
+    /// <summary>앱 수명 재생 정책. 입력 성공 판정과 Actor 수명은 Binding이 소유하며, 출력 슬롯은 ISfxOutput이 소유한다.</summary>
     public sealed class AudioService : IAudioService
     {
         public const int ChannelCount = 10;
@@ -19,7 +19,11 @@ namespace Cooked.Audio
         }
         private readonly Dictionary<string, AudioCue> cues;
         private readonly IAudioPlaybackDriver driver;
-        private readonly WorldAudioOutput worldOutput;
+        private readonly SfxPlaybackRuntime sfxRuntime;
+        public int ActiveSfxSourceCount => sfxRuntime?.ActiveSourceCount ?? 0;
+        public int PooledSfxSourceCount => sfxRuntime?.PooledSourceCount ?? 0;
+        public int LogicalSfxVoiceCount => sfxRuntime?.RegisteredCount ?? 0;
+        public int VirtualLoopCount => sfxRuntime?.VirtualLoopCount ?? 0;
         private readonly IMusicCrossfadeDriver crossfade;
         private readonly Action<string> warning;
         private readonly HashSet<string> warned = new HashSet<string>(StringComparer.Ordinal);
@@ -37,11 +41,13 @@ namespace Cooked.Audio
         public int RejectedRequests { get; private set; }
 
         public AudioService(IEnumerable<AudioCue> catalog, IAudioPlaybackDriver driver,
-            IMusicCrossfadeDriver crossfade, Action<string> warning, float crossfadeSeconds = 0.3f, WorldAudioOutput worldOutput = null, Func<double> realtime = null)
+            IMusicCrossfadeDriver crossfade, Action<string> warning, float crossfadeSeconds = 0.3f, WorldAudioOutput worldOutput = null, Func<double> realtime = null, ISfxOutput sfxOutput = null, GameplayAudioSettings gameplay = null)
         {
             cues = AudioCue.Index(catalog);
             this.realtime = realtime ?? (() => Time.realtimeSinceStartupAsDouble);
-            this.worldOutput = worldOutput;
+            if (worldOutput != null && sfxOutput != null) throw new ArgumentException("효과음 출력은 하나만 연결하세요.");
+            var output = sfxOutput ?? worldOutput;
+            if (output != null) sfxRuntime = new SfxPlaybackRuntime(output, gameplay ?? worldOutput?.Gameplay ?? new GameplayAudioSettings(), this.realtime);
             this.driver = driver ?? throw new ArgumentNullException(nameof(driver));
             this.crossfade = crossfade ?? throw new ArgumentNullException(nameof(crossfade));
             this.warning = warning ?? throw new ArgumentNullException(nameof(warning));
@@ -122,53 +128,40 @@ namespace Cooked.Audio
         public int PlaySfxAt(string cueId, Vector3 position, Transform follow = null)
         {
             RequireAlive();
-            if (worldPaused || !TryCue(cueId, false, out var cue)) return 0;
-            if (worldOutput == null) throw new InvalidOperationException("위치 기반 출력이 연결되지 않았습니다.");
-            if (!CanStartSfx(cue, out double now)) return 0;
-            int handle = worldOutput.Play(cue, position, follow);
-            if (handle != 0) lastSfxStart[cue.Id] = now;
-            return handle;
+            if (!TryCue(cueId, false, out var cue)) return 0;
+            if (cue.Kind != AudioCueKind.World)
+            { RejectedRequests++; warning("위치 출력에는 World 효과음만 연결하세요: " + cueId); return 0; }
+            if (worldPaused) return 0;
+            return StartSfx(cue, true, position, follow);
         }
-        public void StopWorldVoice(int handle) => worldOutput?.Stop(handle);
-        public void SetWorldListener(Transform listener) => worldOutput?.SetListener(listener);
+        public void StopWorldVoice(int handle) => sfxRuntime?.StopWorldVoice(handle);
+        public bool IsWorldVoiceRegistered(int handle) => sfxRuntime?.IsWorldVoiceRegistered(handle) ?? false;
+        public double VirtualElapsedSeconds(int handle) => sfxRuntime?.VirtualElapsedSeconds(handle) ?? 0;
+        public int CountActiveSfx(string cueId) => sfxRuntime?.CountActive(cueId) ?? 0;
+        public int CountRegisteredSfx(string cueId) => sfxRuntime?.CountRegistered(cueId) ?? 0;
+        public void SetWorldListener(Transform value) { if (!disposed) sfxRuntime?.SetListener(value); }
         public void PlaySfx(string cueId)
         {
             RequireAlive();
             if (!TryCue(cueId, false, out var cue)) return;
+            if (cue.PlaybackPolicy == SfxPlaybackPolicy.VirtualLoop)
+            { RejectedRequests++; warning("VirtualLoop는 PlaySfxAt으로 위치를 지정하세요: " + cue.Id); return; }
             if (cue.Kind == AudioCueKind.World && worldPaused) return;
-            if (!CanStartSfx(cue, out double now)) return;
-            int channel;
-            if (cue.Kind == AudioCueKind.UI) channel = UiChannel;
-            else if (cue.Kind == AudioCueKind.Transition) channel = TransitionChannel;
-            else
-            {
-                // Do not reserve a voice for a gameplay command rejected by pause.
-                if (worldPaused) return;
-                channel = FirstWorldChannel;
-                bool found = false;
-                for (int i = FirstWorldChannel; i < ChannelCount; i++)
-                {
-                    if (voices[i].Cue == null || (!voices[i].Paused && !driver.IsPlaying(i)))
-                    { channel = i; found = true; break; }
-                    if (voices[i].Order < voices[channel].Order) channel = i;
-                }
-                if (!found) ReplacedWorldVoices++;
-            }
-            StopVoice(channel);
-            StartVoice(channel, cue, 1);
-            lastSfxStart[cue.Id] = now;
+            StartSfx(cue, false, Vector3.zero, null);
         }
-
-        private bool CanStartSfx(AudioCue cue, out double now)
+        private int StartSfx(AudioCue cue, bool spatial, Vector3 position, Transform follow)
         {
-            now = realtime();
-            if (lastSfxStart.TryGetValue(cue.Id, out double last) && now - last < cue.MinimumInterval)
-            { SuppressedSfxRequests++; return false; }
-            int count = worldOutput?.CountActive(cue.Id) ?? 0;
-            for (int i = UiChannel; i < ChannelCount; i++)
-                if (voices[i].Cue?.Id == cue.Id && (voices[i].Paused || driver.IsPlaying(i))) count++;
-            if (count >= cue.MaxConcurrent) { SuppressedSfxRequests++; return false; }
-            return true;
+            if (sfxRuntime == null)
+                throw new InvalidOperationException("SFX 정책을 보장하는 ISfxOutput을 연결하세요. 고정 음악 드라이버로 효과음을 우회 재생할 수 없습니다.");
+            double now = realtime();
+            if (double.IsNaN(now) || double.IsInfinity(now)) throw new InvalidOperationException("효과음 시계는 유한값이어야 합니다.");
+            sfxRuntime.Tick();
+            if (cue.PlaybackPolicy == SfxPlaybackPolicy.LimitedOneShot &&
+                ((lastSfxStart.TryGetValue(cue.Id, out var last) && now - last < cue.MinimumInterval) || CountActiveSfx(cue.Id) >= cue.MaxConcurrent))
+            { SuppressedSfxRequests++; return 0; }
+            int handle = sfxRuntime.Start(cue, spatial, position, follow);
+            if (handle != 0 && cue.PlaybackPolicy == SfxPlaybackPolicy.LimitedOneShot) lastSfxStart[cue.Id] = now;
+            return handle;
         }
 
         /// <summary>Flow cleanup deliberately excludes accepted death/escape one-shots.</summary>
@@ -177,7 +170,7 @@ namespace Cooked.Audio
             RequireAlive();
             var errors = new List<Exception>();
             StopVoices(FirstWorldChannel, ChannelCount, false, errors);
-            worldOutput?.Clear();
+            try { sfxRuntime?.ClearWorld(); } catch (Exception error) { errors.Add(error); }
             if (errors.Count > 0) throw new AggregateException("월드 효과음 정지 실패.", errors);
         }
 
@@ -188,24 +181,25 @@ namespace Cooked.Audio
             StopMusicTransition(errors);
             lastSfxStart.Clear();
             StopVoices(0, ChannelCount, false, errors);
-            worldOutput?.Clear();
+            try { sfxRuntime?.Clear(); } catch (Exception error) { errors.Add(error); }
             if (errors.Count > 0) throw new AggregateException("전체 오디오 정지 실패.", errors);
         }
 
         public void SetPauseState(bool world, bool presentation)
         {
-            RequireAlive(); worldPaused = world; presentationPaused = presentation;
-            worldOutput?.SetState(master * sfx, world || presentation);
+            RequireAlive();
+            worldPaused = world; presentationPaused = presentation;
+            sfxRuntime?.SetPauseState(world, presentation);
             // 옵션의 표시 정지는 음악과 진행 중인 전환도 함께 정지한다.
             crossfade.SetPaused(presentation);
             for (int i = 0; i < ChannelCount; i++) RefreshPause(i);
         }
 
-        /// <summary>Polls native one-shot completion only; no timer or interpolation lives here.</summary>
+        /// <summary>실제 단발음 완료와 가상 반복음의 논리 시계·가청 상태를 갱신한다.</summary>
         public void PollCompletedVoices()
         {
             if (disposed) return;
-            worldOutput?.Tick();
+            sfxRuntime?.Tick();
             for (int i = 2; i < ChannelCount; i++)
                 if (voices[i].Cue != null && !voices[i].Paused && !driver.IsPlaying(i)) StopVoice(i);
         }
@@ -218,7 +212,9 @@ namespace Cooked.Audio
             var errors = new List<Exception>();
             StopMusicTransition(errors);
             StopVoices(0, ChannelCount, true, errors);
-            try { worldOutput?.Dispose(); } catch (Exception error) { errors.Add(error); }
+            try { sfxRuntime?.Clear(); } catch (Exception error) { errors.Add(error); }
+            try { sfxRuntime?.Dispose(); } catch (Exception error) { errors.Add(error); }
+            lastSfxStart.Clear();
             try { crossfade.Dispose(); } catch (Exception error) { errors.Add(error); }
             if (errors.Count > 0) throw new AggregateException("오디오 종료 중 일부 자원 정리에 실패했습니다.", errors);
         }
@@ -279,7 +275,7 @@ namespace Cooked.Audio
             return voice.Cue == null ? 0 : master * (channel < 2 ? music : sfx) * voice.Cue.Gain * voice.Envelope;
         }
         private void ApplyGains()
-        { for (int i = 0; i < ChannelCount; i++) driver.SetGain(i, Gain(i)); worldOutput?.SetState(master * sfx, worldPaused || presentationPaused); }
+        { for (int i = 0; i < ChannelCount; i++) driver.SetGain(i, Gain(i)); sfxRuntime?.SetVolume(master * sfx); }
         private void CancelCrossfade()
         { transitionRevision++; crossfade.Cancel(); }
         private void RequireAlive()

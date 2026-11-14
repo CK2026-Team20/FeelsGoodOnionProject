@@ -285,6 +285,8 @@ GameObject:
   - component: {fileID: 4266102778214499789}
   - component: {fileID: 8333719999355707336}
   - component: {fileID: 1794799594807117737}
+  - component: {fileID: 1468421405238126553}
+  - component: {fileID: 862038375299612782}
   m_Layer: 0
   m_Name: ActorBody
   m_TagString: Untagged
@@ -614,8 +616,18 @@ MonoBehaviour:
   restoreController: {fileID: 9100000, guid: c0cc3c72d9e3bfd4b9afef52edde4dc4, type: 2}
   restoreSeconds: 1
   peelMaterial: {fileID: 2100000, guid: 180ba5dbfc7aac849b344dff6dc072cc, type: 2}
-  shellGroundingDelay: 0.35
-  shellGroundingDuration: 0.3
+  shellGroundingDelay: 0.1
+  shellGroundingDuration: 0.01
+  usePhysicsPieces: 0
+  physicsHandoffTime: 0.4
+  pieceOutwardSpeed: 0.7
+  pieceUpwardSpeed: 0.5
+  pieceSpinSpeed: 5
+  pieceLifetime: 2
+  pieceShrinkSeconds: 0.35
+  pieceCollisionLayers:
+    serializedVersion: 2
+    m_Bits: 4294967291
 --- !u!114 &1794799594807117737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -631,6 +643,38 @@ MonoBehaviour:
   effectPrefab: {fileID: 9127580198904251783, guid: 98d6ab8b85d1f5f40b2b391a5b657e44, type: 3}
   localOffset: {x: 0, y: 0, z: 0}
   effectScale: 1
+--- !u!114 &1468421405238126553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8755916027795869297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e41fc08bf2932747970d0e597623e04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawnVfxAnchor
+  spawnBurst: {fileID: 680979337806382960}
+--- !u!114 &862038375299612782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8755916027795869297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb5bb2f39e14dde4baa5ae91fbcb840b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Cooked.Session.OilSplashPresenter
+  actor: {fileID: 1943717181655477925}
+  input: {fileID: 1786064015725386475}
+  slippery: {fileID: 3639124367759311975}
+  shape: {fileID: 7778145615322120883}
+  movement: {fileID: 7409948435226618720}
+  effectPrefab: {fileID: 3797506163531342191, guid: bb107f26495f4164e87151360079beda, type: 3}
+  reactivationSeconds: 0.1
 --- !u!1001 &3805852158935204887
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -15,7 +15,6 @@ namespace Cooked.Dialogue
         private static readonly string[] Fields = { "Dialogue_Code", "Sequence", "Name", "Context", "ContextRevealDuration" };
         private readonly string sourceName;
         private Dictionary<string, IReadOnlyList<DialogueRow>> table;
-        private string sourceJson;
         private IReadOnlyList<string> codes = Array.AsReadOnly(Array.Empty<string>());
         public DialogueTableService(string sourceName = "DialogueTable") { this.sourceName = sourceName; }
         public bool IsLoaded => table != null;
@@ -35,12 +34,12 @@ namespace Cooked.Dialogue
                     root = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                     if (reader.Read()) throw Error("JSON", "Trailing content is not allowed.");
                 }
-                if (root.Properties().Count() != 1 || !(root["Rows"] is JArray rows) || rows.Count == 0)
-                    throw Error("Rows", "Expected a non-empty Rows array as the only root field.");
+                if (root.Properties().Count() != 1 || !(root["Dialogues"] is JArray rows) || rows.Count == 0)
+                    throw Error("Dialogues", "Expected a non-empty Dialogues array as the only root field.");
                 var groups = new Dictionary<string, SortedDictionary<int, DialogueRow>>(StringComparer.Ordinal);
                 for (int index = 0; index < rows.Count; index++)
                 {
-                    string path = "Rows[" + index + "]";
+                    string path = "Dialogues[" + index + "]";
                     if (!(rows[index] is JObject row)) throw Error(path, "Expected a row object.");
                     if (row.Properties().Count() != Fields.Length || Fields.Any(field => row.Property(field, StringComparison.Ordinal) == null))
                         throw Error(path, "Expected exactly: " + string.Join(", ", Fields));
@@ -67,16 +66,16 @@ namespace Cooked.Dialogue
                     foreach (var pair in group.Value)
                     {
                         if (pair.Key != expected)
-                            throw Error("Rows (" + group.Key + ").Sequence", "Expected continuous 1..N; missing " + expected + ".");
+                            throw Error("Dialogues (" + group.Key + ").Sequence", "Expected continuous 1..N; missing " + expected + ".");
                         expected++;
                     }
                     validated.Add(group.Key, Array.AsReadOnly(group.Value.Values.ToArray()));
                 }
                 var choices = Array.AsReadOnly(validated.Keys.OrderBy(code => code, StringComparer.Ordinal).ToArray());
-                table = validated; codes = choices; sourceJson = json;
+                table = validated; codes = choices;
             }
             catch (JsonException exception) { throw Error("JSON", exception.Message, exception); }
-            catch (OverflowException exception) { throw Error("Rows numeric field", exception.Message, exception); }
+            catch (OverflowException exception) { throw Error("Dialogues numeric field", exception.Message, exception); }
         }
 
         public bool TryGetRows(string dialogueCode, out IReadOnlyList<DialogueRow> rows)
@@ -94,9 +93,7 @@ namespace Cooked.Dialogue
 
         public string RequireSelection(DialogueSelection selection)
         {
-            if (selection == null || selection.Table == null) throw Error("대화 표", "JSON TextAsset를 연결하세요.");
-            if (!IsLoaded || !string.Equals(sourceJson, selection.Table.text, StringComparison.Ordinal))
-                throw Error("대화 표 (" + selection.Table.name + ")", "서비스에 로드한 JSON과 선택 자산이 다릅니다.");
+            if (selection == null) throw Error("대화 선택", "Bootstrapper 대화 표의 키를 선택하세요.");
             return RequireCode(selection.Code);
         }
         private string StringField(JObject row, string field, string path)

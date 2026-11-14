@@ -92,14 +92,18 @@ namespace Cooked.DebugTesting
         }
         private void BindWorld()
         {
-            foreach (var sensor in SceneComponentLookup.FindAll<EnemyContactSensor>(gameObject.scene))
-                BindOptional(sensor, () => sensor.BindPlayer(Player), sensor.UnbindPlayer);
-            foreach (var floor in SceneComponentLookup.FindAll<DamageFloorPlatform>(gameObject.scene))
-                BindOptional(floor, () => floor.BindPlayer(Player), floor.UnbindPlayer);
-            foreach (var platform in SceneComponentLookup.FindAll<PeriodicPlatform>(gameObject.scene))
-                BindOptional(platform, () => platform.BindMaterialization(Player), () => platform.BindMaterialization(null));
-            testInteraction.Bind(ActorHost.Interaction, Output);
-            // Devices are discovered by the real PlayerInteractionService; fragments use the real PlayerFacade contact path.
+            try
+            {
+                foreach (var sensor in SceneComponentLookup.FindAll<EnemyContactSensor>(gameObject.scene))
+                    BindOptional(sensor, () => sensor.BindPlayer(Player), sensor.UnbindPlayer);
+                foreach (var floor in SceneComponentLookup.FindAll<DamageFloorPlatform>(gameObject.scene))
+                    BindOptional(floor, () => floor.BindPlayer(Player), floor.UnbindPlayer);
+                foreach (var platform in SceneComponentLookup.FindAll<PeriodicPlatform>(gameObject.scene))
+                    BindOptional(platform, () => platform.BindMaterialization(Player), () => platform.BindMaterialization(null));
+                testInteraction.Bind(ActorHost.Interaction, Output);
+                // Devices are discovered by the real PlayerInteractionService; fragments use the real PlayerFacade contact path.
+            }
+            catch (Exception error) { SessionCleanup.RethrowAfterCleanup(error, UnbindWorld); }
         }
         private bool BindOptional(Component owner, Action bind, Action release)
         {
